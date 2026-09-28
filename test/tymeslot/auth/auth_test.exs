@@ -1,0 +1,230 @@
+defmodule Tymeslot.AuthTest do
+  @moduledoc """
+  Tests for the `Tymeslot.Auth` context.
+
+  This module is `async: true`, so nothing in it may write Application env:
+  those flags are global and a test flipping one switches it for every module
+  running alongside. `Tymeslot.AuthRegistrationDisabledTest` is the `async:
+  false` home for the registration flag.
+  """
+
+  use Tymeslot.DataCase, async: true
+
+  @moduletag :auth
+
+  alias Tymeslot.Auth
+  alias Tymeslot.Auth.UserQueries
+  alias Tymeslot.Auth.UserSessionQueries
+  alias Tymeslot.Auth.UserTokenQueries
+  alias Tymeslot.Infrastructure.PubSub
+  alias Tymeslot.Security.Password
+  alias Tymeslot.Security.Token
+  alias TymeslotWeb.Helpers.ClientIP
+
+  import Tymeslot.Factory
+
+  describe "authenticate_user/3" do
+    test "blocks access with invalid credentials" do
+      user =
+        insert(:user,
+          password_hash: Password.hash_password("ValidPassword123!")
+        )
+
+      # Wrong password
+      assert {:error, :invalid_password, _reason} =
+               Auth.authenticate_user(
+                 user.email,
+                 "WrongPassword",
+                 ClientIP.request_opts(%Plug.Conn{})
+               )
+
+      # Non-existent user
+      assert {:error, :not_found, _reason} =
+               Auth.authenticate_user(
+                 "fake@example.com",
+                 "Password123!",
+                 ClientIP.request_opts(%Plug.Conn{})
+               )
+    end
+  end
+
+  describe "request_email_change/3" do
+    test "requires correct password to change email" do
+      user =
+        insert(:user,
+          password_hash: Password.hash_password("CurrentPassword123!")
+        )
+
+      # Wrong password blocks change
+      assert {:error, %{current_password: "Current password is incorrect"}} =
+               Auth.request_email_change(
+                 user,
+                 "new@example.com",
+                 "WrongPassword",
+                 ClientIP.request_opts(%Plug.Conn{})
+               )
+
+      # Duplicate email blocked
+      insert(:user, email: "taken@example.com")
+
+      assert {:error, %{new_email: "Email address is already in use"}} =
+               Auth.request_email_change(
+                 user,
+                 "taken@example.com",
+                 "CurrentPassword123!",
+                 ClientIP.request_opts(%Plug.Conn{})
+               )
+    end
+  end
+
+  describe "update_user_password/4" do
+    test "users cannot access system with old sessions after password change" do
+      user =
+        insert(:user,
+          password_hash: Password.hash_password("CurrentPassword123!")
+        )
+
+      # Create session before password change
+      old_session = insert(:user_session, user: user)
+
+      # Change password
+      {:ok, _updated_user} =
+        Auth.update_user_password(
+          user,
+          "CurrentPassword123!",
+          "NewPassword123!",
+          "NewPassword123!",
+          ClientIP.request_opts(%Plug.Conn{})
+        )
+
+      # The pre-change session is revoked, so the old cookie no longer resolves
+      # to a user
+      refute Repo.reload(old_session)
+      refute UserSessionQueries.get_user_by_session_token(old_session.token)
+
+      # Verify new password works
+      assert {:ok, _user, _conn} =
+               Auth.authenticate_user(
+                 user.email,
+                 "NewPassword123!",
+                 ClientIP.request_opts(%Plug.Conn{})
+               )
+    end
+  end
+
+  describe "register_user/2" do
+    test "prevents duplicate registrations" do
+      insert(:user, email: "taken@example.com")
+
+      params = %{
+        "email" => "TAKEN@EXAMPLE.COM",
+        "password" => "ValidPassword123!",
+        "password_confirmation" => "ValidPassword123!",
+        "name" => "Duplicate User",
+        "terms_accepted" => "true"
+      }
+
+      # Answered exactly as a free address would be; no second account.
+      assert {:existing_account, _message} =
+               Auth.register_user(params, ClientIP.request_opts(%Plug.Conn{}))
+    end
+  end
+
+  describe "verify_user_email/1" do
+    test "verifies the email without re-broadcasting :user_registered" do
+      user = insert(:unverified_user)
+      token = Token.generate_token()
+      {:ok, _updated} = UserTokenQueries.set_verification_token(user, token)
+
+      assert :ok = Auth.subscribe_to_user_registrations()
+
+      assert {:ok, verified_user} = Auth.verify_user_email(token)
+      assert verified_user.id == user.id
+
+      user_id = user.id
+      # Registration already broadcast this event for this user at signup;
+      # a second broadcast at verification made every subscriber keeping
+      # per-event tallies count a verified password signup twice. The refute
+      # matches this test's user id only, so a registration broadcast from a
+      # concurrently running async test cannot trip it.
+      refute_receive {:user_registered, %{user: %{id: ^user_id}}}, 200
+    end
+  end
+
+  describe "subscribe_to_user_registrations/0" do
+    test "delivers a real registration broadcast to the caller" do
+      assert :ok = Auth.subscribe_to_user_registrations()
+
+      user = insert(:user)
+      user_id = user.id
+      metadata = %{terms_accepted: true, ip: "203.0.113.7"}
+
+      assert :ok = Auth.broadcast_user_registered(user, metadata)
+
+      assert_receive {:user_registered, %{user: %{id: ^user_id}, metadata: ^metadata}}
+    end
+
+    # Subscribers outside this context must not be able to spell the topic or
+    # resolve the transport: that is precisely what let a rename here orphan
+    # them without a compile error.
+    test "neither the context nor its PubSub module exposes a topic or server accessor" do
+      context_functions = Keyword.keys(Auth.__info__(:functions))
+      pubsub_functions = Keyword.keys(PubSub.__info__(:functions))
+
+      refute :get_pubsub_server in context_functions
+      refute :user_registered_topic in pubsub_functions
+    end
+  end
+
+  describe "google_signup_login_hint/1" do
+    test "returns the provider email for Google-signup users" do
+      user =
+        build(:user,
+          provider: "google",
+          google_user_id: "google-123",
+          provider_email: "alice@gmail.com",
+          email: "alice@work.example"
+        )
+
+      assert Auth.google_signup_login_hint(user) == "alice@gmail.com"
+    end
+
+    test "falls back to the account email when the provider email is missing" do
+      user =
+        build(:user,
+          provider: "google",
+          google_user_id: "google-123",
+          provider_email: nil,
+          email: "alice@work.example"
+        )
+
+      assert Auth.google_signup_login_hint(user) == "alice@work.example"
+    end
+
+    test "returns nil for users without a Google account" do
+      assert Auth.google_signup_login_hint(build(:user, google_user_id: nil)) == nil
+    end
+  end
+
+  describe "update_user_locale/2" do
+    test "persists a supported locale preference" do
+      user = insert(:user)
+
+      assert {:ok, %{locale: "de"}} = Auth.update_user_locale(user, "de")
+      assert {:ok, %{locale: "de"}} = UserQueries.get_user(user.id)
+    end
+
+    test "clears the preference for an empty string" do
+      user = insert(:user, locale: "de")
+
+      assert {:ok, %{locale: nil}} = Auth.update_user_locale(user, "")
+      assert {:ok, %{locale: nil}} = UserQueries.get_user(user.id)
+    end
+
+    test "rejects an unsupported locale" do
+      user = insert(:user)
+
+      assert {:error, %Ecto.Changeset{}} = Auth.update_user_locale(user, "zz")
+    end
+  end
+end

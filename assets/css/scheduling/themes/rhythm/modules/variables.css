@@ -1,0 +1,205 @@
+/* Rhythm Theme Variables */
+
+/* Responsive height ladder (convention — NOT tokenisable: @media feature values
+   can't use var()). Every `@media (max-height: …)` query in this theme snaps to
+   one of these tiers; add new height rules to an existing tier rather than
+   introducing a new threshold:
+     600px  short    — compact section padding, drop calendar aspect ratio
+     500px  shorter  — shrink badges, tighten component spacing
+     400px  minimal  — strip remaining chrome to fit the booking flow
+     350px  bare     — last-resort trims for the tiniest landscape viewports */
+:root {
+  /* Typography - Comprehensive scale */
+  --theme-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Font size scale - fluid responsive using clamp() */
+  --theme-font-size-3xs: clamp(0.688rem, 1.1vw, 0.75rem);     /* ~11-12px - tiny labels */
+  --theme-font-size-2xs: clamp(0.75rem, 1.2vw, 0.813rem);     /* ~12-13px - smallest interactive */
+  --theme-font-size-xs: clamp(0.813rem, 1.3vw, 0.938rem);     /* ~13-15px - small labels */
+  --theme-font-size-sm: clamp(0.875rem, 1.4vw, 0.938rem);     /* ~14-15px - small text */
+  --theme-font-size-base: clamp(0.938rem, 1.6vw, 1.063rem);   /* ~15-17px - body text */
+  --theme-font-size-md: clamp(1rem, 1.7vw, 1.125rem);         /* ~16-18px - emphasized body */
+  --theme-font-size-lg: clamp(1.188rem, 2.1vw, 1.313rem);     /* ~19-21px - subheadings */
+  --theme-font-size-xl: clamp(1.438rem, 2.6vw, 1.563rem);     /* ~23-25px - headings */
+  --theme-font-size-2xl: clamp(1.625rem, 3.2vw, 2.125rem);    /* ~26-34px - large headings */
+  --theme-font-size-3xl: clamp(1.875rem, 3.7vw, 2.625rem);    /* ~30-42px - hero text */
+
+  /* Line heights */
+  --theme-line-height-tight: 1.1;
+  --theme-line-height-snug: 1.2;
+  --theme-line-height-normal: 1.4;
+  --theme-line-height-relaxed: 1.5;
+  --theme-line-height-loose: 1.6;
+
+  /* Font weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Letter spacing */
+  --letter-spacing-tight: 0.025em;
+  --letter-spacing-normal: 0.05em;
+  --letter-spacing-wide: 0.075em;
+
+  /* Theme Colors */
+  --theme-primary: #06b6d4;
+  --theme-primary-hover: #0891b2;
+  --theme-secondary: #14b8a6;
+  --theme-accent: #10b981;
+  --theme-accent-dark: #059669;
+
+  /* Filled-control ink and surface (WCAG 1.4.3 / 1.4.11).
+     A palette colour used as a *surface* needs a foreground that passes on top
+     of it, which white does not: white on the default primary above is 2.43:1.
+     `Tymeslot.ThemeCustomizations.ContrastTokens` derives these per palette and
+     the generated :root block overrides them; the values here are that
+     derivation applied to the defaults above, and are what self-hosted Core
+     uses when the organiser has saved no customisation.
+     Only filled surfaces read *-solid — --theme-primary itself stays as chosen,
+     because borders, focus rings and bright text on the dark card need it
+     bright. */
+  --theme-on-primary: #0f172a;
+  --theme-primary-solid: var(--theme-primary);
+  --theme-primary-solid-hover: var(--theme-primary-hover);
+  --theme-on-accent: #0f172a;
+  --theme-accent-solid: var(--theme-accent);
+
+  --theme-warning: #fbbf24;
+  --theme-info: #6366f1;
+  --theme-info-dark: #4f46e5;
+  --theme-error: rgba(239, 68, 68, 0.95);
+  --theme-error-bg: rgba(239, 68, 68, 0.1);
+  --theme-error-border: rgba(239, 68, 68, 0.6);
+  --theme-error-light: #fca5a5;
+  --theme-danger: #ef4444;
+  --theme-danger-dark: #dc2626;
+  --theme-background-color: #0f172a;
+  --theme-surface: rgba(30, 41, 59, 0.5);
+  --theme-text: #e2e8f0;
+  --theme-text-secondary: #94a3b8;
+  --theme-text-muted: #64748b;
+
+  /* Background gradients */
+  --theme-background: linear-gradient(135deg, #1a1f2e 0%, #2d3561 50%, #1a1f2e 100%);
+  --theme-background-image: none;
+
+  /* Glassmorphism surface opacity levels */
+  --surface-subtle: rgba(255, 255, 255, 0.06);
+  --surface-light: rgba(255, 255, 255, 0.10);
+  --surface-medium: rgba(255, 255, 255, 0.12);
+  --surface-strong: rgba(255, 255, 255, 0.15);
+  --surface-intense: rgba(255, 255, 255, 0.18);
+
+  /* Border opacity levels */
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-light: rgba(255, 255, 255, 0.15);
+  --border-medium: rgba(255, 255, 255, 0.20);
+  --border-strong: rgba(255, 255, 255, 0.30);
+
+  /* Border radius scale */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+
+  /* Border width scale */
+  --border-width-thin: 1px;
+  --border-width-medium: 2px;
+  --border-width-thick: 3px;
+
+  /* Spacing scale - fluid responsive */
+  --space-hairline: 2px; /* sub-grid gap, compact calendar cells only */
+  --space-3xs: 4px;
+  --space-2xs: 6px;
+  --space-xs: clamp(8px, 1.2vw, 12px);
+  --space-sm: clamp(12px, 1.8vw, 16px);
+  --space-md: clamp(16px, 2.5vw, 20px);
+  --space-lg: clamp(20px, 3vw, 28px);
+  --space-xl: clamp(28px, 3.5vw, 32px);
+  --space-2xl: clamp(32px, 4.5vw, 40px);
+
+  /* Transition speeds */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-smooth: 0.3s ease;
+  --transition-slow: 0.4s ease-in-out;
+
+  /* Sliding box effects */
+  --box-blur: 36px;
+  --box-opacity: 0.55;
+  --box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 var(--border-subtle);
+  --slide-transition: opacity var(--transition-slow), transform var(--transition-slow);
+
+  /* Component-specific sizing (fluid, scales with container) */
+  --avatar-size-sm: clamp(32px, 4cqi, 36px);
+  --avatar-size-md: clamp(36px, 5cqi, 40px);
+  --avatar-size-lg: clamp(44px, 7cqi, 52px);
+  --avatar-size-xl: clamp(52px, 8cqi, 68px);
+  --min-touch-target: 48px;
+
+  /* Container widths */
+  --container-xs: 280px;
+  --container-sm: 360px;
+  --container-md: 520px;
+  --container-lg: 640px;
+  --container-xl: 820px;
+
+  /* Dropdown/Popover specific */
+  --dropdown-width: var(--container-xs);
+  --dropdown-max-height: clamp(200px, 50vh, 420px);
+
+  /* Z-Index Scale */
+  --z-dropdown: 50;
+
+  /* Calendar specific */
+  --calendar-gap: clamp(8px, 1.2vw, 12px);
+  --calendar-gap-tablet: clamp(6px, 1.1vw, 10px);
+  --calendar-gap-mobile: 5px;
+  --calendar-day-min-height: 52px;
+  --calendar-day-min-height-tablet: 54px;
+
+  /* Time slots specific */
+  --time-slot-min-width: 88px;
+  --time-slot-min-width-tablet: 96px;
+  --time-slot-min-height: 40px;
+  --time-slots-max-height: clamp(280px, 50vh, 420px);
+
+  /* Icon sizes */
+  --icon-xs: 16px;
+  --icon-sm: 20px;
+  --icon-md: 24px;
+  --icon-lg: 32px;
+  --icon-xl: 40px;
+  --icon-2xl: 48px;
+
+  /* Flag dimensions */
+  --flag-height: 14px;
+
+  /* Elevation shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
+  --shadow-xl: 0 10px 40px rgba(0, 0, 0, 0.3);
+  --shadow-primary-sm: 0 4px 16px rgba(6, 182, 212, 0.3);
+  --shadow-primary-md: 0 6px 20px rgba(6, 182, 212, 0.4);
+  --shadow-success-sm: 0 4px 16px rgba(16, 185, 129, 0.3);
+  --shadow-success-md: 0 6px 20px rgba(16, 185, 129, 0.4);
+  --shadow-success-lg: 0 8px 24px rgba(16, 185, 129, 0.3);
+  --shadow-danger-sm: 0 4px 16px rgba(239, 68, 68, 0.3);
+  --shadow-danger-md: 0 6px 20px rgba(239, 68, 68, 0.4);
+
+  /* Scrollbar styling */
+  --scrollbar-width: 6px;
+  --scrollbar-track: rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+
+  /* Button sizing */
+  --button-padding-y: 14px;
+  --button-padding-x: 28px;
+  --button-padding-y-sm: 12px;
+  --button-padding-x-sm: 24px;
+}

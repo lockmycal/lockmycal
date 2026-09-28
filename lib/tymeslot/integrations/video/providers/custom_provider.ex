@@ -1,0 +1,274 @@
+defmodule Tymeslot.Integrations.Video.Providers.CustomProvider do
+  @moduledoc """
+  Custom video conferencing provider implementation.
+
+  Allows users to provide their own video meeting URLs from any platform.
+  This provider simply stores and serves the user-provided URL without any API integration.
+
+  ## Template Variables
+
+  URLs can include the `{{meeting_id}}` template variable, which will be replaced
+  with a secure hash of the meeting ID during room creation. This allows users to
+  create unique meeting rooms per booking while using their own video platform.
+
+  ### Examples
+
+      # Static URL (same room for all meetings)
+      "https://meet.example.com/my-permanent-room"
+
+      # Template URL (unique room per meeting)
+      "https://jitsi.example.org/{{meeting_id}}"
+      # Becomes: "https://jitsi.example.org/a1b2c3d4e5f67890"
+
+  ### Security & Collision Resistance
+
+  - Template variables are replaced with 16-character SHA256 hashes
+  - Hashing prevents URL injection attacks (query params, path traversal, fragments)
+  - 50% collision probability at ~4.3 billion meetings (birthday paradox)
+  - 1% collision probability at ~430 million meetings
+  - Deterministic hashing ensures idempotency (same meeting_id → same URL)
+
+  ### Requirements
+
+  - Template URLs require a valid `meeting_id` in the config
+  - Missing `meeting_id` for template URLs will return an error
+  - Processed URLs must not exceed 255 characters (database constraint)
+
+  ## URL Validation
+
+  All URLs (static and template) must:
+  - Use HTTP or HTTPS scheme
+  - Have a valid, resolvable host
+  - Be reachable (in perform_connection_test only)
+
+  The reachability probe is the only outbound request this provider ever makes:
+  a booking hands the URL to the browser rather than fetching it. That probe
+  goes through `Tymeslot.Security.SsrfGuard`, so in `:prod` a host resolving to
+  a private, loopback, or link-local address is refused unless the operator has
+  set `ALLOW_PRIVATE_IPS_FOR_VIDEO` (see `SsrfGuard.allow_private_for_video?/0`).
+  """
+
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Tymeslot.Integrations.Video.Providers.Capabilities
+  alias Tymeslot.Integrations.Video.Providers.LinkRoom
+  alias Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  alias Tymeslot.Integrations.Video.RoomData
+  alias Tymeslot.Integrations.Video.TemplateConfig
+
+  require Logger
+
+  @behaviour ProviderBehaviour
+
+  @capabilities Capabilities.new!(
+                  waiting_room: false,
+                  recording: false,
+                  dial_in: false,
+                  max_participants: nil,
+                  breakout_rooms: false,
+                  screen_sharing: false,
+                  chat: false
+                )
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def create_meeting_room(config) do
+    Logger.info("Creating custom video meeting room")
+
+    case Map.get(config, :custom_meeting_url) do
+      url when url in [nil, ""] ->
+        {:error, custom_url_required_message()}
+
+      url ->
+        with {:ok, processed_url} <- process_template(url, config),
+             :ok <- LinkRoom.validate_length(processed_url),
+             true <- LinkRoom.http_url?(processed_url) do
+          room_data = %RoomData{
+            room_id: LinkRoom.room_id(processed_url),
+            meeting_url: processed_url,
+            provider_data: %{
+              original_url: url,
+              processed_url: processed_url,
+              created_at: DateTime.utc_now()
+            }
+          }
+
+          # Emit telemetry for observability
+          :telemetry.execute(
+            [:tymeslot, :video, :custom_provider, :meeting_created],
+            %{processed_url_length: String.length(processed_url)},
+            %{
+              template_used: String.contains?(url, TemplateConfig.template_variable()),
+              original_url_length: String.length(url)
+            }
+          )
+
+          Logger.info("Successfully created custom video meeting",
+            url: LinkRoom.mask_url(processed_url)
+          )
+
+          {:ok, room_data}
+        else
+          {:error, reason} -> {:error, reason}
+          false -> {:error, "Invalid URL format. Please provide a valid HTTP/HTTPS URL."}
+        end
+    end
+  end
+
+  defp process_template(url, config) do
+    if String.contains?(url, TemplateConfig.template_variable()) do
+      # Validate template position before processing
+      with :ok <- validate_template_position(url) do
+        process_template_with_meeting_id(url, config)
+      end
+    else
+      # Static URL - no template processing needed
+      {:ok, url}
+    end
+  end
+
+  defp validate_template_position(url) do
+    uri = URI.parse(url)
+
+    if uri.fragment && String.contains?(uri.fragment, TemplateConfig.template_variable()) do
+      {:error,
+       dgettext(
+         "dashboard_video",
+         "Template variable cannot be used in URL fragment (#). Fragments are not sent to the server, so all meetings would use the same room. Use the template in the path instead: https://example.com/{{meeting_id}}"
+       )}
+    else
+      :ok
+    end
+  end
+
+  defp process_template_with_meeting_id(url, config) do
+    # Template URL - meeting_id is required
+    case LinkRoom.slug(Map.get(config, :meeting_id)) do
+      {:ok, slug} ->
+        processed = String.replace(url, TemplateConfig.template_variable(), slug)
+
+        Logger.debug("Processing URL template",
+          input_url: LinkRoom.mask_url(url),
+          output_url: LinkRoom.mask_url(processed)
+        )
+
+        {:ok, processed}
+
+      {:error, _reason} ->
+        Logger.error("Template URL requires non-empty meeting_id", url: LinkRoom.mask_url(url))
+        {:error, "meeting_id is required for template URLs but was empty"}
+    end
+  end
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def create_join_url(room_data, _participant_name, _participant_email, _role, _meeting_time) do
+    {:ok, room_data.meeting_url}
+  end
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def extract_room_id(meeting_url), do: LinkRoom.room_id(meeting_url)
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def valid_meeting_url?(meeting_url), do: LinkRoom.http_url?(meeting_url)
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def perform_connection_test(config) do
+    case Map.get(config, :custom_meeting_url) do
+      url when url in [nil, ""] ->
+        {:error, custom_url_required_message()}
+
+      url ->
+        # Validate template position first
+        with :ok <- validate_template_position(url) do
+          # Replace template variables with sample values for testing
+          test_url =
+            String.replace(url, TemplateConfig.template_variable(), TemplateConfig.sample_hash())
+
+          LinkRoom.connection_test(test_url)
+        end
+    end
+  end
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def provider_type, do: :custom
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def display_name, do: "Custom Video Link"
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def connection_test_bucket, do: :custom
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def config_schema do
+    %{
+      custom_meeting_url: %{
+        type: :string,
+        required: true,
+        label: "Meeting URL",
+        help_text:
+          "Enter the complete video meeting URL (e.g., https://meet.example.com/room123)",
+        placeholder: "https://meet.example.com/room123"
+      }
+    }
+  end
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def validate_config(config) do
+    case Map.get(config, :custom_meeting_url) do
+      url when url in [nil, ""] ->
+        {:error, custom_url_required_message()}
+
+      url ->
+        # Validate template position first
+        with :ok <- validate_template_position(url) do
+          # Test with a sample meeting_id to validate template URLs
+          test_url =
+            String.replace(url, TemplateConfig.template_variable(), TemplateConfig.sample_hash())
+
+          if LinkRoom.http_url?(test_url),
+            do: :ok,
+            else:
+              {:error,
+               dgettext(
+                 "dashboard_video",
+                 "Invalid URL format. Please provide a valid HTTP/HTTPS URL."
+               )}
+        end
+    end
+  end
+
+  defp custom_url_required_message,
+    do: dgettext("dashboard_video", "Custom meeting URL is required")
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def capabilities, do: @capabilities
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def handle_meeting_event(_event, _room_data, _additional_data), do: :ok
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def generate_meeting_metadata(room_data) do
+    %{
+      provider: "custom",
+      meeting_id: room_data.room_id,
+      join_url: room_data.meeting_url,
+      custom_url: Map.get(room_data.provider_data, :original_url)
+    }
+  end
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def build_config(integration, _decrypted, opts) do
+    %{
+      custom_meeting_url: integration.custom_meeting_url,
+      meeting_id: Keyword.get(opts, :meeting_id)
+    }
+  end
+
+  @impl Tymeslot.Integrations.Video.Providers.ProviderBehaviour
+  def credential_spec do
+    %{
+      required: [:custom_meeting_url],
+      credential_pairs: [],
+      url_fields: [:custom_meeting_url]
+    }
+  end
+end

@@ -1,0 +1,157 @@
+/* Shared Layout Primitives for Scheduling Themes
+   Contains ONLY structural helpers — no colors, typography, or theme-specific styles.
+   Replaces the old variables.css + utilities.css split. */
+
+/* Tailwind CSS is imported by each theme's entry file (theme.css) in v4 —
+   the framework @import must lead the entry, so it cannot live here. */
+
+:root {
+  /* Radius scale — themes override these; kept here as safe fallback defaults */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;
+  --radius-base: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+  --radius-full: 9999px;
+}
+
+/* Hide reCAPTCHA v3 badge as per Google's terms (must include disclaimer) */
+.grecaptcha-badge {
+  visibility: hidden;
+}
+
+/* Honeypot security field - visually hidden from humans, accessible to bots */
+.honeypot-field {
+  position: absolute !important;
+  left: -9999px !important;
+  top: auto !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+
+/* Awaiting-payment view — used by embedded paid bookings while Stripe
+   Checkout is open in a new tab. Kept theme-agnostic on purpose so both
+   Quill and Rhythm render the same neutral wait-state. */
+.awaiting-payment-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 2rem 1rem;
+  flex: 1 1 auto;
+}
+
+.awaiting-payment-card {
+  width: 100%;
+  max-width: 32rem;
+  padding: 2rem;
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  text-align: center;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.awaiting-payment-icon {
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 1.25rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.awaiting-payment-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.awaiting-payment-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+  color: white;
+}
+
+.awaiting-payment-message {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0 0 1.25rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.awaiting-payment-fallback {
+  font-size: 0.875rem;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.awaiting-payment-fallback a {
+  color: white;
+  text-decoration: underline;
+  margin-left: 0.25rem;
+}
+
+/* Readiness notice — shown in place of the booking flow when the organiser
+   has no bookable calendar. Theme-agnostic for the same reason as the
+   awaiting-payment view: it replaces the whole booker, so it cannot borrow a
+   theme's card and must not borrow app.css, which the theme bundles exclude. */
+.readiness-notice-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 2rem 1rem;
+  flex: 1 1 auto;
+}
+
+/* Opaque enough to carry body text over Rhythm's background video, which the
+   awaiting-payment card never has to do: that one sits inside the theme's own
+   surface, whereas this replaces it. */
+.readiness-notice-card {
+  width: 100%;
+  max-width: 32rem;
+  padding: 2rem;
+  border-radius: var(--radius-2xl);
+  background: linear-gradient(135deg, rgba(20, 20, 35, 0.86) 0%, rgba(15, 15, 25, 0.78) 100%);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 1.25rem 2.5rem rgba(0, 0, 0, 0.35);
+  text-align: center;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.readiness-notice-icon {
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 1.25rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.readiness-notice-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.readiness-notice-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+  color: white;
+}
+
+.readiness-notice-message {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0 0 1.25rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.readiness-notice-hint {
+  font-size: 0.875rem;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+}

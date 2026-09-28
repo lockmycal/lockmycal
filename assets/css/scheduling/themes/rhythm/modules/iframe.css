@@ -1,0 +1,94 @@
+/* iframe.css — Context-driven iframe shell rules.
+
+   When the scheduling page is loaded inside an iframe (data-embedded on
+   <html>), the page lets its body grow to natural content height and
+   iframe_embed.js posts that height to the parent on a 50ms loop. The
+   parent iframe element grows AND shrinks to match — so we never set
+   `height: 100%` chains here. Doing so would lock the body to the
+   parent-supplied viewport and defeat the auto-resize.
+
+   All selectors are scoped to html.rhythm-theme[data-embedded] so they
+   activate only when iframe_embed.js sets the [data-embedded] attribute. */
+
+/* ---------------------------------------------------------------------------
+   1. Base Reset
+   --------------------------------------------------------------------------- */
+html.rhythm-theme[data-embedded] {
+  min-height: auto;
+  margin: 0;
+}
+
+html.rhythm-theme[data-embedded] body.rhythm-theme {
+  margin: 0;
+  display: flow-root;
+  height: max-content;
+  min-height: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   2. Background, layout containers, time slots
+   --------------------------------------------------------------------------- */
+
+/* Drop the standalone 100vh fill — let the grid size to its content. */
+html.rhythm-theme[data-embedded] .video-background-theme,
+html.rhythm-theme[data-embedded] .video-background-theme.theme-grid {
+  min-height: auto;
+  grid-template-rows: auto;
+  padding: 0;
+}
+
+html.rhythm-theme[data-embedded] .video-background-theme.theme-grid .content-area {
+  /* Horizontal and top zeroed (mirrors base.css's non-embedded rule) so the
+     public top bar — align-self: stretch in public-top-bar.css — still sits
+     flush and reaches the full embed width instead of being inset. */
+  padding: 0 0 var(--space-sm) 0;
+  min-height: 0;
+  overflow: visible;
+}
+
+html.rhythm-theme[data-embedded] .slide-container,
+html.rhythm-theme[data-embedded] .slide-content,
+html.rhythm-theme[data-embedded] .schedule-grid {
+  flex: initial;
+}
+
+/* Background container switches from fixed to absolute so it fills the
+   content area instead of the iframe viewport. */
+html.rhythm-theme[data-embedded] .video-background-container {
+  position: absolute;
+}
+
+/* Hide footer/branding */
+html.rhythm-theme[data-embedded] .footer-gradient {
+  display: none;
+}
+
+/* Scheduling box — full-width, no border/radius in embedded mode */
+html.rhythm-theme[data-embedded] .scheduling-box {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 0;
+  border: none;
+}
+
+/* Time slots flow to natural height — single page-level scroll. */
+html.rhythm-theme[data-embedded] .time-slots-grid {
+  max-height: none;
+  overflow-y: visible;
+  height: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   3. Column layout — wide-canvas variant for narrow embed containers
+   ---------------------------------------------------------------------------
+   Designed for WordPress columns and other constrained-width contexts.
+   Drops the centred 520-640px max-width cap so the booker uses every
+   pixel of the embed container's width. Specificity (0,2,1) beats the
+   default `.scheduling-box` (0,1,0) media-query rules in base.css. */
+html.rhythm-theme[data-embed-layout="column"] .scheduling-box {
+  max-width: 100%;
+  width: 100%;
+}
+
+/* No column-specific .content-area padding override needed anymore — the
+   base embedded rule above already zeroes horizontal padding unconditionally. */

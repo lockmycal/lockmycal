@@ -1,0 +1,343 @@
+defmodule Tymeslot.TimezonesTest do
+  use ExUnit.Case, async: true
+
+  @moduletag :utils
+
+  alias Tymeslot.Timezones
+
+  describe "all_options/0" do
+    test "returns a non-empty list of {label, timezone_id} tuples" do
+      options = Timezones.all_options()
+      assert length(options) > 80
+
+      # Options are sorted by label, so the head is the alphabetically first city.
+      assert {"Abidjan, Ivory Coast", "Africa/Abidjan"} = hd(options)
+    end
+
+    test "all timezone IDs are valid" do
+      for {_label, tz_id} <- Timezones.all_options() do
+        assert Timezones.valid?(tz_id), "Expected #{tz_id} to be valid"
+      end
+    end
+
+    test "options are sorted alphabetically by label" do
+      labels = Enum.map(Timezones.all_options(), fn {label, _tz_id} -> label end)
+      assert labels == Enum.sort(labels)
+    end
+  end
+
+  describe "search/1" do
+    test "returns all options with popular timezones first for empty string" do
+      results = Timezones.search("")
+      assert length(results) > 50
+
+      # Los Angeles heads the popular block that precedes the alphabetical rest.
+      {label, tz_id, offset} = hd(results)
+      assert label == "Los Angeles, United States"
+      assert tz_id == "America/Los_Angeles"
+      # The offset shifts with DST, so pin the format rather than the hour.
+      assert offset =~ ~r/^UTC[+-]\d{1,2}(:\d{2})?$/
+
+      # Popular timezones appear before the alphabetical rest
+      tz_ids = Enum.map(results, fn {_l, id, _o} -> id end)
+      la_idx = Enum.find_index(tz_ids, &(&1 == "America/Los_Angeles"))
+      tokyo_idx = Enum.find_index(tz_ids, &(&1 == "Asia/Tokyo"))
+      assert la_idx < tokyo_idx
+    end
+
+    test "filters by city name" do
+      results = Timezones.search("Brussels")
+      assert results != []
+
+      assert Enum.any?(results, fn {_label, tz_id, _offset} ->
+               tz_id == "Europe/Brussels"
+             end)
+    end
+
+    test "finds timezone via search alias" do
+      results = Timezones.search("Mumbai")
+      assert Enum.any?(results, fn {_l, tz, _o} -> tz == "Asia/Kolkata" end)
+    end
+
+    test "finds Amsterdam as its own entry" do
+      results = Timezones.search("Amsterdam")
+      assert Enum.any?(results, fn {_l, tz, _o} -> tz == "Europe/Amsterdam" end)
+    end
+
+    test "finds Netherlands and returns Amsterdam" do
+      results = Timezones.search("Netherlands")
+      assert Enum.any?(results, fn {_l, tz, _o} -> tz == "Europe/Amsterdam" end)
+    end
+
+    test "finds Stockholm, Oslo, Copenhagen as own entries" do
+      for {query, expected_tz} <- [
+            {"Stockholm", "Europe/Stockholm"},
+            {"Oslo", "Europe/Oslo"},
+            {"Copenhagen", "Europe/Copenhagen"}
+          ] do
+        results = Timezones.search(query)
+
+        assert Enum.any?(results, fn {_l, tz, _o} -> tz == expected_tz end),
+               "Expected #{expected_tz} in results for '#{query}'"
+      end
+    end
+
+    test "limits results to 50" do
+      results = Timezones.search("a")
+      assert length(results) <= 50
+    end
+  end
+
+  describe "country_code/1" do
+    test "returns alpha-3 atom for known timezone" do
+      assert Timezones.country_code("Europe/Brussels") == :bel
+      assert Timezones.country_code("America/New_York") == :usa
+      assert Timezones.country_code("Asia/Tokyo") == :jpn
+    end
+
+    test "returns correct country for cities that are IANA links" do
+      assert Timezones.country_code("Europe/Amsterdam") == :nld
+      assert Timezones.country_code("Europe/Stockholm") == :swe
+      assert Timezones.country_code("Europe/Oslo") == :nor
+      assert Timezones.country_code("Europe/Copenhagen") == :dnk
+    end
+
+    test "maps Berlin to Germany" do
+      assert Timezones.country_code("Europe/Berlin") == :deu
+      assert Timezones.format("Europe/Berlin") == "Berlin, Germany"
+    end
+
+    test "maps Simferopol to Ukraine" do
+      assert Timezones.country_code("Europe/Simferopol") == :ukr
+      assert Timezones.format("Europe/Simferopol") == "Simferopol, Ukraine"
+    end
+
+    test "returns nil for unknown timezone" do
+      assert Timezones.country_code("Fake/Zone") == nil
+    end
+
+    test "returns nil for non-string input" do
+      assert Timezones.country_code(nil) == nil
+      assert Timezones.country_code(42) == nil
+    end
+  end
+
+  describe "normalize/1" do
+    test "normalizes legacy Europe/Kiev to Europe/Kyiv" do
+      assert Timezones.normalize("Europe/Kiev") == "Europe/Kyiv"
+    end
+
+    test "normalizes legacy renames browsers still report" do
+      # Older ICU/CLDR data reports pre-rename ids from
+      # Intl.DateTimeFormat().resolvedOptions().timeZone.
+      expected = %{
+        "Africa/Asmera" => "Africa/Asmara",
+        "America/Buenos_Aires" => "America/Argentina/Buenos_Aires",
+        "America/Coral_Harbour" => "America/Atikokan",
+        "America/Godthab" => "America/Nuuk",
+        "Asia/Calcutta" => "Asia/Kolkata",
+        "Asia/Dacca" => "Asia/Dhaka",
+        "Asia/Katmandu" => "Asia/Kathmandu",
+        "Asia/Macao" => "Asia/Macau",
+        "Asia/Rangoon" => "Asia/Yangon",
+        "Asia/Saigon" => "Asia/Ho_Chi_Minh",
+        "Asia/Thimbu" => "Asia/Thimphu",
+        "Asia/Ulan_Bator" => "Asia/Ulaanbaatar",
+        "Atlantic/Faeroe" => "Atlantic/Faroe",
+        "Pacific/Enderbury" => "Pacific/Kanton",
+        "Pacific/Ponape" => "Pacific/Pohnpei",
+        "Pacific/Truk" => "Pacific/Chuuk"
+      }
+
+      for {legacy, canonical} <- expected do
+        assert Timezones.normalize(legacy) == canonical
+        assert Timezones.valid?(canonical)
+      end
+    end
+
+    test "passes through canonical and link IDs unchanged" do
+      assert Timezones.normalize("Europe/Brussels") == "Europe/Brussels"
+      assert Timezones.normalize("Europe/Amsterdam") == "Europe/Amsterdam"
+    end
+
+    test "handles nil gracefully" do
+      assert Timezones.normalize(nil) == nil
+    end
+  end
+
+  describe "valid?/1" do
+    test "returns true for canonical timezones" do
+      assert Timezones.valid?("Europe/Brussels")
+      assert Timezones.valid?("America/New_York")
+    end
+
+    test "returns true for IANA link cities in our list" do
+      assert Timezones.valid?("Europe/Amsterdam")
+      assert Timezones.valid?("Europe/Stockholm")
+      assert Timezones.valid?("Atlantic/Reykjavik")
+    end
+
+    test "returns true for non-country IANA timezones" do
+      assert Timezones.valid?("UTC")
+      assert Timezones.valid?("Etc/UTC")
+    end
+
+    test "returns true for real zones absent from the curated picker list" do
+      # Regression: these resolve in the IANA database but have no curated city
+      # entry, and were rewritten to Europe/Tallinn.
+      assert Timezones.valid?("America/Detroit")
+      assert Timezones.valid?("America/Argentina/Cordoba")
+    end
+
+    test "returns true for deprecated IANA link aliases" do
+      # Browsers still report these; both resolve to a real zone.
+      assert Timezones.valid?("Asia/Calcutta")
+      assert Timezones.valid?("Asia/Katmandu")
+    end
+
+    test "returns true for offset zones that sanitize/1 itself emits" do
+      assert Timezones.valid?("Etc/GMT+5")
+      assert Timezones.valid?("Etc/GMT-2")
+    end
+
+    test "returns false for invalid timezone" do
+      refute Timezones.valid?("Fake/Zone")
+      refute Timezones.valid?("")
+    end
+
+    test "returns false for non-string input" do
+      refute Timezones.valid?(nil)
+      refute Timezones.valid?(42)
+    end
+  end
+
+  describe "format/1" do
+    test "formats known timezone as 'City, Country'" do
+      assert Timezones.format("America/New_York") == "New York, United States"
+      assert Timezones.format("Europe/Brussels") == "Brussels, Belgium"
+      assert Timezones.format("Europe/Amsterdam") == "Amsterdam, Netherlands"
+    end
+
+    test "normalizes before formatting" do
+      assert Timezones.format("Europe/Kiev") == "Kyiv, Ukraine"
+    end
+
+    test "falls back for unknown timezone" do
+      assert Timezones.format("Unknown/Zone") == "Zone"
+    end
+
+    test "returns fallback for non-string" do
+      assert Timezones.format(nil) == "Unknown timezone"
+    end
+  end
+
+  describe "utc_offset/1" do
+    test "returns a UTC offset string" do
+      offset = Timezones.utc_offset("Europe/Brussels")
+      assert offset =~ ~r/^UTC[+-±]/
+    end
+
+    test "returns UTC for invalid timezone" do
+      assert Timezones.utc_offset("Fake/Zone") == "UTC"
+    end
+
+    # Zones without daylight saving time, so the expected offset is the same
+    # whenever the test runs.
+    test "formats a zero offset" do
+      assert Timezones.utc_offset("Etc/UTC") == "UTC±0"
+    end
+
+    test "formats whole-hour and half-hour positive offsets" do
+      assert Timezones.utc_offset("Asia/Tokyo") == "UTC+9"
+      assert Timezones.utc_offset("Asia/Kolkata") == "UTC+5:30"
+    end
+
+    test "formats whole-hour and half-hour negative offsets" do
+      assert Timezones.utc_offset("Etc/GMT+5") == "UTC-5"
+      assert Timezones.utc_offset("Pacific/Marquesas") == "UTC-9:30"
+    end
+  end
+
+  describe "sanitize/1" do
+    test "returns nil for nil, non-binary, or blank input" do
+      assert Timezones.sanitize(nil) == nil
+      assert Timezones.sanitize("") == nil
+      assert Timezones.sanitize("   ") == nil
+      assert Timezones.sanitize(~s("")) == nil
+      assert Timezones.sanitize(42) == nil
+    end
+
+    test "strips surrounding double quotes (Zimbra-style quoted TZID)" do
+      assert Timezones.sanitize(~s("Europe/Brussels")) == "Europe/Brussels"
+      assert Timezones.sanitize(~s("Europe/Paris")) == "Europe/Paris"
+    end
+
+    test "trims whitespace outside and inside quotes" do
+      assert Timezones.sanitize("  Europe/Brussels  ") == "Europe/Brussels"
+      assert Timezones.sanitize(~s(  "Europe/Brussels"  )) == "Europe/Brussels"
+      assert Timezones.sanitize(~s(" Europe/Brussels ")) == "Europe/Brussels"
+    end
+
+    test "leaves plain IANA timezone strings untouched" do
+      assert Timezones.sanitize("Europe/Paris") == "Europe/Paris"
+      assert Timezones.sanitize("America/New_York") == "America/New_York"
+      assert Timezones.sanitize("Etc/UTC") == "Etc/UTC"
+    end
+
+    test "applies legacy IANA normalisation" do
+      assert Timezones.sanitize("Europe/Kiev") == "Europe/Kyiv"
+      assert Timezones.sanitize(~s("Europe/Kiev")) == "Europe/Kyiv"
+    end
+
+    test "maps Windows zone names to IANA" do
+      assert Timezones.sanitize("Romance Standard Time") == "Europe/Paris"
+      assert Timezones.sanitize("W. Europe Standard Time") == "Europe/Berlin"
+      assert Timezones.sanitize("GMT Standard Time") == "Europe/London"
+      assert Timezones.sanitize("Pacific Standard Time") == "America/Los_Angeles"
+      assert Timezones.sanitize("Eastern Standard Time") == "America/New_York"
+      assert Timezones.sanitize("Tokyo Standard Time") == "Asia/Tokyo"
+      assert Timezones.sanitize("FLE Standard Time") == "Europe/Kyiv"
+      assert Timezones.sanitize("UTC") == "Etc/UTC"
+    end
+
+    test "leaves unrecognised strings as-is (validation is downstream)" do
+      assert Timezones.sanitize("not-a-real-zone") == "not-a-real-zone"
+      assert Timezones.sanitize("Mars/Olympus_Mons") == "Mars/Olympus_Mons"
+    end
+
+    test "maps whole-hour GMT/UTC offset TZIDs to Etc/GMT zones (POSIX sign reversal)" do
+      # Apple Calendar / Outlook emit offset-style TZIDs that no tz database knows.
+      # Etc/GMT-2 *is* UTC+2 — the sign is intentionally reversed.
+      assert Timezones.sanitize("GMT+0200") == "Etc/GMT-2"
+      assert Timezones.sanitize("GMT-0500") == "Etc/GMT+5"
+      assert Timezones.sanitize("GMT+2") == "Etc/GMT-2"
+      assert Timezones.sanitize("UTC+0100") == "Etc/GMT-1"
+      assert Timezones.sanitize("GMT+0000") == "Etc/UTC"
+      assert Timezones.sanitize("GMT-0000") == "Etc/UTC"
+    end
+
+    test "leaves sub-hour and out-of-range offset TZIDs unchanged" do
+      # No Etc/GMT zone carries a fractional offset.
+      assert Timezones.sanitize("GMT+0530") == "GMT+0530"
+      # Reversed Etc/GMT range tops out at +12 / -14; beyond that has no zone.
+      assert Timezones.sanitize("GMT-1300") == "GMT-1300"
+      # A bare "GMT" without an offset is not an Etc zone name.
+      assert Timezones.sanitize("GMT") == "GMT"
+    end
+  end
+
+  describe "flag_exists?/1" do
+    test "returns true for known flag" do
+      assert Timezones.flag_exists?(:usa)
+      assert Timezones.flag_exists?(:bel)
+    end
+
+    test "returns false for nil" do
+      refute Timezones.flag_exists?(nil)
+    end
+
+    test "returns false for non-atom" do
+      refute Timezones.flag_exists?("usa")
+    end
+  end
+end

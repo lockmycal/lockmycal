@@ -1,0 +1,223 @@
+defmodule Tymeslot.Security.SsrfBlockedError do
+  @moduledoc """
+  Returned by `Tymeslot.Infrastructure.HTTPClient` when a request to a
+  user-supplied host is refused by `Tymeslot.Security.SsrfGuard`.
+  """
+
+  # The refused URL can carry a secret in its path — a Nextcloud Talk room
+  # token is both the conversation's id and its join link — and this struct
+  # travels to callers that log it with `inspect/1`, which does not go through
+  # `message/1`. Dropping the field from the inspect output is what keeps the
+  # two paths consistent; `message/1` reduces it to an origin for the same
+  # reason.
+  @derive {Inspect, except: [:url]}
+  defexception [:url, :reason]
+
+  @impl Exception
+  def message(%__MODULE__{url: url, reason: reason}) do
+    "outbound request to #{origin(url)} blocked by SSRF protection: #{inspect(reason)}"
+  end
+
+  defp origin(url) when is_binary(url) do
+    case URI.parse(url) do
+      %URI{scheme: scheme, host: host} when is_binary(scheme) and is_binary(host) ->
+        "#{scheme}://#{host}"
+
+      _other ->
+        "unknown"
+    end
+  end
+
+  defp origin(_url), do: "unknown"
+end
+
+defmodule Tymeslot.Security.SsrfGuard do
+  @moduledoc """
+  Request-time SSRF validation for outbound HTTP requests to user-supplied
+  hosts (CalDAV servers, self-hosted MiroTalk instances).
+
+  Where `Tymeslot.Security.UrlValidation` runs at changeset/save time against
+  the URL *string*, this guard runs immediately before the request leaves the
+  application and additionally resolves the hostname via DNS (all A and AAAA
+  records), rejecting it when any resolved address falls in a private, loopback,
+  or link-local range (including the 169.254.169.254 cloud-metadata endpoint).
+
+  **Connection pinning:** validating a hostname and then handing the URL string
+  to Req/Finch would let Finch resolve that name a second time when it opens the
+  socket, and a short-TTL record can answer public to the check and loopback to
+  the connect. `validate_pinned/2` therefore returns the addresses it approved,
+  and `Tymeslot.Infrastructure.HTTPClient` connects to one of them with the
+  original hostname preserved for TLS and routing — see
+  `Tymeslot.Security.ConnectionPinning`, which also documents the cases where
+  pinning cannot apply and the request still travels by hostname. The
+  multi-record variant of DNS-based SSRF is closed by checking every returned
+  record before any of them is used.
+
+  Enforcement is gated to `:prod` — the environment in which the managed SaaS
+  and self-hosted deployments run — so that local development and tests can
+  still target loopback CalDAV/video containers. Self-hosters who genuinely run
+  an integration on a private network opt out per subsystem:
+
+    * calendar — `config :tymeslot, :allow_private_ips_for_calendar, true`
+      (`ALLOW_PRIVATE_IPS_FOR_CALENDAR=true`), read by `allow_private_for_calendar?/0`
+    * video — `config :tymeslot, :allow_private_ips_for_video, true`
+      (`ALLOW_PRIVATE_IPS_FOR_VIDEO=true`), read by `allow_private_for_video?/0`
+
+  The calendar switch also satisfies video, but only while the video one is
+  left unset; `ALLOW_PRIVATE_IPS_FOR_VIDEO=false` is an answer about video and
+  is not overruled by it. See `allow_private_for_video?/0`.
+
+  Both bypasses are honoured at save time as well as at request time, so a URL
+  the operator is allowed to reach is also a URL they are allowed to store.
+
+  ## Plain http to an internal name
+
+  With private addresses allowed, a server on an internal name (a single label
+  such as a Docker service name, or a name under `.local`, `.lan`, `.internal`
+  or `.home.arpa`) may be saved with plain `http://`, decided from the name's
+  shape alone (see `Tymeslot.Security.UrlValidation`). The shape can be wrong:
+  a resolver search domain can complete a single label to a public name, and
+  nothing reserves `.lan`. Such requests carry credentials in clear text, so
+  the opt-out does not skip resolution for them: the name must resolve only to
+  private, loopback or link-local addresses, and the request is pinned to one
+  of them, or it is refused before anything is sent. `https://`, `localhost`
+  and address literals are unaffected.
+  """
+
+  alias Tymeslot.Security.{DnsResolution, UrlValidation}
+
+  @doc """
+  Validates that `url` does not resolve to a private/local network address.
+
+  Returns `:ok` when the request is permitted (public host, non-prod
+  environment, or an explicit private-IP allowance) and `{:error, reason}`
+  when it must be blocked.
+
+  The allowance defaults to the calendar opt-out; video call sites pass
+  `allow_private: allow_private_for_video?()` so the two subsystems can be
+  relaxed independently.
+  """
+  @spec validate(String.t(), keyword()) :: :ok | {:error, atom() | String.t()}
+  def validate(url, opts \\ []) do
+    case validate_pinned(url, opts) do
+      {:ok, _addresses} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Same verdict as `validate/2`, but returns the addresses the check approved.
+
+  Callers that open the connection themselves should use this and pin to one of
+  the returned addresses via `Tymeslot.Security.ConnectionPinning`: validating a
+  hostname and then letting Finch resolve it again leaves the DNS-rebinding
+  window this module's moduledoc describes.
+
+  An empty list means no address was resolved because none needed to be (the
+  environment or an operator opt-out permitted the request on syntax alone),
+  and there is correspondingly nothing to pin to. The one exception to the
+  opt-out is plain http to an internal name, described in the moduledoc.
+  """
+  @spec validate_pinned(String.t(), keyword()) ::
+          {:ok, [:inet.ip_address()]} | {:error, atom() | String.t()}
+  def validate_pinned(url, opts \\ []) do
+    cond do
+      not production?() ->
+        {:ok, []}
+
+      Keyword.get(opts, :allow_private, allow_private_for_calendar?()) ->
+        validate_private_allowed(url)
+
+      true ->
+        with :ok <- UrlValidation.validate_http_url(url, block_private_ips: true) do
+          resolve_public(dns_resolver(), url)
+        end
+    end
+  end
+
+  defp validate_private_allowed(url) do
+    if UrlValidation.http_to_internal_name?(url) do
+      resolve_internal(dns_resolver(), url)
+    else
+      {:ok, []}
+    end
+  end
+
+  # A resolver that cannot hand back its addresses (a test double, typically)
+  # still gets to make the verdict; the request simply goes unpinned.
+  # `Code.ensure_loaded?/1` first: `function_exported?/3` answers false for a
+  # module the VM has not loaded yet, which in dev and test is most of them.
+  @spec resolve_public(module(), String.t()) ::
+          {:ok, [:inet.ip_address()]} | {:error, atom() | String.t()}
+  defp resolve_public(resolver, url) do
+    if Code.ensure_loaded?(resolver) and function_exported?(resolver, :resolve_public, 2) do
+      resolver.resolve_public(url, [])
+    else
+      with :ok <- resolver.check_private_ip(url, []), do: {:ok, []}
+    end
+  end
+
+  # Fails closed: a resolver that cannot confirm the name is internal leaves
+  # nothing to vouch for sending credentials over plain http.
+  @spec resolve_internal(module(), String.t()) ::
+          {:ok, [:inet.ip_address()]} | {:error, atom() | String.t()}
+  defp resolve_internal(resolver, url) do
+    if Code.ensure_loaded?(resolver) and function_exported?(resolver, :resolve_internal, 2) do
+      resolver.resolve_internal(url, [])
+    else
+      {:error, :internal_name_unverified}
+    end
+  end
+
+  @doc """
+  Whether the operator has opted out of calendar private-IP SSRF protection.
+
+  Exposed so the save-time validators (`CredentialFields`, the
+  `CalendarIntegrationSchema` changeset) and the provider-level URL and
+  discovery checks read the opt-out from one place rather than each re-reading
+  the config key. Without that, the request-time guard and the paths that
+  persist a URL can disagree, and the operator-facing switch silently does
+  nothing because a URL it permits can never be saved.
+
+  This is the calendar-scoped sibling of
+  `Tymeslot.Webhooks.SsrfValidator.allow_private?/0`.
+  """
+  @spec allow_private_for_calendar?() :: boolean()
+  def allow_private_for_calendar? do
+    Application.get_env(:tymeslot, :allow_private_ips_for_calendar, false)
+  end
+
+  @doc """
+  Whether the operator has opted out of video private-IP SSRF protection.
+
+  Video is its own subsystem: a self-hoster running MiroTalk or their own
+  meeting server on an internal network should not have to relax calendar SSRF
+  to reach it. The key therefore carries three states rather than two.
+
+  Left unset, `ALLOW_PRIVATE_IPS_FOR_CALENDAR` still satisfies video, because it
+  shipped documented as covering both and revoking that would silently break the
+  deployments already relying on it. Set, it decides alone: an operator who
+  writes `ALLOW_PRIVATE_IPS_FOR_VIDEO=false` has answered for video, and a
+  calendar switch set for the calendar's sake must not quietly overrule them.
+
+  `config/runtime.exs` is what keeps the two apart: it leaves the key absent for
+  an unset or blank environment variable and writes the boolean for any other
+  value.
+  """
+  @spec allow_private_for_video?() :: boolean()
+  def allow_private_for_video? do
+    video_opt_out(Application.get_env(:tymeslot, :allow_private_ips_for_video))
+  end
+
+  # Only an absent key defers to calendar; any configured value is the answer.
+  defp video_opt_out(nil), do: allow_private_for_calendar?()
+  defp video_opt_out(allowed), do: allowed == true
+
+  defp production? do
+    Application.get_env(:tymeslot, :environment) == :prod
+  end
+
+  defp dns_resolver do
+    Application.get_env(:tymeslot, :dns_resolver_module, DnsResolution)
+  end
+end

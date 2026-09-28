@@ -1,0 +1,188 @@
+defmodule Tymeslot.Utils.MediaValidatorTest do
+  use Tymeslot.DataCase, async: true
+
+  @moduletag :utils
+
+  alias Tymeslot.Utils.MediaValidator
+
+  describe "valid_image?/1" do
+    test "returns true for valid PNG" do
+      png_header = <<0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A>>
+      # ExImageInfo needs enough bytes to identify
+      assert MediaValidator.valid_image?(
+               png_header <>
+                 <<0, 0, 0, 13, "IHDR", 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0, 0x90, 0x77, 0x53,
+                   0xDE>>
+             )
+    end
+
+    test "returns false for invalid image" do
+      refute MediaValidator.valid_image?(<<"not an image">>)
+    end
+
+    test "returns false for empty binary" do
+      refute MediaValidator.valid_image?(<<>>)
+    end
+  end
+
+  describe "valid_video?/1" do
+    test "returns true for MP4" do
+      assert MediaValidator.valid_video?(<<0, 0, 0, 20, "ftypmp42">>)
+    end
+
+    test "returns true for WebM" do
+      assert MediaValidator.valid_video?(<<0x1A, 0x45, 0xDF, 0xA3, 0x01>>)
+    end
+
+    test "returns false for invalid video" do
+      refute MediaValidator.valid_video?(<<"not a video">>)
+    end
+
+    test "returns false for empty binary" do
+      refute MediaValidator.valid_video?(<<>>)
+    end
+  end
+
+  describe "valid_image_file?/1" do
+    test "accepts a JPEG whose SOF0 marker lies beyond a couple KB of leading metadata" do
+      # Real camera/phone JPEGs commonly carry several KB of EXIF (often
+      # including an embedded thumbnail), XMP, and/or ICC data in APPn
+      # segments before the SOF0 marker that carries the actual
+      # width/height ExImageInfo looks for. Regression pin: valid_image_file?/1
+      # used to only sniff the first 2048 bytes, which silently rejected any
+      # otherwise-valid JPEG whose SOF0 landed after that cutoff.
+      small_leading_payload = :binary.copy(<<0>>, 14)
+      big_metadata_payload = :binary.copy(<<0>>, 2998)
+      # precision(1) + height(2) + width(2) + component_count(1) + 3 components (3 bytes each)
+      sof0_body = <<8::8, 1::16, 1::16, 3::8, 1, 0x11, 0, 2, 0x11, 0, 3, 0x11, 0>>
+
+      jpeg =
+        <<0xFF, 0xD8>> <>
+          <<0xFF, 0xE0>> <>
+          <<byte_size(small_leading_payload) + 2::16>> <>
+          small_leading_payload <>
+          <<0xFF, 0xE1>> <>
+          <<byte_size(big_metadata_payload) + 2::16>> <>
+          big_metadata_payload <>
+          <<0xFF, 0xC0>> <>
+          <<byte_size(sof0_body) + 2::16>> <>
+          sof0_body
+
+      assert byte_size(jpeg) > 2048
+
+      with_temp_file(jpeg, "jpg", fn path ->
+        assert MediaValidator.valid_image_file?(path)
+      end)
+    end
+
+    test "returns false for a file with no real image content" do
+      with_temp_file("not an image", "jpg", fn path ->
+        refute MediaValidator.valid_image_file?(path)
+      end)
+    end
+
+    test "returns false for a missing file" do
+      refute MediaValidator.valid_image_file?(
+               "/nonexistent/#{System.unique_integer([:positive])}.jpg"
+             )
+    end
+  end
+
+  defp with_temp_file(content, extension, fun) do
+    path =
+      Path.join(
+        System.tmp_dir!(),
+        "media_validator_test_#{System.unique_integer([:positive])}.#{extension}"
+      )
+
+    File.write!(path, content)
+
+    try do
+      fun.(path)
+    after
+      File.rm(path)
+    end
+  end
+
+  describe "valid_image_file?/1, valid_video_file?/1, valid_png_file?/1 file handling" do
+    test "returns false for a 0-byte file without leaking the file handle" do
+      path =
+        Path.join(
+          System.tmp_dir!(),
+          "media_validator_empty_#{System.unique_integer([:positive])}"
+        )
+
+      File.write!(path, "")
+      on_exit(fn -> File.rm(path) end)
+
+      before_count = open_file_devices()
+
+      for _index <- 1..50 do
+        refute MediaValidator.valid_image_file?(path)
+        refute MediaValidator.valid_video_file?(path)
+        refute MediaValidator.valid_png_file?(path)
+      end
+
+      # 150 calls, so a handle leaked once per call is 150 devices. The slack
+      # covers a file another async test holds open across this assertion,
+      # which is the only thing besides a leak that moves this count.
+      assert open_file_devices() - before_count <= 5
+    end
+
+    test "returns false for a directory path" do
+      dir = System.tmp_dir!()
+
+      refute MediaValidator.valid_image_file?(dir)
+      refute MediaValidator.valid_video_file?(dir)
+      refute MediaValidator.valid_png_file?(dir)
+    end
+
+    test "returns false for a nonexistent path" do
+      path =
+        Path.join(
+          System.tmp_dir!(),
+          "media_validator_missing_#{System.unique_integer([:positive])}"
+        )
+
+      refute MediaValidator.valid_image_file?(path)
+      refute MediaValidator.valid_video_file?(path)
+      refute MediaValidator.valid_png_file?(path)
+    end
+
+    test "returns true for a valid PNG file" do
+      path =
+        Path.join(System.tmp_dir!(), "media_validator_png_#{System.unique_integer([:positive])}")
+
+      png =
+        <<0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, "IHDR", 0, 0, 0, 1, 0, 0,
+          0, 1, 8, 2, 0, 0, 0, 0x90, 0x77, 0x53, 0xDE>>
+
+      File.write!(path, png)
+      on_exit(fn -> File.rm(path) end)
+
+      assert MediaValidator.valid_image_file?(path)
+      assert MediaValidator.valid_png_file?(path)
+      refute MediaValidator.valid_video_file?(path)
+    end
+  end
+
+  # Counts the processes a leaked handle would leave behind, and nothing else:
+  # `File.open/2` without `:raw` spawns a device that sits in
+  # `:file_io_server.server_loop/1` until it is closed.
+  #
+  # Counting these rather than `Process.list/0` is what makes the assertion
+  # above mean anything. The node's total process count moves constantly under
+  # async tests — Oban jobs, LiveViews, Ecto checkouts — so a threshold against
+  # it is either too tight to survive an unrelated test running alongside (this
+  # one failed at 28 against a limit of 20) or too loose to catch the leak it
+  # exists to catch. Restricted to file devices, the count sits near zero, so
+  # the leak signal is unmistakable and the noise is not.
+  defp open_file_devices do
+    Enum.count(Process.list(), fn pid ->
+      match?(
+        {:current_function, {:file_io_server, _fun, _arity}},
+        Process.info(pid, :current_function)
+      )
+    end)
+  end
+end

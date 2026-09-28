@@ -1,0 +1,12 @@
+# Tymeslot Docker Compose Build Configuration
+#
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.docker
+      args:
+        BASE_IMAGE: ${BASE_IMAGE}
+    env_file:
+      - .env

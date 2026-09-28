@@ -1,0 +1,239 @@
+defmodule Tymeslot.MeetingTypes.FormMapper do
+  @moduledoc """
+  Turns meeting-type form input into schema attributes.
+
+  The form speaks in strings and UI state: a duration typed as text, a price in
+  major units, reminders that arrive as a list, a map or a JSON string
+  depending on how the client serialised them, and a location list the schema
+  turns into embeds. The schema wants integers, cents and normalised structs.
+  Everything needed to get from one to the other lives here, so the context can
+  compose a save without also owning the vocabulary of a particular form.
+
+  Money is the reason this is worth isolating. `parse_price_cents/2` is the
+  single conversion from a typed price to the integer minor units that reach
+  Stripe; a second copy of that arithmetic elsewhere is exactly the kind of
+  drift that produces a charge off by a factor of a hundred.
+  """
+
+  alias Tymeslot.MeetingPayments
+  alias Tymeslot.MeetingTypes.ApprovalWindow
+  alias Tymeslot.Utils.ReminderUtils
+  alias Tymeslot.Validation.Constraints
+
+  @typedoc "Why form input could not be mapped onto schema attributes."
+  @type error ::
+          :invalid_duration
+          | :invalid_price
+          | :invalid_reminder_config
+          | :invalid_approval_window
+
+  @doc """
+  Builds schema attributes from raw form params and the form's UI state.
+
+  `custom_fields` and `locations` are only included when the params carry the
+  key, so a form that does not render the questions editor (or the locations
+  editor) cannot blank an existing list by omission.
+  """
+  @spec build_attrs(map(), map()) :: {:ok, map()} | {:error, error()}
+  def build_attrs(params, ui_state) do
+    with {:ok, duration_minutes} <- parse_duration(params["duration"]),
+         {:ok, reminder_config} <- normalize_reminder_config(params["reminder_config"]),
+         {:ok, payment} <- payment_attrs(params),
+         {:ok, approval_window_hours} <- ApprovalWindow.parse(params["approval_window_hours"]) do
+      attrs = %{
+        name: params["name"],
+        duration_minutes: duration_minutes,
+        slot_interval_minutes: parse_optional_interval(params["slot_interval"]),
+        description: params["description"],
+        icon: ui_state.selected_icon,
+        is_active: params["is_active"] == "true",
+        allow_guests: params["allow_guests"] == "true",
+        requires_approval: params["requires_approval"] == "true",
+        approval_window_hours: approval_window_hours,
+        calendar_integration_id: blank_to_nil(params["calendar_integration_id"]),
+        availability_schedule_id: blank_to_nil(params["availability_schedule_id"]),
+        target_calendar_id: blank_to_nil(params["target_calendar_id"]),
+        reminder_config: reminder_config
+      }
+
+      attrs =
+        attrs
+        |> Map.merge(booking_limits(params))
+        |> maybe_put_custom_fields(params)
+        |> maybe_put_locations(params)
+        |> maybe_put_translations(params)
+        |> Map.merge(payment)
+
+      {:ok, attrs}
+    end
+  end
+
+  # A form that cannot render the payment controls does not post them, and an
+  # absent key is not a request to make the meeting type free. Both
+  # `MeetingTypeForm.Submission` and its hidden inputs omit the pair whenever
+  # the host cannot accept charges, so reading the absence as `false` cleared
+  # the stored price on the next unrelated save — a rename, a new duration —
+  # with nothing said to the host, who then had to re-enter every price after
+  # reconnecting Stripe. Same shape, and the same reason, as
+  # `maybe_put_custom_fields/2` below.
+  defp payment_attrs(params) do
+    if Map.has_key?(params, "payment_required") do
+      payment_required = params["payment_required"] == "true"
+
+      case parse_price_cents(payment_required, params["price"]) do
+        {:ok, price_cents} ->
+          {:ok, %{payment_required: payment_required, price_cents: price_cents}}
+
+        {:error, _reason} = error ->
+          error
+      end
+    else
+      {:ok, %{}}
+    end
+  end
+
+  @doc """
+  Builds the payment-validation opts the schema changeset needs.
+
+  The schema must not reach into the payments domain itself, so the host's
+  charge capability, default currency, and the per-currency minimum are
+  resolved here and threaded in as opts.
+  """
+  @spec payment_opts(integer()) :: keyword()
+  def payment_opts(user_id) do
+    currency = MeetingPayments.host_currency(user_id)
+
+    [
+      host_charges_enabled: MeetingPayments.charges_enabled_for_user?(user_id),
+      currency: currency,
+      currency_minimum_cents: MeetingPayments.currency_minimum_cents(currency)
+    ]
+  end
+
+  defp maybe_put_custom_fields(attrs, params) do
+    if Map.has_key?(params, "custom_fields") do
+      Map.put(attrs, :custom_fields, params["custom_fields"])
+    else
+      attrs
+    end
+  end
+
+  # Mirrors `maybe_put_custom_fields/2` above — same "only touch it when the
+  # form actually posted it" guard, so a form render that never carries
+  # `translations` can't blank an existing translation list by omission.
+  defp maybe_put_translations(attrs, params) do
+    if Map.has_key?(params, "translations") do
+      Map.put(attrs, :translations, params["translations"])
+    else
+      attrs
+    end
+  end
+
+  # `allow_video` and `video_integration_id` are deliberately absent from the
+  # attributes above: the schema projects them from this list, so mapping them
+  # here as well would give the same two columns two authors.
+  defp maybe_put_locations(attrs, params) do
+    if Map.has_key?(params, "locations") do
+      Map.put(attrs, :locations, params["locations"])
+    else
+      attrs
+    end
+  end
+
+  defp parse_duration(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {duration, ""} -> {:ok, duration}
+      _other -> {:error, :invalid_duration}
+    end
+  end
+
+  defp parse_duration(_value), do: {:error, :invalid_duration}
+
+  # Blank means "use the meeting type's own duration"; out-of-range values are
+  # left to the changeset.
+  defp parse_optional_interval(value) when is_integer(value), do: value
+
+  defp parse_optional_interval(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {interval, ""} -> interval
+      _other -> nil
+    end
+  end
+
+  defp parse_optional_interval(_value), do: nil
+
+  defp booking_limits(params) do
+    Map.new(Constraints.booking_limit_fields(), fn field ->
+      {field, parse_booking_limit(params[Atom.to_string(field)])}
+    end)
+  end
+
+  # Blank means no limit; out-of-range values are left to the changeset.
+  defp parse_booking_limit(value) when is_integer(value), do: value
+
+  defp parse_booking_limit(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {limit, ""} -> limit
+      _other -> nil
+    end
+  end
+
+  defp parse_booking_limit(_value), do: nil
+
+  defp blank_to_nil(""), do: nil
+  defp blank_to_nil(value), do: value
+
+  # Converts the major-unit price string from the form into integer cents.
+  # When payment is not required the price is irrelevant and stored as nil.
+  # Bad input yields `{:error, :invalid_price}` so the form surfaces it the
+  # same way an invalid duration does.
+  defp parse_price_cents(false, _price), do: {:ok, nil}
+  defp parse_price_cents(true, nil), do: {:ok, nil}
+  defp parse_price_cents(true, ""), do: {:ok, nil}
+
+  defp parse_price_cents(true, price) when is_binary(price) do
+    case Decimal.parse(String.trim(price)) do
+      {decimal, ""} ->
+        cents =
+          decimal
+          |> Decimal.mult(100)
+          |> Decimal.round(0)
+          |> Decimal.to_integer()
+
+        {:ok, cents}
+
+      _invalid ->
+        {:error, :invalid_price}
+    end
+  end
+
+  defp parse_price_cents(true, _price), do: {:error, :invalid_price}
+
+  defp normalize_reminder_config(nil), do: {:ok, nil}
+  defp normalize_reminder_config(""), do: {:ok, nil}
+
+  defp normalize_reminder_config(reminders) when is_list(reminders) do
+    normalized = Enum.map(reminders, &ReminderUtils.normalize_reminder_string_keys/1)
+
+    if Enum.any?(normalized, &match?({:error, _error_reason}, &1)) do
+      {:error, :invalid_reminder_config}
+    else
+      {:ok, Enum.map(normalized, fn {:ok, reminder} -> reminder end)}
+    end
+  end
+
+  defp normalize_reminder_config(reminders) when is_map(reminders) do
+    reminders
+    |> Map.values()
+    |> normalize_reminder_config()
+  end
+
+  defp normalize_reminder_config(reminders) when is_binary(reminders) do
+    case Jason.decode(reminders) do
+      {:ok, decoded} -> normalize_reminder_config(decoded)
+      {:error, _decode_error} -> {:error, :invalid_reminder_config}
+    end
+  end
+
+  defp normalize_reminder_config(_other), do: {:error, :invalid_reminder_config}
+end

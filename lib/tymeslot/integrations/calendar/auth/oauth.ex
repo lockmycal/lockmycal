@@ -1,0 +1,156 @@
+defmodule Tymeslot.Integrations.Calendar.OAuth do
+  @moduledoc """
+  OAuth helper functions for calendar providers (Google, Outlook).
+  """
+
+  alias Tymeslot.Dashboard.DashboardContext
+  alias Tymeslot.Integrations.Calendar
+  alias Tymeslot.Integrations.Calendar.CalendarIntegrationSchema
+  alias Tymeslot.Integrations.Calendar.Google.OAuthHelper, as: GoogleOAuthHelper
+  alias Tymeslot.Integrations.Calendar.Google.Provider, as: GoogleProvider
+  alias Tymeslot.Integrations.Calendar.Outlook.OAuthHelper, as: OutlookOAuthHelper
+  alias TymeslotWeb.Endpoint
+
+  @type user_id :: pos_integer()
+
+  @typedoc "A calendar provider that authenticates over OAuth."
+  @type provider :: :google | :outlook
+
+  # The callback exchange goes to the concrete helpers rather than the
+  # injectable ones used for authorisation URLs: the test doubles configured
+  # for those implement only the URL half of the flow.
+  @callback_helpers %{google: GoogleOAuthHelper, outlook: OutlookOAuthHelper}
+
+  @doc """
+  Initiate Google Calendar OAuth flow and return authorization URL.
+
+  ## Options
+    - `:return_to` — relative path to redirect to after the OAuth callback
+  """
+  @spec initiate_google_oauth(user_id(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
+  def initiate_google_oauth(user_id, opts \\ []) when is_integer(user_id) do
+    authorization_url =
+      google_oauth_helper().authorization_url(user_id, redirect_uri(:google), opts)
+
+    {:ok, authorization_url}
+  rescue
+    error -> {:error, format_oauth_error(error, "Google")}
+  end
+
+  @doc """
+  Initiate Outlook Calendar OAuth flow and return authorization URL.
+
+  ## Options
+    - `:return_to` — relative path to redirect to after the OAuth callback
+  """
+  @spec initiate_outlook_oauth(user_id(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
+  def initiate_outlook_oauth(user_id, opts \\ []) when is_integer(user_id) do
+    authorization_url =
+      outlook_oauth_helper().authorization_url(user_id, redirect_uri(:outlook), opts)
+
+    {:ok, authorization_url}
+  rescue
+    error -> {:error, format_oauth_error(error, "Outlook")}
+  end
+
+  @doc """
+  Completes an OAuth callback: verifies the state, exchanges the code, and
+  creates or updates the user's calendar integration.
+
+  On success the user's cached dashboard integration status is invalidated, so
+  the dashboard reflects the new connection straight away rather than after the
+  cache expires.
+  """
+  @spec complete(provider(), String.t(), String.t()) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, term()}
+  def complete(provider, code, state) do
+    with {:ok, integration} <-
+           Map.fetch!(@callback_helpers, provider).handle_callback(
+             code,
+             state,
+             redirect_uri(provider)
+           ) do
+      DashboardContext.invalidate_integration_status(integration.user_id)
+      {:ok, integration}
+    end
+  end
+
+  @doc """
+  Initiate a Google scope upgrade for an existing integration.
+  Returns {:ok, url} or {:error, reason}.
+  """
+  @spec initiate_google_scope_upgrade(user_id(), pos_integer()) ::
+          {:ok, String.t()} | {:error, any()}
+  def initiate_google_scope_upgrade(user_id, integration_id)
+      when is_integer(user_id) and is_integer(integration_id) do
+    with {:ok, integration} <- Calendar.get_integration(integration_id, user_id),
+         true <- integration.provider == "google",
+         {:ok, url} <- initiate_google_oauth(user_id) do
+      {:ok, url}
+    else
+      false -> {:error, :invalid_provider}
+      {:error, :not_found} -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Check if a Google integration needs scope upgrade.
+  """
+  @spec needs_scope_upgrade?(CalendarIntegrationSchema.t()) :: boolean()
+  def needs_scope_upgrade?(integration) do
+    integration.provider == "google" && GoogleProvider.needs_scope_upgrade?(integration)
+  end
+
+  @doc """
+  Format OAuth-related errors into user-friendly strings.
+  """
+  @spec format_oauth_error(any(), String.t()) :: String.t()
+  def format_oauth_error(error, provider) do
+    case error do
+      %RuntimeError{message: message} -> format_runtime_error_message(message, provider)
+      _other -> "Failed to setup #{provider} OAuth: #{Exception.message(error)}"
+    end
+  end
+
+  defp format_runtime_error_message(message, provider) do
+    error_type =
+      cond do
+        String.contains?(message, "State Secret not configured") -> :state_secret
+        String.contains?(message, "Client ID not configured") -> :client_id
+        String.contains?(message, "Client Secret not configured") -> :client_secret
+        true -> :generic
+      end
+
+    format_oauth_config_message(error_type, provider, message)
+  end
+
+  defp format_oauth_config_message(:state_secret, provider, _message) do
+    "#{provider} OAuth is not configured. Please set #{String.upcase(provider)}_CLIENT_ID, #{String.upcase(provider)}_CLIENT_SECRET, and #{String.upcase(provider)}_STATE_SECRET environment variables."
+  end
+
+  defp format_oauth_config_message(:client_id, provider, _message) do
+    "#{provider} OAuth is not configured. Please set #{String.upcase(provider)}_CLIENT_ID environment variable."
+  end
+
+  defp format_oauth_config_message(:client_secret, provider, _message) do
+    "#{provider} OAuth is not configured. Please set #{String.upcase(provider)}_CLIENT_SECRET environment variable."
+  end
+
+  defp format_oauth_config_message(:generic, provider, message) do
+    "Failed to setup #{provider} OAuth: #{message}"
+  end
+
+  # The authorisation request and the code exchange must name the same URI, so
+  # both are built here.
+  defp redirect_uri(provider) when is_map_key(@callback_helpers, provider),
+    do: "#{Endpoint.url()}/auth/#{provider}/calendar/callback"
+
+  defp google_oauth_helper do
+    Application.get_env(:tymeslot, :google_calendar_oauth_helper, GoogleOAuthHelper)
+  end
+
+  defp outlook_oauth_helper do
+    Application.get_env(:tymeslot, :outlook_calendar_oauth_helper, OutlookOAuthHelper)
+  end
+end

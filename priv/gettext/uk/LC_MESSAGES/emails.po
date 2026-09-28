@@ -1,0 +1,584 @@
+#  "msgid"s in this file come from POT (.pot) files.
+# #
+# # Do not add, change, or remove "msgid"s manually here as
+# # they're tied to the ones in the corresponding POT file
+# # (with the same domain).
+# #
+# # Use "mix gettext.extract --merge" or "mix gettext.merge"
+# # to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: uk\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100 != 11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10||n%100>=20) ? 1 : 2);\n"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "ACTIONS:"
+msgstr "ДІЇ:"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "ATTENDEE INFORMATION:"
+msgstr "ІНФОРМАЦІЯ ПРО УЧАСНИКА:"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel:"
+msgstr "Скасувати:"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Date:"
+msgstr "Дата:"
+
+#: lib/tymeslot/emails/shared/meeting/hero.ex
+#, elixir-autogen, elixir-format
+msgid "Duration"
+msgstr "Тривалість"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "Email:"
+msgstr "Електронна пошта:"
+
+#: lib/tymeslot/emails/shared/greeting.ex
+#, elixir-autogen, elixir-format
+msgid "Hi %{name},"
+msgstr "Вітаю, %{name}!"
+
+#: lib/tymeslot/emails/appointment_builder.ex
+#, elixir-autogen, elixir-format
+msgid "I'll send you a reminder %{label} before our appointment."
+msgstr "Я надішлю нагадування за %{label} до початку зустрічі."
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "JOIN VIDEO MEETING:"
+msgstr "ПРИЄДНАТИСЯ ДО ВІДЕОЗУСТРІЧІ:"
+
+#: lib/tymeslot/emails/shared/meeting/video_section.ex
+#, elixir-autogen, elixir-format
+msgid "Join Meeting"
+msgstr "Приєднатися до зустрічі"
+
+#: lib/tymeslot/emails/shared/meeting/video_section.ex
+#, elixir-autogen, elixir-format
+msgid "Join Video Meeting"
+msgstr "Приєднатися до відеозустрічі"
+
+#: lib/tymeslot/emails/shared/meeting/hero.ex
+#, elixir-autogen, elixir-format
+msgid "Location"
+msgstr "Місце проведення"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Location:"
+msgstr "Місце:"
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "MEETING DETAILS:"
+msgstr "ДЕТАЛІ ЗУСТРІЧІ:"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "MESSAGE FROM ATTENDEE:"
+msgstr "ПОВІДОМЛЕННЯ ВІД УЧАСНИКА:"
+
+#: lib/tymeslot/integrations/calendar/utils/ics_generator.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting"
+msgstr "Зустріч"
+
+#: lib/tymeslot/integrations/calendar/utils/ics_generator.ex
+#, elixir-autogen, elixir-format
+msgid "Message from %{name}:"
+msgstr "Повідомлення від %{name}:"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "Name:"
+msgstr "Ім'я:"
+
+#: lib/tymeslot/emails/appointment_builder.ex
+#, elixir-autogen, elixir-format
+msgid "No reminder emails are scheduled for this appointment."
+msgstr "Для цієї зустрічі не заплановано нагадувань електронною поштою."
+
+#: lib/tymeslot/emails/appointment_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Reminder %{label} before the appointment."
+msgstr "Нагадування за %{label} до зустрічі."
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "Reschedule:"
+msgstr "Перенести:"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#: lib/tymeslot/emails/shared/meeting/hero.ex
+#, elixir-autogen, elixir-format
+msgid "TBD"
+msgstr "Уточнюється"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "The meeting room opens 5 minutes before your scheduled time."
+msgstr "Кімната для зустрічі відкриється за 5 хвилин до запланованого часу."
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Time:"
+msgstr "Час:"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "Type:"
+msgstr "Тип:"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#: lib/tymeslot/integrations/calendar/utils/ics_generator.ex
+#, elixir-autogen, elixir-format
+msgid "Video Call"
+msgstr "Відеодзвінок"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#: lib/tymeslot/integrations/calendar/utils/ics_generator.ex
+#, elixir-autogen, elixir-format
+msgid "Video meeting:"
+msgstr "Відеозустріч:"
+
+#: lib/tymeslot/integrations/calendar/utils/ics_generator.ex
+#, elixir-autogen, elixir-format
+msgid "attendee"
+msgstr "учасник"
+
+#: lib/tymeslot/emails/appointment_builder.ex
+#, elixir-autogen, elixir-format
+msgid "in %{label}"
+msgstr "через %{label}"
+
+#: lib/tymeslot/emails/appointment_builder.ex
+#, elixir-autogen, elixir-format
+msgid "in 30 minutes"
+msgstr "через 30 хвилин"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "minute"
+msgid_plural "minutes"
+msgstr[0] "хвилина"
+msgstr[1] "хвилини"
+msgstr[2] "хвилин"
+
+#: lib/tymeslot/emails/appointment_builder.ex
+#, elixir-autogen, elixir-format
+msgid "reply to this email"
+msgstr "відповісти на цей лист"
+
+#: lib/tymeslot/emails/shared/text.ex
+#, elixir-autogen, elixir-format
+msgid "Having trouble with the button? Copy and paste this link into your browser:"
+msgstr "Не працює кнопка? Скопіюйте та вставте це посилання у свій браузер:"
+
+#: lib/tymeslot/emails/shared/meeting/video_section.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting will start at the scheduled time"
+msgstr "Зустріч розпочнеться у запланований час"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "hour"
+msgid_plural "hours"
+msgstr[0] "година"
+msgstr[1] "години"
+msgstr[2] "годин"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "Phone Call"
+msgstr "Телефонний дзвінок"
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} has invited you to an event."
+msgstr "%{name} запросив(-ла) вас на подію."
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "Calendar Invitation - %{title} on %{date}"
+msgstr "Запрошення до календаря - %{title}, %{date}"
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "You're Invited"
+msgstr "Вас запрошено"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "(none)"
+msgstr "(немає)"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "Description updated"
+msgstr "Опис оновлено"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "Title:"
+msgstr "Назва:"
+
+#: lib/tymeslot/emails/shared/meeting/attendee.ex
+#, elixir-autogen, elixir-format
+msgid "Attendee Information"
+msgstr "Інформація про учасника"
+
+#: lib/tymeslot/emails/shared/meeting/attendee.ex
+#, elixir-autogen, elixir-format
+msgid "Company"
+msgstr "Компанія"
+
+#: lib/tymeslot/emails/shared/meeting/attendee.ex
+#, elixir-autogen, elixir-format
+msgid "Email"
+msgstr "Електронна пошта"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "Friday"
+msgstr "п'ятниця"
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "Invited"
+msgstr "Запрошено"
+
+#: lib/tymeslot/emails/shared/meeting/hero.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting type"
+msgstr "Тип зустрічі"
+
+#: lib/tymeslot/emails/shared/meeting/attendee.ex
+#, elixir-autogen, elixir-format
+msgid "Message from attendee"
+msgstr "Повідомлення від учасника"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "Monday"
+msgstr "понеділок"
+
+#: lib/tymeslot/emails/shared/meeting/attendee.ex
+#, elixir-autogen, elixir-format
+msgid "Name"
+msgstr "Ім'я"
+
+#: lib/tymeslot/emails/shared/meeting/attendee.ex
+#, elixir-autogen, elixir-format
+msgid "Phone"
+msgstr "Телефон"
+
+#: lib/tymeslot/emails/email_service/auth_emails.ex
+#, elixir-autogen, elixir-format
+msgid "Reset your password"
+msgstr "Скиньте пароль"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "Saturday"
+msgstr "субота"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "Sunday"
+msgstr "неділя"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "Thursday"
+msgstr "четвер"
+
+#: lib/tymeslot/emails/shared/meeting/attendee.ex
+#, elixir-autogen, elixir-format
+msgid "Timezone"
+msgstr "Часовий пояс"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "Tuesday"
+msgstr "вівторок"
+
+#: lib/tymeslot/emails/email_service/account_emails.ex
+#, elixir-autogen, elixir-format
+msgid "Verify your new email address"
+msgstr "Підтвердьте свою нову адресу електронної пошти"
+
+#: lib/tymeslot/emails/shared/meeting/video_section.ex
+#, elixir-autogen, elixir-format
+msgid "Video call"
+msgstr "Відеодзвінок"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "Wednesday"
+msgstr "середа"
+
+#: lib/tymeslot/emails/shared/mjml_email.ex
+#, elixir-autogen, elixir-format
+msgid "Sent with care by"
+msgstr "З турботою від"
+
+#: lib/tymeslot/emails/shared/layouts.ex
+#: lib/tymeslot/emails/shared/mjml_email.ex
+#, elixir-autogen, elixir-format
+msgid "scheduling that respects your time"
+msgstr "планування, що поважає ваш час"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "%{date} at %{time}"
+msgstr "%{date} о %{time}"
+
+#: lib/tymeslot/emails/shared/greeting.ex
+#, elixir-autogen, elixir-format
+msgid "Hi there,"
+msgstr "Вітаю!"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "ADDITIONAL DETAILS:"
+msgstr "ДОДАТКОВА ІНФОРМАЦІЯ:"
+
+#: lib/tymeslot/emails/shared/meeting/custom_answers.ex
+#, elixir-autogen, elixir-format
+msgid "Additional details"
+msgstr "Додаткова інформація"
+
+#: lib/tymeslot/integrations/calendar/utils/ics_generator.ex
+#, elixir-autogen, elixir-format
+msgid "Join the video call"
+msgstr "Приєднатися до відеодзвінка"
+
+#: lib/tymeslot/emails/email_service/calendar_emails.ex
+#, elixir-autogen, elixir-format
+msgid "Calendar Owner"
+msgstr "Власник календаря"
+
+#: lib/tymeslot/emails/email_service/account_emails.ex
+#, elixir-autogen, elixir-format
+msgid "Email Address Changed Successfully"
+msgstr "Електронну адресу успішно змінено"
+
+#: lib/tymeslot/emails/email_service/auth_emails.ex
+#, elixir-autogen, elixir-format
+msgid "Verify your email address"
+msgstr "Підтвердьте свою електронну адресу"
+
+#: lib/tymeslot/emails/email_service/calendar_emails.ex
+#, elixir-autogen, elixir-format
+msgid "⚠️ Calendar Sync Error - Manual Action Required"
+msgstr "⚠️ Помилка синхронізації календаря - потрібні дії з вашого боку"
+
+#: lib/tymeslot/emails/email_service/account_emails.ex
+#, elixir-autogen, elixir-format
+msgid "⚠️ Email Change Request - Security Alert"
+msgstr "⚠️ Запит на зміну електронної адреси - сповіщення безпеки"
+
+#: lib/tymeslot/emails/appointment_builder.ex
+#, elixir-autogen, elixir-format
+msgid "You'll receive %{count} reminder before the appointment."
+msgid_plural "You'll receive %{count} reminders before the appointment."
+msgstr[0] "Ви отримаєте %{count} нагадування до початку зустрічі."
+msgstr[1] "Ви отримаєте %{count} нагадування до початку зустрічі."
+msgstr[2] "Ви отримаєте %{count} нагадувань до початку зустрічі."
+
+#: lib/tymeslot/emails/appointment_builder.ex
+#, elixir-autogen, elixir-format
+msgctxt "time until"
+msgid "day"
+msgid_plural "days"
+msgstr[0] "день"
+msgstr[1] "дні"
+msgstr[2] "днів"
+
+#: lib/tymeslot/emails/appointment_builder.ex
+#, elixir-autogen, elixir-format
+msgctxt "time until"
+msgid "hour"
+msgid_plural "hours"
+msgstr[0] "годину"
+msgstr[1] "години"
+msgstr[2] "годин"
+
+#: lib/tymeslot/emails/appointment_builder.ex
+#, elixir-autogen, elixir-format
+msgctxt "time until"
+msgid "minute"
+msgid_plural "minutes"
+msgstr[0] "хвилину"
+msgstr[1] "хвилини"
+msgstr[2] "хвилин"
+
+#: lib/tymeslot/emails/shared/mjml_email.ex
+#, elixir-autogen, elixir-format
+msgid "Message from %{name}"
+msgstr "Повідомлення від %{name}"
+
+#: lib/tymeslot/emails/shared/mjml_email.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} via %{brand}"
+msgstr "%{name} через %{brand}"
+
+#: lib/tymeslot/emails/shared/layouts.ex
+#, elixir-autogen, elixir-format
+msgid "Important notification from %{brand}"
+msgstr "Важливе сповіщення від %{brand}"
+
+#: lib/tymeslot/emails/email_service/account_emails.ex
+#, elixir-autogen, elixir-format
+msgid "Email Address Changed - %{app_name} Account"
+msgstr "Електронну адресу змінено - обліковий запис %{app_name}"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Both you and the attendee already have your confirmation emails, so the booking itself is unaffected — this is purely a video setup issue. Consider sending the attendee a video link manually, switching your video provider, or reconnecting it from your dashboard's Video settings."
+msgstr "Ви та учасник вже отримали листи з підтвердженням, тож саме бронювання не постраждало — це суто проблема з налаштуванням відео. Можете вручну надіслати учаснику відеопосилання, змінити відеопровайдера або повторно підключити його в налаштуваннях Відео у вашій панелі керування."
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "I wasn't able to set up video conferencing for this meeting. The appointment itself has been successfully confirmed and both you and the attendee have received confirmation emails — you'll just need to arrange another way to meet, or set up video conferencing manually."
+msgstr "Не вдалося налаштувати відеоконференцію для цієї зустрічі. Саму зустріч успішно підтверджено, і ви та учасник вже отримали листи з підтвердженням — просто домовтеся про інший спосіб зустрічі або налаштуйте відеоконференцію вручну."
+
+#: lib/tymeslot/emails/email_service/calendar_emails.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Organizer"
+msgstr "Організатор зустрічі"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "The booking is safe - but video conferencing needs your attention."
+msgstr "Бронювання в безпеці - але відеоконференція потребує вашої уваги."
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "This is an automated system notification. Please check your video integration settings if this issue persists."
+msgstr "Це автоматичне системне сповіщення. Будь ласка, перевірте налаштування відеоінтеграції, якщо ця проблема не зникне."
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Video Setup Failed"
+msgstr "Не вдалося налаштувати відео"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Video conferencing could not be set up for your meeting."
+msgstr "Не вдалося налаштувати відеоконференцію для вашої зустрічі."
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Video didn't set up"
+msgstr "Відео не налаштовано"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "WHAT YOU CAN DO:"
+msgstr "ЩО ВИ МОЖЕТЕ ЗРОБИТИ:"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "What you can do"
+msgstr "Що ви можете зробити"
+
+#: lib/tymeslot/emails/email_service/calendar_emails.ex
+#, elixir-autogen, elixir-format
+msgid "⚠️ Video Setup Failed - Action Required"
+msgstr "⚠️ Не вдалося налаштувати відео - Потрібна дія"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} day"
+msgid_plural "%{count} days"
+msgstr[0] "%{count} день"
+msgstr[1] "%{count} дні"
+msgstr[2] "%{count} днів"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "All day"
+msgstr "Увесь день"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "All day, until %{date}"
+msgstr "Увесь день, до %{date}"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "Description:"
+msgstr "Опис:"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Additional details:"
+msgstr "Додаткова інформація:"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Attachments:"
+msgstr "Вкладення:"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Attendee: %{attendee}"
+msgstr "Учасник: %{attendee}"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Message from attendee:"
+msgstr "Повідомлення від учасника:"
+
+#: lib/tymeslot/emails/email_service/auth_emails.ex
+#, elixir-autogen, elixir-format
+msgid "You already have a Tymeslot account"
+msgstr "У вас уже є обліковий запис Tymeslot"
+
+#: lib/tymeslot/emails/email_service/auth_emails.ex
+#, elixir-autogen, elixir-format
+msgid "Your Tymeslot account has no password"
+msgstr "Ваш обліковий запис Tymeslot не має пароля"
+
+#: lib/tymeslot/emails/shared/sign_in_provider.ex
+#, elixir-autogen, elixir-format
+msgid "single sign-on"
+msgstr "єдиний вхід (SSO)"
+
+#: lib/tymeslot/emails/email_service/auth_emails.ex
+#, elixir-autogen, elixir-format
+msgid "Confirm your email to finish signing up"
+msgstr "Підтвердьте пошту, щоб завершити реєстрацію"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Action required"
+msgstr "Потрібна дія"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Duration:"
+msgstr "Тривалість:"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Details"
+msgstr "Деталі зустрічі"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Not specified"
+msgstr "Не вказано"

@@ -1,0 +1,110 @@
+/* Public top bar — shared between the Quill booking flow (Quill.Scheduling.Wrapper)
+   and the public read-only calendar (TymeslotWeb.Public.CalendarLive).
+   Structurally mirrors the dashboard's `.brand-nav` (logo left, one action
+   right, rounded card) but skinned with this theme's dark glass palette
+   instead of the dashboard's light one. See the Rhythm theme's own
+   modules/public-top-bar.css for that theme's (non-blurred) equivalent —
+   the markup and class names are shared via
+   TymeslotWeb.Components.PublicTopBar, only the visual skin differs. */
+
+.public-top-bar-wrapper {
+  /* `position: relative` + a z-index above the page's glass cards below it
+     (.glass-morphism-card etc., see glass-card.css) so this bar's own
+     backdrop-filter stacking context — and the language dropdown nested
+     inside it — paints above the calendar/booking card that follows it in
+     the DOM, instead of the two auto-stacked contexts falling back to
+     document order (which would let the later, equally-unelevated card win
+     and visually swallow an open dropdown). */
+  position: relative;
+  z-index: var(--z-dropdown);
+}
+
+/* Flat, full-width bar — matches the dashboard's `.brand-nav` shape (no
+   rounded corners, a themed bottom border instead of one running all the
+   way round, a light shadow) instead of the glass "floating card" look used
+   elsewhere in this theme. Colour still comes from the theme's own tokens
+   (`--theme-primary`, customizable per organizer via `@custom_css` in
+   quill/scheduling/wrapper.ex), not the dashboard's fixed palette. */
+.public-top-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-lg);
+  background: linear-gradient(135deg, var(--surface-dark-strong) 0%, var(--surface-dark-medium) 100%);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-bottom: var(--border-width-thin) solid var(--theme-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.public-top-bar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+/* language-switcher.css floats `.language-switcher` with `position: fixed`
+   below 640px for its older, standalone floating usage. Inside this shared
+   top bar it must stay a normal flex child so the flag/chevron trigger
+   lands vertically centred with the logo instead of pinned to the corner
+   of the viewport. */
+@media (max-width: 640px) {
+  .public-top-bar .language-switcher {
+    position: static;
+    top: auto;
+    right: auto;
+    z-index: auto;
+  }
+}
+
+.public-top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* Links and the language switcher trigger share one height so the row
+   lines up; the switcher is a touch taller than its standalone default. */
+.public-top-bar-link,
+.public-top-bar [class*="language-switcher-button-"] {
+  min-height: 2.75rem;
+  box-sizing: border-box;
+}
+
+.public-top-bar-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-md);
+  border: var(--border-width-thin) solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-opacity-high);
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.public-top-bar-link:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Reverse (outlined) style: transparent fill, visible border. */
+.public-top-bar-link-outline {
+  border-color: var(--border-medium);
+}
+
+.public-top-bar-link-primary {
+  background: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+@media (max-width: 640px) {
+  .public-top-bar-link {
+    padding: 0 var(--space-sm);
+    font-size: 0.8125rem;
+  }
+}

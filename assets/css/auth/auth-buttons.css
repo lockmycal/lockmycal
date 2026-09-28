@@ -1,0 +1,55 @@
+/* ===================================
+   OAuth/Social Authentication Buttons
+   =================================== */
+
+/* Base OAuth button style - Clean and Modern */
+.btn-oauth {
+  @apply flex items-center justify-center gap-3 py-3.5 px-6 bg-white border-2 border-slate-100 rounded-2xl transition-all duration-300 transform cursor-pointer overflow-hidden;
+  @apply text-slate-700 font-bold text-sm;
+}
+
+/* OAuth button hover state */
+.btn-oauth:hover {
+  @apply border-primary-100 bg-slate-50 -translate-y-1;
+}
+
+/* OAuth button active/pressed state */
+.btn-oauth:active {
+  @apply translate-y-0;
+}
+
+/* OAuth button icon styling */
+.btn-oauth svg {
+  @apply w-5 h-5 shrink-0 transition-transform duration-300;
+}
+
+.btn-oauth:hover svg {
+  @apply scale-110 rotate-3;
+}
+
+/* Provider-specific hover subtle tints */
+.btn-oauth-google:hover {
+  @apply border-blue-100 bg-blue-50/30;
+}
+
+.btn-oauth-github:hover {
+  @apply border-slate-200 bg-slate-100/30;
+}
+
+.btn-oauth-oauth:hover {
+  @apply border-indigo-100 bg-indigo-50/30;
+}
+
+/* Auth section divider */
+.auth-divider {
+  @apply relative flex items-center my-6 w-full;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  @apply content-[''] flex-1 h-[2px] bg-slate-100;
+}
+
+.auth-divider-text {
+  @apply px-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 bg-white;
+}

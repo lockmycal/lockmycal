@@ -1,0 +1,733 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/tymeslot_web/components/dashboard/profile/delete_avatar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Are you sure you want to delete your profile picture? This action cannot be undone."
+msgstr "Möchten Sie Ihr Profilbild wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Available"
+msgstr "Verfügbar"
+
+#: lib/tymeslot_web/components/dashboard/profile/delete_avatar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Avatar deleted successfully"
+msgstr "Avatar erfolgreich gelöscht"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/avatar_upload_component.ex
+#, elixir-autogen, elixir-format
+msgid "Avatar updated successfully"
+msgstr "Avatar erfolgreich aktualisiert"
+
+#: lib/tymeslot_web/components/dashboard/profile/delete_avatar_modal.ex
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Choose a unique username for your personal booking page."
+msgstr "Wählen Sie einen eindeutigen Nutzernamen für Ihre persönliche Buchungsseite."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Custom URL"
+msgstr "Eigene URL"
+
+#: lib/tymeslot_web/components/dashboard/profile/delete_avatar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Delete Avatar"
+msgstr "Avatar löschen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/avatar_upload_component.ex
+#, elixir-autogen, elixir-format
+msgid "Delete Photo"
+msgstr "Foto löschen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/display_name_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Display Name"
+msgstr "Anzeigename"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/display_name_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Display name updated"
+msgstr "Anzeigename aktualisiert"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/display_name_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Enter your full name"
+msgstr "Ihr vollständiger Name"
+
+#: lib/tymeslot_web/components/dashboard/profile/delete_avatar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to delete avatar: %{reason}"
+msgstr "Avatar konnte nicht gelöscht werden: %{reason}"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/display_name_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update display name"
+msgstr "Anzeigename konnte nicht aktualisiert werden"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/timezone_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update timezone"
+msgstr "Zeitzone konnte nicht aktualisiert werden"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Invalid"
+msgstr "Ungültig"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Live at:"
+msgstr "Live unter:"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/avatar_upload_component.ex
+#, elixir-autogen, elixir-format
+msgid "Processing..."
+msgstr "Wird verarbeitet…"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/avatar_upload_component.ex
+#, elixir-autogen, elixir-format
+msgid "Profile Picture"
+msgstr "Profilbild"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Profile Settings"
+msgstr "Profil-Einstellungen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Saving..."
+msgstr "Wird gespeichert…"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Taken"
+msgstr "Vergeben"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/display_name_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "This name will appear to visitors when they book meetings with you. Changes are saved automatically."
+msgstr "Dieser Name wird Besuchern angezeigt, wenn sie Termine mit Ihnen buchen. Änderungen werden automatisch gespeichert."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/timezone_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Timezone"
+msgstr "Zeitzone"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/timezone_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Timezone updated to %{timezone}"
+msgstr "Zeitzone auf %{timezone} aktualisiert"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Update URL"
+msgstr "URL aktualisieren"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/avatar_upload_component.ex
+#, elixir-autogen, elixir-format
+msgid "Upload"
+msgstr "Hochladen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/avatar_upload_component.ex
+#, elixir-autogen, elixir-format
+msgid "Upload New"
+msgstr "Neues hochladen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/avatar_upload_component.ex
+#, elixir-autogen, elixir-format
+msgid "Upload failed"
+msgstr "Hochladen fehlgeschlagen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/avatar_upload_component.ex
+#, elixir-autogen, elixir-format
+msgid "Upload failed: %{reason}"
+msgstr "Hochladen fehlgeschlagen: %{reason}"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/avatar_upload_component.ex
+#, elixir-autogen, elixir-format
+msgid "Uploading..."
+msgstr "Wird hochgeladen…"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Username updated! Your booking page: %{url}"
+msgstr "Nutzername aktualisiert! Ihre Buchungsseite: %{url}"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "yourname"
+msgstr "ihrname"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/timezone_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Unknown timezone"
+msgstr "Unbekannte Zeitzone"
+
+#: lib/tymeslot/profiles.ex
+#, elixir-autogen, elixir-format
+msgid "Too many username change attempts. Please try again later."
+msgstr "Zu viele Versuche, den Nutzernamen zu ändern. Bitte versuchen Sie es später erneut."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/time_format_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "12h (AM/PM)"
+msgstr "12 Std. (AM/PM)"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/time_format_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "24h"
+msgstr "24 Std."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/time_format_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Controls how times are shown on your dashboard and in the emails you receive. Your booking page follows each visitor's own language."
+msgstr "Legt fest, wie Uhrzeiten in Ihrem Dashboard und in den E-Mails angezeigt werden, die Sie erhalten. Ihre Buchungsseite richtet sich nach der Sprache der jeweiligen Besucher."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/time_format_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update time format"
+msgstr "Zeitformat konnte nicht aktualisiert werden"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/time_format_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Time Format"
+msgstr "Zeitformat"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/time_format_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Time format updated"
+msgstr "Zeitformat aktualisiert"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} poll still waiting on votes"
+msgid_plural "%{count} polls still waiting on votes"
+msgstr[0] "%{count} Umfrage wartet noch auf Stimmen"
+msgstr[1] "%{count} Umfragen warten noch auf Stimmen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "%{url} will stop working immediately. Links that already point there cannot be recovered."
+msgstr "%{url} funktioniert ab sofort nicht mehr. Links, die bereits dorthin verweisen, lassen sich nicht wiederherstellen."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Change URL"
+msgstr "URL ändern"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Change your URL to %{username}?"
+msgstr "URL in %{username} ändern?"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Once released, %{username} can be claimed by anyone else."
+msgstr "Sobald %{username} freigegeben ist, kann sich jede andere Person den Namen sichern."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "This breaks:"
+msgstr "Das macht Folgendes unbrauchbar:"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "links inside confirmation and reminder emails already sent"
+msgstr "Links in bereits versendeten Bestätigungs- und Erinnerungs-E-Mails"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "your booking page and every event link on it"
+msgstr "Ihre Buchungsseite und jeden Termin-Link darauf"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} day ago"
+msgid_plural "%{count} days ago"
+msgstr[0] "vor %{count} Tag"
+msgstr[1] "vor %{count} Tagen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} hour ago"
+msgid_plural "%{count} hours ago"
+msgstr[0] "vor %{count} Stunde"
+msgstr[1] "vor %{count} Stunden"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} minute ago"
+msgid_plural "%{count} minutes ago"
+msgstr[0] "vor %{count} Minute"
+msgstr[1] "vor %{count} Minuten"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "A verification email has been sent to"
+msgstr "Eine Bestätigungs-E-Mail wurde gesendet an"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
+#, elixir-autogen, elixir-format
+msgid "At least 8 characters"
+msgstr "Mindestens 8 Zeichen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/password_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Authentication is managed through %{provider} — password login isn't available for social accounts."
+msgstr "Die Authentifizierung erfolgt über %{provider} — die Passwortanmeldung ist für Social-Login-Konten nicht verfügbar."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/language_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Automatic"
+msgstr "Automatisch"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel email change"
+msgstr "E-Mail-Änderung abbrechen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/language_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Changes the language of this admin dashboard. Does not affect the language visitors see on your booking page."
+msgstr "Ändert die Sprache dieses Admin-Dashboards. Betrifft nicht die Sprache, die Besucher auf Ihrer Buchungsseite sehen."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
+#, elixir-autogen, elixir-format
+msgid "Confirm New Password"
+msgstr "Neues Passwort bestätigen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
+#, elixir-autogen, elixir-format
+msgid "Confirm your new password"
+msgstr "Bestätigen Sie Ihr neues Passwort"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/language_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Could not save language preference."
+msgstr "Spracheinstellung konnte nicht gespeichert werden."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Current Password"
+msgstr "Aktuelles Passwort"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Current email:"
+msgstr "Aktuelle E-Mail:"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Email Address"
+msgstr "E-Mail-Adresse"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Email Change Pending"
+msgstr "E-Mail-Änderung ausstehend"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Email changes are managed through your %{provider} account"
+msgstr "E-Mail-Änderungen werden über Ihr %{provider}-Konto verwaltet"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Enter your current password"
+msgstr "Geben Sie Ihr aktuelles Passwort ein"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/language_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Language"
+msgstr "Sprache"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/language_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Language preference saved."
+msgstr "Spracheinstellung gespeichert."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/password_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Last changed:"
+msgstr "Zuletzt geändert:"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Managed through your %{provider} account — email changes aren't available for social login accounts."
+msgstr "Wird über Ihr %{provider}-Konto verwaltet — E-Mail-Änderungen sind für Social-Login-Konten nicht verfügbar."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/account_security_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Never"
+msgstr "Nie"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
+#, elixir-autogen, elixir-format
+msgid "New Email Address"
+msgstr "Neue E-Mail-Adresse"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
+#, elixir-autogen, elixir-format
+msgid "New Password"
+msgstr "Neues Passwort"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/password_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Password"
+msgstr "Passwort"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/password_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Password authentication is not available for %{provider} login"
+msgstr "Die Passwort-Authentifizierung ist für die Anmeldung über %{provider} nicht verfügbar"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Sent %{time}"
+msgstr "Gesendet %{time}"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/time_format_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Set time format"
+msgstr "Zeitformat festlegen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/time_format_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Set your preferred time format"
+msgstr "Legen Sie Ihr bevorzugtes Zeitformat fest"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
+#, elixir-autogen, elixir-format
+msgid "Update Email"
+msgstr "E-Mail aktualisieren"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
+#, elixir-autogen, elixir-format
+msgid "Update Password"
+msgstr "Passwort aktualisieren"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
+#, elixir-autogen, elixir-format
+msgid "Updating..."
+msgstr "Wird aktualisiert..."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/password_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Your password has been changed. Please sign in again with your new password."
+msgstr "Ihr Passwort wurde geändert. Bitte melden Sie sich erneut mit Ihrem neuen Passwort an."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "just now"
+msgstr "gerade eben"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "This username is already taken"
+msgstr "Dieser Nutzername ist bereits vergeben"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "This username is reserved"
+msgstr "Dieser Nutzername ist reserviert"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Manage your account, contact details, and scheduling preferences."
+msgstr "Verwalten Sie Ihr Konto, Ihre Kontaktdaten und Ihre Terminplanungseinstellungen."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "A nightly job permanently deletes your own cancelled meetings once they've been cancelled for longer than this delay. This cannot be undone."
+msgstr "Ein nächtlicher Job löscht Ihre eigenen stornierten Termine dauerhaft, sobald sie länger als diese Verzögerung storniert sind. Dies kann nicht rückgängig gemacht werden."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Automatically delete cancelled meetings?"
+msgstr "Stornierte Termine automatisch löschen?"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled Meetings"
+msgstr "Stornierte Termine"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled meetings will no longer be deleted automatically"
+msgstr "Stornierte Termine werden nicht mehr automatisch gelöscht"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled meetings will now be deleted automatically after the configured delay"
+msgstr "Stornierte Termine werden nun nach der konfigurierten Verzögerung automatisch gelöscht"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cleanup delay must be between %{min} and %{max} days"
+msgstr "Die Bereinigungsverzögerung muss zwischen %{min} und %{max} Tagen liegen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cleanup delay updated"
+msgstr "Bereinigungsverzögerung aktualisiert"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Delete after (days since cancellation)"
+msgstr "Löschen nach (Tage seit Stornierung)"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update cancelled meeting cleanup setting"
+msgstr "Einstellung zur Bereinigung stornierter Termine konnte nicht aktualisiert werden"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update cleanup delay"
+msgstr "Bereinigungsverzögerung konnte nicht aktualisiert werden"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Set automatic cancelled meeting cleanup"
+msgstr "Automatische Bereinigung stornierter Termine festlegen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Collect contacts?"
+msgstr "Kontakte sammeln?"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact Collection"
+msgstr "Kontaktsammlung"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update contact collection setting"
+msgstr "Einstellung zur Kontaktsammlung konnte nicht aktualisiert werden"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "New bookings will no longer be added to your contacts"
+msgstr "Neue Buchungen werden nicht mehr zu Ihren Kontakten hinzugefügt"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "New bookings will now be added to your contacts"
+msgstr "Neue Buchungen werden nun zu Ihren Kontakten hinzugefügt"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Set contact collection"
+msgstr "Kontaktsammlung festlegen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "When enabled, each new public booking adds or updates a contact with the booker's name, email, phone, and company."
+msgstr "Wenn aktiviert, fügt jede neue öffentliche Buchung einen Kontakt mit Name, E-Mail, Telefon und Unternehmen des Buchenden hinzu oder aktualisiert ihn."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/avatar_upload_component.ex
+#, elixir-autogen, elixir-format
+msgid "JPG, PNG, GIF or WebP. Max 300KB."
+msgstr "JPG, PNG, GIF oder WebP. Max. 300 KB."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Only available on the Pro plan and above."
+msgstr "Nur im Pro-Tarif und höher verfügbar."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact collection is available on the Pro plan and above."
+msgstr "Kontaktsammlung ist im Pro-Tarif und höher verfügbar."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Custom URL is available on the Pro plan and above."
+msgstr "Die eigene URL ist nur im Pro-Tarif und höher verfügbar."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "\"System\" follows your device's light/dark setting."
+msgstr "„System“ folgt der Hell-/Dunkelmodus-Einstellung deines Geräts."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Appearance"
+msgstr "Erscheinungsbild"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Appearance updated"
+msgstr "Erscheinungsbild aktualisiert"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Choose how the dashboard looks"
+msgstr "Wähle, wie das Dashboard aussehen soll"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Dark"
+msgstr "Dunkel"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update appearance"
+msgstr "Erscheinungsbild konnte nicht aktualisiert werden"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Light"
+msgstr "Hell"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Set appearance"
+msgstr "Erscheinungsbild festlegen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "System"
+msgstr "System"
+
+#: lib/tymeslot_web/controllers/auth/account_deletion_controller.ex
+#, elixir-autogen, elixir-format
+msgid "Could not delete your account. Please try again."
+msgstr "Ihr Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Current password is incorrect"
+msgstr "Das aktuelle Passwort ist falsch"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Danger zone"
+msgstr "Gefahrenbereich"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Delete account"
+msgstr "Konto löschen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Deleting..."
+msgstr "Wird gelöscht..."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Permanently delete my account"
+msgstr "Mein Konto endgültig löschen"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Permanently delete your account and all your data, including your meeting history. This cannot be undone."
+msgstr "Löscht Ihr Konto und alle Ihre Daten, einschließlich Ihres Terminverlaufs, dauerhaft. Dies kann nicht rückgängig gemacht werden."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "This does not match your account email address"
+msgstr "Dies stimmt nicht mit der E-Mail-Adresse Ihres Kontos überein"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "This permanently deletes your account, your profile, meeting types, integrations and your whole meeting history. This cannot be undone."
+msgstr "Dadurch werden Ihr Konto, Ihr Profil, Ihre Termintypen, Integrationen und Ihr gesamter Terminverlauf dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Type %{email} to confirm"
+msgstr "Geben Sie zur Bestätigung %{email} ein"
+
+#: lib/tymeslot_web/controllers/auth/account_deletion_controller.ex
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "You are the only admin. Promote another user to admin before deleting your account."
+msgstr "Sie sind der einzige Administrator. Ernennen Sie einen anderen Benutzer zum Administrator, bevor Sie Ihr Konto löschen."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Your %{count} upcoming meeting will be cancelled, its attendee notified and any payment refunded."
+msgid_plural "Your %{count} upcoming meetings will be cancelled, their attendees notified and any payments refunded."
+msgstr[0] "Ihr %{count} bevorstehender Termin wird abgesagt, sein Teilnehmer benachrichtigt und eine etwaige Zahlung erstattet."
+msgstr[1] "Ihre %{count} bevorstehenden Termine werden abgesagt, ihre Teilnehmer benachrichtigt und etwaige Zahlungen erstattet."
+
+#: lib/tymeslot_web/controllers/auth/account_deletion_controller.ex
+#, elixir-autogen, elixir-format
+msgid "Your account has been scheduled for deletion. All your data will be removed shortly."
+msgstr "Die Löschung Ihres Kontos wurde geplant. Alle Ihre Daten werden in Kürze entfernt."
+
+#: lib/tymeslot_web/controllers/auth/account_deletion_controller.ex
+#, elixir-autogen, elixir-format
+msgid "Your account was not deleted: the confirmation did not match."
+msgstr "Ihr Konto wurde nicht gelöscht: Die Bestätigung stimmte nicht überein."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Microsoft does not let us withdraw your consent for Tymeslot. To remove it, open myapps.microsoft.com and remove Tymeslot from your apps."
+msgstr "Microsoft erlaubt es uns nicht, Ihre Zustimmung für Tymeslot zu widerrufen. Um sie zu entfernen, öffnen Sie myapps.microsoft.com und entfernen Sie Tymeslot aus Ihren Apps."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "+420 123 456 789"
+msgstr "+420 123 456 789"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Acme Inc."
+msgstr "Acme Inc."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact Details"
+msgstr "Kontaktdaten"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact details updated"
+msgstr "Kontaktdaten aktualisiert"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update contact details"
+msgstr "Kontaktdaten konnten nicht aktualisiert werden"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Used to pre-fill the booking form when you book a meeting with someone else. Changes are saved automatically."
+msgstr "Wird verwendet, um das Buchungsformular vorauszufüllen, wenn Sie einen Termin bei jemand anderem buchen. Änderungen werden automatisch gespeichert."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Company"
+msgstr "Firma"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Phone"
+msgstr "Telefon"

@@ -1,0 +1,250 @@
+defmodule TymeslotWeb.Dashboard.VideoSettings.Components do
+  @moduledoc """
+  Functional components for the video settings dashboard.
+  """
+  use TymeslotWeb, :html
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Tymeslot.Integrations.HealthCheck
+  alias Tymeslot.Integrations.Providers.Directory, as: ProviderDirectory
+  alias Tymeslot.Integrations.Video
+  alias Tymeslot.Integrations.Video.ProviderConfig
+  alias Tymeslot.Integrations.Video.Providers.KmeetProvider
+  alias Tymeslot.Integrations.Video.RoomCreationError
+  alias TymeslotWeb.Components.Dashboard.Integrations.Shared.ConnectionRow
+
+  @doc """
+  Renders a single connected video integration as a shared `connection_row`:
+  a status-first, flat row with a one-line summary and an always-visible action
+  cluster — Test connection (icon), Reconnect (OAuth only, promoted when the
+  integration needs re-authentication), Edit (icon), and Delete (icon). There is
+  no expand/collapse; every action is one click away.
+  """
+  attr :integration, :map, required: true
+  attr :testing_connection, :any, default: nil
+  attr :myself, :any, required: true
+  attr :health_state, :map, default: nil
+
+  @spec video_connection_row(map()) :: Phoenix.LiveView.Rendered.t()
+  def video_connection_row(assigns) do
+    integration = assigns.integration
+    provider_name = ProviderDirectory.format_provider_name(:video, integration.provider)
+
+    assigns =
+      assigns
+      |> assign(:status, video_status(integration, assigns.health_state))
+      |> assign(:summary, video_summary(integration))
+      |> assign(:type_tag, type_tag(integration.provider))
+      |> assign(:oauth?, ProviderConfig.oauth_provider?(integration.provider))
+      |> assign(
+        :display_name,
+        if(integration.name == provider_name, do: provider_name, else: integration.name)
+      )
+
+    ~H"""
+    <ConnectionRow.connection_row
+      id={to_string(@integration.id)}
+      icon={@integration.provider}
+      icon_type={:video}
+      title={@display_name}
+      type_tag={@type_tag}
+      summary={@summary}
+      notice={notice(@integration)}
+      status={@status}
+      active?={@integration.is_active}
+      toggle_event="toggle_integration"
+      myself={@myself}
+    >
+      <:actions>
+        <button
+          :if={@integration.is_active}
+          phx-click="test_connection"
+          phx-value-id={@integration.id}
+          phx-target={@myself}
+          disabled={@testing_connection == @integration.id}
+          aria-busy={(@testing_connection == @integration.id && "true") || "false"}
+          class="row-action-button row-action-button--icon-only row-action-button--neutral"
+          title={
+            (@testing_connection == @integration.id &&
+               dgettext("dashboard_video", "Testing…")) ||
+              dgettext("dashboard_video", "Test connection")
+          }
+          aria-label={
+            (@testing_connection == @integration.id &&
+               dgettext("dashboard_video", "Testing connection…")) ||
+              dgettext("dashboard_video", "Test connection")
+          }
+        >
+          <.icon
+            name={(@testing_connection == @integration.id && "hero-arrow-path") || "hero-signal"}
+            class={"w-5 h-5 #{(@testing_connection == @integration.id && "animate-spin") || ""}"}
+          />
+        </button>
+        <button
+          :if={@oauth?}
+          phx-click="reconnect_integration"
+          phx-value-id={@integration.id}
+          phx-target={@myself}
+          class={[
+            "row-action-button row-action-button--pill",
+            (@integration.needs_reauth && "row-action-button--attention") ||
+              "row-action-button--neutral"
+          ]}
+          title={dgettext("dashboard_video", "Reconnect integration")}
+          aria-label={dgettext("dashboard_video", "Reconnect integration")}
+        >
+          <.icon name="hero-arrow-path" class="w-4 h-4" /><span class="lg:hidden">{dgettext(
+            "dashboard_video",
+            "Reconnect"
+          )}</span>
+        </button>
+        <button
+          phx-click="show"
+          phx-value-id={@integration.id}
+          phx-target="#edit-video-modal"
+          class="row-action-button row-action-button--icon-only row-action-button--neutral"
+          title={dgettext("dashboard_video", "Edit integration")}
+          aria-label={dgettext("dashboard_video", "Edit integration")}
+        >
+          <.icon name="hero-pencil-square" class="w-5 h-5" />
+        </button>
+        <button
+          phx-click="show"
+          phx-value-id={@integration.id}
+          phx-target="#delete-video-modal"
+          class="row-action-button row-action-button--danger"
+          title={dgettext("dashboard_video", "Delete integration")}
+          aria-label={dgettext("dashboard_video", "Delete integration")}
+        >
+          <.icon name="hero-trash" class="w-5 h-5" />
+        </button>
+      </:actions>
+    </ConnectionRow.connection_row>
+    """
+  end
+
+  # Builds a one-line human summary for a video integration: the account,
+  # server, or custom link, plus any provider-type descriptor the type tag does
+  # not already carry, dropping absent segments gracefully.
+  @spec video_summary(map()) :: String.t()
+  defp video_summary(integration) do
+    integration
+    |> summary_segments()
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" · ")
+  end
+
+  # "self-hosted" is already the type-tag chip beside the title (`type_tag/1`),
+  # so the summary carries the server alone: the line is truncated to one row
+  # and the server string is the part worth the space.
+  defp summary_segments(%{provider: "mirotalk"} = integration) do
+    [ConnectionRow.server_label(integration.base_url)]
+  end
+
+  defp summary_segments(%{provider: "custom"} = integration) do
+    [Map.get(integration, :custom_meeting_url), dgettext("dashboard_video", "custom link")]
+  end
+
+  defp summary_segments(%{provider: "kmeet"}) do
+    [
+      host(KmeetProvider.host()),
+      dgettext("dashboard_video", "rooms created automatically")
+    ]
+  end
+
+  defp summary_segments(%{provider: "jitsi"} = integration) do
+    [Map.get(integration, :base_url), dgettext("dashboard_video", "Jitsi")]
+  end
+
+  defp summary_segments(%{provider: "nextcloud_talk"} = integration) do
+    [
+      Map.get(integration, :client_id),
+      host(integration.base_url),
+      dgettext("dashboard_video", "self-hosted")
+    ]
+  end
+
+  # OAuth membership is read from the video family table rather than restated
+  # here, so a new OAuth provider describes itself correctly without an edit.
+  defp summary_segments(%{provider: provider} = integration) do
+    if ProviderConfig.oauth_provider?(provider) do
+      [
+        integration.provider_account_email,
+        dgettext("dashboard_video", "OAuth"),
+        dgettext("dashboard_video", "rooms created automatically")
+      ]
+    else
+      [integration.provider_account_email || ConnectionRow.server_label(integration.base_url)]
+    end
+  end
+
+  # A needed reconnection says what to do first, since nothing works until it
+  # is done. Otherwise a provider refusing to create rooms is explained, with
+  # its fix: the connection itself is fine, so nothing else would show it.
+  defp notice(integration) do
+    ConnectionRow.reconnect_reason(integration) || room_creation_notice(integration) ||
+      meeting_link_notice(integration)
+  end
+
+  defp room_creation_notice(%{room_creation_error: nil}), do: nil
+
+  defp room_creation_notice(%{room_creation_error: code}) do
+    dgettext("dashboard_video", "New bookings get no video link. %{reason}",
+      reason: RoomCreationError.message(code)
+    )
+  end
+
+  defp room_creation_notice(_integration), do: nil
+
+  # A custom link saved before its placeholder was validated still works, as a
+  # static room, so this explains rather than blocks.
+  defp meeting_link_notice(integration) do
+    if Video.meeting_link_template_invalid?(integration) do
+      dgettext(
+        "dashboard_video",
+        "The meeting link placeholder is invalid, so all bookings currently share one room. Edit the integration to fix it."
+      )
+    end
+  end
+
+  # Status-first badge mapping. Precedence lives in the canonical
+  # `HealthCheck.attention_status/2` classifier; this just maps the atom to
+  # this row's badge variant/label. A connection that works but whose rooms
+  # the provider refuses still needs the owner, so it is not shown as healthy.
+  defp video_status(integration, health) do
+    case HealthCheck.attention_status(integration, health) do
+      :paused -> {:paused, dgettext("dashboard_video", "Paused")}
+      :needs_reauth -> {:warning, dgettext("dashboard_video", "Reconnect")}
+      :unhealthy -> {:warning, dgettext("dashboard_video", "Connection issues")}
+      :ok -> healthy_status(integration)
+    end
+  end
+
+  defp healthy_status(%{room_creation_error: nil} = integration) do
+    if Video.meeting_link_template_invalid?(integration) do
+      {:warning, dgettext("dashboard_video", "Invalid meeting link")}
+    else
+      {:ok, dgettext("dashboard_video", "Healthy")}
+    end
+  end
+
+  defp healthy_status(%{room_creation_error: _code}),
+    do: {:warning, dgettext("dashboard_video", "No video links")}
+
+  defp healthy_status(_integration), do: {:ok, dgettext("dashboard_video", "Healthy")}
+
+  defp type_tag("mirotalk"), do: dgettext("dashboard_video", "self-hosted")
+  defp type_tag("custom"), do: dgettext("dashboard_video", "custom")
+  defp type_tag("kmeet"), do: dgettext("dashboard_video", "hosted")
+  defp type_tag("jitsi"), do: dgettext("dashboard_video", "self-hosted")
+  defp type_tag("nextcloud_talk"), do: dgettext("dashboard_video", "self-hosted")
+
+  defp type_tag(provider) do
+    if ProviderConfig.oauth_provider?(provider) do
+      dgettext("dashboard_video", "OAuth")
+    end
+  end
+
+  defp host(nil), do: nil
+  defp host(base_url), do: URI.parse(base_url).host
+end

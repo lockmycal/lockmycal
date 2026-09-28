@@ -1,0 +1,37 @@
+{
+  "minimum_coverage": 80,
+  "skip_files": [
+    "test/support",
+    "dev_support",
+    "lib/mix/tasks",
+    "_build",
+    "deps",
+    "priv",
+    "node_modules",
+    "behaviour.ex$",
+    "_behaviour.ex$",
+    "/behaviours/",
+    "lib/tymeslot_web/gettext.ex$",
+    "lib/tymeslot_web/gettext/ecto_error_msgids.ex$",
+    "lib/tymeslot_web/gettext/pseudo_fallback.ex$",
+    "lib/tymeslot/repo.ex$",
+    "lib/tymeslot/mailer.ex$",
+    "lib/tymeslot.ex$",
+    "lib/tymeslot/security/rate_limit.ex$",
+    "lib/tymeslot/security/encrypted_storage.ex$",
+    "lib/tymeslot_web/controllers/debug_theme_controller.ex$",
+    "lib/tymeslot_web/controllers/dev/",
+    "lib/tymeslot_web/live/dev/",
+    "lib/tymeslot/timezones/country_codes.ex$",
+    "lib/tymeslot/timezones/cities/",
+    "lib/tymeslot_web/themes/shared/scheduling_live.ex$",
+    "lib/tymeslot_web/components/dashboard/integrations/calendar/caldav_config.ex$",
+    "lib/tymeslot_web/components/dashboard/integrations/calendar/nextcloud_config.ex$",
+    "lib/tymeslot_web/components/dashboard/integrations/calendar/radicale_config.ex$",
+    "lib/tymeslot_web/components/dashboard/integrations/calendar/zimbra_config.ex$",
+    "lib/tymeslot_web/components/dashboard/integrations/calendar/exchange_config.ex$"
+  ],
+  "terminal_options": {
+    "file_column_width": 125
+  }
+}

@@ -1,0 +1,440 @@
+defmodule Tymeslot.Workers.EmailWorkerExecutionTest do
+  use Tymeslot.DataCase, async: true
+
+  @moduletag :workers
+
+  use Oban.Testing, repo: Tymeslot.Repo
+
+  import Mox
+  import Tymeslot.Factory
+  import Tymeslot.WorkerTestHelpers
+
+  alias Ecto.UUID
+  alias Tymeslot.Emails.EmailScheduler
+  alias Tymeslot.Infrastructure.CircuitBreakerSupervisor
+  alias Tymeslot.Meetings.Guests
+  alias Tymeslot.Workers.DeliveryClaims.DeliveryClaimQueries
+  alias Tymeslot.Workers.EmailWorker
+
+  setup :verify_on_exit!
+
+  defp admin_alert_args do
+    %{
+      "action" => "send_admin_alert",
+      "recipient" => "ops@example.com",
+      "category" => "Queue",
+      "severity" => "error",
+      "message" => "Oban job failed permanently",
+      "metadata" => %{"worker" => "Tymeslot.Workers.EmailWorker"},
+      "alert_hash" => String.duplicate("a", 64)
+    }
+  end
+
+  describe "perform/1 send_cancellation_emails" do
+    test "discards job when meeting is not found" do
+      assert {:discard, "Meeting not found"} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_cancellation_emails",
+                 "meeting_id" => UUID.generate()
+               })
+    end
+
+    test "discards job when meeting is not cancelled" do
+      profile = insert(:profile)
+      meeting = insert(:meeting, organizer_user: profile.user)
+
+      assert {:discard, "Meeting not cancelled"} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_cancellation_emails",
+                 "meeting_id" => meeting.id
+               })
+    end
+
+    test "sends cancellation emails for a cancelled meeting" do
+      profile = insert(:profile)
+      meeting = insert(:meeting, organizer_user: profile.user, status: "cancelled")
+
+      Mox.expect(Tymeslot.EmailServiceMock, :send_cancellation_emails, fn _details ->
+        {{:ok, :sent}, {:ok, :sent}}
+      end)
+
+      assert :ok =
+               perform_job(EmailWorker, %{
+                 "action" => "send_cancellation_emails",
+                 "meeting_id" => meeting.id
+               })
+    end
+
+    # The Oban lifeline re-runs a job orphaned after it sent; a cancellation
+    # has no per-recipient sent flag on the meeting, so the job's own claims
+    # are what keep the second run from mailing everyone again. The Mox
+    # expectations fail the test on a second call.
+    test "a rescued job sends the participant and guest cancellations only once" do
+      profile = insert(:profile)
+
+      meeting =
+        insert(:meeting,
+          organizer_user: profile.user,
+          status: "cancelled",
+          first_announced_at: DateTime.utc_now(:second)
+        )
+
+      {:ok, [_guest]} = Guests.create_for_meeting(meeting.id, ["guest@example.com"])
+
+      expect(Tymeslot.EmailServiceMock, :send_cancellation_emails, 1, fn _details ->
+        {{:ok, :sent}, {:ok, :sent}}
+      end)
+
+      expect(Tymeslot.EmailServiceMock, :send_guest_cancellation, 1, fn "guest@example.com",
+                                                                        _details ->
+        {:ok, :sent}
+      end)
+
+      job =
+        persisted_job(EmailWorker, %{
+          "action" => "send_cancellation_emails",
+          "meeting_id" => meeting.id
+        })
+
+      assert :ok = EmailWorker.perform(job)
+      assert :ok = EmailWorker.perform(job)
+    end
+
+    # A node that stops part-way through the guests leaves the claims of those
+    # already mailed; the rescued run must still reach the others.
+    test "a job rescued part-way through the guests tells the guests not yet told" do
+      profile = insert(:profile)
+
+      meeting =
+        insert(:meeting,
+          organizer_user: profile.user,
+          status: "cancelled",
+          first_announced_at: DateTime.utc_now(:second)
+        )
+
+      {:ok, guests} =
+        Guests.create_for_meeting(meeting.id, ["told@example.com", "untold@example.com"])
+
+      told = Enum.find(guests, &(&1.email == "told@example.com"))
+
+      job =
+        persisted_job(EmailWorker, %{
+          "action" => "send_cancellation_emails",
+          "meeting_id" => meeting.id
+        })
+
+      :claimed = DeliveryClaimQueries.claim(job.id, "cancellation:participants")
+      :claimed = DeliveryClaimQueries.claim(job.id, "cancellation:guest:#{told.id}")
+
+      expect(Tymeslot.EmailServiceMock, :send_cancellation_emails, 0, fn _details ->
+        {{:ok, :sent}, {:ok, :sent}}
+      end)
+
+      expect(Tymeslot.EmailServiceMock, :send_guest_cancellation, 1, fn "untold@example.com",
+                                                                        _details ->
+        {:ok, :sent}
+      end)
+
+      assert :ok = EmailWorker.perform(job)
+    end
+
+    test "a retry after a total failure sends the cancellation again" do
+      profile = insert(:profile)
+      meeting = insert(:meeting, organizer_user: profile.user, status: "cancelled")
+
+      expect(Tymeslot.EmailServiceMock, :send_cancellation_emails, 1, fn _details ->
+        {{:error, :delivery_failed}, {:error, :delivery_failed}}
+      end)
+
+      expect(Tymeslot.EmailServiceMock, :send_cancellation_emails, 1, fn _details ->
+        {{:ok, :sent}, {:ok, :sent}}
+      end)
+
+      job =
+        persisted_job(EmailWorker, %{
+          "action" => "send_cancellation_emails",
+          "meeting_id" => meeting.id
+        })
+
+      assert {:error, _reason} = EmailWorker.perform(job)
+      assert :ok = EmailWorker.perform(%{job | attempt: 2})
+    end
+
+    test "discards job on partial failure to avoid duplicate sends" do
+      profile = insert(:profile)
+      meeting = insert(:meeting, organizer_user: profile.user, status: "cancelled")
+
+      Mox.expect(Tymeslot.EmailServiceMock, :send_cancellation_emails, fn _details ->
+        {{:ok, :sent}, {:error, :delivery_failed}}
+      end)
+
+      assert {:discard, _reason} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_cancellation_emails",
+                 "meeting_id" => meeting.id
+               })
+    end
+
+    test "returns error on total failure so job is retried" do
+      profile = insert(:profile)
+      meeting = insert(:meeting, organizer_user: profile.user, status: "cancelled")
+
+      Mox.expect(Tymeslot.EmailServiceMock, :send_cancellation_emails, fn _details ->
+        {{:error, :delivery_failed}, {:error, :delivery_failed}}
+      end)
+
+      assert {:error, _reason} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_cancellation_emails",
+                 "meeting_id" => meeting.id
+               })
+    end
+
+    # A permanent rejection of one recipient used to discard the whole job,
+    # throwing away the other recipient's still-retryable send. Neither
+    # succeeded here, so nothing has gone out yet — the job must retry, not
+    # discard, or the still-live recipient never gets their cancellation
+    # email.
+    test "retries rather than discarding when one recipient is rejected and the other fails transiently" do
+      profile = insert(:profile)
+      meeting = insert(:meeting, organizer_user: profile.user, status: "cancelled")
+
+      Mox.expect(Tymeslot.EmailServiceMock, :send_cancellation_emails, fn _details ->
+        {{:error, {:recipient_rejected, {422, %{"ErrorCode" => 406}}}},
+         {:error, :delivery_failed}}
+      end)
+
+      assert {:error, _reason} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_cancellation_emails",
+                 "meeting_id" => meeting.id
+               })
+    end
+  end
+
+  describe "perform/1 error handling" do
+    test "discards job with missing action parameter" do
+      assert {:discard, "Missing action parameter"} =
+               perform_job(EmailWorker, %{"meeting_id" => 123})
+    end
+
+    test "discards job with unknown action" do
+      assert {:discard, reason} =
+               perform_job(EmailWorker, %{
+                 "action" => "unknown_action",
+                 "meeting_id" => 123
+               })
+
+      assert reason =~ "Unknown action"
+    end
+
+    test "discards job if meeting not found for confirmations" do
+      fake_id = UUID.generate()
+
+      assert {:discard, "Meeting not found"} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_confirmation_emails",
+                 "meeting_id" => fake_id
+               })
+    end
+
+    test "discards job if meeting not found for reminders" do
+      fake_id = UUID.generate()
+
+      assert {:discard, "Meeting not found"} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_reminder_emails",
+                 "meeting_id" => fake_id
+               })
+    end
+
+    test "discards job if meeting is cancelled for reminders" do
+      profile = insert(:profile)
+      meeting = insert(:meeting, organizer_user: profile.user, status: "cancelled")
+
+      assert {:discard, "Meeting cancelled"} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_reminder_emails",
+                 "meeting_id" => meeting.id
+               })
+    end
+
+    test "discards job if user not found for email verification" do
+      assert {:discard, "User not found"} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_email_verification",
+                 "user_id" => 999_999,
+                 "verification_url" => "http://test.com"
+               })
+    end
+
+    test "discards job if user not found for password reset" do
+      assert {:discard, "User not found"} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_password_reset",
+                 "user_id" => 999_999,
+                 "reset_url" => "http://test.com"
+               })
+    end
+
+    test "discards send_email_change_verification job if user not found" do
+      assert {:discard, "User not found"} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_email_change_verification",
+                 "user_id" => 999_999,
+                 "new_email" => "new@example.com",
+                 "verification_url" => "https://example.com/verify/token"
+               })
+    end
+
+    test "discards send_email_change_notification job if user not found" do
+      assert {:discard, "User not found"} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_email_change_notification",
+                 "user_id" => 999_999,
+                 "new_email" => "new@example.com"
+               })
+    end
+
+    test "discards send_email_change_confirmations job if user not found" do
+      assert {:discard, "User not found"} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_email_change_confirmations",
+                 "user_id" => 999_999,
+                 "old_email" => "old@example.com",
+                 "new_email" => "new@example.com"
+               })
+    end
+  end
+
+  describe "perform/1 send_admin_alert" do
+    test "happy path: returns :ok when all required fields are present" do
+      Mox.expect(Tymeslot.EmailServiceMock, :send_admin_alert, fn _recipient,
+                                                                  _category,
+                                                                  _severity,
+                                                                  _message,
+                                                                  _metadata ->
+        {:ok, "sent"}
+      end)
+
+      assert :ok =
+               perform_job(EmailWorker, %{
+                 "action" => "send_admin_alert",
+                 "recipient" => "ops@example.com",
+                 "category" => "Webhook",
+                 "severity" => "warning",
+                 "message" => "Unhandled webhook event",
+                 "metadata" => %{"event_id" => "evt_001"},
+                 "alert_hash" => String.duplicate("a", 64)
+               })
+    end
+  end
+
+  describe "perform/1 when the provider's circuit breaker is open" do
+    setup do
+      Mox.expect(Tymeslot.EmailServiceMock, :send_admin_alert, fn _recipient,
+                                                                  _category,
+                                                                  _severity,
+                                                                  _message,
+                                                                  _metadata ->
+        {:error, :circuit_open}
+      end)
+
+      :ok
+    end
+
+    # The exponential backoff tops out at 16 seconds, so before this the five
+    # attempts were spent inside the first twenty seconds of a five-minute
+    # outage and the job discarded while the provider was merely paused.
+    test "snoozes for at least the breaker's recovery window" do
+      assert {:snooze, seconds} = perform_job(EmailWorker, admin_alert_args())
+
+      assert seconds >= CircuitBreakerSupervisor.email_breaker_recovery_seconds()
+      assert seconds > EmailWorker.backoff(%Oban.Job{attempt: 5})
+    end
+  end
+
+  describe "perform/1 when the recipient is permanently rejected" do
+    test "discards rather than retrying an address that can never accept mail" do
+      Mox.expect(Tymeslot.EmailServiceMock, :send_admin_alert, fn _recipient,
+                                                                  _category,
+                                                                  _severity,
+                                                                  _message,
+                                                                  _metadata ->
+        {:error, {:recipient_rejected, {422, %{"ErrorCode" => 406}}}}
+      end)
+
+      assert {:discard, "Recipient permanently undeliverable"} =
+               perform_job(EmailWorker, admin_alert_args())
+    end
+
+    # Each handler flattens delivery failures into its own message; the
+    # classification has to survive that in every one of them, not just the
+    # admin alert path the incident happened to expose.
+    test "applies to the auth handlers too" do
+      user = insert(:user)
+
+      Mox.expect(Tymeslot.EmailServiceMock, :send_email_verification, fn _user, _url ->
+        {:error, {:recipient_rejected, {422, %{"ErrorCode" => 300}}}}
+      end)
+
+      assert {:discard, "Recipient permanently undeliverable"} =
+               perform_job(EmailWorker, %{
+                 "action" => "send_email_verification",
+                 "user_id" => user.id,
+                 "verification_url" => "https://example.com/verify/token"
+               })
+    end
+  end
+
+  describe "backoff/1" do
+    test "calculates exponential backoff: 1s, 2s, 4s, 8s, 16s" do
+      assert EmailWorker.backoff(%Oban.Job{attempt: 1}) == 1
+      assert EmailWorker.backoff(%Oban.Job{attempt: 2}) == 2
+      assert EmailWorker.backoff(%Oban.Job{attempt: 3}) == 4
+      assert EmailWorker.backoff(%Oban.Job{attempt: 4}) == 8
+      assert EmailWorker.backoff(%Oban.Job{attempt: 5}) == 16
+    end
+
+    test "caps backoff at 16 seconds" do
+      assert EmailWorker.backoff(%Oban.Job{attempt: 6}) == 16
+      assert EmailWorker.backoff(%Oban.Job{attempt: 10}) == 16
+    end
+  end
+
+  describe "job configuration" do
+    test "worker is configured with correct queue and max_attempts" do
+      # Oban worker configuration is compile-time
+      # We can verify through job creation
+      user = insert(:user)
+      meeting = insert(:meeting, organizer_user: user)
+
+      EmailScheduler.schedule_confirmation_emails(meeting.id)
+
+      job = List.first(all_enqueued(worker: EmailWorker))
+      assert job.queue == "emails"
+      assert job.max_attempts == 5
+    end
+
+    test "confirmation emails have priority 0 (highest)" do
+      user = insert(:user)
+      meeting = insert(:meeting, organizer_user: user)
+
+      EmailScheduler.schedule_confirmation_emails(meeting.id)
+
+      job = List.first(all_enqueued(worker: EmailWorker))
+      assert job.priority == 0
+    end
+
+    test "reminder emails have priority 2 (medium)" do
+      user = insert(:user)
+      meeting = insert(:meeting, organizer_user: user)
+      scheduled_at = DateTime.add(DateTime.utc_now(), 30, :minute)
+
+      EmailScheduler.schedule_reminder_emails(meeting.id, 30, "minutes", scheduled_at)
+
+      job = List.first(all_enqueued(worker: EmailWorker))
+      assert job.priority == 2
+    end
+  end
+end

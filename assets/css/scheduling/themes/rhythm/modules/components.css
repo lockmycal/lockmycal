@@ -1,0 +1,460 @@
+/* Reusable UI Components */
+
+/* ============================================
+   INTERACTIVE STATE BASE PATTERNS
+   ============================================ */
+
+/* Base interactive element */
+.interactive {
+  cursor: pointer;
+  transition: transform var(--transition-normal);
+}
+
+.interactive:hover {
+  transform: translateY(-1px);
+}
+
+.interactive:active {
+  transform: translateY(0);
+}
+
+/* Disabled states — in shared/utilities.css */
+
+/* Selection state pattern */
+.selectable {
+  transition: background var(--transition-smooth), border-color var(--transition-smooth), box-shadow var(--transition-smooth);
+}
+
+.selectable:hover {
+  background: var(--surface-medium);
+  border-color: var(--theme-primary);
+}
+
+.selectable.is-selected,
+.selectable[aria-selected="true"] {
+  background: var(--theme-surface);
+  border-color: var(--theme-primary);
+  box-shadow: var(--shadow-md);
+}
+
+/* Focus visible — in shared/utilities.css */
+
+/* ============================================
+   ICON UTILITIES
+   ============================================ */
+
+/* Icon wrapper for proper styling */
+.icon-wrapper {
+  display: inline-block;
+  color: var(--theme-text);
+}
+
+/* Icon sizing utilities */
+.icon-xs {
+  width: var(--icon-xs);
+  height: var(--icon-xs);
+}
+
+.icon-sm {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+}
+
+.icon-md {
+  width: var(--icon-md);
+  height: var(--icon-md);
+}
+
+.icon-lg {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+}
+
+.icon-xl {
+  width: var(--icon-xl);
+  height: var(--icon-xl);
+}
+
+/* Hero icon specific (for Heroicons) */
+.hero-icon {
+  display: inline-block;
+  color: var(--theme-text);
+}
+
+.hero-icon--xs {
+  width: var(--icon-xs);
+  height: var(--icon-xs);
+}
+
+.hero-icon--sm {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+}
+
+.hero-icon--md {
+  width: var(--icon-md);
+  height: var(--icon-md);
+}
+
+.hero-icon--lg {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+}
+
+/* ============================================
+   FLAG UTILITIES
+   ============================================ */
+
+.timezone-flag--fallback {
+  opacity: 0.6;
+}
+
+/* ============================================
+   LOADING SPINNER
+   ============================================ */
+
+/* .loading-spinner and @keyframes spin — in shared/utilities.css */
+
+.loading-spinner-track {
+  opacity: 0.25;
+}
+
+.loading-spinner-path {
+  opacity: 0.75;
+}
+
+/* ============================================
+   CALENDAR ERROR STATES
+   ============================================ */
+
+.calendar-error-inline {
+  font-size: var(--theme-font-size-xs);
+  color: var(--theme-warning);
+  background: rgba(0, 0, 0, 0.4);
+  padding: var(--space-3xs) var(--space-xs);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.calendar-error-inline svg {
+  width: var(--icon-xs);
+  height: var(--icon-xs);
+}
+
+/* ============================================
+   BUTTON STYLES
+   ============================================ */
+
+/* Base Button Styles */
+.submit-button,
+.prev-button,
+.next-button,
+.action-button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: background var(--transition-smooth), border-color var(--transition-smooth), transform var(--transition-smooth);
+  border-radius: var(--radius-md);
+  font-family: var(--theme-font-family);
+}
+
+/* Primary Button (Submit & Action Primary) */
+.submit-button,
+.action-button-primary {
+  padding: var(--button-padding-y) var(--button-padding-x);
+  background: var(--theme-primary-solid);
+  color: var(--theme-on-primary);
+  border: var(--border-width-thin) solid var(--theme-primary-solid);
+}
+
+.submit-button:hover,
+.action-button-primary:hover {
+  background: var(--theme-primary-solid-hover);
+  border-color: var(--theme-primary-solid-hover);
+  transform: translateY(-1px);
+}
+
+/* Action button specific (larger) */
+.action-button-primary {
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-lg);
+  border: none;
+}
+
+.action-button-primary:hover {
+  transform: translateY(-2px);
+}
+
+/* Action button variants */
+.action-button-primary.action-button-success {
+  background: linear-gradient(135deg, var(--theme-accent) 0%, var(--theme-accent-dark) 100%);
+}
+
+.action-button-primary.action-button-success:hover {
+}
+
+.action-button-primary.action-button-danger {
+  background: linear-gradient(135deg, var(--theme-danger) 0%, var(--theme-danger-dark) 100%);
+}
+
+.action-button-primary.action-button-danger:hover {
+}
+
+.action-button-primary.action-button-secondary {
+  background: var(--surface-light);
+  backdrop-filter: blur(10px);
+}
+
+.action-button-primary.action-button-full-width {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* action-button / action-button--{variant} — the classes actually emitted by
+   the shared <.action_button> core component (core_components/buttons.ex):
+   a bare "action-button" plus exactly one "action-button--{variant}"
+   modifier. The .action-button-primary/-secondary/-danger rules above use a
+   different, compound-class scheme (e.g. "action-button-primary
+   action-button-secondary" together) that <.action_button> never renders,
+   so they never actually applied to it — same visual language (size,
+   radius) as .action-button-primary above, just wired to the
+   classes that are really on the element. */
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: var(--space-md) var(--space-xl);
+  border: none;
+  border-radius: var(--radius-lg);
+  font-family: var(--theme-font-family);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-smooth), border-color var(--transition-smooth), transform var(--transition-smooth);
+}
+
+.action-button--primary {
+  background: var(--theme-primary-solid);
+  color: var(--theme-on-primary);
+}
+
+.action-button--primary:hover {
+  background: var(--theme-primary-solid-hover);
+  transform: translateY(-2px);
+}
+
+.action-button--secondary {
+  background: var(--surface-light);
+  backdrop-filter: blur(10px);
+  color: var(--theme-text);
+}
+
+.action-button--secondary:hover {
+  background: var(--surface-medium);
+  transform: translateY(-1px);
+}
+
+.action-button--danger {
+  background: linear-gradient(135deg, var(--theme-danger) 0%, var(--theme-danger-dark) 100%);
+  color: var(--theme-on-primary);
+}
+
+.action-button--danger:hover {
+  transform: translateY(-2px);
+}
+
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Secondary Buttons (Prev/Next Navigation) */
+.prev-button,
+.next-button {
+  padding: var(--button-padding-y-sm) var(--button-padding-x-sm);
+  background: var(--surface-light);
+  border: var(--border-width-thin) solid var(--border-medium);
+  color: var(--theme-text);
+}
+
+.prev-button:hover,
+.next-button:hover {
+  background: var(--surface-medium);
+  border-color: var(--theme-primary);
+  transform: translateY(-1px);
+}
+
+/* Disabled button states */
+.prev-button:disabled,
+.next-button:disabled,
+.prev-button.disabled,
+.next-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.prev-button:disabled:hover,
+.next-button:disabled:hover,
+.prev-button.disabled:hover,
+.next-button.disabled:hover {
+  background: var(--surface-light);
+  border-color: var(--border-medium);
+  transform: none;
+}
+
+/* Loading States */
+.loading-slots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl);
+  color: var(--theme-text-secondary);
+}
+
+.no-slots {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl) var(--space-lg);
+  color: var(--theme-text-secondary);
+  text-align: center;
+  gap: var(--space-sm);
+}
+
+.no-slots p {
+  margin: 0;
+}
+
+/* Error States - Unified Pattern */
+.theme-error,
+.calendar-error {
+  padding: var(--space-lg);
+  background: var(--theme-error-bg);
+  border: var(--border-width-thin) solid var(--theme-error-border);
+  border-radius: var(--radius-md);
+  color: var(--theme-error-light);
+  text-align: center;
+}
+
+/* Mobile-specific component optimizations */
+@container scheduling (max-width: 479px) {
+  /* Duration grid - single column on mobile */
+  .duration-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
+  }
+
+  .duration-card {
+    min-height: var(--min-touch-target);
+  }
+
+  .duration-button {
+    padding: var(--space-sm);
+    min-height: var(--min-touch-target);
+  }
+
+  /* Ensure buttons are large enough for touch */
+  .submit-button,
+  .action-button-primary {
+    padding: var(--space-md) var(--space-xl);
+    min-height: var(--min-touch-target);
+    width: 100%;
+  }
+
+  .prev-button,
+  .next-button {
+    padding: var(--space-sm) var(--space-md);
+    min-height: var(--min-touch-target);
+    flex: 1;
+  }
+
+  /* Loading and error states */
+  .loading-slots {
+    padding: var(--space-2xl) var(--space-lg);
+  }
+
+  .calendar-error,
+  .theme-error {
+    padding: var(--space-md);
+  }
+}
+
+/* Tablet-specific component optimizations */
+@container scheduling (min-width: 480px) and (max-width: 767px) {
+  .submit-button,
+  .action-button-primary,
+  .prev-button,
+  .next-button {
+    min-height: var(--min-touch-target);
+  }
+}
+
+/* Short screens — compact duration grid */
+@media (max-height: 600px) {
+  .duration-grid {
+    grid-template-columns: 1fr;
+    margin-top: var(--space-sm);
+  }
+
+  .duration-button {
+    padding: var(--space-sm);
+  }
+
+  .duration-description {
+    display: none;
+  }
+}
+
+/* Very short screens — aggressive compaction */
+@media (max-height: 500px) {
+  .duration-button {
+    padding: var(--space-xs);
+  }
+
+  .duration-card {
+    border-radius: var(--radius-md);
+  }
+
+  .action-button-primary,
+  .submit-button,
+  .next-button,
+  .prev-button {
+    padding: var(--space-xs) var(--space-md);
+    font-size: var(--theme-font-size-sm);
+  }
+}
+
+/* Extremely short screens */
+@media (max-height: 400px) {
+  .duration-grid {
+    gap: var(--space-3xs);
+  }
+}
+
+/* Performance Optimizations */
+@media (prefers-reduced-motion: reduce) {
+  .duration-card,
+  .calendar-day,
+  .time-slot,
+  .prev-button,
+  .next-button,
+  .submit-button,
+  .action-button-primary {
+    transition: none;
+  }
+
+  .success-badge {
+    animation: none;
+  }
+}

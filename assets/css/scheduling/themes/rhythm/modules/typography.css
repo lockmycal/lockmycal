@@ -1,0 +1,277 @@
+/* Typography module for Rhythm theme */
+/* Single source of truth for all font sizing */
+
+/* ============================================
+   HEADINGS & TITLES
+   ============================================ */
+
+.slide-title {
+  font-size: var(--theme-font-size-2xl);
+  line-height: var(--theme-line-height-snug);
+  font-weight: var(--font-weight-semibold);
+}
+
+.confirmation-headline {
+  font-size: var(--theme-font-size-2xl);
+  line-height: var(--theme-line-height-tight);
+  font-weight: var(--font-weight-bold);
+}
+
+/* ============================================
+   BODY TEXT
+   ============================================ */
+
+.organizer-greeting {
+  font-size: var(--theme-font-size-lg);
+  line-height: var(--theme-line-height-normal);
+  font-weight: var(--font-weight-semibold);
+}
+
+.organizer-instruction,
+.booking-detail-value,
+.confirmation-message {
+  font-size: var(--theme-font-size-base);
+  line-height: var(--theme-line-height-relaxed);
+}
+
+.booking-detail-value,
+.booking-detail-value a {
+  font-weight: var(--font-weight-semibold);
+}
+
+.duration-icon {
+  font-size: var(--theme-font-size-xl);
+}
+
+.duration-time {
+  font-size: var(--theme-font-size-md);
+}
+
+/* ============================================
+   LABELS & SECONDARY TEXT
+   ============================================ */
+
+.timezone-label,
+.duration-description,
+.summary-label,
+.ticket-sublabel,
+.day-name {
+  font-size: var(--theme-font-size-xs);
+  line-height: var(--theme-line-height-normal);
+}
+
+.day-name {
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.booking-detail-label {
+  font-size: var(--theme-font-size-xs);
+  line-height: var(--theme-line-height-normal);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.organizer-name,
+.meeting-duration,
+.timezone-option-offset,
+.timezone-arrow,
+.help-text,
+.email-confirmation {
+  font-size: var(--theme-font-size-sm);
+}
+
+.avatar-checkmark {
+  font-size: var(--theme-font-size-sm);
+}
+
+/* ============================================
+   SCHEDULE COMPONENTS
+   ============================================ */
+
+.organizer-name-full {
+  font-size: var(--theme-font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--theme-line-height-snug);
+}
+
+.day-number {
+  font-size: var(--theme-font-size-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+.time-period-header {
+  font-size: var(--theme-font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.time-slot,
+.timezone-trigger,
+.timezone-search,
+.timezone-option {
+  font-size: var(--theme-font-size-sm);
+}
+
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
+
+/* Input and textarea font sizes for better mobile usability */
+.rhythm-theme-wrapper .booking-form .input,
+.rhythm-theme-wrapper .booking-form input.input,
+.rhythm-theme-wrapper .booking-form textarea.input {
+  font-size: max(16px, var(--theme-font-size-base)) !important; /* Prevents zoom on iOS */
+}
+
+.rhythm-theme-wrapper .booking-form .label {
+  font-size: var(--theme-font-size-md);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Error messages */
+.rhythm-theme-wrapper .booking-form .form-field-wrapper > div.mt-2.flex.items-center {
+  font-size: var(--theme-font-size-sm);
+}
+
+/* ============================================
+   MEETING SUMMARY
+   ============================================ */
+
+.summary-item {
+  font-size: var(--theme-font-size-sm);
+}
+
+.summary-icon {
+  font-size: var(--theme-font-size-xl);
+}
+
+.summary-value {
+  font-size: var(--theme-font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--theme-line-height-snug);
+}
+
+/* ============================================
+   TICKET COMPONENTS
+   ============================================ */
+
+.ticket-label {
+  font-size: var(--theme-font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.ticket-badge {
+  font-size: var(--theme-font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.ticket-icon {
+  font-size: var(--theme-font-size-2xl);
+}
+
+.ticket-value {
+  font-size: var(--theme-font-size-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+.email-icon {
+  font-size: var(--theme-font-size-base);
+}
+
+/* ============================================
+   BUTTONS & ACTIONS
+   ============================================ */
+
+.action-button-primary {
+  font-size: var(--theme-font-size-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+.submit-button {
+  font-weight: var(--font-weight-semibold);
+}
+
+.prev-button,
+.next-button {
+  font-weight: var(--font-weight-medium);
+}
+
+.loading-slots,
+.calendar-error,
+.no-slots p {
+  font-size: var(--theme-font-size-md);
+}
+
+/* ============================================
+   SCHEDULE-SPECIFIC TYPOGRAPHY
+   ============================================ */
+
+.organizer-name {
+  line-height: 1;
+}
+
+.timezone-text,
+.timezone-option-label {
+  font-weight: var(--font-weight-medium);
+}
+
+.time-slot {
+  font-weight: var(--font-weight-medium);
+}
+
+.time-slot.selected {
+  font-weight: var(--font-weight-semibold);
+}
+
+.calendar-month-year {
+  font-size: var(--theme-font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ============================================
+   OVERVIEW-SPECIFIC TYPOGRAPHY
+   ============================================ */
+
+.duration-name {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ============================================
+   BOOKING FORM TYPOGRAPHY
+   ============================================ */
+
+.rhythm-theme-wrapper .booking-form .input,
+.rhythm-theme-wrapper .booking-form input.input,
+.rhythm-theme-wrapper .booking-form textarea.input {
+  font-weight: var(--font-weight-normal);
+}
+
+/* ============================================
+   RESPONSIVE TYPOGRAPHY ADJUSTMENTS
+   ============================================ */
+
+/* Slightly larger text on narrow cards for better readability.
+   Container-driven so calendar typography matches the card's own width
+   regardless of the surrounding viewport. */
+@container scheduling (max-width: 767px) {
+  .day-number {
+    font-size: var(--theme-font-size-md);
+  }
+
+  .calendar-month-year {
+    font-size: var(--theme-font-size-sm);
+  }
+}
+
+/* Compact mode for short viewports */
+@media (max-height: 600px) {
+  .slide-title {
+    font-size: var(--theme-font-size-xl);
+  }
+}

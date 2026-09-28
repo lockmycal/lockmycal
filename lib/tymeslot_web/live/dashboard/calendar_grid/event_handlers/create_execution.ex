@@ -1,0 +1,328 @@
+defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.CreateExecution do
+  @moduledoc "Event creation save/result handlers for the calendar grid (presentation layer)."
+
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [put_flash: 3, send_update: 2]
+
+  alias Tymeslot.CalendarGrid
+  alias Tymeslot.CalendarGrid.EventCreation
+  alias Tymeslot.Integrations.Calendar.Recurrence.RRule
+  alias Tymeslot.Utils.ReminderUtils
+  alias TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared
+  alias TymeslotWeb.Dashboard.CalendarGridComponent
+
+  @spec handle_save_event(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_save_event(_params, socket) do
+    creating = socket.assigns.creating_event
+
+    if is_nil(creating) do
+      {:noreply, socket}
+    else
+      handle_save_event_with(creating, socket)
+    end
+  end
+
+  # Meeting mode books an ad-hoc Tymeslot meeting instead of writing a bare
+  # provider event. A calendar integration is optional here: the booking is
+  # native, and the provider copy is written back only when one is connected.
+  defp handle_save_event_with(%{mode: :meeting} = creating, socket) do
+    with :ok <- Shared.authorize_optional_integration(socket, creating[:integration_id]),
+         {:ok, start_at, end_at} <- resolve_timed_range(creating, socket),
+         :ok <- Shared.validate_meeting_fields(creating, socket.assigns.current_user.email) do
+      send(
+        self(),
+        {:execute_create_ad_hoc_meeting, ad_hoc_params(creating, socket, start_at, end_at)}
+      )
+
+      {:noreply, assign(socket, :saving_event, true)}
+    else
+      {:error, message} when is_binary(message) ->
+        send(self(), {:flash, {:error, message}})
+        {:noreply, socket}
+
+      {:error, :unauthorized} ->
+        send(
+          self(),
+          {:flash, {:error, dgettext("dashboard_calendar_events", "Invalid calendar selected")}}
+        )
+
+        {:noreply, socket}
+    end
+  end
+
+  # Authorize the create against the user's own integrations before doing any
+  # work. `owned_integration_ids` is the same MapSet that gates move/resize/
+  # delete via `EditWorkflow.assert_owns_event/2`; routing creation through it
+  # keeps authorization defensive at the handler level rather than relying on
+  # the form only ever offering owned calendars.
+  defp handle_save_event_with(creating, socket) do
+    case EditWorkflow.assert_owns_integration(socket, creating.integration_id) do
+      {:error, :unauthorized} ->
+        send(
+          self(),
+          {:flash, {:error, dgettext("dashboard_calendar_events", "Invalid calendar selected")}}
+        )
+
+        {:noreply, socket}
+
+      :ok ->
+        with {:ok, start_date} <- Date.from_iso8601(creating.date),
+             {:ok, end_date} <- Date.from_iso8601(creating.end_date) do
+          save_with_fitted_recurrence(creating, start_date, end_date, socket)
+        else
+          {:error, _reason} ->
+            send(
+              self(),
+              {:flash, {:error, dgettext("dashboard_calendar_events", "Invalid date")}}
+            )
+
+            {:noreply, socket}
+        end
+    end
+  end
+
+  # The recurrence editor composes the rule as the form changes, so it can
+  # predate the final all-day flag and start date. Fit it to the event being
+  # saved: a date-only UNTIL for an all-day event, and no series that ends
+  # before it starts. A timed event's UNTIL is an instant, so it ends its day
+  # in the organiser's timezone rather than in UTC.
+  defp save_with_fitted_recurrence(creating, start_date, end_date, socket) do
+    case RRule.retarget(Map.get(creating, :recurrence_rule),
+           all_day: Map.get(creating, :all_day, false),
+           start_date: start_date,
+           timezone: socket.assigns.user_timezone
+         ) do
+      {:ok, rule} ->
+        creating
+        |> Map.put(:recurrence_rule, rule)
+        |> save_resolved(start_date, end_date, socket)
+
+      {:error, :until_before_start} = error ->
+        Shared.flash_guard_error(socket, error)
+    end
+  end
+
+  # Builds the payload the async ad-hoc booking path consumes. An untitled
+  # meeting falls back to naming the guest, which is what the organiser will
+  # recognise it by on the grid.
+  defp ad_hoc_params(creating, socket, start_at, end_at) do
+    guest_name = String.trim(creating.guest_name)
+
+    title =
+      case String.trim(creating.title || "") do
+        "" -> dgettext("dashboard_calendar_events", "Meeting with %{name}", name: guest_name)
+        custom -> custom
+      end
+
+    %{
+      title: title,
+      start_time: start_at,
+      end_time: end_at,
+      attendee_name: guest_name,
+      attendee_email: String.trim(creating.guest_email),
+      attendee_timezone: socket.assigns.user_timezone,
+      organizer_user_id: socket.assigns.current_user.id,
+      calendar_integration_id: creating[:integration_id],
+      calendar_id: creating[:calendar_id],
+      video_integration_id: creating[:video_integration_id],
+      reminders: ReminderUtils.from_calendar_reminders(creating[:reminders] || [])
+    }
+  end
+
+  # All-day events round-trip start/end as Dates (and `all_day: true`) so the
+  # provider mappers emit date-only values. Timed events resolve to UTC
+  # datetimes in the user's timezone.
+  #
+  # The form's end date is the inclusive last day the user picked; storage and
+  # the provider mappers expect an exclusive `end_date` (iCal `DTEND;VALUE=DATE`
+  # / Google `end.date` are both exclusive), so a single-day all-day event is
+  # written as `end_date = start_date + 1`.
+  defp save_resolved(%{all_day: true} = creating, start_date, end_date, socket) do
+    if Date.compare(end_date, start_date) == :lt do
+      send(
+        self(),
+        {:flash,
+         {:error, dgettext("dashboard_calendar_events", "End date must not be before start date")}}
+      )
+
+      {:noreply, socket}
+    else
+      send(
+        self(),
+        {:execute_create_event,
+         %{
+           creating: creating,
+           user_id: socket.assigns.current_user.id,
+           all_day: true,
+           start_at: start_date,
+           end_at: Date.add(end_date, 1)
+         }}
+      )
+
+      {:noreply, assign(socket, :saving_event, true)}
+    end
+  end
+
+  defp save_resolved(creating, start_date, end_date, socket) do
+    tz = socket.assigns.user_timezone
+
+    with {:ok, start_at} <-
+           Shared.to_utc(start_date, creating.start_hour, creating.start_minute, tz),
+         {:ok, end_at} <-
+           Shared.to_utc(end_date, creating.end_hour, creating.end_minute, tz) do
+      if DateTime.compare(end_at, start_at) != :gt do
+        send(
+          self(),
+          {:flash,
+           {:error, dgettext("dashboard_calendar_events", "End time must be after start time")}}
+        )
+
+        {:noreply, socket}
+      else
+        send(
+          self(),
+          {:execute_create_event,
+           %{
+             creating: creating,
+             user_id: socket.assigns.current_user.id,
+             all_day: false,
+             start_at: start_at,
+             end_at: end_at
+           }}
+        )
+
+        {:noreply, assign(socket, :saving_event, true)}
+      end
+    else
+      {:error, _reason} ->
+        send(self(), {:flash, {:error, dgettext("dashboard_calendar_events", "Invalid time")}})
+        {:noreply, socket}
+    end
+  end
+
+  @doc false
+  @spec handle_create_result({:ok, map()} | {:error, term()}, Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_create_result({:ok, result}, socket) do
+    %{
+      uid: uid,
+      creating: creating,
+      start_at: start_at,
+      end_at: end_at,
+      provider: provider,
+      provider_event_id: provider_event_id,
+      written_calendar_id: written_calendar_id,
+      etag: etag,
+      default_booking_calendar_id: default_booking_calendar_id,
+      attendees: attendees,
+      meeting_url: meeting_url,
+      description: description
+    } = result
+
+    # What the provider actually wrote, before what was asked for. A CalDAV
+    # write falls back to the booking collection when the chosen calendar is
+    # not one the integration lists as writable, and filing the row under the
+    # request instead showed the event on a calendar it is not on until the
+    # next sync corrected it, with every edit addressed by that row aimed at
+    # the wrong collection in the meantime.
+    provider_calendar_id =
+      written_calendar_id || creating[:calendar_id] || default_booking_calendar_id || "primary"
+
+    all_day = Map.get(creating, :all_day, false)
+
+    timing = cache_timing(all_day, start_at, end_at)
+
+    CalendarGrid.cache_created_event(
+      Map.merge(timing, %{
+        uid: uid,
+        calendar_integration_id: creating.integration_id,
+        provider: provider,
+        provider_calendar_id: provider_calendar_id,
+        # What the provider said about the event it just wrote. Without these
+        # the row carried no identity until a full sync repaired it: every
+        # conditional update spent a HEAD probe first and then fell back to the
+        # weaker `If-Match: *`, and a write could only be addressed by
+        # rebuilding the URL from whichever calendar the client is scoped to.
+        # Either may be nil (a CalDAV server is not obliged to answer a PUT
+        # with an ETag), and a nil leaves the column as it was.
+        provider_event_id: provider_event_id,
+        etag: etag,
+        summary: creating.title,
+        description: description,
+        all_day: all_day,
+        reminders: Map.get(creating, :reminders, []),
+        recurrence_rule: Map.get(creating, :recurrence_rule),
+        video_link: meeting_url,
+        video_integration_id: creating[:video_integration_id]
+      })
+    )
+
+    send_update(CalendarGridComponent,
+      id: "calendar",
+      action: :event_created
+    )
+
+    socket
+    |> put_flash(:info, Shared.flash_for_create(attendees))
+    |> maybe_flash_warning(result[:warning])
+    |> maybe_flash_reauth(result[:reauth_required])
+    |> then(&{:noreply, &1})
+  end
+
+  def handle_create_result({:error, failure}, socket) do
+    send_update(CalendarGridComponent,
+      id: "calendar",
+      action: :event_create_failed
+    )
+
+    {:noreply, put_flash(socket, :error, create_failed_message(failure))}
+  end
+
+  # A queued create will be replayed on the next sync; anything else is final.
+  defp create_failed_message(%{retry: :queued}),
+    do: dgettext("dashboard_calendar_events", "Create failed - queued to retry on next sync")
+
+  defp create_failed_message(_failure),
+    do: dgettext("dashboard_calendar_events", "Failed to create event")
+
+  defp resolve_timed_range(creating, socket) do
+    tz = socket.assigns.user_timezone
+
+    with {:ok, start_date} <- Shared.parse_date(creating.date),
+         {:ok, end_date} <- Shared.parse_date(creating.end_date),
+         {:ok, start_at} <-
+           Shared.to_utc_or_error(start_date, creating.start_hour, creating.start_minute, tz),
+         {:ok, end_at} <-
+           Shared.to_utc_or_error(end_date, creating.end_hour, creating.end_minute, tz) do
+      if DateTime.compare(end_at, start_at) == :gt do
+        {:ok, start_at, end_at}
+      else
+        {:error, dgettext("dashboard_calendar_events", "End time must be after start time")}
+      end
+    end
+  end
+
+  # All-day events store `start_date`/`end_date` (the cache row leaves
+  # `start_at`/`end_at` null); timed events store `start_at`/`end_at`.
+  defp cache_timing(true, %Date{} = start_date, %Date{} = end_date),
+    do: %{start_date: start_date, end_date: end_date}
+
+  defp cache_timing(_all_day, start_at, end_at),
+    do: %{start_at: start_at, end_at: end_at}
+
+  defp maybe_flash_warning(socket, nil), do: socket
+  defp maybe_flash_warning(socket, msg), do: put_flash(socket, :warning, msg)
+
+  # The domain layer signals — via data, since it runs in a Task — that the
+  # integration's credentials need re-encrypting. Surface the reconnect flash
+  # here, in the LiveView process, where it actually reaches the user.
+  defp maybe_flash_reauth(socket, true) do
+    put_flash(socket, :error, EventCreation.reauth_flash_message())
+  end
+
+  defp maybe_flash_reauth(socket, _other), do: socket
+end

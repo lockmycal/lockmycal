@@ -1,0 +1,416 @@
+defmodule TymeslotWeb.Dashboard.MeetingSettings.Components.BookingComponents do
+  @moduledoc "Booking destination and mode components for meeting type forms."
+  use Phoenix.Component
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  use Phoenix.VerifiedRoutes,
+    endpoint: TymeslotWeb.Endpoint,
+    router: TymeslotWeb.Router,
+    statics: TymeslotWeb.static_paths()
+
+  alias Phoenix.LiveView.JS
+  alias Tymeslot.Integrations.Calendar.DisplayHelpers
+  alias Tymeslot.MeetingTypes.MeetingTypeSchema
+  alias TymeslotWeb.Components.CoreComponents.Icons
+  alias TymeslotWeb.Dashboard.MeetingSettings.Helpers
+  alias TymeslotWeb.Live.Shared.FormValidationHelpers
+  import TymeslotWeb.Components.CoreComponents, only: [spinner: 1]
+  import TymeslotWeb.Components.Icons.ProviderIcon
+
+  @doc """
+  Picker for choosing a meeting type icon.
+  """
+  attr :selected_icon, :string, required: true
+  attr :form_errors, :map, required: true
+  attr :myself, :any, required: true
+
+  @spec icon_picker(map()) :: Phoenix.LiveView.Rendered.t()
+  def icon_picker(assigns) do
+    ~H"""
+    <section class="space-y-2">
+      <div class="flex items-center gap-2">
+        <Icons.icon name="hero-face-smile" class="w-5 h-5 text-primary-500" />
+        <h3 class="text-token-base font-semibold text-neutral-800 dark:text-neutral-100">
+          {dgettext("dashboard_meeting_form", "Icon")}
+        </h3>
+      </div>
+      <div class="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-14 lg:grid-cols-16 gap-1">
+        <%= for {icon_value, icon_name} <- MeetingTypeSchema.valid_icons_with_names() do %>
+          <button
+            type="button"
+            phx-click={JS.push("select_icon", value: %{icon: icon_value}, target: @myself)}
+            class={[
+              "relative rounded-token-md border-2 transition-colors duration-200 group",
+              "w-10 h-10 flex items-center justify-center overflow-hidden",
+              if(@selected_icon == icon_value,
+                do: "bg-linear-to-br from-primary-50 to-primary-100 border-primary-500",
+                else:
+                  "bg-white/50 dark:bg-twilight-indigo-900/50 border-neutral-300/50 dark:border-twilight-indigo-700/50 hover:border-primary-400/50 hover:bg-white/70 dark:hover:bg-twilight-indigo-800/70"
+              )
+            ]}
+            style="width: 40px; height: 40px; min-width: 40px; min-height: 40px; max-width: 40px; max-height: 40px;"
+            title={icon_name}
+          >
+            <%= if icon_value == "none" do %>
+              <svg
+                class="w-6 h-6 text-neutral-400 dark:text-twilight-indigo-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            <% else %>
+              <Icons.icon
+                name={icon_value}
+                class={
+                  "w-8 h-8 block " <>
+                    if(@selected_icon == icon_value,
+                      do: "text-primary-600",
+                      else: "text-neutral-500 dark:text-twilight-indigo-300 group-hover:text-primary-500"
+                    )
+                }
+              />
+            <% end %>
+          </button>
+        <% end %>
+      </div>
+      <p class="mt-2 text-token-sm text-neutral-600 dark:text-neutral-400">
+        {dgettext(
+          "dashboard_meeting_form",
+          "Choose an icon to represent this meeting type, or select \"No Icon\" for no visual indicator."
+        )}
+      </p>
+      <%= for error <- FormValidationHelpers.field_errors(@form_errors, :icon) do %>
+        <p class="form-error">{Helpers.format_errors(error)}</p>
+      <% end %>
+    </section>
+    """
+  end
+
+  @doc """
+  Section for selecting meeting mode (Personal vs Video).
+  """
+  attr :meeting_mode, :string, required: true
+  attr :video_integrations, :list, required: true
+  attr :selected_video_integration_id, :any, required: true
+  attr :form_errors, :map, required: true
+  attr :myself, :any, required: true
+  attr :icon_size, :string, default: "compact", values: ["compact", "medium", "large", "mini"]
+
+  @spec meeting_mode_section(map()) :: Phoenix.LiveView.Rendered.t()
+  def meeting_mode_section(assigns) do
+    ~H"""
+    <section class="space-y-3">
+      <div class="flex items-center gap-2">
+        <Icons.icon name="hero-map-pin" class="w-5 h-5 text-primary-500" />
+        <h3 class="text-token-base font-semibold text-neutral-800 dark:text-neutral-100">
+          {dgettext("dashboard_meeting_form", "Location")}
+        </h3>
+      </div>
+      <div class="flex bg-white dark:bg-twilight-indigo-950 border-2 border-neutral-300 dark:border-twilight-indigo-800 rounded-token-xl p-1 shadow-sm max-w-fit">
+        <button
+          type="button"
+          phx-click={JS.push("toggle_meeting_mode", value: %{mode: "personal"}, target: @myself)}
+          class={[
+            "flex items-center gap-1.5 px-4 py-2 rounded-token-lg text-token-sm font-black transition-all duration-300 cursor-pointer",
+            if(@meeting_mode == "personal",
+              do: "bg-linear-to-br from-primary-600 to-secondary-600 text-white",
+              else:
+                "text-neutral-500 dark:text-neutral-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-twilight-indigo-900"
+            )
+          ]}
+        >
+          <Icons.icon
+            name="hero-user"
+            class={if @meeting_mode == "personal", do: "w-4 h-4 text-white/90", else: "w-4 h-4"}
+          />
+          <span>{dgettext("dashboard_meeting_form", "In-Person")}</span>
+        </button>
+
+        <button
+          type="button"
+          phx-click={JS.push("toggle_meeting_mode", value: %{mode: "video"}, target: @myself)}
+          class={[
+            "flex items-center gap-1.5 px-4 py-2 rounded-token-lg text-token-sm font-black transition-all duration-300 cursor-pointer",
+            if(@meeting_mode == "video",
+              do: "bg-linear-to-br from-primary-600 to-secondary-600 text-white",
+              else:
+                "text-neutral-500 dark:text-neutral-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-twilight-indigo-900"
+            )
+          ]}
+        >
+          <Icons.icon
+            name="hero-video-camera"
+            class={if @meeting_mode == "video", do: "w-4 h-4 text-white/90", else: "w-4 h-4"}
+          />
+          <span>{dgettext("dashboard_meeting_form", "Video Meeting")}</span>
+        </button>
+      </div>
+
+      <%= if @meeting_mode == "video" do %>
+        <div class="mt-4">
+          <label class="label text-token-sm">
+            {dgettext("dashboard_meeting_form", "Select Video Provider")}
+          </label>
+          <%= if @video_integrations == [] do %>
+            <div class="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-token-lg">
+              <p class="text-token-sm text-yellow-700 dark:text-yellow-300">
+                {dgettext("dashboard_meeting_form", "No video integrations configured.")}
+                <a
+                  href={~p"/dashboard/video-integration"}
+                  class="underline hover:text-yellow-800 dark:hover:text-yellow-200"
+                >
+                  {dgettext("dashboard_meeting_form", "Set up video integration")}
+                </a>
+              </p>
+            </div>
+          <% else %>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              <%= for integration <- @video_integrations do %>
+                <button
+                  type="button"
+                  phx-click={
+                    JS.push("select_video_integration",
+                      value: %{id: integration.id},
+                      target: @myself
+                    )
+                  }
+                  class={[
+                    "glass-selector h-20!",
+                    if(@selected_video_integration_id == integration.id, do: "glass-selector--active")
+                  ]}
+                  title={integration.name}
+                >
+                  <div class="flex flex-col items-center justify-center space-y-1">
+                    <.provider_icon provider={integration.provider} size={@icon_size} />
+                    <span class="text-token-sm font-medium truncate max-w-full">{integration.name}</span>
+                    <span
+                      :if={integration.provider_account_email}
+                      class="text-token-xs text-muted truncate max-w-full"
+                    >
+                      {integration.provider_account_email}
+                    </span>
+                  </div>
+                </button>
+              <% end %>
+            </div>
+            <%= for error <- FormValidationHelpers.field_errors(@form_errors, :video_integration) do %>
+              <p class="form-error mt-2">{Helpers.format_errors(error)}</p>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </section>
+    """
+  end
+
+  @doc """
+  Section for selecting the booking destination calendar.
+  """
+  attr :calendar_integrations, :list, required: true
+  attr :selected_calendar_integration_id, :any, required: true
+  attr :refreshing_calendars, :boolean, required: true
+  attr :available_calendars, :list, required: true
+  attr :no_writable_calendars, :boolean, required: true
+  attr :target_calendar_status, :atom, default: :ok, values: [:ok, :read_only, :missing]
+  attr :selected_target_calendar_id, :any, required: true
+  attr :form_errors, :map, required: true
+  attr :myself, :any, required: true
+  attr :icon_size, :string, default: "compact", values: ["compact", "medium", "large", "mini"]
+
+  @spec booking_destination_section(map()) :: Phoenix.LiveView.Rendered.t()
+  def booking_destination_section(assigns) do
+    ~H"""
+    <section class="pt-4 border-t border-neutral-300 dark:border-twilight-indigo-800">
+      <div class="flex items-center gap-2">
+        <Icons.icon name="hero-calendar-days" class="w-5 h-5 text-primary-500" />
+        <h3 class="text-token-base font-semibold text-neutral-800 dark:text-neutral-100">
+          {dgettext("dashboard_meeting_form", "Booking Destination")}
+        </h3>
+      </div>
+      <p class="mt-2 text-token-sm text-neutral-600 dark:text-neutral-400 mb-4">
+        {dgettext(
+          "dashboard_meeting_form",
+          "Choose where new bookings for this meeting type should be created."
+        )}
+      </p>
+
+      <div class="space-y-4">
+        <div>
+          <label class="label text-token-sm">
+            {dgettext("dashboard_meeting_form", "1. Select Calendar Account")}
+          </label>
+          <%= if @calendar_integrations == [] do %>
+            <div class="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-token-lg">
+              <p class="text-token-sm text-yellow-700 dark:text-yellow-300">
+                {dgettext("dashboard_meeting_form", "No calendar integrations configured.")}
+                <a
+                  href={~p"/dashboard/calendar-integration"}
+                  class="underline hover:text-yellow-800 dark:hover:text-yellow-200"
+                >
+                  {dgettext("dashboard_meeting_form", "Connect a calendar")}
+                </a>
+              </p>
+            </div>
+          <% else %>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              <%= for integration <- @calendar_integrations do %>
+                <button
+                  type="button"
+                  disabled={@refreshing_calendars}
+                  phx-click={
+                    JS.push("select_calendar_integration",
+                      value: %{id: integration.id},
+                      target: @myself
+                    )
+                  }
+                  class={[
+                    "glass-selector h-20!",
+                    if(@selected_calendar_integration_id == integration.id,
+                      do: "glass-selector--active"
+                    ),
+                    if(not integration.is_active, do: "opacity-60"),
+                    if(@refreshing_calendars, do: "opacity-50 cursor-not-allowed")
+                  ]}
+                  title={integration.name}
+                >
+                  <div class="flex flex-col items-center justify-center space-y-1">
+                    <.provider_icon provider={integration.provider} size={@icon_size} />
+                    <span class="text-token-sm font-medium truncate max-w-full">
+                      {integration.name}
+                    </span>
+                    <%= if not integration.is_active do %>
+                      <span class="text-token-2xs font-semibold text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full leading-tight">
+                        {dgettext("dashboard_meeting_form", "Reconnect")}
+                      </span>
+                    <% end %>
+                  </div>
+                </button>
+              <% end %>
+            </div>
+            <%= for error <- FormValidationHelpers.field_errors(@form_errors, :calendar_integration) do %>
+              <p class="form-error mt-2">{Helpers.format_errors(error)}</p>
+            <% end %>
+          <% end %>
+        </div>
+
+        <%= if @selected_calendar_integration_id do %>
+          <div class="animate-in fade-in slide-in-from-top-2 duration-300">
+            <label class="label text-token-sm">
+              {dgettext("dashboard_meeting_form", "2. Select Specific Calendar")}
+            </label>
+            <%!-- Suppressed when the account has no writable calendar at all:
+                  the notice below already says so, and says what to do about
+                  it, whereas "choose another calendar" would be impossible
+                  advice. --%>
+            <div
+              :if={@target_calendar_status != :ok and not @no_writable_calendars}
+              class="mb-2 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-token-lg"
+            >
+              <p class="text-token-sm text-yellow-700">
+                <%= if @target_calendar_status == :read_only do %>
+                  {dgettext(
+                    "dashboard_meeting_form",
+                    "The calendar this meeting type books into is now read-only. Choose another calendar."
+                  )}
+                <% else %>
+                  {dgettext(
+                    "dashboard_meeting_form",
+                    "The calendar this meeting type books into is no longer on this account. Choose another calendar."
+                  )}
+                <% end %>
+              </p>
+            </div>
+            <%= if @refreshing_calendars do %>
+              <div class="flex items-center space-x-2 p-4 bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-lg">
+                <.spinner class="h-4 w-4 text-primary-600" />
+                <span class="text-token-sm text-neutral-600 dark:text-neutral-300 font-medium italic">
+                  {dgettext("dashboard_meeting_form", "Refreshing calendars...")}
+                </span>
+              </div>
+            <% else %>
+              <%= if @available_calendars == [] do %>
+                <%= if @no_writable_calendars do %>
+                  <div class="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-token-lg">
+                    <p class="text-token-sm text-yellow-700 dark:text-yellow-300">
+                      {dgettext(
+                        "dashboard_meeting_form",
+                        "None of the calendars you selected for this account can accept bookings."
+                      )}
+                      <a
+                        href={~p"/dashboard/calendar-integration"}
+                        class="underline hover:text-yellow-800 dark:hover:text-yellow-200"
+                      >
+                        {dgettext("dashboard_meeting_form", "Update your calendar selection")}
+                      </a>
+                      {dgettext("dashboard_meeting_form", "or choose a different account.")}
+                    </p>
+                  </div>
+                <% else %>
+                  <p class="text-token-sm text-neutral-500 dark:text-twilight-indigo-200 italic">
+                    {dgettext("dashboard_meeting_form", "No calendars found for this account.")}
+                  </p>
+                <% end %>
+              <% else %>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <%= for cal <- @available_calendars do %>
+                    <button
+                      type="button"
+                      phx-click={
+                        JS.push("select_target_calendar",
+                          value: %{id: cal.id},
+                          target: @myself
+                        )
+                      }
+                      class={[
+                        "flex items-center p-3 rounded-token-lg border-2 transition-all text-left",
+                        if(@selected_target_calendar_id == cal.id,
+                          do: "bg-primary-50 dark:bg-primary-950/40 border-primary-500",
+                          else:
+                            "bg-white dark:bg-twilight-indigo-950 border-neutral-300 dark:border-twilight-indigo-700 hover:border-primary-200 dark:hover:border-primary-700"
+                        )
+                      ]}
+                    >
+                      <div class={[
+                        "w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center",
+                        if(@selected_target_calendar_id == cal.id,
+                          do: "border-primary-50 bg-primary-500",
+                          else: "border-neutral-300 dark:border-twilight-indigo-600"
+                        )
+                      ]}>
+                        <%= if @selected_target_calendar_id == (cal.id) do %>
+                          <svg class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
+                          </svg>
+                        <% end %>
+                      </div>
+                      <span class={[
+                        "text-token-sm font-medium truncate",
+                        if(@selected_target_calendar_id == cal.id,
+                          do: "text-primary-900 dark:text-primary-200",
+                          else: "text-neutral-700 dark:text-neutral-300"
+                        )
+                      ]}>
+                        {DisplayHelpers.extract_calendar_display_name(cal)}
+                      </span>
+                    </button>
+                  <% end %>
+                </div>
+                <%= for error <- FormValidationHelpers.field_errors(@form_errors, :target_calendar) do %>
+                  <p class="form-error mt-2">{Helpers.format_errors(error)}</p>
+                <% end %>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </section>
+    """
+  end
+end

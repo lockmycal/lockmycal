@@ -1,0 +1,59 @@
+[changelog]
+header = "# Changelog\n\nAll notable changes to Tymeslot are documented here. Versions follow [semantic versioning](https://semver.org).\n"
+# `core` and `saas` are retired scopes: they named the repository a commit was
+# made in rather than anything about the change, so printing them repeated one
+# prefix down the whole list. They survive throughout the history before the
+# change, so they are suppressed rather than rewritten. A narrower scope names
+# a domain and still says something, so it is kept.
+#
+# A breaking change carries its `BREAKING CHANGE:` footer after the subject, as
+# the Cloudron config does: the subject says what changed, the footer what to do
+# about it. The bare `type!:` form sets the description to the subject itself,
+# which is not repeated.
+body = """
+{% if version %}\
+## [{{ version | trim_start_matches(pat="v") }}] — {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## [Unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group }}
+{% for commit in commits %}\
+- {% if commit.scope and commit.scope != "core" and commit.scope != "saas" %}**{{ commit.scope }}:** {% endif %}{{ commit.message | upper_first }}{% if commit.breaking and commit.breaking_description and commit.breaking_description != commit.message %}: {{ commit.breaking_description | replace(from="\n", to=" ") }}{% endif %}
+{% endfor %}\
+{% endfor %}
+"""
+footer = ""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+tag_pattern = "v[0-9].*"
+filter_commits = true
+topo_order = false
+sort_commits = "newest"
+
+commit_parsers = [
+  # Skip commits explicitly marked as changelog-internal.
+  # git-cliff reconstructs a footer as "token:value" with no space after the
+  # separator, so a "^Changelog: skip" pattern (with a space) never matches and
+  # the skip silently does nothing. Match the spaceless form.
+  { footer = "^Changelog:\\s*skip", skip = true },
+  # Breaking changes — must come before feat/fix to avoid duplication.
+  # Match on the resolved `breaking` field, not the `breaking = true` parser key:
+  # git-cliff finalises the breaking flag after parser-key matching, so the key
+  # form never fires and breaking commits silently fall through to Features/Fixes.
+  { field = "breaking", pattern = "true", group = "Breaking Changes" },
+  # Skip test, refactor, style, chore, docs commits
+  { message = "^test", skip = true },
+  { message = "^refactor", skip = true },
+  { message = "^style", skip = true },
+  { message = "^chore", skip = true },
+  { message = "^docs", skip = true },
+  # Include features and bug fixes
+  { message = "^feat", group = "Features" },
+  { message = "^fix", group = "Bug Fixes" },
+  # Skip everything else
+  { message = ".*", skip = true },
+]

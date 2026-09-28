@@ -1,0 +1,103 @@
+defmodule Tymeslot.Integrations.Calendar.EventTimeFormatter do
+  @moduledoc """
+  Normalizes event date/time payloads for calendar providers.
+  """
+
+  @default_timezone "UTC"
+
+  @doc """
+  Formats a datetime or ISO8601 string into the provider payload structure.
+
+  ## Options
+    * `:include_when_missing?` - include a timeZone field even when none provided (default: false)
+    * `:include_timezone_on_error?` - include the timeZone key when parsing/conversion fails (default: false)
+    * `:default_timezone` - fallback timezone label (default: "UTC")
+  """
+  @spec format_with_timezone(
+          DateTime.t() | Date.t() | String.t() | nil,
+          String.t() | nil,
+          keyword()
+        ) ::
+          map() | nil
+  def format_with_timezone(value, timezone, opts \\ [])
+
+  def format_with_timezone(nil, _timezone, _opts), do: nil
+
+  def format_with_timezone(%Date{} = date, _timezone, _opts) do
+    %{"date" => Date.to_iso8601(date)}
+  end
+
+  def format_with_timezone(%DateTime{} = datetime, timezone, opts) do
+    if is_binary(timezone) do
+      case DateTime.shift_zone(datetime, timezone) do
+        {:ok, shifted} ->
+          %{
+            "dateTime" => wall_clock_iso(shifted),
+            "timeZone" => timezone
+          }
+
+        {:error, _reason} ->
+          fallback_map(DateTime.to_iso8601(datetime), timezone, opts, :error)
+      end
+    else
+      fallback_map(DateTime.to_iso8601(datetime), timezone, opts, :missing)
+    end
+  end
+
+  def format_with_timezone(datetime_string, timezone, opts) when is_binary(datetime_string) do
+    case DateTime.from_iso8601(datetime_string) do
+      {:ok, datetime, _offset} ->
+        format_with_timezone(datetime, timezone, opts)
+
+      {:error, _reason} ->
+        fallback_map(datetime_string, timezone, opts, :error)
+    end
+  end
+
+  def format_with_timezone(_invalid, _timezone, _opts), do: nil
+
+  # Outlook (and Google's per-event timeZone field) expect a wall-clock value
+  # without any UTC offset suffix when paired with an explicit timeZone — e.g.
+  # "2026-04-19T12:00:00", not "2026-04-19T12:00:00+02:00". The offset suffix
+  # confuses Outlook's parser into reinterpreting the value as UTC and storing
+  # the event with originalStartTimeZone="UTC", which loses the IANA label.
+  defp wall_clock_iso(%DateTime{} = dt) do
+    dt
+    |> DateTime.to_naive()
+    |> NaiveDateTime.to_iso8601()
+  end
+
+  defp fallback_map(iso_string, timezone, opts, context) do
+    include_when_missing? = Keyword.get(opts, :include_when_missing?, false)
+    include_on_error? = Keyword.get(opts, :include_timezone_on_error?, false)
+
+    cond do
+      context == :error and include_on_error? ->
+        %{
+          "dateTime" => remove_trailing_z(iso_string),
+          "timeZone" => timezone || default_timezone(opts)
+        }
+
+      context == :missing and include_when_missing? ->
+        %{
+          "dateTime" => remove_trailing_z(iso_string),
+          "timeZone" => timezone || default_timezone(opts)
+        }
+
+      true ->
+        # No timeZone field is emitted, so dateTime must retain its offset/Z
+        # marker to remain a valid RFC3339 value for the calendar API.
+        %{"dateTime" => iso_string}
+    end
+  end
+
+  defp remove_trailing_z(iso_string) do
+    if String.ends_with?(iso_string, "Z") do
+      String.slice(iso_string, 0, byte_size(iso_string) - 1)
+    else
+      iso_string
+    end
+  end
+
+  defp default_timezone(opts), do: Keyword.get(opts, :default_timezone, @default_timezone)
+end

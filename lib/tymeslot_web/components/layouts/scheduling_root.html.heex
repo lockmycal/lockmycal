@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html
+  lang={assigns[:locale] || "en"}
+  class={"scheduling-app theme-#{assigns[:theme_id] || "1"} #{theme_class(assigns[:theme_id] || "1")}"}
+  data-embed-layout={to_string(assigns[:embed_layout] || :default)}
+>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <meta name="csp-nonce" content={assigns[:csp_nonce]} />
+    <.live_title suffix={" · #{Config.app_name()}"}>
+      {assigns[:page_title] || dgettext("booking", "Schedule a meeting")}
+    </.live_title>
+
+    <%!-- Social share (Open Graph / Twitter) preview for booking links --%>
+    <meta property="og:type" content="profile" />
+    <meta property="og:site_name" content={Config.app_name()} />
+    <meta
+      property="og:title"
+      content={assigns[:page_title] || dgettext("booking", "Schedule a meeting")}
+    />
+    <meta property="og:description" content={booking_og_description(assigns)} />
+    <meta property="og:url" content={current_url(assigns)} />
+    <meta property="og:image" content={booking_og_image(assigns)} />
+    <meta name="twitter:card" content={booking_twitter_card(assigns)} />
+    <meta
+      name="twitter:title"
+      content={assigns[:page_title] || dgettext("booking", "Schedule a meeting")}
+    />
+    <meta name="twitter:description" content={booking_og_description(assigns)} />
+    <meta name="twitter:image" content={booking_og_image(assigns)} />
+
+    <link rel="icon" type="image/svg+xml" href={~p"/images/brand/favicon.svg"} />
+
+    <.site_banner_dismissal_script
+      banner={scheduling_site_banner(assigns)}
+      nonce={assigns[:csp_nonce]}
+    />
+
+    <%!-- Theme-specific CSS --%>
+    {render_theme_css(assigns[:theme_id] || "1")}
+
+    <%!-- Additional CSS from external layers (e.g., SaaS branding) --%>
+    <%= for css_path <- Application.get_env(:tymeslot, :scheduling_additional_css, []) do %>
+      <link phx-track-static rel="stylesheet" href={css_path} />
+    <% end %>
+
+    <%!-- Core bundle + Public booking bundle for scheduling pages --%>
+    <script phx-track-static type="module" src={~p"/assets/app.js"}>
+    </script>
+    <script phx-track-static type="module" src={~p"/assets/bundles/public.js"}>
+    </script>
+    <script phx-track-static type="module" src={~p"/assets/iframe_embed.js"}>
+    </script>
+    <.nomodule_fallback context={:scheduling_page} nonce={assigns[:csp_nonce]} />
+    <.analytics_scripts nonce={assigns[:csp_nonce]} live_module={assigns[:live_module]} />
+  </head>
+  <body class={"theme-#{assigns[:theme_id] || "1"} #{theme_class(assigns[:theme_id] || "1")}"}>
+    <.noscript_warning message={
+      dgettext(
+        "booking",
+        "This scheduling page requires JavaScript to book meetings. Please enable it to continue."
+      )
+    } />
+    <%!-- No flash group here: the `app` layout inside `@inner_content` owns the
+    only one. A root layout is never diffed after the initial response, so a
+    group at this level would render every flash a second time and still miss
+    every flash raised while the page is live. --%>
+    <.site_banner banner={scheduling_site_banner(assigns)} />
+    <main>
+      {@inner_content}
+    </main>
+  </body>
+</html>

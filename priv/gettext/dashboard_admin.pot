@@ -1,0 +1,1262 @@
+## This file is a PO Template file.
+##
+## "msgid"s here are often extracted from source code.
+## Add new messages manually only if they're dynamic
+## messages that can't be statically extracted.
+##
+## Run "mix gettext.extract" to bring this file up to
+## date. Leave "msgstr"s empty as changing them here has no
+## effect: edit them in PO (.po) files instead.
+#
+msgid ""
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} disabled."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} enabled."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} updated."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "(you)"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Actions"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/hub_component.ex
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Admin"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Admin UI is disabled."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Admin alert recipient"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Admin alerts"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Admins"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#: lib/tymeslot_web/live/dashboard/admin/tabs.ex
+#, elixir-autogen, elixir-format
+msgid "Authentication"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Booking min score"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Booking slug"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Cannot demote the last admin. Promote someone else first."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_view.ex
+#, elixir-autogen, elixir-format
+msgid "Changes here take effect immediately and override the matching environment variables and application configuration (e.g. REGISTRATION_ENABLED, PASSWORD_AUTH_ENABLED) for this install."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not demote user."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not promote user."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_actions.ex
+#: lib/tymeslot_web/live/dashboard/admin/hub_component.ex
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not update setting."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Demote"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Demote %{email} from admin"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Demote admin"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Demote me"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Demote yourself"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Demote yourself from admin?"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Demoting..."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#: lib/tymeslot_web/live/dashboard/admin/settings_view.ex
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Disabled"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Display name"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/tabs.ex
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Email"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#: lib/tymeslot_web/live/dashboard/admin/settings_view.ex
+#, elixir-autogen, elixir-format
+msgid "Enabled"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Enter a number between 0.0 and 1.0."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Enter a valid email address."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Generic OIDC login"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "GitHub login"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Google login"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Invalid request."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Invalid user id."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Manage this self-hosted %{app_name} install."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting payments"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Password authentication"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Payments"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Promote"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Promote %{email} to admin"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Promote user to admin"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Promoting..."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_view.ex
+#, elixir-autogen, elixir-format
+msgid "Recommended:"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Registration enabled"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Role"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#: lib/tymeslot_web/live/dashboard/admin/email_branding_rows.ex
+#: lib/tymeslot_web/live/dashboard/admin/locale_setting.ex
+#: lib/tymeslot_web/live/dashboard/admin/settings_view.ex
+#: lib/tymeslot_web/live/dashboard/admin/site_banner_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Set %{name}"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Signup min score"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "That change would lock everyone out and was not applied."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "They will gain access to admin settings and user management."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "They will lose access to admin settings and user management."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Total users"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "User"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "User demoted from admin."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "User not found."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "User promoted to admin."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/hub_component.ex
+#: lib/tymeslot_web/live/dashboard/admin/tabs.ex
+#, elixir-autogen, elixir-format
+msgid "Users"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "You will lose access to admin settings and user management, and be returned to your dashboard."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "You're the only admin. Promote someone else before demoting yourself."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_view.ex
+#, elixir-autogen, elixir-format
+msgid "admin@example.com"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Analytics"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Booking analytics"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Allow log-in with email and password. When disabled, users can only authenticate through configured OAuth providers."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Allow new users to sign up via the public registration page. Disable for a private install where admins create accounts manually."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Cannot disable this login provider while it is the only working sign-in path for admins. Enable password authentication or another credentialed SSO provider first."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Email address that receives admin alerts when the toggle above is enabled. Leave blank to fall back to the ADMIN_ALERT_EMAIL environment variable."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Email operational alerts (webhook failures, integration health issues, background job errors) to the admin alert recipient. Requires a recipient address to be set below."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Enable generic OAuth 2.0 / OIDC single sign-on (Keycloak, Authentik, Lemonldap, etc.). Requires the OAUTH_* environment variables to be set."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Minimum reCAPTCHA v3 score (0.0–1.0) required to accept a booking. Lower values are more permissive; 0.3 is the default and matches Google's recommendation for forms with low abuse risk."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Minimum reCAPTCHA v3 score (0.0–1.0) required to accept a signup. Lower values are more permissive; 0.3 is the default and matches Google's recommendation for forms with low abuse risk."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Set STRIPE_SECRET_KEY and STRIPE_CONNECT_WEBHOOK_SECRET in the environment to enable meeting payments. Without platform credentials the Stripe Connect onboarding flow cannot start."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Show the \"Continue with GitHub\" button on login and signup. Requires GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET to be set in the environment."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Show the \"Continue with Google\" button on login and signup. Requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to be set in the environment."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Demote %{email} from admin?"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_role_change_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Promote %{email} to admin?"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Cannot disable password authentication while at least one admin signs in with email and password - doing so would lock them out. Demote those admins or have them switch to an OAuth login first."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Collect privacy-friendly analytics for booking pages on this instance: page views, traffic source (UTM/referrer), and conversion. Counts unique visitors with a daily-rotating, cookieless fingerprint - no raw IP is stored. Off by default; review your privacy policy before enabling."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Let hosts on this instance take payment from bookers via Stripe Connect. Requires STRIPE_SECRET_KEY and STRIPE_CONNECT_WEBHOOK_SECRET to be set in the environment - without them the toggle stays locked."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Accent colour used across transactional emails: buttons, links, the confirmation banner, and badge backgrounds. The darker and lighter shades of the family are derived from it. Amber and red are not affected - they signal \"needs attention\" and \"cancelled\", and recolouring them would make a cancellation read as a confirmation. Leave blank for the stock turquoise."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Could not remove the logo."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not save the logo."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/email_branding_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Current email logo"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Email accent colour"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Email brand name"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Email branding"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Email logo"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Email logo removed."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Email logo updated."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Enter a hex colour such as #14b8a6."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Logo shown at the top of every transactional email. Converted to a PNG in your browser before upload and attached inline, so it renders even in clients that block remote images. SVG, PNG, JPEG, and WebP sources are all accepted."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/email_branding_rows.ex
+#: lib/tymeslot_web/live/dashboard/admin/site_banner_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Pick a colour"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/email_branding_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Remove"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/email_branding_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Replace"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "That file is not a valid image and was not saved."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "That file type is not supported."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "That image could not be read. Try a PNG or JPEG."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "That value is too long."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "The logo could not be uploaded."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/email_branding_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Upload"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Upload one logo at a time."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/email_branding_rows.ex
+#, elixir-autogen, elixir-format
+msgid "White button text on this colour has a contrast of only %{ratio}:1. Buttons may be hard to read."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "That image is too large. Pick one under %{limit}."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "List and manage registered users."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "All Users"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Overview"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Enter a whole number of megabytes (1-2000)."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_view.ex
+#, elixir-autogen, elixir-format
+msgid "MB"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Max background image size"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Max background video size"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Maximum file size, in megabytes, accepted when a host uploads a custom background image in theme customization."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Maximum file size, in megabytes, accepted when a host uploads a custom background video in theme customization."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Uploads"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "No users match your search."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Search users"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Cannot delete the last admin. Promote someone else first."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Cannot disable the last admin. Promote someone else first."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not delete user."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not disable user."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not enable user."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Country"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Delete"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Delete %{email}"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Delete user"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Deleting..."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Disable"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Disable %{email}"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Disable %{email}?"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Disable user"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Disabling..."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Enable"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Enable %{email}"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Enable %{email}?"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Enable user"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Enabling..."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Permanently delete %{email}?"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "They will be signed out and unable to log back in."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "User disabled."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "User enabled."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "You cannot delete your own account here."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "You cannot disable your own account here."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} set to %{value}."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Bot protection"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Bot protection on booking"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Bot protection on signup"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Bot-protection provider for the public booking form. Google requires RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY; Cloudflare requires TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY, set in the environment - when the selected provider's keys are missing, the choice is honoured but verification is silently skipped."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Bot-protection provider for the public signup form. Google requires RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY; Cloudflare requires TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY, set in the environment - when the selected provider's keys are missing, the choice is honoured but verification is silently skipped."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#: lib/tymeslot_web/live/dashboard/admin/settings_view.ex
+#, elixir-autogen, elixir-format
+msgid "Off"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Background colour of the banner. The text switches between white and near-black automatically, whichever reads better. Leave blank for the stock dark turquoise."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Banner colour"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Banner message"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Keep the message under 1000 characters."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "One short line shown at the very top of the page. Basic formatting is allowed: links, bold, italic, underline, line breaks, and a class attribute on each. Anything else, including scripts and inline styles, is removed. Classes only take effect if the page's stylesheet already contains them. Visitors can dismiss the banner; editing the message or colour shows it to everyone again. Leave blank to hide the banner everywhere."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/site_banner_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Preview"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/site_banner_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Set a banner message to see a preview."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Show in the app"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Show on public booking pages"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Show on sign-in pages"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Show the banner across the dashboard, the admin panel, and onboarding."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Show the banner on every host's public booking pages. It is never shown when a booking page is embedded on another site."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Show the banner on the sign-in, sign-up, and password-reset pages."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Site banner"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/site_banner_rows.ex
+#, elixir-autogen, elixir-format
+msgid "e.g. Scheduled maintenance on Saturday, 8:00-10:00 UTC."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Banner message translations"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/site_banner_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Leave blank to show the default-language message to visitors in this language."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Account deletion scheduled. The user's upcoming meetings are being cancelled and their data will be deleted shortly."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_view.ex
+#, elixir-autogen, elixir-format
+msgid "Deletion pending"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "They are signed out at once. Their upcoming meetings are cancelled, attendees are notified and paid bookings refunded, then the data is deleted in the background."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "This account is scheduled for deletion and cannot be enabled."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/confirm_user_action_modal.ex
+#, elixir-autogen, elixir-format
+msgid "This permanently deletes their account and all their data, including past meetings, and cannot be undone."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "#%{id} (deleted)%{email}"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "All event types"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/hub_component.ex
+#: lib/tymeslot_web/live/dashboard/admin/tabs.ex
+#, elixir-autogen, elixir-format
+msgid "Audit log"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "By"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "Command line"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "Details"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Enter a whole number of days (1-3650)."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "Event"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "Filter by user email"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "IP address"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Keep audit events for"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Sign-ins, account changes and admin actions, kept for a limited time."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "The user"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "Time"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_view.ex
+#, elixir-autogen, elixir-format
+msgid "days"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "Times are in UTC. Events are deleted after %{days} days (%{setting})."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "A bot filled in a hidden trap field on the signup, booking or poll form. High volume during spam waves."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "A form submitted with a missing or invalid security token."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "A session started (sign-in) or ended (sign-out)."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "A user changed their password."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "A video integration form named a provider that does not exist."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Account deletions"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Account disabled or enabled"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Account lockouts"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Admin role changes"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "An account deletion requested and completed."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "An account locked after too many failed sign-in attempts."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "An admin disabled or re-enabled an account."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "An admin promoted a user to admin or demoted one."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Any security event not covered by the categories above."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Audit log events updated."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Bot honeypot hits"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "CSRF failures"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Form validation"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Input longer than allowed was shortened."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Logged events"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Other security events"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Password changes"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Password sign-ins"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Rate limit hits"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Requests refused for exceeding a rate limit. At most one entry per minute per IP address and limit."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Results of validating dashboard forms (integrations, availability). Mostly noise."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Retention"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Sessions"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Social and SSO sign-ins"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Successful and failed sign-ins with Google, GitHub or OIDC."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Successful and failed sign-ins with email and password."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Suspicious input"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Text that looked like an injection attempt was cleaned before saving. Often a false positive."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Truncated input"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Unknown video provider"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "All: %{category}"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "From"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "To"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Attendees paying for bookings: paid, failed or expired checkouts, refunds and chargebacks."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Booking payments"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "Events"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "No events match these filters."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Security and payment events (sign-ins, account changes, admin actions, payments) are kept in the audit log for this many days, then deleted. They include IP addresses, so keep this no longer than you need."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Subscription payments"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#, elixir-autogen, elixir-format
+msgid "Users paying for their subscription: paid and failed payments, expired checkouts, declined charges, refunds and chargebacks."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Which kinds of events are kept in the audit log."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Booking page fallback language"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Choose one of the supported languages."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Dashboard fallback language"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Localisation"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Install default (%{language})"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Language public booking pages fall back to, along with booking emails and calendar invites for an attendee whose language is unknown. Detection still comes first: a visitor whose browser asks for a language this install supports gets that language regardless of this setting. Left unset it resolves to %{language}, this install's configured default."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Language the dashboard, account pages, and account emails fall back to. Detection still comes first: a signed-in user's own language setting and the browser's Accept-Language header both win, and this is only what resolves when neither offers a language this install supports. Left unset it resolves to %{language}, this install's configured default."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/tabs.ex
+#, elixir-autogen, elixir-format
+msgid "General"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Name shown in the inbox preview line, the logo's alt text, and the email title. Does not change the sender name - set EMAIL_FROM_NAME for that. Leave blank to use \"%{app_name}\"."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_view.ex
+#, elixir-autogen, elixir-format
+msgid "Settings sections"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/users_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Admin access required."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Microsoft login"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Show the \"Continue with Microsoft\" button on login and signup, for personal and work or school accounts. Uses the Outlook/Teams app registration (OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET); add /auth/microsoft/callback to its redirect URIs."
+msgstr ""

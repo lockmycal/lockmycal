@@ -1,0 +1,543 @@
+defmodule TymeslotWeb.Dashboard.ThemeSettingsTest do
+  use TymeslotWeb.LiveCase, async: true
+  @moduletag :utils
+
+  import Tymeslot.Factory
+  import Tymeslot.TestHelpers.Eventually
+  import Tymeslot.DashboardTestHelpers
+
+  alias Ecto.Changeset
+  alias Tymeslot.Repo
+  alias Tymeslot.ThemeCustomizations
+  alias Tymeslot.ThemeCustomizations.ThemeCustomizationSchema
+  alias TymeslotWeb.Live.Scheduling.PreviewToken
+
+  setup :setup_dashboard_user_with_theme
+
+  describe "Theme selection" do
+    test "renders theme options", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/dashboard/theme")
+
+      assert html =~ "Choose Your Style"
+      assert html =~ "Quill"
+      assert html =~ "Rhythm"
+    end
+
+    test "selects a theme and persists it", %{conn: conn, profile: profile} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme")
+
+      view
+      |> element("[phx-click='select_theme'][phx-value-theme='2']")
+      |> render_click()
+
+      assert Repo.reload!(profile).booking_theme == "2"
+      assert render(view) =~ "Current Style"
+    end
+  end
+
+  describe "Preview links" do
+    setup %{user: user, profile: profile} do
+      # Both links need a username; the theme-selection one is additionally
+      # gated on a bookable calendar being connected.
+      insert(:calendar_integration, user: user)
+
+      profile =
+        profile
+        |> Changeset.change(username: "preview-owner")
+        |> Repo.update!()
+
+      {:ok, profile: profile}
+    end
+
+    # Both entry points used to link `?theme=<id>` with no token at all. The
+    # page then rendered as a preview but had nothing authorising simulate
+    # mode, so the owner's own test booking hit the fail-closed branch and
+    # disappeared with a "Preview session expired" flash.
+
+    test "the theme-selection preview link authorises simulate mode", %{
+      conn: conn,
+      user: user,
+      profile: profile
+    } do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme")
+
+      href = preview_href(view, profile.username)
+
+      assert_owner_preview_link(href, user.id)
+      assert URI.decode_query(URI.parse(href).query)["theme"]
+    end
+
+    test "the customization preview link authorises simulate mode", %{
+      conn: conn,
+      user: user,
+      profile: profile
+    } do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme/customize/1")
+
+      href = preview_href(view, profile.username)
+
+      assert_owner_preview_link(href, user.id)
+      assert URI.decode_query(URI.parse(href).query)["theme"] == "1"
+    end
+  end
+
+  describe "Theme customization" do
+    test "opens and closes customization", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme")
+
+      view
+      |> element("button[phx-value-theme='1']", "Customize Style")
+      |> render_click()
+
+      assert render(view) =~ "Customize Style"
+      assert render(view) =~ "Color Palette"
+      assert render(view) =~ "Background Design"
+
+      view
+      |> element("button[aria-label='Close']")
+      |> render_click()
+
+      assert render(view) =~ "Choose Your Style"
+      refute render(view) =~ "Color Palette"
+    end
+
+    test "navigates directly to the customize URL without going through the selection screen",
+         %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/dashboard/theme/customize/1")
+
+      assert html =~ "Color Palette"
+      assert html =~ "Background Design"
+    end
+
+    test "loads saved customization when opening the customize view", %{
+      conn: conn,
+      profile: profile
+    } do
+      # "turquoise" is the scheme key whose display name is "Arctic Blue"
+      insert(:theme_customization,
+        profile: profile,
+        theme_id: "1",
+        color_scheme: "turquoise",
+        background_type: "gradient",
+        background_value: "gradient_1"
+      )
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme")
+
+      view
+      |> element("button[phx-value-theme='1']", "Customize Style")
+      |> render_click()
+
+      # The Current badge (span.text-neutral-700) shows the loaded scheme's display name.
+      # Scoping to that element rules out "Arctic Blue" appearing only in the scheme card list,
+      # which is always rendered regardless of any saved customization.
+      assert render(view) =~ ~r/text-neutral-700[^"]*"[^>]*>\s*Arctic Blue/
+    end
+
+    test "changes color scheme and persists it", %{conn: conn, profile: profile} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme")
+
+      view
+      |> element("button[phx-value-theme='1']", "Customize Style")
+      |> render_click()
+
+      view
+      |> element("button[phx-click='theme:select_color_scheme'][phx-value-scheme='forest']")
+      |> render_click()
+
+      # Scheme name appears in the "Current" badge
+      assert render(view) =~ "Forest Green"
+
+      saved = Repo.get_by(ThemeCustomizationSchema, profile_id: profile.id, theme_id: "1")
+      assert saved.color_scheme == "forest"
+    end
+
+    test "changes background type tabs", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme")
+
+      view
+      |> element("button[phx-value-theme='1']", "Customize Style")
+      |> render_click()
+
+      view
+      |> element("button", "Solid Color")
+      |> render_click()
+
+      assert render(view) =~ "Select a solid color"
+
+      view
+      |> element("button", "Gradient")
+      |> render_click()
+
+      refute render(view) =~ "Select a solid color"
+    end
+
+    test "selects a solid color background and persists it", %{conn: conn, profile: profile} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme")
+
+      view
+      |> element("button[phx-value-theme='1']", "Customize Style")
+      |> render_click()
+
+      view
+      |> element("button", "Solid Color")
+      |> render_click()
+
+      view
+      |> element("button[phx-click='theme:select_background'][phx-value-id='#dc2626']")
+      |> render_click()
+
+      saved = Repo.get_by(ThemeCustomizationSchema, profile_id: profile.id, theme_id: "1")
+      assert saved.background_type == "color"
+      assert saved.background_value == "#dc2626"
+    end
+
+    test "handles background image upload safely", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme")
+
+      view
+      |> element("button[phx-value-theme='1']", "Customize Style")
+      |> render_click()
+
+      view
+      |> element("button", "Image")
+      |> render_click()
+
+      image = %{
+        last_modified: System.system_time(:millisecond),
+        name: "bg.png",
+        content: <<
+          0x89,
+          0x50,
+          0x4E,
+          0x47,
+          0x0D,
+          0x0A,
+          0x1A,
+          0x0A,
+          0x00,
+          0x00,
+          0x00,
+          0x0D,
+          "IHDR",
+          0x00,
+          0x00,
+          0x00,
+          0x01,
+          0x00,
+          0x00,
+          0x00,
+          0x01,
+          0x08,
+          0x02,
+          0x00,
+          0x00,
+          0x00,
+          0x90,
+          0x77,
+          0x53,
+          0xDE
+        >>,
+        type: "image/png"
+      }
+
+      # Submitting with no file should not crash
+      view
+      |> element("#theme-background-image-form")
+      |> render_submit()
+
+      view
+      |> file_input("#theme-background-image-form", :background_image, [image])
+      |> render_upload("bg.png")
+
+      eventually(fn ->
+        assert render(view) =~ "Background image uploaded successfully"
+      end)
+
+      # The picker shows a preview of the just-uploaded custom image, built
+      # from the stored (sanitized) relative path.
+      html = render(view)
+      assert html =~ ~r{<img[^>]*src="/uploads/themes/[^"]+"}
+    end
+
+    test "video picker shows a preview of the stored custom background video", %{
+      conn: conn,
+      profile: profile
+    } do
+      # Uploading a real video end-to-end needs ffmpeg/transcoder stubbing
+      # (see ThemeUploadHelperTest); seeding the customization directly pins
+      # the picker's own rendering of whatever path is already stored,
+      # mirroring the image picker's equivalent preview.
+      {:ok, _customization} =
+        ThemeCustomizations.upsert_theme_customization(profile.id, "1", %{
+          "background_type" => "video",
+          "background_value" => "custom",
+          "background_video_path" => "themes/#{profile.id}/1/videos/bg.mp4"
+        })
+
+      # browsing_type initialises from customization.background_type, so the
+      # video picker (and its preview) is already showing on first render —
+      # no tab click needed.
+      {:ok, _view, html} = live(conn, ~p"/dashboard/theme/customize/1")
+
+      assert html =~ ~r{<video[^>]*src="/uploads/themes/#{profile.id}/1/videos/bg\.mp4"}
+    end
+
+    test "background image upload surfaces the real reason instead of a generic failure", %{
+      conn: conn
+    } do
+      # A ".png"-named file that is well within the size limit but has no
+      # real image content passes the framework-layer extension/size checks
+      # and only fails MediaValidator's magic-byte check inside
+      # Storage.store_background_image/3. Pins that the specific reason
+      # (not the generic catch-all "Upload failed") reaches the flash.
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme")
+
+      view
+      |> element("button[phx-value-theme='1']", "Customize Style")
+      |> render_click()
+
+      view
+      |> element("button", "Image")
+      |> render_click()
+
+      not_an_image = %{
+        last_modified: System.system_time(:millisecond),
+        name: "bg.png",
+        content: "this is not image content",
+        type: "image/png"
+      }
+
+      view
+      |> file_input("#theme-background-image-form", :background_image, [not_an_image])
+      |> render_upload("bg.png")
+
+      eventually(fn ->
+        assert render(view) =~ "Invalid image format"
+      end)
+
+      refute render(view) =~ "Upload failed"
+    end
+
+    test "background image upload is idempotent — re-submitting does not duplicate the row", %{
+      conn: conn,
+      profile: profile
+    } do
+      # Pins the user-observable guarantee that a second "save" tap after
+      # auto-upload already consumed the entry (or after a sticky frontend
+      # submit) does not double-write a ThemeCustomization row. The guard
+      # is `upload_ready?/2` returning false once entries are drained plus
+      # `upsert_theme_customization/3` keying on (profile_id, theme_id).
+      # If either is removed a duplicate row would surface here.
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme")
+
+      view
+      |> element("button[phx-value-theme='1']", "Customize Style")
+      |> render_click()
+
+      view
+      |> element("button", "Image")
+      |> render_click()
+
+      image = %{
+        last_modified: System.system_time(:millisecond),
+        name: "bg.png",
+        content:
+          <<0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, "IHDR", 0x00,
+            0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77,
+            0x53, 0xDE>>,
+        type: "image/png"
+      }
+
+      view
+      |> file_input("#theme-background-image-form", :background_image, [image])
+      |> render_upload("bg.png")
+
+      eventually(fn ->
+        assert render(view) =~ "Background image uploaded successfully"
+      end)
+
+      first_row = Repo.get_by!(ThemeCustomizationSchema, profile_id: profile.id, theme_id: "1")
+
+      # User submits the save form again after consumption drained the
+      # upload entries. No new row, same stored path.
+      view
+      |> element("#theme-background-image-form")
+      |> render_submit()
+
+      matching_rows =
+        ThemeCustomizationSchema
+        |> Repo.all()
+        |> Enum.filter(&(&1.profile_id == profile.id and &1.theme_id == "1"))
+
+      assert [only_row] = matching_rows
+      assert only_row.id == first_row.id
+      assert only_row.background_image_path == first_row.background_image_path
+    end
+
+    test "switching browsing type tabs renders each valid category", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme")
+
+      view
+      |> element("button[phx-value-theme='1']", "Customize Style")
+      |> render_click()
+
+      html_solid =
+        view
+        |> element("button", "Solid Color")
+        |> render_click()
+
+      assert html_solid =~ "Select a solid color"
+
+      html_gradient =
+        view
+        |> element("button", "Gradient")
+        |> render_click()
+
+      refute html_gradient =~ "Select a solid color"
+      refute html_gradient =~ "JPG, PNG or WebP. Max 20MB."
+      refute html_gradient =~ "MP4, WebM or MOV. Max 100MB."
+
+      html_image =
+        view
+        |> element("button", "Image")
+        |> render_click()
+
+      assert html_image =~ "JPG, PNG or WebP. Max 20MB."
+
+      html_video =
+        view
+        |> element("button", "Video")
+        |> render_click()
+
+      assert html_video =~ "MP4, WebM or MOV. Max 100MB."
+    end
+
+    test "theme:toggle_palette_picker with no seed persists default seed and opens picker",
+         %{conn: conn, profile: profile} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme/customize/1")
+
+      # No seed stored yet — clicking "Custom" should write the default seed to the DB
+      view
+      |> element("button[phx-click='theme:toggle_palette_picker']")
+      |> render_click()
+
+      assert %{custom_palette_seed: seed} =
+               ThemeCustomizations.get_by_profile_and_theme(profile.id, "1")
+
+      assert seed == ThemeCustomizations.default_custom_palette_seed()
+
+      # Picker button should now be expanded (seed was written so toggle_open = true)
+      assert render(view) =~ ~s(aria-expanded="true")
+    end
+
+    test "theme:toggle_palette_picker with existing seed toggles picker without a DB write",
+         %{conn: conn, profile: profile} do
+      # Store a custom seed first so the component loads with it
+      {:ok, _seeded} =
+        ThemeCustomizations.upsert_theme_customization(profile.id, "1", %{
+          "color_scheme" => "default",
+          "custom_palette_seed" => "#ff6b35",
+          "background_type" => "gradient",
+          "background_value" => "gradient_1"
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme/customize/1")
+
+      # The picker button should initially be open because a seed exists
+      html_before = render(view)
+      assert html_before =~ ~s(aria-expanded="true")
+
+      # Clicking again toggles it closed — no DB write, seed unchanged
+      view
+      |> element("button[phx-click='theme:toggle_palette_picker']")
+      |> render_click()
+
+      assert render(view) =~ ~s(aria-expanded="false")
+
+      # DB value is unchanged
+      saved = ThemeCustomizations.get_by_profile_and_theme(profile.id, "1")
+      assert saved.custom_palette_seed == "#ff6b35"
+    end
+
+    test "theme:set_palette_seed with valid hex persists lowercased seed",
+         %{conn: conn, profile: profile} do
+      # First open the picker by toggling (no seed stored)
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme/customize/1")
+
+      view
+      |> element("button[phx-click='theme:toggle_palette_picker']")
+      |> render_click()
+
+      # Now the palette picker widget is rendered — push the set_palette_seed event
+      view
+      |> element("#custom-palette-picker")
+      |> render_hook("theme:set_palette_seed", %{"value" => "#AABBCC"})
+
+      saved = ThemeCustomizations.get_by_profile_and_theme(profile.id, "1")
+      assert saved.custom_palette_seed == "#aabbcc"
+    end
+
+    test "theme:toggle_custom_picker toggles the custom background picker",
+         %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme/customize/1")
+
+      # Switch to Solid Color tab first so the picker button is visible
+      view
+      |> element("button", "Solid Color")
+      |> render_click()
+
+      html_before = render(view)
+      assert html_before =~ ~s(aria-expanded="false")
+
+      view
+      |> element("button[phx-click='theme:toggle_custom_picker']")
+      |> render_click()
+
+      assert render(view) =~ ~s(aria-expanded="true")
+    end
+
+    test "theme:set_custom_background persists hex color",
+         %{conn: conn, profile: profile} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/theme/customize/1")
+
+      # Switch to Solid Color tab and open the custom picker
+      view
+      |> element("button", "Solid Color")
+      |> render_click()
+
+      view
+      |> element("button[phx-click='theme:toggle_custom_picker']")
+      |> render_click()
+
+      # Push the set_custom_background event from the hook element
+      view
+      |> element("#custom-background-picker")
+      |> render_hook("theme:set_custom_background", %{"value" => "#123456"})
+
+      saved = ThemeCustomizations.get_by_profile_and_theme(profile.id, "1")
+      assert saved.background_type == "color"
+      assert saved.background_value == "#123456"
+    end
+  end
+
+  defp preview_href(view, username) do
+    view
+    |> render()
+    |> Floki.parse_document!()
+    |> Floki.attribute("a[href^='/#{username}?']", "href")
+    |> List.first()
+  end
+
+  # A preview link is only useful if it actually reaches simulate mode, so
+  # assert the token verifies against this owner rather than merely that some
+  # `preview_token=` substring is present.
+  defp assert_owner_preview_link(href, user_id) do
+    assert href, "expected a preview link on the page"
+
+    params = href |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+
+    assert params["preview"] == "true"
+    assert PreviewToken.owner?(params["preview_token"], user_id)
+  end
+end

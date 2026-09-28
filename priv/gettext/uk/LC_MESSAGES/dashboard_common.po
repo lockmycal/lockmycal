@@ -1,0 +1,828 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: uk\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100 != 11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10||n%100>=20) ? 1 : 2);\n"
+
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Account"
+msgstr "Обліковий запис"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Add a meeting type so guests have something to book"
+msgstr "Додайте тип зустрічі, щоб гості могли її забронювати"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Analytics"
+msgstr "Аналітика"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Automation"
+msgstr "Автоматизація"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Availability"
+msgstr "Доступність"
+
+#: lib/tymeslot/integrations/calendar/display_helpers.ex
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Calendar"
+msgstr "Календар"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Close sidebar"
+msgstr "Закрити бічну панель"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Copy link to clipboard"
+msgstr "Скопіювати посилання в буфер обміну"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Distribution"
+msgstr "Розповсюдження"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Embed & Share"
+msgstr "Вбудовування та поширення"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "General"
+msgstr "Загальні"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Integrations"
+msgstr "Інтеграції"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Types"
+msgstr "Типи зустрічей"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Meetings"
+msgstr "Зустрічі"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Overview"
+msgstr "Огляд"
+
+#: lib/tymeslot_web/components/dashboard/pro_badge.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/form_view.ex
+#, elixir-autogen, elixir-format
+msgid "Pro"
+msgstr "Pro"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Scheduling"
+msgstr "Планування"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Setup recommended"
+msgstr "Рекомендовано налаштувати"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Theme"
+msgstr "Тема"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Toggle sidebar"
+msgstr "Перемкнути бічну панель"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Scheduling link copied to clipboard!"
+msgstr "Посилання для планування скопійовано в буфер обміну!"
+
+#: lib/tymeslot_web/components/user_dropdown_component.ex
+#, elixir-autogen, elixir-format
+msgid "Sign Out"
+msgstr "Вийти"
+
+#: lib/tymeslot_web/live/dashboard/component_dispatch.ex
+#, elixir-autogen, elixir-format
+msgid "This feature (%{feature_name}) is not available on your current plan."
+msgstr "Ця функція (%{feature_name}) недоступна у вашому поточному тарифі."
+
+#: lib/tymeslot_web/components/user_dropdown_component.ex
+#, elixir-autogen, elixir-format
+msgid "User"
+msgstr "Користувач"
+
+#: lib/tymeslot_web/components/icons/provider_icon.ex
+#, elixir-autogen, elixir-format
+msgid "%{provider} icon"
+msgstr "Піктограма %{provider}"
+
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "%{section} - Dashboard"
+msgstr "%{section} - Панель керування"
+
+#: lib/tymeslot/scheduling/link_access_policy.ex
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Complete setup to enable this feature"
+msgstr "Завершіть налаштування, щоб увімкнути цю функцію"
+
+#: lib/tymeslot/scheduling/link_access_policy.ex
+#, elixir-autogen, elixir-format
+msgid "Connect a calendar in Calendar settings to enable this feature"
+msgstr "Підключіть календар у налаштуваннях календаря, щоб увімкнути цю функцію"
+
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Dashboard"
+msgstr "Панель керування"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Payments"
+msgstr "Платежі"
+
+#: lib/tymeslot/scheduling/link_access_policy.ex
+#, elixir-autogen, elixir-format
+msgid "Set a username in Settings to enable this feature"
+msgstr "Встановіть ім'я користувача в налаштуваннях, щоб увімкнути цю функцію"
+
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Settings"
+msgstr "Налаштування"
+
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Theme Selection"
+msgstr "Вибір теми"
+
+#: lib/tymeslot_web/components/icons/provider_icon.ex
+#, elixir-autogen, elixir-format
+msgid "Calendar subscription"
+msgstr "Підписка на календар"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} of %{max} time"
+msgid_plural "%{count} of %{max} times"
+msgstr[0] "%{count} із %{max} варіантів часу"
+msgstr[1] "%{count} із %{max} варіантів часу"
+msgstr[2] "%{count} із %{max} варіантів часу"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_list.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} participant"
+msgid_plural "%{count} participants"
+msgstr[0] "%{count} учасник"
+msgstr[1] "%{count} учасники"
+msgstr[2] "%{count} учасників"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_list.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} time option"
+msgid_plural "%{count} time options"
+msgstr[0] "%{count} варіант часу"
+msgstr[1] "%{count} варіанти часу"
+msgstr[2] "%{count} варіантів часу"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_list.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} vote"
+msgid_plural "%{count} votes"
+msgstr[0] "%{count} голос"
+msgstr[1] "%{count} голоси"
+msgstr[2] "%{count} голосів"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Add any context for your guests"
+msgstr "Додайте контекст для ваших гостей"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Add at least one candidate time"
+msgstr "Додайте щонайменше один варіант часу"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Add time"
+msgstr "Додати час"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Calendar conflict"
+msgstr "Конфлікт у календарі"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr "Скасувати"
+
+#: lib/tymeslot_web/live/dashboard/polls/cancel_poll_modal.ex
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel poll"
+msgstr "Скасувати опитування"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_list.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled"
+msgstr "Скасовано"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Candidate time %{n}"
+msgstr "Варіант часу %{n}"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Candidate times"
+msgstr "Варіанти часу"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Checking your calendar for conflicts…"
+msgstr "Перевіряємо ваш календар на конфлікти…"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Close results"
+msgstr "Закрити результати"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Confirm this time"
+msgstr "Підтвердити цей час"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_list.ex
+#, elixir-autogen, elixir-format
+msgid "Confirmed"
+msgstr "Підтверджено"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_share_link.ex
+#, elixir-autogen, elixir-format
+msgid "Copy poll link to clipboard"
+msgstr "Скопіювати посилання на опитування"
+
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "Couldn't cancel this poll. Please try again."
+msgstr "Не вдалося скасувати це опитування. Спробуйте ще раз."
+
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "Couldn't confirm this time. Please try again."
+msgstr "Не вдалося підтвердити цей час. Спробуйте ще раз."
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_list.ex
+#, elixir-autogen, elixir-format
+msgid "Create a poll to propose a few times and let your guests vote."
+msgstr "Створіть опитування, запропонуйте кілька варіантів часу та дозвольте гостям проголосувати."
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Create poll"
+msgstr "Створити опитування"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Description (optional)"
+msgstr "Опис (необов’язково)"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Duration (minutes)"
+msgstr "Тривалість (у хвилинах)"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Duration: %{minutes} min (from meeting type)"
+msgstr "Тривалість: %{minutes} хв (з типу зустрічі)"
+
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "Find a time that works for everyone. Propose a few slots and let your guests vote."
+msgstr "Знайдіть час, зручний для всіх. Запропонуйте кілька варіантів і дозвольте гостям проголосувати."
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "If need be"
+msgstr "Якщо необхідно"
+
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting confirmed. Your guests have been notified."
+msgstr "Зустріч підтверджено. Ваших гостей сповіщено."
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting type (optional)"
+msgstr "Тип зустрічі (необов’язково)"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "New poll"
+msgstr "Нове опитування"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "No"
+msgstr "Ні"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "No answer"
+msgstr "Немає відповіді"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "No meeting type"
+msgstr "Без типу зустрічі"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_list.ex
+#, elixir-autogen, elixir-format
+msgid "No polls yet"
+msgstr "Ще немає опитувань"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_list.ex
+#, elixir-autogen, elixir-format
+msgid "Open"
+msgstr "Відкрито"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Paid meeting types can't be used for polls"
+msgstr "Платні типи зустрічей не можна використовувати для опитувань"
+
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "Poll cancelled"
+msgstr "Опитування скасовано"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Poll created"
+msgstr "Опитування створено"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_share_link.ex
+#, elixir-autogen, elixir-format
+msgid "Poll link copied to clipboard!"
+msgstr "Посилання на опитування скопійовано!"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "Polls"
+msgstr "Опитування"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Remove time"
+msgstr "Видалити час"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "That meeting type is unavailable"
+msgstr "Цей тип зустрічі недоступний"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "This poll is confirmed. The winning time is highlighted below."
+msgstr "Це опитування підтверджено. Обраний час виділено нижче."
+
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "This poll is no longer open."
+msgstr "Це опитування більше не відкрите."
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "This poll was cancelled. Voting is closed."
+msgstr "Це опитування скасовано. Голосування завершено."
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "This time clashes with an event on your calendar"
+msgstr "Цей час перетинається з подією у вашому календарі"
+
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "This time is no longer free"
+msgstr "Цей час більше не вільний"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Times must be in the future"
+msgstr "Час має бути в майбутньому"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Times shown in %{timezone}"
+msgstr "Час показано в %{timezone}"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Timezone"
+msgstr "Часовий пояс"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Title"
+msgstr "Назва"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Up to %{max} times"
+msgstr "До %{max} варіантів часу"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "View meeting"
+msgstr "Переглянути зустріч"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_list.ex
+#, elixir-autogen, elixir-format
+msgid "View results"
+msgstr "Переглянути результати"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "Voting deadline (optional)"
+msgstr "Кінцевий термін голосування (необов’язково)"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Voting is open. Confirm a time once your guests have voted."
+msgstr "Голосування триває. Підтвердьте час, коли ваші гості проголосують."
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Winner"
+msgstr "Переможець"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Yes"
+msgstr "Так"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "e.g., Team sync"
+msgstr "напр., зустріч команди"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Connect a calendar to finish setup"
+msgstr "Підключіть календар, щоб завершити налаштування"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Connect a video provider to finish setup"
+msgstr "Підключіть сервіс відеозв'язку, щоб завершити налаштування"
+
+#: lib/tymeslot_web/live/dashboard/polls/cancel_poll_modal.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} guest has already voted. Their responses will be discarded."
+msgid_plural "%{count} guests have already voted. Their responses will be discarded."
+msgstr[0] "%{count} гість уже проголосував. Його відповіді буде видалено."
+msgstr[1] "%{count} гості вже проголосували. Їхні відповіді буде видалено."
+msgstr[2] "%{count} гостей уже проголосували. Їхні відповіді буде видалено."
+
+#: lib/tymeslot_web/live/dashboard/polls/cancel_poll_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel this poll?"
+msgstr "Скасувати це опитування?"
+
+#: lib/tymeslot_web/live/dashboard/polls/cancel_poll_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Keep poll"
+msgstr "Залишити опитування"
+
+#: lib/tymeslot_web/live/dashboard/polls/cancel_poll_modal.ex
+#, elixir-autogen, elixir-format
+msgid "“%{title}” will stop accepting responses and everyone holding the voting link will see it as cancelled. This cannot be undone."
+msgstr "«%{title}» більше не прийматиме відповіді, і всі, хто має посилання для голосування, побачать опитування як скасоване. Цю дію не можна скасувати."
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} guest has voted so far."
+msgid_plural "%{count} guests have voted so far."
+msgstr[0] "%{count} гість уже проголосував."
+msgstr[1] "%{count} гості вже проголосували."
+msgstr[2] "%{count} гостей уже проголосували."
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Most votes"
+msgstr "Найбільше голосів"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "No responses yet."
+msgstr "Поки що немає відповідей."
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Who voted"
+msgstr "Хто голосував"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Hide who voted"
+msgstr "Сховати голоси"
+
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "Couldn't save this poll. Please try again."
+msgstr "Не вдалося зберегти це опитування. Спробуйте ще раз."
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Edit title and description"
+msgstr "Редагувати назву та опис"
+
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "Poll updated"
+msgstr "Опитування оновлено"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
+#, elixir-autogen, elixir-format
+msgid "Save changes"
+msgstr "Зберегти зміни"
+
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Admin"
+msgstr "Адміністратор"
+
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Admin Users"
+msgstr "Керування користувачами"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Administration"
+msgstr "Адміністрування"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/live/dashboard/admin/audit_view.ex
+#, elixir-autogen, elixir-format
+msgid "App Settings"
+msgstr "Налаштування додатку"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Workflow"
+msgstr "Автоматизація"
+
+#: lib/tymeslot_web/components/user_dropdown_component.ex
+#, elixir-autogen, elixir-format
+msgid "My Profile"
+msgstr "Мій профіль"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "You have meetings awaiting approval"
+msgstr "У вас є зустрічі, що очікують підтвердження"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Calendars"
+msgstr "Календарі"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Video"
+msgstr "Відео"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Contacts"
+msgstr "Контакти"
+
+#: lib/tymeslot_web/components/dashboard/contact_picker.ex
+#, elixir-autogen, elixir-format
+msgid "No matching contacts"
+msgstr "Немає відповідних контактів"
+
+#: lib/tymeslot_web/components/dashboard/contact_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Pick from contacts"
+msgstr "Обрати з контактів"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Users"
+msgstr "Користувачі"
+
+#: lib/tymeslot_web/components/core_components/buttons.ex
+#, elixir-autogen, elixir-format
+msgid "Disabled"
+msgstr "Вимкнено"
+
+#: lib/tymeslot_web/components/core_components/buttons.ex
+#, elixir-autogen, elixir-format
+msgid "Enabled"
+msgstr "Увімкнено"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Toggle light/dark appearance"
+msgstr "Перемкнути світлий/темний вигляд"
+
+#: lib/tymeslot_web/components/dashboard/locale_tab_switcher.ex
+#, elixir-autogen, elixir-format
+msgid "Language"
+msgstr "Мова"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Audit log"
+msgstr "Журнал аудиту"
+
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "This time falls within your time off, so it can't be confirmed while that stays in place."
+msgstr "Цей час припадає на вашу відсутність, тому його не можна підтвердити, доки вона діє."
+
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "This time falls within your time off. Change or remove the time off to confirm it."
+msgstr "Цей час припадає на вашу відсутність. Змініть або видаліть відсутність, щоб його підтвердити."
+
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "%{first}–%{last} of %{total}"
+msgstr "%{first}–%{last} з %{total}"
+
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "First page"
+msgstr "Перша сторінка"
+
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "Last page"
+msgstr "Остання сторінка"
+
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "Next page"
+msgstr "Наступна сторінка"
+
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "Pagination"
+msgstr "Пагінація"
+
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "Previous page"
+msgstr "Попередня сторінка"
+
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "Rows per page"
+msgstr "Рядків на сторінці"
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Booking page"
+msgstr "Сторінка бронювання"
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Enter at least one email address."
+msgstr "Введіть принаймні одну адресу електронної пошти."
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Invalid email address: %{emails}"
+msgstr "Недійсна адреса електронної пошти: %{emails}"
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Links sent to %{count} recipient."
+msgid_plural "Links sent to %{count} recipients."
+msgstr[0] "Посилання надіслано %{count} одержувачу."
+msgstr[1] "Посилання надіслано %{count} одержувачам."
+msgstr[2] "Посилання надіслано %{count} одержувачам."
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Links to include"
+msgstr "Посилання для надсилання"
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting type: %{name}"
+msgstr "Тип зустрічі: %{name}"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Open booking page"
+msgstr "Відкрити сторінку бронювання"
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Personal message (optional)"
+msgstr "Особисте повідомлення (необов'язково)"
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Public calendar"
+msgstr "Публічний календар"
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Recipients"
+msgstr "Одержувачі"
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Select at least one link to send."
+msgstr "Виберіть принаймні одне посилання для надсилання."
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Send"
+msgstr "Надіслати"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Send links by email"
+msgstr "Надіслати посилання електронною поштою"
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Separate multiple addresses with commas. Up to %{max} recipients."
+msgstr "Розділяйте кілька адрес комами. До %{max} одержувачів."
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "The message can be at most %{max} characters long."
+msgstr "Повідомлення може містити не більше %{max} символів."
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "You can send to at most %{max} addresses at once."
+msgstr "Одночасно можна надіслати не більше ніж на %{max} адрес."
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "You have sent too many links recently. Please try again later."
+msgstr "Останнім часом надіслано забагато посилань. Спробуйте пізніше."
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "name@example.com, other@example.com"
+msgstr "name@example.com, other@example.com"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Source code"
+msgstr "Вихідний код"

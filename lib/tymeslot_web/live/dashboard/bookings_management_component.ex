@@ -1,0 +1,655 @@
+defmodule TymeslotWeb.Dashboard.BookingsManagementComponent do
+  @moduledoc """
+  LiveComponent for viewing and managing meetings in the dashboard.
+  """
+  use TymeslotWeb, :live_component
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Ecto.UUID
+  alias Tymeslot.Bookings.Policy
+  alias Tymeslot.MeetingPayments
+  alias Tymeslot.Meetings
+  alias Tymeslot.Meetings.Approval
+  alias Tymeslot.Security.RateLimiter
+
+  alias Phoenix.LiveView
+
+  alias TymeslotWeb.Dashboard.BookingsManagement.Cancellation
+  alias TymeslotWeb.Dashboard.BookingsManagement.ComponentView
+  alias TymeslotWeb.Dashboard.BookingsManagement.DeleteMeetingAction
+  alias TymeslotWeb.Dashboard.BookingsManagement.{QuickAddMeeting, QuickAddMeetingExecution}
+  alias TymeslotWeb.Dashboard.BookingsManagement.RequestActions
+  alias TymeslotWeb.Live.Shared.Flash
+
+  require Logger
+
+  # `{module, function}` tuples (not `QuickAddMeeting.events/0`) so this stays
+  # a runtime dependency rather than a `mix xref graph --label
+  # compile-connected` edge — matches `CalendarGridComponent`'s own
+  # `@inline_edit_events`, extended with a module per entry since the quick-add
+  # dialog's own handlers span two modules (form state vs. submission).
+  @quick_add_meeting_events %{
+    "show_create_form" => {QuickAddMeeting, :show_create_form},
+    "close_create_form" => {QuickAddMeeting, :close_create_form},
+    "discard_pending_attendees" => {QuickAddMeeting, :discard_pending_attendees},
+    "cancel_discard_attendees" => {QuickAddMeeting, :cancel_discard_attendees},
+    "set_create_mode" => {QuickAddMeeting, :set_create_mode},
+    "update_create_title" => {QuickAddMeeting, :update_create_title},
+    "update_create_guest_name" => {QuickAddMeeting, :update_create_guest_name},
+    "update_create_guest_email" => {QuickAddMeeting, :update_create_guest_email},
+    "toggle_create_all_day" => {QuickAddMeeting, :toggle_create_all_day},
+    "update_create_time" => {QuickAddMeeting, :update_create_time},
+    "update_create_integration" => {QuickAddMeeting, :update_create_integration},
+    "update_create_video" => {QuickAddMeeting, :update_create_video},
+    "update_create_recurrence" => {QuickAddMeeting, :update_create_recurrence},
+    "add_create_reminder" => {QuickAddMeeting, :add_create_reminder},
+    "remove_create_reminder" => {QuickAddMeeting, :remove_create_reminder},
+    "add_create_attendee" => {QuickAddMeeting, :add_create_attendee},
+    "remove_create_attendee" => {QuickAddMeeting, :remove_create_attendee},
+    "update_create_attendee_input" => {QuickAddMeeting, :update_create_attendee_input},
+    "guest_contact_query" => {QuickAddMeeting, :query_contacts},
+    "close_guest_contact_picker" => {QuickAddMeeting, :close_contact_picker},
+    "select_guest_contact" => {QuickAddMeeting, :select_contact},
+    "save_event" => {QuickAddMeetingExecution, :save_event}
+  }
+
+  @impl Phoenix.LiveComponent
+  def mount(socket) do
+    {:ok,
+     socket
+     |> LiveView.stream(:meetings, [])
+     |> assign(:filter, "upcoming")
+     |> assign(:loading, true)
+     |> assign(:is_empty, true)
+     |> assign(:cancelling_meeting, nil)
+     |> assign(:cancel_booking_payment, nil)
+     |> assign(:sending_reschedule, nil)
+     |> assign(:answering_request, nil)
+     |> assign(:answering_opts, %{})
+     |> assign(:deleting_meeting, nil)
+     |> assign(:awaiting_approval_count, 0)
+     |> assign(:upcoming_count, 0)
+     |> assign(:past_count, 0)
+     |> assign(:cancelled_count, 0)
+     |> assign(:per_page, 20)
+     |> assign(:next_cursor, nil)
+     |> assign(:has_more, false)
+     |> assign(:loading_more, false)
+     # Track initialization and last-known values to prevent unnecessary reloads
+     |> assign(:_initialized, false)
+     |> assign(:_last_filter, nil)
+     |> assign(:_last_user_id, nil)
+     |> assign(:_last_per_page, nil)
+     |> QuickAddMeeting.mount_defaults()
+     |> ModalHook.mount_modal(
+       cancel_meeting: false,
+       reschedule_request: false,
+       decline_request: false,
+       delete_meeting: false
+     )}
+  end
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :quick_add_event_created, result: result}, socket),
+    do: {:ok, QuickAddMeetingExecution.handle_event_create_result(result, socket)}
+
+  @impl Phoenix.LiveComponent
+  def update(assigns, socket) do
+    # Apply incoming assigns first
+    socket = assign(socket, assigns)
+
+    socket =
+      if socket.assigns[:_initialized], do: socket, else: default_to_pending_approval(socket)
+
+    new_filter = socket.assigns.filter
+    new_user_id = socket.assigns.current_user.id
+    new_per_page = socket.assigns.per_page
+
+    last_filter = socket.assigns[:_last_filter]
+    last_user_id = socket.assigns[:_last_user_id]
+    last_per_page = socket.assigns[:_last_per_page]
+    initialized? = socket.assigns[:_initialized]
+
+    should_load =
+      !initialized? or
+        new_filter != last_filter or
+        new_user_id != last_user_id or
+        new_per_page != last_per_page
+
+    socket =
+      socket
+      |> assign(:_initialized, true)
+      |> assign(:_last_filter, new_filter)
+      |> assign(:_last_user_id, new_user_id)
+      |> assign(:_last_per_page, new_per_page)
+
+    socket = if should_load, do: load_meetings(socket), else: socket
+
+    {:ok, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("filter_meetings", %{"filter" => filter}, socket) do
+    user_id = socket.assigns.current_user.id
+
+    case RateLimiter.check_meeting_filter_rate_limit(user_id) do
+      :ok ->
+        case validate_filter(filter) do
+          {:ok, validated_filter} ->
+            :telemetry.execute(
+              [:tymeslot, :dashboard, :meetings, :filter],
+              %{},
+              %{user_id: user_id, filter: validated_filter}
+            )
+
+            {:noreply,
+             socket
+             |> assign(:filter, validated_filter)
+             |> assign(:next_cursor, nil)
+             |> assign(:has_more, false)
+             |> assign(:loading, true)
+             |> load_meetings()}
+
+          {:error, _errors} ->
+            {:noreply, socket}
+        end
+
+      {:error, :rate_limited, message} ->
+        Flash.error(message)
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("show_cancel_modal", %{"id" => _meeting_id} = params, socket) do
+    case fetch_meeting_for_modal(socket, params, policy_fun: &Policy.can_cancel_meeting?/1) do
+      {:ok, meeting} ->
+        user_id = socket.assigns.current_user.id
+        Cancellation.emit_open(user_id, meeting.id)
+
+        # Scoped to the signed-in user: an attendee may cancel from here too,
+        # but the payment is the host's, so they see no refund options.
+        booking_payment = MeetingPayments.payment_for_meeting(meeting.id, user_id)
+
+        {:noreply,
+         socket
+         |> assign(:cancel_booking_payment, booking_payment)
+         |> ModalHook.show_modal(:cancel_meeting, meeting)}
+
+      {:error, :validation_failed, reason} ->
+        Cancellation.emit_error(socket.assigns.current_user.id, reason, :validation_failed)
+        {:noreply, socket}
+
+      {:error, :policy_blocked, reason} ->
+        Cancellation.emit_error(socket.assigns.current_user.id, reason, :blocked)
+        Flash.error(reason)
+        {:noreply, socket}
+
+      {:error, :not_found, _reason} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("hide_cancel_modal", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:cancel_booking_payment, nil)
+     |> ModalHook.hide_modal(:cancel_meeting)}
+  end
+
+  def handle_event("confirm_cancel_meeting", params, socket) do
+    user_id = socket.assigns.current_user.id
+
+    case RateLimiter.check_dashboard_cancel_rate_limit(user_id) do
+      {:error, :rate_limited, message} ->
+        Flash.error(message)
+        {:noreply, socket}
+
+      :ok ->
+        ModalHook.with_modal_data(socket, :cancel_meeting, fn meeting ->
+          do_cancel_meeting(socket, meeting, params)
+        end)
+    end
+  end
+
+  def handle_event("show_delete_modal", %{"id" => _id} = params, socket),
+    do: DeleteMeetingAction.show_modal(socket, params)
+
+  def handle_event("hide_delete_modal", _params, socket),
+    do: DeleteMeetingAction.hide_modal(socket)
+
+  def handle_event("confirm_delete_meeting", _params, socket),
+    do: DeleteMeetingAction.confirm(socket)
+
+  def handle_event("show_reschedule_modal", %{"id" => _id} = params, socket) do
+    case fetch_meeting_for_modal(socket, params, policy_fun: &Policy.can_reschedule_meeting?/1) do
+      {:ok, meeting} ->
+        :telemetry.execute(
+          [:tymeslot, :dashboard, :meetings, :reschedule, :open],
+          %{},
+          %{user_id: socket.assigns.current_user.id, meeting_id: meeting.id}
+        )
+
+        {:noreply, ModalHook.show_modal(socket, :reschedule_request, meeting)}
+
+      {:error, :validation_failed, _error} ->
+        {:noreply, socket}
+
+      {:error, :policy_blocked, reason} ->
+        :telemetry.execute(
+          [:tymeslot, :dashboard, :meetings, :reschedule, :blocked],
+          %{},
+          %{user_id: socket.assigns.current_user.id, reason: inspect(reason)}
+        )
+
+        Flash.error(reason)
+        {:noreply, socket}
+
+      {:error, :not_found, _reason} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("hide_reschedule_modal", _params, socket) do
+    {:noreply, ModalHook.hide_modal(socket, :reschedule_request)}
+  end
+
+  def handle_event("confirm_reschedule_request", _params, socket) do
+    user_id = socket.assigns.current_user.id
+
+    case RateLimiter.check_dashboard_reschedule_rate_limit(user_id) do
+      {:error, :rate_limited, message} ->
+        Flash.error(message)
+        {:noreply, socket}
+
+      :ok ->
+        ModalHook.with_modal_data(socket, :reschedule_request, fn meeting ->
+          do_send_reschedule_request(socket, meeting)
+        end)
+    end
+  end
+
+  def handle_event("dismiss_calendar_sync_banner", %{"id" => meeting_id}, socket) do
+    case Meetings.dismiss_calendar_sync_status(meeting_id, socket.assigns.current_user.id) do
+      {:ok, updated_meeting} ->
+        {:noreply, LiveView.stream_insert(socket, :meetings, updated_meeting)}
+
+      {:error, _reason} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("load_more", _params, %{assigns: %{loading_more: true}} = socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("load_more", _params, socket) do
+    socket = assign(socket, :loading_more, true)
+
+    filter = socket.assigns.filter
+    current_user = socket.assigns.current_user
+    per_page = socket.assigns.per_page
+    after_cursor = socket.assigns.next_cursor
+
+    :telemetry.execute(
+      [:tymeslot, :dashboard, :meetings, :load_more, :start],
+      %{},
+      %{user_id: current_user.id, filter: filter, after: after_cursor}
+    )
+
+    case Meetings.list_user_meetings_by_filter(current_user.id, filter,
+           per_page: per_page,
+           after: after_cursor
+         ) do
+      {:ok, page} ->
+        socket =
+          Enum.reduce(page.items, socket, fn item, s ->
+            LiveView.stream_insert(s, :meetings, item)
+          end)
+
+        :telemetry.execute(
+          [:tymeslot, :dashboard, :meetings, :load_more, :stop],
+          %{items: length(page.items)},
+          %{user_id: current_user.id, filter: filter, has_more: page.has_more}
+        )
+
+        {:noreply,
+         socket
+         |> assign(:next_cursor, page.next_cursor)
+         |> assign(:has_more, page.has_more)
+         |> assign(:loading_more, false)}
+
+      {:error, _error} ->
+        :telemetry.execute(
+          [:tymeslot, :dashboard, :meetings, :load_more, :error],
+          %{},
+          %{user_id: current_user.id, filter: filter, after: after_cursor}
+        )
+
+        Flash.error(dgettext("dashboard_bookings", "Failed to load more meetings"))
+        {:noreply, assign(socket, :loading_more, false)}
+    end
+  end
+
+  # Approving from the dashboard and approving from the emailed link are the
+  # same transition through `Meetings.Approval`, which resolves the race
+  # between them in the database. The only thing this layer adds is the
+  # ownership check: the lookup is scoped to the signed-in host, so an id
+  # belonging to somebody else is not found rather than answered.
+  #
+  # Gated on the same per-answer limiter the emailed link uses, so this is
+  # not the one write handler in the module a click loop can drive unbounded.
+  def handle_event("approve_request", %{"id" => _id} = params, socket) do
+    case RateLimiter.check_meeting_approval_rate_limit(dashboard_approval_key(socket)) do
+      :ok ->
+        RequestActions.answer(socket, params, &Approval.approve/1,
+          success:
+            dgettext("dashboard_bookings", "Booking confirmed. The invitee has been told."),
+          failure: dgettext("dashboard_bookings", "That request could not be approved."),
+          reload: &load_meetings/1
+        )
+
+      {:error, :rate_limited, message} ->
+        Flash.error(message)
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("show_decline_modal", %{"id" => _id} = params, socket) do
+    case RequestActions.fetch_held_request(socket, params) do
+      {:ok, meeting} ->
+        {:noreply, ModalHook.show_modal(socket, :decline_request, meeting)}
+
+      {:error, message} ->
+        # The row that could not be opened (already answered elsewhere, or
+        # lapsed) is stale either way, so it is reloaded here exactly as
+        # `RequestActions.answer/4` reloads after its own failures.
+        {:noreply, socket |> RequestActions.flash_and_stay(message) |> load_meetings()}
+    end
+  end
+
+  def handle_event("hide_decline_modal", _params, socket) do
+    {:noreply, ModalHook.hide_modal(socket, :decline_request)}
+  end
+
+  def handle_event("confirm_decline_request", params, socket) do
+    case RateLimiter.check_meeting_approval_rate_limit(dashboard_approval_key(socket)) do
+      :ok ->
+        reason = sanitize_decline_reason(Map.get(params, "reason"))
+
+        ModalHook.with_modal_data(socket, :decline_request, fn meeting ->
+          socket
+          |> ModalHook.hide_modal(:decline_request)
+          |> RequestActions.answer(%{"id" => meeting.id}, &Approval.decline(&1, reason),
+            success: dgettext("dashboard_bookings", "Request declined. The slot is free again."),
+            failure: dgettext("dashboard_bookings", "That request could not be declined."),
+            reload: &load_meetings/1
+          )
+        end)
+
+      {:error, :rate_limited, message} ->
+        Flash.error(message)
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event(event, params, socket) when is_map_key(@quick_add_meeting_events, event) do
+    {module, fun} = Map.fetch!(@quick_add_meeting_events, event)
+    apply(module, fun, [params, socket])
+  end
+
+  # The other half of `RequestActions.answer/4`'s `start_async/3` call: the
+  # transition itself, and its calendar/video/notification fan-out, ran off
+  # this process, and its result lands here.
+  @impl Phoenix.LiveComponent
+  def handle_async({:answer_request, _meeting_id} = key, result, socket) do
+    RequestActions.handle_answer(socket, key, result)
+  end
+
+  @impl Phoenix.LiveComponent
+  def render(assigns), do: ComponentView.management(assigns)
+
+  # Private functions
+
+  defp do_cancel_meeting(socket, meeting, params) do
+    booking_payment = socket.assigns.cancel_booking_payment
+
+    case Meetings.resolve_cancellation_refund(booking_payment, params) do
+      {:ok, refund_action} ->
+        socket
+        |> assign(:cancelling_meeting, meeting.id)
+        |> run_cancellation(meeting, refund_action)
+
+      {:error, reason} ->
+        Flash.error(Cancellation.refund_error_message(reason))
+        {:noreply, socket}
+    end
+  end
+
+  defp run_cancellation(socket, meeting, refund_action) do
+    result =
+      Meetings.cancel_meeting_with_refund(
+        meeting,
+        socket.assigns.current_user.id,
+        refund_action
+      )
+
+    Cancellation.emit_confirm(socket.assigns.current_user.id, meeting.id, result)
+    handle_cancellation(socket, meeting, refund_action, result)
+  end
+
+  defp handle_cancellation(socket, _meeting, refund_action, {:ok, _cancelled}) do
+    Flash.info(Cancellation.success_message(refund_action))
+    {:noreply, close_cancel_modal(socket)}
+  end
+
+  # The meeting is cancelled; only the money is outstanding. The modal closes
+  # and the list refreshes as on success, because the cancellation itself did
+  # happen and leaving the dialog open would suggest otherwise.
+  defp handle_cancellation(socket, _meeting, _refund_action, {:error, {:refund_failed, _reason}}) do
+    Flash.error(
+      dgettext(
+        "dashboard_bookings",
+        "Meeting cancelled but refund could not be issued. Please issue the refund manually from your Stripe dashboard."
+      )
+    )
+
+    {:noreply, close_cancel_modal(socket)}
+  end
+
+  defp handle_cancellation(socket, meeting, _refund_action, {:error, reason}) do
+    Logger.error("cancel_meeting_failed", reason: inspect(reason), meeting_id: meeting.id)
+    Flash.error(dgettext("dashboard_bookings", "Failed to cancel meeting. Please try again."))
+    {:noreply, assign(socket, :cancelling_meeting, nil)}
+  end
+
+  defp close_cancel_modal(socket) do
+    socket
+    |> assign(:cancelling_meeting, nil)
+    |> assign(:cancel_booking_payment, nil)
+    |> load_meetings()
+    |> ModalHook.hide_modal(:cancel_meeting)
+  end
+
+  defp do_send_reschedule_request(socket, meeting) do
+    socket = assign(socket, :sending_reschedule, meeting.id)
+
+    case Meetings.send_reschedule_request(meeting) do
+      :ok ->
+        :telemetry.execute(
+          [:tymeslot, :dashboard, :meetings, :reschedule, :confirm],
+          %{},
+          %{user_id: socket.assigns.current_user.id, meeting_id: meeting.id, result: :ok}
+        )
+
+        Flash.info(
+          dgettext("dashboard_bookings", "Reschedule request sent to %{attendee_name}",
+            attendee_name: meeting.attendee_name
+          )
+        )
+
+        {:noreply,
+         socket
+         |> assign(:sending_reschedule, nil)
+         |> load_meetings()
+         |> ModalHook.hide_modal(:reschedule_request)}
+
+      {:error, reason} ->
+        :telemetry.execute(
+          [:tymeslot, :dashboard, :meetings, :reschedule, :confirm],
+          %{},
+          %{
+            user_id: socket.assigns.current_user.id,
+            meeting_id: meeting.id,
+            result: :error,
+            reason: inspect(reason)
+          }
+        )
+
+        Logger.error("send_reschedule_request_failed",
+          reason: inspect(reason),
+          meeting_id: meeting.id
+        )
+
+        Flash.error(
+          dgettext("dashboard_bookings", "Failed to send reschedule request. Please try again.")
+        )
+
+        {:noreply, assign(socket, :sending_reschedule, nil)}
+    end
+  end
+
+  defp assign_awaiting_approval_count(socket) do
+    assign(
+      socket,
+      :awaiting_approval_count,
+      Meetings.count_awaiting_approval_for_organizer(socket.assigns.current_user.id)
+    )
+  end
+
+  # On first load, open straight on the "Awaiting Approval" tab when the
+  # organiser has a meeting waiting on them, instead of the default
+  # "Upcoming" tab, so a pending approval doesn't sit unnoticed. `filter_tabs/1`
+  # already hides that tab entirely when there's nothing to approve, so this
+  # only ever switches to a tab that's actually shown.
+  defp default_to_pending_approval(socket) do
+    current_user = socket.assigns.current_user
+
+    if Meetings.count_meetings_by_filter(current_user.id, "awaiting_approval") > 0 do
+      assign(socket, :filter, "awaiting_approval")
+    else
+      socket
+    end
+  end
+
+  @doc false
+  @spec load_meetings(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  def load_meetings(socket) do
+    filter = socket.assigns.filter
+    current_user = socket.assigns.current_user
+    per_page = socket.assigns.per_page
+
+    :telemetry.execute(
+      [:tymeslot, :dashboard, :meetings, :load, :start],
+      %{},
+      %{user_id: current_user.id, filter: filter}
+    )
+
+    socket =
+      socket
+      |> assign(:upcoming_count, Meetings.count_meetings_by_filter(current_user.id, "upcoming"))
+      |> assign(:past_count, Meetings.count_meetings_by_filter(current_user.id, "past"))
+      |> assign(
+        :cancelled_count,
+        Meetings.count_meetings_by_filter(current_user.id, "cancelled")
+      )
+
+    case Meetings.list_user_meetings_by_filter(current_user.id, filter, per_page: per_page) do
+      {:ok, page} ->
+        :telemetry.execute(
+          [:tymeslot, :dashboard, :meetings, :load, :stop],
+          %{items: length(page.items)},
+          %{user_id: current_user.id, filter: filter}
+        )
+
+        socket
+        |> LiveView.stream(:meetings, page.items, reset: true)
+        |> assign(:next_cursor, page.next_cursor)
+        |> assign(:has_more, page.has_more)
+        |> assign(:loading, false)
+        |> assign(:is_empty, page.items == [])
+        |> assign_awaiting_approval_count()
+
+      {:error, _error} ->
+        :telemetry.execute(
+          [:tymeslot, :dashboard, :meetings, :load, :error],
+          %{},
+          %{user_id: current_user.id, filter: filter}
+        )
+
+        Flash.error(dgettext("dashboard_bookings", "Failed to load meetings"))
+
+        socket
+        |> LiveView.stream(:meetings, [], reset: true)
+        |> assign(:next_cursor, nil)
+        |> assign(:has_more, false)
+        |> assign(:loading, false)
+        |> assign(:is_empty, true)
+    end
+  end
+
+  @doc false
+  @spec fetch_meeting_for_modal(Phoenix.LiveView.Socket.t(), map(), keyword()) ::
+          {:ok, Meetings.MeetingSchema.t()} | {:error, atom(), term()}
+  def fetch_meeting_for_modal(socket, params, opts) do
+    policy_fun = Keyword.fetch!(opts, :policy_fun)
+    user_email = socket.assigns.current_user.email
+
+    with {:ok, validated_id} <- validate_meeting_id(params),
+         {:ok, meeting} <- fetch_meeting_for_user(validated_id, user_email),
+         :ok <- policy_fun.(meeting) do
+      {:ok, meeting}
+    else
+      {:error, :not_found} -> {:error, :not_found, nil}
+      {:error, reason} when is_map(reason) -> {:error, :validation_failed, reason}
+      {:error, reason} -> {:error, :policy_blocked, reason}
+    end
+  end
+
+  defp fetch_meeting_for_user(id, user_email) do
+    Meetings.get_meeting_for_user(id, user_email)
+  end
+
+  @valid_filters ["upcoming", "past", "cancelled", "awaiting_approval"]
+
+  defp validate_filter(filter) when filter in @valid_filters, do: {:ok, filter}
+  defp validate_filter(_filter), do: {:error, "Invalid filter option"}
+
+  defp validate_meeting_id(params) do
+    case Map.get(params, "id") do
+      id when is_binary(id) ->
+        case UUID.cast(String.trim(id)) do
+          {:ok, uuid} -> {:ok, uuid}
+          :error -> {:error, %{id: "Invalid meeting ID format"}}
+        end
+
+      _id ->
+        {:error, %{id: "Meeting ID is required"}}
+    end
+  end
+
+  # Shares the emailed link's per-answer limiter (`meeting_approval:...`) but
+  # under a `"dashboard:"`-prefixed identifier keyed on the host, since the
+  # dashboard has an authenticated user and no client IP: the two surfaces
+  # cannot exhaust each other's budget.
+  defp dashboard_approval_key(socket), do: "dashboard:#{socket.assigns.current_user.id}"
+
+  # A crafted socket frame can send a non-binary `reason` (e.g. a
+  # `reason[x]=y` payload arrives as a map, not a string) or one containing a
+  # null byte, which PostgreSQL rejects even though it is valid UTF-8.
+  # Anything but a clean string is treated as no reason given rather than
+  # reaching `Approval.decline/2` and crashing the LiveView.
+  defp sanitize_decline_reason(reason) when is_binary(reason),
+    do: String.replace(reason, "\x00", "")
+
+  defp sanitize_decline_reason(_reason), do: nil
+end

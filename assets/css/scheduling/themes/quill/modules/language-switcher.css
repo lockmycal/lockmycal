@@ -1,0 +1,89 @@
+/* Language Switcher - Quill Theme */
+
+/* Language switcher visibility (only on slide 1) */
+.language-switcher-wrapper.hidden {
+  display: none;
+}
+
+.language-switcher-button-quill {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(var(--glass-blur-md));
+  -webkit-backdrop-filter: blur(var(--glass-blur-md));
+  border: var(--border-width-thin) solid var(--border-medium);
+  color: white;
+}
+
+.language-switcher-button-quill:hover {
+  background: rgba(0, 0, 0, 0.55);
+  border-color: var(--border-intense);
+  transform: translateY(-1px);
+}
+
+.language-switcher-button-quill:active {
+  transform: translateY(0);
+}
+
+.language-dropdown-quill {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: var(--border-width-thin) solid rgba(0, 0, 0, 0.1);
+  animation: fadeInDown var(--transition-normal) ease-out;
+  max-height: var(--dropdown-max-height);
+  overflow-y: auto;
+}
+
+.language-dropdown-item-quill {
+  border-bottom: var(--border-width-thin) solid rgba(0, 0, 0, 0.05);
+}
+
+.language-dropdown-item-quill:last-child {
+  border-bottom: none;
+}
+
+.language-dropdown-item-quill:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.language-dropdown-item-quill.active {
+  background: rgba(59, 130, 246, 0.15);
+  font-weight: var(--font-weight-semibold);
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== Responsive ===== */
+
+@media (max-width: 640px) {
+  .language-switcher {
+    position: fixed;
+    top: var(--space-lg);
+    right: var(--space-lg);
+    z-index: 1000;
+  }
+
+  .language-dropdown-quill {
+    width: var(--dropdown-width-sm);
+  }
+}
+
+@media (min-width: 640px) and (max-width: 767px) {
+  .language-dropdown-quill {
+    width: var(--dropdown-width-md);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .language-dropdown-quill {
+    width: var(--dropdown-width-md);
+  }
+}

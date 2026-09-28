@@ -1,0 +1,329 @@
+defmodule Tymeslot.Integrations.Calendar.DiscoveryTest do
+  # async: false — CalDAV discovery runs HTTP calls inside a circuit-breaker
+  # GenServer; in async (private) mode that process has no Mox allowance and
+  # the stub is bypassed, causing the success branch to never fire.
+  use Tymeslot.DataCase, async: false
+  @moduletag :integrations
+
+  alias Tymeslot.Integrations.Calendar.CalendarEntry
+  alias Tymeslot.Integrations.Calendar.Creation
+  alias Tymeslot.Integrations.Calendar.Discovery
+  alias Tymeslot.Integrations.Calendar.Reconnection
+  alias Tymeslot.Integrations.Calendar.Shared.ErrorHandler
+  alias Tymeslot.Security.Encryption
+  import Tymeslot.Factory
+  import Mox
+
+  setup :verify_on_exit!
+
+  describe "discover_calendars_for_integration/1" do
+    test "discovers for google provider" do
+      integration = insert(:calendar_integration, provider: "google")
+
+      expect(GoogleCalendarAPIMock, :list_calendars, fn _client ->
+        {:ok, [%{"id" => "primary", "summary" => "Primary", "primary" => true}]}
+      end)
+
+      assert {:ok, calendars} = Discovery.discover_calendars_for_integration(integration)
+      assert length(calendars) == 1
+      assert Enum.at(calendars, 0).name == "Primary"
+    end
+
+    test "discovers for outlook provider" do
+      integration = insert(:calendar_integration, provider: "outlook")
+
+      expect(OutlookCalendarAPIMock, :list_calendars, fn _client ->
+        {:ok, [%{"id" => "cal1", "name" => "Outlook", "isDefaultCalendar" => true}]}
+      end)
+
+      assert {:ok, calendars} = Discovery.discover_calendars_for_integration(integration)
+      assert length(calendars) == 1
+      assert Enum.at(calendars, 0).name == "Outlook"
+    end
+
+    test "handles unknown provider" do
+      assert {:error, "Unknown provider: unknown"} =
+               Discovery.discover_calendars_for_integration(%{provider: "unknown"})
+    end
+
+    test "discovers for baikal provider via decrypt chain" do
+      # Exercises the full credential-decrypt → resolve_provider_atom →
+      # provider_module_for → Baikal.Provider.new → Baikal.Provider.discover_calendars
+      # chain, which was previously uncovered by mock-based tests.
+      integration =
+        insert(:calendar_integration,
+          provider: "baikal",
+          base_url: "https://baikal.example.com/dav.php",
+          username_encrypted: Encryption.encrypt("testuser"),
+          password_encrypted: Encryption.encrypt("testpass")
+        )
+
+      stub(Tymeslot.HTTPClientMock, :request, fn _method, _url, _body, _headers, _opts ->
+        {:ok,
+         %Req.Response{
+           status: 207,
+           body: """
+           <D:multistatus xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+             <D:response>
+               <D:href>/dav.php/calendars/testuser/default/</D:href>
+               <D:propstat>
+                 <D:prop>
+                   <D:displayname>Personal</D:displayname>
+                   <D:resourcetype>
+                     <D:collection/>
+                     <C:calendar/>
+                   </D:resourcetype>
+                 </D:prop>
+                 <D:status>HTTP/1.1 200 OK</D:status>
+               </D:propstat>
+             </D:response>
+           </D:multistatus>
+           """
+         }}
+      end)
+
+      assert {:ok, calendars} = Discovery.discover_calendars_for_integration(integration)
+      assert Enum.map(calendars, & &1.name) == ["Personal"]
+    end
+
+    test "discovers for nextcloud provider even when base_url omits /remote.php/dav" do
+      # Regression: `Nextcloud.Provider.perform_connection_test/1` normalises
+      # `integration.base_url` through `PathUtils.normalize_url/2` before
+      # probing (see its moduledoc), but
+      # `Nextcloud.Provider.discover_calendars_for_integration/1` passed
+      # `integration.base_url` straight through unnormalised. A base_url
+      # persisted without `/remote.php/dav` (the format
+      # `Creation.prepare_attrs` actually stores) made "Test connection"
+      # succeed while the calendar picker silently found nothing, because the
+      # guessed discovery path became `<base_url>/calendars/<user>/` instead
+      # of the CalDAV-mounted `/remote.php/dav/calendars/<user>/`.
+      #
+      # The probed URL is asserted down to the calendar home rather than to
+      # `/remote.php/dav/`: the service root the discovery fix exists to avoid
+      # ends in exactly that prefix, so the looser assertion passed either way
+      # and this case could not tell the bug from the fix.
+      integration =
+        insert(:calendar_integration,
+          provider: "nextcloud",
+          base_url: "https://cloud.example.com",
+          username_encrypted: Encryption.encrypt("alice"),
+          password_encrypted: Encryption.encrypt("app-password")
+        )
+
+      stub(Tymeslot.HTTPClientMock, :request, fn :propfind, url, _body, _headers, _opts ->
+        assert url =~ "/remote.php/dav/calendars/alice/", "probed wrong URL: #{url}"
+
+        {:ok,
+         %Req.Response{
+           status: 207,
+           body: """
+           <d:multistatus xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
+             <d:response>
+               <d:href>/remote.php/dav/calendars/alice/personal/</d:href>
+               <d:propstat>
+                 <d:prop>
+                   <d:displayname>Personal</d:displayname>
+                   <d:resourcetype>
+                     <d:collection/>
+                     <cal:calendar/>
+                   </d:resourcetype>
+                 </d:prop>
+                 <d:status>HTTP/1.1 200 OK</d:status>
+               </d:propstat>
+             </d:response>
+           </d:multistatus>
+           """
+         }}
+      end)
+
+      assert {:ok, calendars} = Discovery.discover_calendars_for_integration(integration)
+      assert Enum.map(calendars, & &1.name) == ["Personal"]
+    end
+  end
+
+  describe "discover_calendars_for_credentials/5" do
+    test "returns error for unknown provider" do
+      assert {:error, {:config, "Unknown provider: unknown"}} =
+               Discovery.discover_calendars_for_credentials(
+                 :unknown,
+                 "http://url",
+                 "u",
+                 "p"
+               )
+    end
+
+    test "returns error for invalid provider string" do
+      assert {:error, {:config, "Unknown provider: invalid"}} =
+               Discovery.discover_calendars_for_credentials(
+                 "invalid",
+                 "http://url",
+                 "u",
+                 "p"
+               )
+    end
+  end
+
+  describe "classifying a reachable server whose calendars cannot be found" do
+    test "names the server and withholds the advice that would mislead" do
+      url = "https://calendar.example.com/caldav"
+
+      assert {:config, message} =
+               ErrorHandler.classify_and_format({:calendar_home_not_found, url}, :caldav)
+
+      # The URL is the part the account owner can act on, so it has to appear.
+      assert message =~ url
+      assert message =~ "credentials were accepted"
+
+      # `:config` normally advises checking the server URL and credentials —
+      # exactly the two things this failure has already proven correct. The
+      # category's message and its recovery suggestion must both be withheld,
+      # and nothing may be appended after the specific copy.
+      refute message =~ "configuration error"
+      refute message =~ "the server URL is correct"
+      assert String.ends_with?(message, "settings.")
+
+      # A plain :not_found shares the category and must still get that generic
+      # copy, or the two failures would read identically after all.
+      assert {:config, generic} = ErrorHandler.classify_and_format(:not_found, :caldav)
+      assert generic =~ "configuration error"
+      assert generic =~ "the server URL is correct"
+      refute generic =~ "credentials were accepted"
+    end
+
+    test "accepts the reason still wrapped in an :error tuple" do
+      # categorize_error/1 unwraps {:error, reason}; the message lookup has to
+      # agree with it, or a wrapped reason silently loses its specific copy
+      # while keeping its category.
+      wrapped = {:error, {:calendar_home_not_found, "https://calendar.example.com/caldav"}}
+
+      assert {:config, message} = ErrorHandler.classify_and_format(wrapped, :caldav)
+      assert message =~ "credentials were accepted"
+    end
+  end
+
+  describe "error classification under a non-English locale" do
+    setup do
+      original = Application.get_env(:tymeslot, :pseudo_locale_enabled)
+      Application.put_env(:tymeslot, :pseudo_locale_enabled, true)
+      Gettext.put_locale(TymeslotWeb.Gettext, "pseudo")
+
+      on_exit(fn ->
+        Gettext.put_locale(TymeslotWeb.Gettext, "en")
+
+        if is_nil(original) do
+          Application.delete_env(:tymeslot, :pseudo_locale_enabled)
+        else
+          Application.put_env(:tymeslot, :pseudo_locale_enabled, original)
+        end
+      end)
+
+      :ok
+    end
+
+    test "the category comes from the raw error, not from the localised message" do
+      # The pseudo locale rewrites every string that genuinely goes through
+      # gettext, so the returned message contains none of the English keywords
+      # the old classifier matched on ("unauthorized", "password", …). The
+      # category must still be `:auth`, because it is derived from the raw
+      # `:unauthorized` before the message is ever built.
+      assert {:auth, message} = ErrorHandler.classify_and_format(:unauthorized, :caldav)
+
+      assert String.starts_with?(message, "⟦")
+      refute String.downcase(message) =~ "password"
+      refute String.downcase(message) =~ "authentication"
+
+      # And the pair reaches Reconnection intact, which still maps it to a
+      # credentials error rather than passing the message through.
+      integration =
+        insert(:calendar_integration,
+          provider: "caldav",
+          base_url: "https://caldav.example.com",
+          username_encrypted: Encryption.encrypt("alice"),
+          password_encrypted: Encryption.encrypt("oldpass")
+        )
+
+      params = %{
+        "url" => "https://caldav.example.com",
+        "username" => "alice",
+        "password" => "wrongpass"
+      }
+
+      discover = fn _provider, _url, _username, _password -> {:error, {:auth, message}} end
+
+      assert {:error, :invalid_credentials} =
+               Reconnection.reconnect(integration, params, discover: discover)
+    end
+
+    test "a failed probe stays form-level rather than being blamed on a field" do
+      # A probe failure is reported against `:discovery` regardless of locale.
+      # The message is localised, so the field it lands on must never be
+      # derived from its wording — under the pseudo locale none of the English
+      # keywords a wording-based guess would look for survive.
+      attrs = %{
+        provider: "caldav",
+        user_id: 1,
+        base_url: "https://caldav.example.com",
+        username: "invalid",
+        password: "wrong"
+      }
+
+      assert {:error, %{discovery: message}} = Creation.prevalidate_config(attrs)
+      assert String.starts_with?(message, "⟦")
+    end
+  end
+
+  describe "maybe_discover_calendars/1" do
+    test "passes through non-caldav providers" do
+      attrs = %{provider: "google"}
+      assert {:ok, ^attrs} = Discovery.maybe_discover_calendars(attrs)
+    end
+
+    test "refuses a caldav connection whose discovery finds nothing" do
+      # An invalid URL fails discovery. Passing the attrs through unchanged
+      # here is what created integrations with an empty calendar_list: a
+      # CalDAV sync iterates calendar_paths and nothing else, so the row could
+      # never sync and had no calendar to book into, while the connection was
+      # presented as working.
+      attrs = %{
+        provider: "caldav",
+        base_url: "http://invalid",
+        username: "user",
+        password: "pass",
+        user_id: 1
+      }
+
+      assert {:error, %{discovery: message}} = Discovery.maybe_discover_calendars(attrs)
+      # The classified provider failure is what reaches the connection form,
+      # not a generic "could not save".
+      assert message =~ "Please verify your server URL"
+    end
+
+    test "dispatches nextcloud through CalDAV discovery" do
+      attrs = %{provider: "nextcloud", base_url: "http://invalid"}
+      assert {:error, %{discovery: _message}} = Discovery.maybe_discover_calendars(attrs)
+    end
+
+    test "leaves a caller's own calendar selection alone" do
+      # The dashboard form submits the calendars the user ticked. Re-running
+      # discovery over them would replace the subset they chose with every
+      # calendar on the server, so a selection is passed through untouched.
+      # No PROPFIND is stubbed here: DataCase's default stub fails the network
+      # call, so a discovery attempt would surface as a `:discovery` error
+      # rather than the attrs coming back unchanged.
+      selection = [
+        %CalendarEntry{id: "/calendars/user/work/", path: "/calendars/user/work/", selected: true}
+      ]
+
+      attrs = %{
+        provider: "caldav",
+        base_url: "https://caldav.example.com",
+        username: "user",
+        password: "pass",
+        calendar_paths: ["/calendars/user/work/"],
+        calendar_list: selection
+      }
+
+      assert {:ok, ^attrs} = Discovery.maybe_discover_calendars(attrs)
+    end
+  end
+end

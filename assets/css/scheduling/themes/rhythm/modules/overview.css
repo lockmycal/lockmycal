@@ -1,0 +1,222 @@
+/* Overview Slide Components */
+
+/* Organizer Profile - Unified with size variants */
+.organizer-profile {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+  gap: var(--space-md);
+}
+
+.organizer-avatar {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Default large size */
+.avatar-image {
+  width: var(--avatar-size-xl);
+  height: var(--avatar-size-xl);
+  border-radius: 50%;
+  object-fit: cover;
+  border: var(--border-width-thick) solid rgba(255, 255, 255, 0.8);
+}
+
+.avatar-checkmark {
+  position: absolute;
+  bottom: calc(var(--space-2xs) * -1);
+  right: calc(var(--space-2xs) * -1);
+  width: var(--icon-md);
+  height: var(--icon-md);
+  background: var(--theme-accent-solid);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--theme-on-accent);
+}
+
+.organizer-info {
+  flex: 1;
+  text-align: left;
+}
+
+.organizer-greeting {
+  margin: 0 0 var(--space-2xs) 0;
+  color: var(--theme-text);
+}
+
+.organizer-instruction {
+  margin: 0;
+  color: var(--theme-text-secondary);
+}
+
+/* Empty state — shown when an organiser has no meeting types configured */
+.overview-empty-state {
+  margin-top: var(--space-lg);
+  padding: var(--space-lg);
+  text-align: center;
+  background: var(--surface-light);
+  border: var(--border-width-thin) solid var(--border-medium);
+  border-radius: var(--radius-lg);
+}
+
+.overview-empty-title {
+  margin: 0 0 var(--space-2xs) 0;
+  color: var(--theme-text);
+}
+
+.overview-empty-subtitle {
+  margin: 0;
+  color: var(--theme-text-secondary);
+}
+
+/* Duration Cards */
+.duration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--container-sm), 1fr));
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  flex: 0 0 auto;
+  padding: var(--space-sm) var(--space-3xs) var(--space-3xs) 0;
+}
+
+/* Adaptive layout for many meeting types — stack into a single full-width
+   column and tighten the button padding so the longer list stays compact.
+   Descriptions are NOT dropped here: they're content, and the count of meeting
+   types says nothing about whether there's room to show them. They collapse
+   only when vertical space is genuinely tight (short-viewport rule below). */
+.duration-grid:has(.duration-card:nth-child(5)) {
+  grid-template-columns: 1fr;
+}
+
+.duration-grid:has(.duration-card:nth-child(5)) .duration-button {
+  padding: var(--space-sm);
+}
+
+.duration-card {
+  background: var(--surface-light);
+  border: var(--border-width-thin) solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  transition: background var(--transition-smooth), border-color var(--transition-smooth), transform var(--transition-smooth), box-shadow var(--transition-smooth);
+}
+
+.duration-card:hover {
+  background: var(--surface-strong);
+  border-color: var(--theme-primary);
+  transform: translateY(-2px);
+}
+
+.duration-card.selected {
+  background: var(--theme-surface);
+  border-color: var(--theme-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.duration-button {
+  width: 100%;
+  padding: var(--space-md);
+  background: none;
+  border: none;
+  color: var(--theme-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  border-radius: var(--radius-lg);
+}
+
+.duration-icon {
+  flex-shrink: 0;
+}
+
+.duration-info {
+  text-align: left;
+  flex: 1;
+}
+
+.duration-name {
+  margin-bottom: var(--space-3xs);
+}
+
+.duration-time {
+  color: var(--theme-text-secondary);
+  margin-bottom: var(--space-3xs);
+}
+
+.duration-description {
+  color: var(--theme-text-secondary);
+  opacity: 0.9;
+}
+
+/* ============================================================================
+   RESPONSIVE — CONTAINER QUERIES
+   ============================================================================ */
+
+/* Narrow container (≤ 479px) — compact organizer profile */
+@container scheduling (max-width: 479px) {
+  .avatar-image {
+    width: var(--avatar-size-lg);
+    height: var(--avatar-size-lg);
+  }
+
+  .organizer-profile {
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+  }
+}
+
+/* ============================================================================
+   SHORT VIEWPORTS — height media queries (kept as @media)
+   ============================================================================ */
+
+@media (max-height: 600px) {
+  .avatar-image {
+    width: var(--avatar-size-lg);
+    height: var(--avatar-size-lg);
+  }
+
+  .organizer-profile {
+    margin-bottom: var(--space-sm);
+    gap: var(--space-sm);
+  }
+
+  /* Collapse meeting-type descriptions when vertical space is tight, so more
+     cards fit without scrolling. Visually collapsed only — kept in the DOM and
+     accessibility tree so screen readers still reach the full description. */
+  .duration-description {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+  }
+}
+
+@media (max-height: 500px) {
+  .organizer-profile {
+    margin-bottom: 0;
+  }
+
+  .organizer-greeting {
+    font-size: var(--theme-font-size-xs);
+  }
+}
+
+@media (max-height: 400px) {
+  .organizer-profile {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   EMBEDDED MODE
+   ============================================================================ */
+
+/* Organizer profile — keep visible in iframes.
+   responsive.css hides it at max-height: 400px, but auto-sizing iframes
+   start with a small viewport and would collapse into a self-reinforcing
+   hide cycle (hide → shrink → stay hidden). */
+html.rhythm-theme[data-embedded] .organizer-profile {
+  display: flex;
+}

@@ -1,0 +1,228 @@
+# The directory Mix will write compiled artifacts to.
+/_build/
+
+# If you run "mix test --cover", coverage assets end up here.
+/cover/
+*.coverdata
+
+# The directory Mix downloads your dependencies sources to.
+/deps/
+
+# Where 3rd-party dependencies like ExDoc output generated docs.
+/doc/
+
+# Ignore .fetch files in case you like to edit your project deps locally.
+/.fetch
+
+# If the VM crashes, it generates a dump, let's ignore it too.
+erl_crash.dump
+
+# Also ignore archive artifacts (built via "mix archive.build").
+*.ez
+
+# Temporary files, for example, from tests.
+/tmp/
+
+# Ignore package tarball (built via "mix hex.build").
+tymeslot-*.tar
+
+# Ignore assets that are produced by build tools and digested assets cache.
+npm-debug.log
+assets/node_modules/
+
+# Environment variables and configuration
+.env
+.env.*
+!.env.example
+env.sh
+cloudron_env_set
+cloudron_env_set.txt
+config/*.secret.exs
+config/prod.secret.exs
+
+# Phoenix specific
+# Compiled asset bundles and digester output; source assets (videos, images,
+# icons) are tracked. The 32-? glob matches Phoenix's hex-hash digest copies.
+priv/static/assets/
+priv/static/cache_manifest.json
+priv/static/**/*.gz
+priv/static/**/*.zst
+priv/static/**/*-????????????????????????????????.*
+# Built embed script from assets.deploy (source is in assets/js/embed.js)
+priv/static/embed.js
+# Legacy theme CSS superseded by tailwind quill/rhythm builds in assets/
+priv/static/css/
+priv/cert/
+.elixir_ls/
+.dialyzer/
+*.beam
+
+# Dialyzer PLT files
+priv/plts/
+*.plt
+*.plt.hash
+
+# Logs
+*.log
+
+# Database dumps
+*.dump
+
+# Test artifacts
+test/reports/
+
+# Claude Code local/session files (personal permissions, resume checkpoints)
+.claude/settings.local.json
+.claude/RESUME.md
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-*
+.atom/
+.elixir-ls/
+
+# OS generated files
+Thumbs.db
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+
+# Backup files
+*.bak
+*.bkp
+*.backup
+*.old
+
+# Local scripts and debug files. Anchored to the repository root: unanchored,
+# these swallow legitimate files anywhere in the tree, and `test/` is full of
+# names that match (test_helper.exs, fetch_current_user_test.exs,
+# debug_schedule_test.exs). Tracked files were unaffected, since .gitignore
+# only governs untracked ones, but a *new* test file whose name started with
+# test_ was invisible to git with no sign anything had been dropped.
+/debug_*.exs
+/test_*.exs
+/check_*.exs
+/fetch_*.exs
+
+# Node/npm/yarn
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Mix dependencies lock for libraries
+mix.lock.backup
+
+# Local SSL certificates
+*.pem
+*.key
+*.crt
+
+# Docker volumes
+.docker/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+test/backup_tests/
+
+# User uploads and data
+data/
+uploads/
+
+# Coverage reports
+
+# Ecto schema dump. Nothing produces or consumes it: `mix ecto.setup` builds
+# from priv/repo/migrations/, and no test, workflow, script or Dockerfile
+# reads it. A committed copy only goes stale and misleads whoever opens it to
+# learn the schema.
+priv/repo/structure.sql
+
+# Local-only internal documents
+docs/Internal/*
+
+# ---------------------------------------------------------------------------
+# Public GitHub copy only: this file is the public repo's .gitignore (copied
+# there by ../publish-github.sh). Everything below stays in the private repo.
+# ---------------------------------------------------------------------------
+
+# Local Docker dev stack (Adminer, analysis image, dev compose)
+/Dockerfile.adminer
+/Dockerfile.analysis
+/Dockerfile.dev
+/docker-compose.dev.yml
+/docker-compose.dev.build.yml
+/docker-entrypoint-analysis.sh
+/z_project_files/
+/docs/DOCKER_DEV_GUIDE.md
+
+# Claude Code skills
+/.claude/
+
+# Internal documentation
+/CHANGELOG_DETAILS.md
+/docs/NOTIFICATIONS.md
+
+# Upstream's CLA (grants rights to Diletta Luna OÜ) and the workflow enforcing it;
+# its DCO check ships as .github/workflows/dco.yml instead
+/CLA.md
+/.github/workflows/licensing.yml
+
+# Workflows for upstream's infrastructure: image publishing to upstream's Docker
+# Hub repository and the nightly scheduled suites
+/.github/workflows/docker-publish.yml
+/.github/workflows/excluded-suites.yml
+/.github/workflows/flake-hunt.yml
+
+# Upstream maintainers' pre-push hook: refuses to push anything but main and
+# tags to GitHub, which would block contributors pushing branches to their forks
+/.githooks/pre-push
+
+# Cloudron and Railway packaging (not published by LockMyCal). cliff-cloudron.toml
+# stays: test/release/changelog_configs_test.exs renders it in CI. start.sh and
+# the env template are the Cloudron image's entrypoint files.
+/README-Cloudron.md
+/CloudronManifest.json
+/CloudronVersions.json
+/Dockerfile.cloudron
+/start.sh
+/scripts/cloudron-env-template.sh
+/.github/workflows/cloudron-publish.yml
+/Dockerfile.railway
+/railpack.json
+
+# LockMyCal overrides: publish-github.sh copies each X.lockmycal.md over X.md
+*.lockmycal.md

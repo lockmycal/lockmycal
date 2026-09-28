@@ -1,0 +1,302 @@
+defmodule Tymeslot.Integrations.Calendar.CalDAV.SyncCollectionReport do
+  @moduledoc """
+  Builds, sends, and parses RFC 6578 sync-collection REPORTs.
+
+  A sync-collection REPORT is the mechanism behind Tier 1 CalDAV sync: the
+  client sends a stored `DAV:sync-token` and the server returns only the
+  events that changed since that token was issued.
+
+  This module also provides `fetch_ctag/2` for Tier 2 CTag-based change
+  detection — a lightweight PROPFIND that checks whether the calendar has
+  changed since the last sync.
+  """
+
+  import SweetXml
+
+  require Logger
+
+  alias Tymeslot.Integrations.Calendar.CalDAV.EventProcessor
+  alias Tymeslot.Integrations.Calendar.CalDAV.Http, as: CalDAVHttp
+  alias Tymeslot.Integrations.Calendar.Utils.XmlEscape
+
+  # A delta is parsed whole into an xmerl DOM, which holds text as charlists at
+  # sixteen bytes or more per character, so the DOM runs to many times the size
+  # of the XML. A routine delta is a few kilobytes; one past this budget comes
+  # from a bulk change on the server (an import, a migration, a script
+  # rewriting every event) and is abandoned mid-transfer, before any of it is
+  # parsed. The caller reads the calendar through the sync window instead.
+  @max_delta_bytes 4 * 1024 * 1024
+
+  # ---------------------------------------------------------------------------
+  # Sync-collection REPORT (Tier 1)
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Fetches a sync-collection REPORT from the CalDAV server.
+
+  Sends the collection's stored `sync_token` to request only changes since
+  the last sync.
+
+  Returns `{:ok, {events, deleted_hrefs, new_sync_token}}` on success,
+  `{:error, :sync_token_expired}` when the server responds with 410 Gone,
+  `{:error, :response_too_large}` when the delta outgrows the byte budget,
+  `{:error, :calendar_data_withheld}` when the server reported changes
+  without inlining their calendar data (see `parse_response/1`), or
+  `{:error, reason}` for other failures.
+  """
+  @spec fetch(map(), String.t(), String.t()) ::
+          {:ok, {list(map()), list(String.t()), String.t() | nil}}
+          | {:error, term()}
+  def fetch(client, calendar_url, sync_token) when is_binary(sync_token) do
+    report_body = build_report(sync_token)
+
+    # RFC 6578, Section 3.2: the sync-collection report is defined only for
+    # `Depth: 0`, and a compliant server answers any other value with 400. The
+    # scope the client wants travels in `<d:sync-level>`, which `build_report/1`
+    # already sends. A 410 answers a token the server no longer recognises, so
+    # it means something here that it does not mean on a calendar-query.
+    case CalDAVHttp.report(calendar_url, client.username, client.password, report_body,
+           depth: "0",
+           status_overrides: %{410 => :sync_token_expired},
+           max_response_bytes: @max_delta_bytes
+         ) do
+      {:ok, %Req.Response{status: 207, body: body}} ->
+        parse_response(body)
+
+      # Some servers answer with plain 200 instead of the mandated 207
+      # Multi-Status. The body is a multistatus document either way.
+      {:ok, %Req.Response{status: status, body: body}} ->
+        Logger.warning("CalDAV sync-collection REPORT returned unexpected status",
+          status: status,
+          expected: 207
+        )
+
+        parse_response(body)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  The largest sync-collection response body `fetch/3` will read, in bytes.
+  """
+  @spec max_delta_bytes() :: pos_integer()
+  def max_delta_bytes, do: @max_delta_bytes
+
+  @doc """
+  Builds a sync-collection REPORT XML body requesting the delta since
+  `sync_token`.
+
+  There is deliberately no form for an empty token: see `fetch_sync_token/2`
+  for how a collection gets its first one.
+  """
+  @spec build_report(String.t()) :: String.t()
+  def build_report(sync_token) when is_binary(sync_token) do
+    """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <d:sync-collection xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+      <d:sync-token>#{XmlEscape.escape(sync_token)}</d:sync-token>
+      <d:sync-level>1</d:sync-level>
+      <d:prop>
+        <d:getetag/>
+        <c:calendar-data/>
+      </d:prop>
+    </d:sync-collection>
+    """
+  end
+
+  @doc """
+  Parses a 207 Multi-Status sync-collection response body.
+
+  Separates changed events (carrying calendar data) from removed resources
+  and extracts the new sync token.
+
+  A resource counts as removed only when the server says so, with a 404 on
+  the `response` element itself — the signal RFC 6578, Section 3.2 defines
+  for a member that left the collection. Missing calendar data is
+  deliberately *not* read as a removal: a server is free to answer with the
+  etag alone, or to report the data property in its own 404 `propstat`
+  because it declines to inline it, and RFC 6578 expects the client to fetch
+  those resources separately. Inferring deletion from an absent property
+  would hand `SyncReconciler` a list of live events to delete, and a
+  deletion auto-cancels the linked meeting and emails both parties — with no
+  bulk-deletion circuit breaker on this path, unlike the full fetch.
+
+  So a response that is neither a removal nor a carrier of calendar data
+  fails the whole delta with `{:error, :calendar_data_withheld}`, rather than
+  being applied in part or read as a deletion: the caller falls back
+  to a full fetch, which reads the calendar authoritatively and reconciles
+  deletions behind that circuit breaker. The stored sync token is left
+  untouched, so the same changes are offered again next cycle.
+  """
+  @spec parse_response(String.t()) ::
+          {:ok, {list(map()), list(String.t()), String.t() | nil}}
+          | {:error, :invalid_response | :calendar_data_withheld}
+  def parse_response(xml_body) do
+    doc = SweetXml.parse(xml_body, namespace_conformant: true, dtd: :none)
+
+    # Extract the new sync token from the response
+    raw_sync_token = xpath(doc, ~x"//*[local-name()='sync-token']/text()"s)
+    new_sync_token = if raw_sync_token == "", do: nil, else: raw_sync_token
+
+    responses =
+      xpath(
+        doc,
+        ~x"//*[local-name()='response']"l,
+        href: ~x"./*[local-name()='href']/text()"s,
+        status: ~x"./*[local-name()='status']/text()"s,
+        etag: ~x".//*[local-name()='getetag']/text()"s,
+        calendar_data: ~x".//*[local-name()='calendar-data']/text()"s
+      )
+
+    {removed, present} = Enum.split_with(responses, &removed?/1)
+    {changed, withheld} = Enum.split_with(present, &(&1.calendar_data != ""))
+
+    if withheld == [] do
+      events = Enum.flat_map(changed, &parse_event/1)
+
+      {:ok, {events, Enum.map(removed, & &1.href), new_sync_token}}
+    else
+      Logger.warning("CalDAV sync-collection response withheld event data",
+        withheld_count: length(withheld),
+        changed_count: length(changed),
+        removed_count: length(removed)
+      )
+
+      {:error, :calendar_data_withheld}
+    end
+  rescue
+    e ->
+      Logger.error("Failed to parse sync-collection response", error: inspect(e))
+      {:error, :invalid_response}
+  catch
+    :exit, reason ->
+      Logger.error("Failed to parse sync-collection response", error: inspect(reason))
+      {:error, :invalid_response}
+  end
+
+  # A 404 (or 410) on the `response` element itself, not on a nested
+  # `propstat`: the latter reports one property the server could not return,
+  # which says nothing about the resource still existing.
+  defp removed?(%{status: status}) do
+    String.contains?(status, "404") or String.contains?(status, "410")
+  end
+
+  # An event whose iCalendar body fails to parse is dropped rather than
+  # failing the batch: it is malformed at the source, so re-fetching it in
+  # full would produce the same result every cycle.
+  #
+  # One resource yields one event per `VEVENT` in it, not one event: a
+  # recurring event's resource carries the master and one `VEVENT` per
+  # occurrence edited on its own. They share the resource's href and ETag,
+  # because that is what those identify.
+  defp parse_event(response) do
+    case EventProcessor.parse_ical_events(response.calendar_data) do
+      {:ok, events} ->
+        Enum.map(
+          events,
+          &Map.merge(&1, %{
+            href: response.href,
+            etag: EventProcessor.clean_etag(response.etag)
+          })
+        )
+
+      {:error, _reason} ->
+        []
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Collection property probes (Tier 1 sync token, Tier 2 CTag)
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Fetches the current CTag for a calendar via a lightweight PROPFIND.
+
+  Returns `{:ok, ctag}` where `ctag` may be `nil` if the server does not
+  include one. Returns `{:error, reason}` on transport or auth failure.
+  """
+  @spec fetch_ctag(String.t(), map()) :: {:ok, String.t() | nil} | {:error, term()}
+  def fetch_ctag(calendar_url, client) do
+    calendar_url
+    |> CalDAVHttp.propfind_ctag(client.username, client.password)
+    |> handle_property_response(&parse_ctag_response/1)
+  end
+
+  @doc """
+  Fetches a calendar's current `DAV:sync-token` via a Depth 0 PROPFIND.
+
+  This is how a collection with no stored token gets its first one. RFC 6578
+  also allows a sync-collection REPORT with an empty token for that, but the
+  server answers it with every member the collection has ever held, with its
+  calendar data inline and no time range, in a single response. Reading the
+  property instead costs a few hundred bytes whatever the calendar's size, and
+  the events come from the time-bounded full fetch.
+
+  Returns `{:ok, token}` where `token` may be `nil` if the server does not
+  expose the property, or `{:error, reason}` on transport or auth failure.
+  """
+  @spec fetch_sync_token(String.t(), map()) :: {:ok, String.t() | nil} | {:error, term()}
+  def fetch_sync_token(calendar_url, client) do
+    calendar_url
+    |> CalDAVHttp.propfind_sync_token(client.username, client.password)
+    |> handle_property_response(&parse_property(&1, :sync_token))
+  end
+
+  @doc """
+  Parses the CTag value from a PROPFIND response body.
+  """
+  @spec parse_ctag_response(String.t()) :: {:ok, String.t() | nil}
+  def parse_ctag_response(xml_body) when is_binary(xml_body),
+    do: parse_property(xml_body, :getctag)
+
+  defp handle_property_response(response, parse) do
+    case response do
+      {:ok, %Req.Response{status: status, body: body}} when status in [200, 207] ->
+        parse.(body)
+
+      {:ok, %Req.Response{status: 401}} ->
+        {:error, :unauthorized}
+
+      {:ok, %Req.Response{status: 403}} ->
+        {:error, :forbidden}
+
+      {:ok, %Req.Response{status: status}} ->
+        {:error, {:http_error, status}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # A property that is absent or unparseable reads as `nil`: both probes are
+  # optimisations, and a caller without a value falls back to a full fetch.
+  defp parse_property(xml_body, property) do
+    doc = SweetXml.parse(xml_body, namespace_conformant: true, dtd: :none)
+
+    case xpath(doc, property_path(property)) do
+      "" -> {:ok, nil}
+      value -> {:ok, value}
+    end
+  rescue
+    e ->
+      Logger.warning("Failed to parse CalDAV property response",
+        property: property,
+        error: inspect(e)
+      )
+
+      {:ok, nil}
+  catch
+    :exit, reason ->
+      Logger.warning("Failed to parse CalDAV property response",
+        property: property,
+        error: inspect(reason)
+      )
+
+      {:ok, nil}
+  end
+
+  defp property_path(:getctag), do: ~x"//*[local-name()='getctag']/text()"s
+  defp property_path(:sync_token), do: ~x"//*[local-name()='sync-token']/text()"s
+end

@@ -1,0 +1,102 @@
+defmodule Tymeslot.Emails.EmailServiceBehaviour do
+  @moduledoc """
+  Behavior for email service operations.
+  """
+
+  @type appointment_details :: Tymeslot.Emails.EmailService.appointment_details()
+  @type user_map :: Tymeslot.Emails.EmailService.user_map()
+
+  @callback send_appointment_confirmation_to_organizer(String.t(), appointment_details()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_booking_request_received(struct()) :: {:ok, any()} | {:error, any()}
+  @callback send_booking_request_received(struct(), keyword()) :: {:ok, any()} | {:error, any()}
+
+  @callback send_booking_approval_request(atom(), struct(), map(), String.t(), keyword()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_booking_approval_request(atom(), struct(), map(), String.t()) ::
+              {:ok, any()} | {:error, any()}
+
+  @callback send_booking_request_outcome(atom(), struct()) :: {:ok, any()} | {:error, any()}
+  @callback send_reschedule_request_expired(struct(), String.t()) ::
+              {:ok, any()} | {:error, any()}
+
+  @callback send_appointment_confirmation_to_attendee(String.t(), appointment_details()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_guest_confirmation(String.t(), appointment_details()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_guest_reschedule(String.t(), appointment_details()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_guest_cancellation(String.t(), appointment_details()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_appointment_confirmations(appointment_details()) ::
+              {{:ok, any()} | {:error, any()}, {:ok, any()} | {:error, any()}}
+  @callback send_reschedule_email_to_organizer(String.t(), appointment_details()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_reschedule_email_to_attendee(String.t(), appointment_details()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_reschedule_emails(appointment_details()) ::
+              {{:ok, any()} | {:error, any()}, {:ok, any()} | {:error, any()}}
+  @callback send_appointment_reminder_to_organizer(String.t(), appointment_details()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_guest_reminder(String.t(), appointment_details()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_appointment_reminder_to_attendee(String.t(), appointment_details()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_appointment_reminders(appointment_details()) ::
+              {{:ok, any()} | {:error, any()}, {:ok, any()} | {:error, any()}}
+  @callback send_appointment_reminders(appointment_details(), String.t()) ::
+              {{:ok, any()} | {:error, any()}, {:ok, any()} | {:error, any()}}
+  @callback send_appointment_cancellation(String.t(), appointment_details()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_cancellation_emails(appointment_details()) ::
+              {{:ok, any()} | {:error, any()}, {:ok, any()} | {:error, any()}}
+  @callback send_calendar_sync_error(map(), any()) :: {:ok, any()} | {:error, any()}
+  @callback send_video_room_failed(map()) :: {:ok, any()} | {:error, any()}
+
+  @callback send_email_verification(user_map(), String.t()) :: {:ok, any()} | {:error, any()}
+  @callback send_password_reset(user_map(), String.t()) :: {:ok, any()} | {:error, any()}
+  @callback send_no_password_to_reset(user_map(), String.t()) :: {:ok, any()} | {:error, any()}
+  @callback send_signup_attempt_notice(user_map(), String.t(), String.t()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_social_signup_confirmation(user_map(), String.t(), String.t()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_email_change_verification(user_map(), String.t(), String.t()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_email_change_notification(user_map(), String.t()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_email_change_confirmations(user_map(), String.t(), String.t()) ::
+              {{:ok, any()} | {:error, any()}, {:ok, any()} | {:error, any()}}
+  @callback send_reschedule_request(map()) :: {:ok, any()} | {:error, any()}
+  @callback send_integration_unhealthy_notification(
+              user_map(),
+              %{required(:provider) => atom(), optional(atom()) => term()},
+              atom() | String.t()
+            ) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_integration_reauth_notification(
+              user_map(),
+              %{required(:provider) => atom(), optional(atom()) => term()},
+              atom() | String.t()
+            ) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_integration_paused_notification(
+              user_map(),
+              %{required(:provider) => atom(), optional(atom()) => term()},
+              atom() | String.t(),
+              pos_integer()
+            ) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_video_room_creation_error_notification(user_map(), map()) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_external_booking_change(map(), String.t(), :deleted | :modified) ::
+              {:ok, any()} | {:error, any()}
+  @callback send_calendar_invitation(String.t(), map()) :: {:ok, any()} | {:error, any()}
+  @callback send_event_update_notification(String.t(), map()) :: {:ok, any()} | {:error, any()}
+  @callback send_admin_alert(
+              recipient :: String.t(),
+              category :: String.t(),
+              severity :: :info | :warning | :error,
+              message :: String.t(),
+              metadata :: map()
+            ) :: {:ok, any()} | {:error, any()}
+end

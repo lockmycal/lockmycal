@@ -1,0 +1,128 @@
+defmodule Tymeslot.Auth.SignupSecurity do
+  @moduledoc """
+  Layered security gate for new-account signup.
+
+  Runs the hybrid pipeline that decides whether a signup submission may
+  proceed to actual user creation:
+
+  1. **Honeypot** — a hidden form field that legitimate browsers leave empty;
+     bots that auto-fill all fields trip it.
+  2. **Rate limit** — fast per-email + per-IP gate that runs before bot
+     verification so distributed bots cannot burn the provider's API quota.
+  3. **reCAPTCHA v3 or Cloudflare Turnstile** — whichever the admin has
+     configured for signup (see `Tymeslot.Infrastructure.Security.BotProtection`).
+
+  This module owns the gate decision only. `Tymeslot.Auth.Registration`
+  runs it at the start of every sign-up, so the signup rate limit is charged
+  exactly once per attempt; the caller then answers the outcome.
+  """
+
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Tymeslot.Auth.RateLimit
+  alias Tymeslot.Infrastructure.Security.BotProtection
+  alias Tymeslot.Security.RateLimiter
+  alias Tymeslot.Security.SecurityLogger
+
+  @type metadata :: %{
+          required(:ip) => String.t() | nil,
+          optional(:user_agent) => String.t() | nil
+        }
+
+  @type gate_result ::
+          :ok
+          | :honeypot
+          | {:error, :rate_limited, String.t()}
+          | {:error, :recaptcha_failed, String.t()}
+          | {:error, :recaptcha_script_blocked, String.t()}
+
+  @doc """
+  Decides whether a signup submission should proceed to registration.
+
+  `opts` carries the request context (`:ip`, `:user_agent`) and `:bot_checks`
+  (default `true`): `false` skips the honeypot and reCAPTCHA, which only a
+  browser form can satisfy, for trusted server-side callers. The rate limit
+  always applies.
+
+  Returns:
+  - `:honeypot` — bot-filled honeypot, caller should fake success
+  - `:ok` — human submission within rate limits, caller may register
+  - `{:error, kind, message}` — rejected by rate limiter or reCAPTCHA
+  """
+  @spec gate(map(), keyword()) :: gate_result()
+  def gate(user_params, opts) do
+    metadata = opts |> Keyword.take([:ip, :user_agent]) |> Map.new()
+    bot_checks? = Keyword.get(opts, :bot_checks, true)
+
+    if bot_checks? and honeypot_tripped?(user_params) do
+      log_honeypot_signup(metadata)
+      :honeypot
+    else
+      with :ok <- check_rate_limit(user_params, metadata) do
+        if bot_checks?, do: verify_bot_protection(user_params, metadata), else: :ok
+      end
+    end
+  end
+
+  @doc """
+  Logs a honeypot-triggered "resend verification" attempt — the bot has
+  followed the decoy success path and is requesting another email.
+  """
+  @spec log_honeypot_resend(metadata() | keyword()) :: :ok
+  def log_honeypot_resend(metadata) do
+    SecurityLogger.log_security_event("signup_honeypot_resend", %{
+      ip_address: metadata[:ip],
+      user_agent: metadata[:user_agent]
+    })
+  end
+
+  defp honeypot_tripped?(params) do
+    case Map.get(params, "website") do
+      value when is_binary(value) -> value != ""
+      _other -> false
+    end
+  end
+
+  defp log_honeypot_signup(metadata) do
+    SecurityLogger.log_security_event("signup_honeypot_triggered", %{
+      ip_address: metadata[:ip],
+      user_agent: metadata[:user_agent]
+    })
+  end
+
+  defp check_rate_limit(user_params, metadata) do
+    email = user_params["email"]
+
+    if is_binary(email) and email != "" do
+      RateLimit.check(RateLimiter.check_signup_rate_limit(email, metadata[:ip]),
+        event: "signup",
+        identifier: email,
+        ip: metadata[:ip],
+        user_agent: metadata[:user_agent]
+      )
+    else
+      {:error, :rate_limited,
+       dgettext("auth", "Too many signup attempts. Please try again later.")}
+    end
+  end
+
+  defp verify_bot_protection(user_params, metadata) do
+    token = Map.get(user_params, BotProtection.token_param_name(:signup), "")
+
+    case BotProtection.maybe_verify_signup_token(token, metadata) do
+      :ok ->
+        :ok
+
+      {:error, :recaptcha_failed} ->
+        {:error, :recaptcha_failed,
+         dgettext("auth", "Security verification failed. Please try again.")}
+
+      {:error, :recaptcha_script_blocked} ->
+        {:error, :recaptcha_script_blocked,
+         dgettext(
+           "auth",
+           "Security verification unavailable. Please enable JavaScript and refresh the page, or contact support if the problem persists."
+         )}
+    end
+  end
+end

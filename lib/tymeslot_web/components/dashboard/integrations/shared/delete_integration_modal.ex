@@ -1,0 +1,340 @@
+defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.DeleteIntegrationModal do
+  @moduledoc """
+  Shared delete confirmation modal for integration components.
+  Now implemented as a LiveComponent to handle its own state and deletion logic.
+  """
+
+  use TymeslotWeb, :live_component
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Tymeslot.Integrations.Calendar
+  alias Tymeslot.Integrations.Video
+  alias TymeslotWeb.Dashboard.{CalendarSettingsComponent, VideoSettingsComponent}
+  alias TymeslotWeb.Dashboard.ComponentDispatch
+
+  @no_rooms %{scope: :upcoming, count: 0}
+
+  @impl Phoenix.LiveComponent
+  def mount(socket) do
+    {:ok,
+     socket
+     |> assign(:show, false)
+     |> assign(:integration_id, nil)
+     |> assign(:rooms_to_delete, @no_rooms)
+     |> assign(:delete_rooms, false)}
+  end
+
+  @impl Phoenix.LiveComponent
+  def update(assigns, socket) do
+    {:ok, assign(socket, assigns)}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("show", %{"id" => id}, socket) do
+    type = socket.assigns.integration_type
+    user_id = socket.assigns.current_user.id
+
+    with {:ok, integration_id} <- parse_integration_id(id),
+         :ok <- authorise(type, user_id, integration_id) do
+      {:noreply,
+       socket
+       |> assign(:show, true)
+       |> assign(:integration_id, integration_id)
+       |> assign(:delete_rooms, false)
+       |> assign(:rooms_to_delete, rooms_to_delete(socket.assigns, integration_id))}
+    else
+      {:error, :not_found} ->
+        Flash.error(
+          dgettext(
+            "dashboard_integrations",
+            "Integration not found. It may have already been deleted."
+          )
+        )
+
+        {:noreply, socket}
+
+      {:error, _reason} ->
+        Flash.error(dgettext("dashboard_integrations", "Invalid integration ID"))
+        {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_delete_rooms", _params, socket) do
+    {:noreply, assign(socket, :delete_rooms, not socket.assigns.delete_rooms)}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("hide", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show, false)
+     |> assign(:integration_id, nil)}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("confirm", _params, socket) do
+    # Guard against nil or invalid integration_id
+    case socket.assigns.integration_id do
+      nil ->
+        Flash.error(dgettext("dashboard_integrations", "No integration selected for deletion"))
+
+        {:noreply,
+         socket
+         |> assign(:show, false)
+         |> assign(:integration_id, nil)}
+
+      integration_id when is_integer(integration_id) ->
+        user_id = socket.assigns.current_user.id
+        type = socket.assigns.integration_type
+
+        result =
+          case type do
+            :calendar ->
+              Calendar.delete_with_primary_reassignment_and_invalidate(user_id, integration_id)
+
+            :video ->
+              Video.delete_integration(user_id, integration_id,
+                delete_rooms: socket.assigns.delete_rooms
+              )
+          end
+
+        case result do
+          {:ok, _result} ->
+            # Notify the parent LiveView (usually DashboardLive) to refresh lists
+            send(self(), {:integration_removed, type})
+
+            # Also trigger a reload of the parent settings component, addressed
+            # by the id `ComponentDispatch.component_id/1` gives its dashboard
+            # action (e.g. "calendar_integration", "video_integration").
+            parent_component_id = get_parent_component_id(type)
+            parent_component_module = get_parent_component_module(type)
+
+            send_update(parent_component_module, id: parent_component_id)
+
+            Flash.info(dgettext("dashboard_integrations", "Integration deleted successfully"))
+
+            {:noreply,
+             socket
+             |> assign(:show, false)
+             |> assign(:integration_id, nil)}
+
+          {:error, :not_found} ->
+            Flash.error(
+              dgettext(
+                "dashboard_integrations",
+                "Integration not found. It may have already been deleted."
+              )
+            )
+
+            {:noreply,
+             socket
+             |> assign(:show, false)
+             |> assign(:integration_id, nil)}
+
+          {:error, _reason} ->
+            Flash.error(dgettext("dashboard_integrations", "Failed to delete integration"))
+            {:noreply, socket}
+        end
+
+      _other ->
+        Flash.error(dgettext("dashboard_integrations", "Invalid integration ID"))
+
+        {:noreply,
+         socket
+         |> assign(:show, false)
+         |> assign(:integration_id, nil)}
+    end
+  end
+
+  @impl Phoenix.LiveComponent
+  def render(assigns) do
+    ~H"""
+    <div id={@id}>
+      <TymeslotWeb.Components.CoreComponents.modal
+        id={"#{@id}-modal"}
+        show={@show}
+        on_cancel={JS.push("hide", target: @myself)}
+        size={:small}
+      >
+        <:header>
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
+            </svg>
+            {dgettext("dashboard_integrations", "Delete %{type} Integration",
+              type: format_integration_type(@integration_type)
+            )}
+          </div>
+        </:header>
+        <div class="space-y-4">
+          <p class="text-neutral-600 dark:text-neutral-300 font-medium text-lg leading-relaxed">
+            {dgettext(
+              "dashboard_integrations",
+              "Are you sure you want to delete this %{type} integration?",
+              type: format_integration_type(@integration_type) |> String.downcase()
+            )}
+          </p>
+          <p class="text-neutral-500 font-medium">
+            {dgettext(
+              "dashboard_integrations",
+              "This action cannot be undone and will remove all associated %{data}.",
+              data: format_integration_data(@integration_type)
+            )}
+          </p>
+          <%!-- Only video integrations own provider-side rooms, and only the
+                rooms the disconnect would actually delete are worth asking about. --%>
+          <div :if={@integration_type == :video and @rooms_to_delete.count > 0} class="space-y-3">
+            <p class="text-neutral-500 font-medium">
+              {rooms_summary(@rooms_to_delete)}
+            </p>
+            <label class="flex items-start gap-3 p-4 rounded-token-xl border-2 border-neutral-300 hover:border-primary-200 cursor-pointer transition-colors">
+              <%!-- For a non-array name the input component derives its checked
+                    state by comparing value against checked_value ("true"), so
+                    the state has to be passed as value; a `checked` attribute is
+                    ignored and the box would never appear ticked. --%>
+              <.input
+                type="checkbox"
+                name="delete_rooms"
+                value={to_string(@delete_rooms)}
+                phx-click={JS.push("toggle_delete_rooms", target: @myself)}
+              />
+              <span class="flex-1 text-token-sm text-neutral-600 dark:text-neutral-300 font-medium">
+                {delete_rooms_label(@rooms_to_delete.scope)}
+              </span>
+            </label>
+          </div>
+        </div>
+        <:footer>
+          <div class="flex justify-end gap-3">
+            <TymeslotWeb.Components.CoreComponents.action_button
+              variant={:secondary}
+              phx-click={JS.push("hide", target: @myself)}
+            >
+              {dgettext("dashboard_integrations", "Cancel")}
+            </TymeslotWeb.Components.CoreComponents.action_button>
+            <TymeslotWeb.Components.CoreComponents.action_button
+              variant={:danger}
+              phx-click={JS.push("confirm", target: @myself)}
+            >
+              {dgettext("dashboard_integrations", "Delete Integration")}
+            </TymeslotWeb.Components.CoreComponents.action_button>
+          </div>
+        </:footer>
+      </TymeslotWeb.Components.CoreComponents.modal>
+    </div>
+    """
+  end
+
+  # Private helper functions
+
+  # The id arrives on a client-pushed event, so the dialog only opens for an
+  # integration the current user actually owns: a forged or stale id is
+  # reported as missing rather than confirming the removal of a ghost.
+  #
+  # The two contexts take their arguments in opposite orders, and both guard on
+  # `is_integer/1` for each, so a swap would compile and silently look up the
+  # wrong row. They are spelled out here rather than piped for that reason.
+  defp authorise(:calendar, user_id, integration_id) do
+    case Calendar.get_integration(integration_id, user_id) do
+      {:ok, _integration} -> :ok
+      {:error, :not_found} -> {:error, :not_found}
+    end
+  end
+
+  defp authorise(:video, user_id, integration_id) do
+    case Video.get_integration(user_id, integration_id) do
+      {:ok, _integration} ->
+        :ok
+
+      # Credentials that no longer decrypt still belong to this user, and
+      # deleting the integration is how they recover, so the dialog opens.
+      {:error, :requires_reencryption, _integration} ->
+        :ok
+
+      {:error, :not_found} ->
+        {:error, :not_found}
+    end
+  end
+
+  # Only video integrations own provider-side rooms; calendar disconnect has no
+  # equivalent cleanup, so it never asks the question.
+  # The count is scoped to the current user's own integrations, which by this
+  # point `authorise/3` has already confirmed the id belongs to.
+  defp rooms_to_delete(%{integration_type: :video, current_user: user}, integration_id),
+    do: Video.rooms_deleted_on_disconnect(user.id, integration_id)
+
+  defp rooms_to_delete(_assigns, _integration_id), do: @no_rooms
+
+  # The `:all` scope covers providers whose rooms stay on the organiser's own
+  # server (`ProviderConfig.rooms_deleted_after_meeting/0`), which today means
+  # Nextcloud Talk alone, hence its wording.
+  defp rooms_summary(%{scope: :upcoming, count: count}) do
+    dngettext(
+      "dashboard_integrations",
+      "%{count} upcoming booking still uses this integration. Its meeting room keeps working unless you delete it here.",
+      "%{count} upcoming bookings still use this integration. Their meeting rooms keep working unless you delete them here.",
+      count,
+      count: count
+    )
+  end
+
+  defp rooms_summary(%{scope: :all, count: count}) do
+    dngettext(
+      "dashboard_integrations",
+      "%{count} conversation from this integration is still on your Nextcloud server, even if its meeting is over. It stays there unless you delete it here.",
+      "%{count} conversations from this integration are still on your Nextcloud server, including those of past meetings. They stay there unless you delete them here.",
+      count,
+      count: count
+    )
+  end
+
+  defp delete_rooms_label(:upcoming) do
+    dgettext(
+      "dashboard_integrations",
+      "Also delete their meeting rooms. Attendees who already have the join link will find it no longer works."
+    )
+  end
+
+  defp delete_rooms_label(:all) do
+    dgettext(
+      "dashboard_integrations",
+      "Also delete these conversations from your Nextcloud server. Attendees of upcoming meetings will find their join link no longer works."
+    )
+  end
+
+  defp get_parent_component_module(:calendar), do: CalendarSettingsComponent
+  defp get_parent_component_module(:video), do: VideoSettingsComponent
+
+  defp get_parent_component_id(:calendar),
+    do: ComponentDispatch.component_id(:calendar_integration)
+
+  defp get_parent_component_id(:video), do: ComponentDispatch.component_id(:video_integration)
+
+  defp format_integration_type(:calendar), do: dgettext("dashboard_integrations", "Calendar")
+  defp format_integration_type(:video), do: dgettext("dashboard_integrations", "Video")
+
+  defp format_integration_data(:calendar), do: dgettext("dashboard_integrations", "calendar data")
+
+  defp format_integration_data(:video),
+    do: dgettext("dashboard_integrations", "video conferencing configuration")
+
+  # Safe integer parsing that handles invalid input gracefully
+  defp parse_integration_id(id) when is_integer(id), do: {:ok, id}
+
+  defp parse_integration_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {int, ""} when int > 0 -> {:ok, int}
+      {int, _rest} when int > 0 -> {:error, :invalid_format}
+      {_int, _value} -> {:error, :invalid_value}
+      :error -> {:error, :not_a_number}
+    end
+  end
+
+  defp parse_integration_id(_arg), do: {:error, :invalid_type}
+end

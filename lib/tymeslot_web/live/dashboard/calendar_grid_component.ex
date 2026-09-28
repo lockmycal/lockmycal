@@ -1,0 +1,478 @@
+defmodule TymeslotWeb.Dashboard.CalendarGridComponent do
+  @moduledoc """
+  LiveComponent rendering a week/day/month calendar grid backed by cached calendar events.
+
+  ## Public API
+
+  The parent LiveView passes the following assigns. The two that are component-specific
+  are declared as `attr` below for documentation purposes; the remainder are forwarded
+  from the dashboard's generic component dispatch pattern and stored via
+  `UpdateHandlers.handle_initial/2`.
+
+  Note: the call site uses a dynamic `module={@component_module}` reference, so Phoenix
+  cannot perform compile-time `attr` validation. Moving to a static module reference
+  would enable that check.
+
+  Component-specific assigns (declared as `attr`):
+  - `:current_user` — required, owns the calendar preferences and integrations.
+  - `:profile`      — optional, only its `:timezone` field is read.
+
+  Additional assigns forwarded from the parent dashboard LiveView:
+  - `:shared_data`               — map of shared cross-component data, defaults to `%{}`.
+  - `:integration_status`        — current calendar integration status.
+  - `:agenda`                    — `Tymeslot.Agenda.Day.t() | nil`, powers the "up next" strip.
+  - `:saving`                    — boolean, whether the parent is persisting something.
+  - `:client_ip`                 — client IP string, used for audit / rate-limit context.
+  - `:user_agent`                — client user-agent string.
+  - `:live_action`               — current route live action atom.
+  - `:params`                    — current URL params map.
+  - `:custom_questions_allowed`  — boolean feature flag.
+
+  Parent-to-component messages travel through `send_update/2` with an `:action` key.
+  These bypass attr validation and are dispatched in the `update/2` clauses below:
+  `:revert_event`, `:refresh_events`, `:reload_events`, `:ad_hoc_meeting_created`,
+  `:ad_hoc_meeting_failed`, `:event_created`, `:event_create_failed`, `:event_moved`,
+  `:event_deleted`, `:event_delete_failed`, `:events_updated`, `:video_link_updated`,
+  `:integration_synced`.
+
+  ## Internal state
+
+  Initialised in `mount/1` and mutated by handlers — not part of the public API:
+  `:view`, `:date`, `:events`, `:integrations`, `:integration_colors`, `:loading`,
+  `:selected_event`, `:current_time`, `:hidden_integration_ids`, `:preferences`,
+  plus modal/menu visibility flags and sync-progress counters.
+  """
+  use TymeslotWeb, :live_component
+
+  alias Tymeslot.Meetings
+  alias TymeslotWeb.Dashboard.CalendarGrid.ComponentView
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.AttendeeManagement
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.BookingDetail
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.DragDrop
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.EventCrud
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.InlineEdit
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.InlineEditVideo
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.MiniMonth
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Navigation
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.NotificationFlows
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Preferences
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Search
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shortcuts
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Visibility
+  alias TymeslotWeb.Dashboard.CalendarGrid.InitialState
+  alias TymeslotWeb.Dashboard.CalendarGrid.UpdateHandlers
+
+  @mini_month_events ~w(toggle_mini_month close_mini_month mini_month_prev mini_month_next)
+
+  # Detail-modal inline-edit events, each delegated to a focused `InlineEdit`
+  # handler. Grouped here so adding a field is a one-line map entry rather than
+  # a new `handle_event/3` clause (keeps this component lean).
+  @inline_edit_events %{
+    "show_event" => :handle_show_event,
+    "close_event_detail" => :handle_close_event_detail,
+    "update_event_title" => :handle_update_event_title,
+    "update_event_location" => :handle_update_event_location,
+    "update_event_description" => :handle_update_event_description,
+    "update_event_calendar" => :handle_update_event_calendar,
+    "update_event_colour" => :handle_update_event_colour,
+    "update_event_time" => :handle_update_event_time,
+    "toggle_event_all_day" => :handle_toggle_event_all_day,
+    "update_event_all_day_range" => :handle_update_event_all_day_range,
+    "add_event_reminder" => :handle_add_event_reminder,
+    "remove_event_reminder" => :handle_remove_event_reminder,
+    "update_event_recurrence" => :handle_update_event_recurrence
+  }
+
+  attr :current_user, :map, required: true, doc: "Owns calendar preferences and integrations."
+
+  attr :profile, :any,
+    default: nil,
+    doc: "Profile struct or nil; only `:timezone` is read."
+
+  attr :contacts_allowed, :boolean,
+    default: true,
+    doc: "Feature-gates the 'pick from contacts' shortcut on the meeting quick-add dialog."
+
+  @impl Phoenix.LiveComponent
+  def mount(socket) do
+    {:ok, assign(socket, InitialState.defaults())}
+  end
+
+  # --- Update action handlers (delegated to UpdateHandlers) ---
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :revert_event} = assigns, socket),
+    do: UpdateHandlers.handle_revert_event(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :refresh_events} = assigns, socket),
+    do: UpdateHandlers.handle_refresh_events(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :reload_events} = assigns, socket),
+    do: UpdateHandlers.handle_reload_events(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :ad_hoc_meeting_created} = assigns, socket),
+    do: UpdateHandlers.handle_ad_hoc_meeting_created(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :ad_hoc_meeting_failed} = assigns, socket),
+    do: UpdateHandlers.handle_ad_hoc_meeting_failed(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :event_created} = assigns, socket),
+    do: UpdateHandlers.handle_event_created(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :event_create_failed} = assigns, socket),
+    do: UpdateHandlers.handle_event_create_failed(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :event_moved} = assigns, socket),
+    do: UpdateHandlers.handle_event_moved(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :event_deleted} = assigns, socket),
+    do: UpdateHandlers.handle_event_deleted(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :event_delete_failed} = assigns, socket),
+    do: UpdateHandlers.handle_event_delete_failed(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :events_updated} = assigns, socket),
+    do: UpdateHandlers.handle_events_updated(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :video_link_updated} = assigns, socket),
+    do: UpdateHandlers.handle_video_link_updated(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :integration_synced} = assigns, socket),
+    do: UpdateHandlers.handle_integration_synced(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :refresh_guest_summaries}, socket),
+    do: {:ok, assign_guest_rsvp_summaries(socket)}
+
+  @impl Phoenix.LiveComponent
+  def update(assigns, socket) do
+    was_initialized = socket.assigns[:_initialized]
+    {:ok, socket} = UpdateHandlers.handle_initial(assigns, socket)
+    just_initialized = socket.assigns[:_initialized] && !was_initialized
+
+    socket =
+      if just_initialized do
+        assign_guest_rsvp_summaries(socket)
+      else
+        socket
+      end
+
+    {:ok, socket}
+  end
+
+  # Loads the `meeting_uid => RSVP summary` map for the calendar owner so
+  # Tymeslot-created event blocks can show a guest indicator.
+  defp assign_guest_rsvp_summaries(socket) do
+    case socket.assigns[:current_user] do
+      %{id: user_id} ->
+        assign(socket, :guest_rsvp_summaries, Meetings.guest_rsvp_summaries_for_user(user_id))
+
+      _other ->
+        socket
+    end
+  end
+
+  # --- Event handlers (delegated to focused modules) ---
+
+  @impl Phoenix.LiveComponent
+  def handle_event(event, params, socket) when is_map_key(@inline_edit_events, event),
+    do: apply(InlineEdit, Map.fetch!(@inline_edit_events, event), [params, socket])
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_edit_video", params, socket),
+    do: InlineEditVideo.handle_update_edit_video(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("show_booking", params, socket),
+    do: BookingDetail.handle_show_booking(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("close_booking_detail", params, socket),
+    do: BookingDetail.handle_close_booking_detail(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("prev_period", params, socket),
+    do: Navigation.handle_prev_period(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("next_period", params, socket),
+    do: Navigation.handle_next_period(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("today", params, socket),
+    do: Navigation.handle_today(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("set_view", params, socket),
+    do: Navigation.handle_set_view(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("navigate_to_day", params, socket),
+    do: Navigation.handle_navigate_to_day(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("set_agenda_lens", params, socket),
+    do: Navigation.handle_set_agenda_lens(params, socket)
+
+  def handle_event(event, params, socket) when event in @mini_month_events,
+    do: MiniMonth.handle_event(event, params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("search", params, socket),
+    do: Search.handle_search(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("goto_search_result", params, socket),
+    do: Search.handle_goto_search_result(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("close_search", params, socket),
+    do: Search.handle_close_search(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_shortcuts_help", params, socket),
+    do: Shortcuts.handle_toggle_shortcuts_help(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_calendar_list", params, socket),
+    do: Visibility.handle_toggle_calendar_list(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_view_menu", params, socket),
+    do: Visibility.handle_toggle_view_menu(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("close_calendar_list", params, socket),
+    do: Visibility.handle_close_calendar_list(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("close_view_menu", params, socket),
+    do: Visibility.handle_close_view_menu(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_integration_visibility", params, socket),
+    do: Visibility.handle_toggle_integration_visibility(params, socket)
+
+  def handle_event("toggle_calendar_visibility", params, socket),
+    do: Visibility.handle_toggle_calendar_visibility(params, socket)
+
+  def handle_event("set_calendar_colour", params, socket),
+    do: Preferences.handle_set_calendar_colour(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("refresh", params, socket),
+    do: Visibility.handle_refresh(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("event_dropped", params, socket),
+    do: DragDrop.handle_event_dropped(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("event_resized", params, socket),
+    do: DragDrop.handle_event_resized(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("show_create_form", params, socket),
+    do: EventCrud.handle_show_create_form(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("close_create_form", params, socket),
+    do: EventCrud.handle_close_create_form(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("set_create_mode", params, socket),
+    do: EventCrud.handle_set_create_mode(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_create_guest_name", params, socket),
+    do: EventCrud.handle_update_create_guest_name(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_create_guest_email", params, socket),
+    do: EventCrud.handle_update_create_guest_email(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_create_title", params, socket),
+    do: EventCrud.handle_update_create_title(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_create_time", params, socket),
+    do: EventCrud.handle_update_create_time(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_create_all_day", params, socket),
+    do: EventCrud.handle_toggle_create_all_day(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_create_integration", params, socket),
+    do: EventCrud.handle_update_create_integration(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("add_create_attendee", params, socket),
+    do: EventCrud.handle_add_create_attendee(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("remove_create_attendee", params, socket),
+    do: EventCrud.handle_remove_create_attendee(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_create_attendee_input", params, socket),
+    do: EventCrud.handle_update_create_attendee_input(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_create_video", params, socket),
+    do: EventCrud.handle_update_create_video(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("guest_contact_query", params, socket),
+    do: EventCrud.handle_guest_contact_query(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("close_guest_contact_picker", params, socket),
+    do: EventCrud.handle_close_guest_contact_picker(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("select_guest_contact", params, socket),
+    do: EventCrud.handle_select_guest_contact(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("add_create_reminder", params, socket),
+    do: EventCrud.handle_add_create_reminder(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("remove_create_reminder", params, socket),
+    do: EventCrud.handle_remove_create_reminder(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_create_recurrence", params, socket),
+    do: EventCrud.handle_update_create_recurrence(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("add_event_attendee", params, socket),
+    do: AttendeeManagement.handle_add_event_attendee(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("request_remove_attendee", params, socket),
+    do: AttendeeManagement.handle_request_remove_attendee(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("confirm_remove_attendee", params, socket),
+    do: AttendeeManagement.handle_confirm_remove_attendee(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("cancel_remove_attendee", params, socket),
+    do: AttendeeManagement.handle_cancel_remove_attendee(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("remove_pending_attendee", params, socket),
+    do: AttendeeManagement.handle_remove_pending_attendee(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("discard_pending_attendees", params, socket),
+    do: AttendeeManagement.handle_discard_pending_attendees(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("cancel_discard_attendees", params, socket),
+    do: AttendeeManagement.handle_cancel_discard_attendees(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_attendee_input", params, socket),
+    do: AttendeeManagement.handle_update_attendee_input(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("save_event", params, socket),
+    do: EventCrud.handle_save_event(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("request_delete_event", params, socket),
+    do: EventCrud.handle_request_delete_event(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("confirm_delete_event", params, socket),
+    do: EventCrud.handle_confirm_delete_event(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("cancel_delete_event", params, socket),
+    do: EventCrud.handle_cancel_delete_event(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("confirm_recurrence_scope", params, socket),
+    do: EventCrud.handle_confirm_recurrence_scope(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("cancel_recurrence_prompt", params, socket),
+    do: EventCrud.handle_cancel_recurrence_prompt(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_settings", params, socket),
+    do: Preferences.handle_toggle_settings(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("close_settings", params, socket),
+    do: Preferences.handle_close_settings(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_week_start", params, socket),
+    do: Preferences.handle_update_preference(params, socket, :week_start_day)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_time_format", params, socket),
+    do: Preferences.handle_update_preference(params, socket, :time_format)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_default_view", params, socket),
+    do: Preferences.handle_update_default_view(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_week_numbers", params, socket),
+    do: Preferences.handle_toggle_preference(params, socket, :show_week_numbers)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_weekends", params, socket),
+    do: Preferences.handle_toggle_preference(params, socket, :show_weekends)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_desktop_reminders", params, socket),
+    do: Preferences.handle_toggle_preference(params, socket, :desktop_reminders_enabled)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("set_mobile_view", params, socket),
+    do: Navigation.handle_set_mobile_view(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("set_responsive_view", params, socket),
+    do: Navigation.handle_set_responsive_view(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("navigate_swipe", params, socket),
+    do: Navigation.handle_navigate_swipe(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("notify_prompt_confirm", params, socket),
+    do: NotificationFlows.handle_notify_prompt_confirm(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("notify_prompt_cancel", params, socket),
+    do: NotificationFlows.handle_notify_prompt_cancel(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("cancel_pending_notification", params, socket),
+    do: NotificationFlows.handle_cancel_pending_notification(params, socket)
+
+  # --- Render ---
+
+  @impl Phoenix.LiveComponent
+  def render(assigns), do: ComponentView.grid(assigns)
+end

@@ -1,0 +1,611 @@
+defmodule TymeslotWeb.Dashboard.MeetingSettings.CustomQuestionsSectionTest do
+  @moduledoc """
+  Integration tests for the custom questions builder inside the meeting type
+  form. Covers the host-facing CRUD actions: add, edit, delete, reorder, and
+  editor cancel.
+  """
+  use TymeslotWeb.LiveCase, async: false
+
+  @moduletag :custom_fields
+  @moduletag :live
+  @moduletag :meeting_types
+
+  import Tymeslot.ConfigTestHelpers
+  import Tymeslot.DashboardTestHelpers
+  import Tymeslot.Factory
+
+  alias Ecto.UUID
+  alias Tymeslot.Repo
+
+  setup :setup_dashboard_user
+
+  setup do
+    # When SaaS is compiled alongside Core, its FeatureAccessChecker gates
+    # custom questions behind a Pro subscription. These tests exercise the
+    # Core happy path, so pin the checker back to the unrestricted default.
+    setup_config(:tymeslot, feature_access_checker: Tymeslot.Features.DefaultAccessChecker)
+    :ok
+  end
+
+  # Helper — opens the meeting type form for a given meeting type via the edit
+  # action and removes the default reminder so the form's hidden
+  # `reminder_config` inputs do not confuse `render_submit/1`.
+  defp open_edit_form(view, meeting_type) do
+    view
+    |> element("[phx-click='edit_type'][phx-value-id='#{meeting_type.id}']")
+    |> render_click()
+
+    # The form mounts with a default reminder; remove it so the hidden
+    # reminder_config inputs don't break form submission (same workaround used
+    # throughout meeting_settings_test.exs).
+    view |> element("button[aria-label='Remove reminder']") |> render_click()
+    view
+  end
+
+  describe "adding a custom question" do
+    test "question appears in the list after saving the editor", %{conn: conn, user: user} do
+      meeting_type = insert(:meeting_type, user: user)
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      assert render(view) =~ "Custom questions"
+      assert render(view) =~ "No custom questions yet"
+
+      view |> element("button", "Add question") |> render_click()
+
+      # Editor modal should appear
+      assert render(view) =~ "Add question"
+
+      view
+      |> form("form[phx-submit='save']", %{
+        "definition" => %{"label" => "Company name", "type" => "short_text"}
+      })
+      |> render_submit()
+
+      html = render(view)
+      assert html =~ "Company name"
+      assert html =~ "Short text"
+      refute html =~ "No custom questions yet"
+    end
+
+    test "required flag is shown in the list when set", %{conn: conn, user: user} do
+      meeting_type = insert(:meeting_type, user: user)
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      view |> element("button", "Add question") |> render_click()
+      assert render(view) =~ "Add question"
+
+      # "Required" is a standalone enabled_toggle, not a real form field —
+      # flip it before submitting.
+      view
+      |> element("button[phx-click='toggle_required'][phx-value-state='true']")
+      |> render_click()
+
+      view
+      |> form("form[phx-submit='save']", %{
+        "definition" => %{"label" => "Phone number", "type" => "phone"}
+      })
+      |> render_submit()
+
+      html = render(view)
+      assert html =~ "Phone number"
+      assert html =~ "required"
+    end
+
+    test "validation error shown when label is blank", %{conn: conn, user: user} do
+      meeting_type = insert(:meeting_type, user: user)
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      view |> element("button", "Add question") |> render_click()
+      assert render(view) =~ "Add question"
+
+      view
+      |> form("form[phx-submit='save']", %{
+        "definition" => %{"label" => "", "type" => "short_text"}
+      })
+      |> render_submit()
+
+      # The modal should stay open and show the validation error
+      assert render(view) =~ "can&#39;t be blank"
+    end
+  end
+
+  describe "editing a custom question" do
+    test "label change is reflected in the list", %{conn: conn, user: user} do
+      question_id = UUID.generate()
+
+      meeting_type =
+        insert(:meeting_type,
+          user: user,
+          custom_fields: [
+            %{
+              id: question_id,
+              type: "short_text",
+              label: "Old label",
+              required: false,
+              position: 0
+            }
+          ]
+        )
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      assert render(view) =~ "Old label"
+
+      view
+      |> element("button[phx-click='edit_question'][phx-value-id='#{question_id}']")
+      |> render_click()
+
+      assert render(view) =~ "Edit question"
+
+      view
+      |> form("form[phx-submit='save']", %{
+        "definition" => %{"label" => "New label", "type" => "short_text"}
+      })
+      |> render_submit()
+
+      html = render(view)
+      assert html =~ "New label"
+      refute html =~ "Old label"
+    end
+  end
+
+  describe "deleting a custom question" do
+    test "question is removed from the list immediately", %{conn: conn, user: user} do
+      question_id = UUID.generate()
+
+      meeting_type =
+        insert(:meeting_type,
+          user: user,
+          custom_fields: [
+            %{
+              id: question_id,
+              type: "short_text",
+              label: "To be deleted",
+              required: false,
+              position: 0
+            }
+          ]
+        )
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      assert render(view) =~ "To be deleted"
+
+      view
+      |> element("button[phx-click='delete_question'][phx-value-id='#{question_id}']")
+      |> render_click()
+
+      html = render(view)
+      refute html =~ "To be deleted"
+      assert html =~ "No custom questions yet"
+    end
+  end
+
+  describe "type-change confirmation" do
+    test "shows confirmation banner when changing type with existing options", %{
+      conn: conn,
+      user: user
+    } do
+      question_id = UUID.generate()
+
+      meeting_type =
+        insert(:meeting_type,
+          user: user,
+          custom_fields: [
+            %{
+              id: question_id,
+              type: "single_select",
+              label: "Favourite colour",
+              required: false,
+              position: 0,
+              options: [
+                %{key: "red", label: "Red"},
+                %{key: "blue", label: "Blue"}
+              ]
+            }
+          ]
+        )
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      view
+      |> element("button[phx-click='edit_question'][phx-value-id='#{question_id}']")
+      |> render_click()
+
+      assert render(view) =~ "Edit question"
+
+      view
+      |> form("form[phx-change='validate']", %{
+        "definition" => %{"type" => "short_text"}
+      })
+      |> render_change()
+
+      html = render(view)
+      assert html =~ "Changing the type will clear the configuration"
+      # Type select still shows the original type
+      assert html =~ ~s(selected="" value="single_select")
+      # Options are still present
+      assert html =~ "Red"
+    end
+
+    test "Continue button applies the change and clears options", %{conn: conn, user: user} do
+      question_id = UUID.generate()
+
+      meeting_type =
+        insert(:meeting_type,
+          user: user,
+          custom_fields: [
+            %{
+              id: question_id,
+              type: "single_select",
+              label: "Favourite colour",
+              required: false,
+              position: 0,
+              options: [
+                %{key: "red", label: "Red"},
+                %{key: "blue", label: "Blue"}
+              ]
+            }
+          ]
+        )
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      view
+      |> element("button[phx-click='edit_question'][phx-value-id='#{question_id}']")
+      |> render_click()
+
+      view
+      |> form("form[phx-change='validate']", %{
+        "definition" => %{"type" => "short_text"}
+      })
+      |> render_change()
+
+      assert render(view) =~ "Changing the type will clear the configuration"
+
+      view
+      |> element("button[phx-click='confirm_type_change']")
+      |> render_click()
+
+      html = render(view)
+      refute html =~ "Changing the type will clear the configuration"
+      assert html =~ ~s(selected="" value="short_text")
+      # Options textarea is gone — editor has cleared the options config for short_text
+      refute html =~ ~s(name="definition[options_text]")
+    end
+
+    test "Cancel button reverts the type and hides the banner", %{conn: conn, user: user} do
+      question_id = UUID.generate()
+
+      meeting_type =
+        insert(:meeting_type,
+          user: user,
+          custom_fields: [
+            %{
+              id: question_id,
+              type: "single_select",
+              label: "Favourite colour",
+              required: false,
+              position: 0,
+              options: [
+                %{key: "red", label: "Red"},
+                %{key: "blue", label: "Blue"}
+              ]
+            }
+          ]
+        )
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      view
+      |> element("button[phx-click='edit_question'][phx-value-id='#{question_id}']")
+      |> render_click()
+
+      view
+      |> form("form[phx-change='validate']", %{
+        "definition" => %{"type" => "short_text"}
+      })
+      |> render_change()
+
+      assert render(view) =~ "Changing the type will clear the configuration"
+
+      view
+      |> element("button[phx-click='cancel_type_change']")
+      |> render_click()
+
+      html = render(view)
+      refute html =~ "Changing the type will clear the configuration"
+      assert html =~ ~s(selected="" value="single_select")
+      assert html =~ "Red"
+    end
+
+    test "type change with no config does not show banner", %{conn: conn, user: user} do
+      question_id = UUID.generate()
+
+      meeting_type =
+        insert(:meeting_type,
+          user: user,
+          custom_fields: [
+            %{
+              id: question_id,
+              type: "short_text",
+              label: "Company name",
+              required: false,
+              position: 0
+            }
+          ]
+        )
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      view
+      |> element("button[phx-click='edit_question'][phx-value-id='#{question_id}']")
+      |> render_click()
+
+      view
+      |> form("form[phx-change='validate']", %{
+        "definition" => %{"type" => "single_select"}
+      })
+      |> render_change()
+
+      refute render(view) =~ "Changing the type will clear the configuration"
+    end
+
+    test "configuring a freshly-chosen type does not show banner", %{conn: conn, user: user} do
+      # Regression: when adding a new question, switching to a config-bearing
+      # type and then editing that config (without touching the type again)
+      # must not falsely trip the type-change confirmation.
+      meeting_type = insert(:meeting_type, user: user)
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      view |> element("button", "Add question") |> render_click()
+      assert render(view) =~ "Add question"
+
+      # Switch from the default short_text to single_select — nothing defined
+      # yet, so this is not destructive.
+      view
+      |> form("form[phx-change='validate']", %{"definition" => %{"type" => "single_select"}})
+      |> render_change()
+
+      refute render(view) =~ "Changing the type will clear the configuration"
+
+      # Add the two required options for the choice question.
+      view |> element("button[phx-click='add_option']") |> render_click()
+      view |> element("button[phx-click='add_option']") |> render_click()
+
+      # Continue configuring the SAME question (edit the label) — the type is
+      # unchanged, so no confirmation dialog should appear.
+      view
+      |> form("form[phx-change='validate']", %{
+        "definition" => %{"type" => "single_select", "label" => "Favourite colour"}
+      })
+      |> render_change()
+
+      refute render(view) =~ "Changing the type will clear the configuration"
+    end
+  end
+
+  describe "reordering custom questions" do
+    test "reversed IDs reorder the questions in the rendered list", %{conn: conn, user: user} do
+      id1 = UUID.generate()
+      id2 = UUID.generate()
+
+      meeting_type =
+        insert(:meeting_type,
+          user: user,
+          custom_fields: [
+            %{id: id1, type: "short_text", label: "First question", required: false, position: 0},
+            %{id: id2, type: "short_text", label: "Second question", required: false, position: 1}
+          ]
+        )
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      html = render(view)
+      assert html =~ "First question"
+      assert html =~ "Second question"
+
+      # Confirm original ordering: First question appears before Second question
+      assert String.contains?(html, "First question") and
+               :binary.match(html, "First question") < :binary.match(html, "Second question")
+
+      list_id = "custom-questions-list-meeting-type-form-edit-#{meeting_type.id}"
+
+      view
+      |> element("##{list_id}")
+      |> render_hook("reorder", %{"ids" => [id2, id1]})
+
+      html = render(view)
+      # After reversing, Second question now appears before First question
+      assert :binary.match(html, "Second question") < :binary.match(html, "First question")
+    end
+
+    test "position values are updated after reorder", %{conn: conn, user: user} do
+      id1 = UUID.generate()
+      id2 = UUID.generate()
+
+      meeting_type =
+        insert(:meeting_type,
+          user: user,
+          custom_fields: [
+            %{id: id1, type: "short_text", label: "Alpha", required: false, position: 0},
+            %{id: id2, type: "short_text", label: "Beta", required: false, position: 1}
+          ]
+        )
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      list_id = "custom-questions-list-meeting-type-form-edit-#{meeting_type.id}"
+
+      view
+      |> element("##{list_id}")
+      |> render_hook("reorder", %{"ids" => [id2, id1]})
+
+      html = render(view)
+
+      # The hidden position inputs reflect the new order: id2 is now at index 0
+      # and id1 at index 1, so data-index on the rendered <li> items reflects
+      # the new positions. We assert via the data-index attribute on each <li>.
+      assert html =~ ~s(data-id="#{id2}" data-index="0")
+      assert html =~ ~s(data-id="#{id1}" data-index="1")
+    end
+
+    test "tampered reorder ids (duplicate / missing) are ignored", %{conn: conn, user: user} do
+      id1 = UUID.generate()
+      id2 = UUID.generate()
+
+      meeting_type =
+        insert(:meeting_type,
+          user: user,
+          custom_fields: [
+            %{id: id1, type: "short_text", label: "Alpha", required: false, position: 0},
+            %{id: id2, type: "short_text", label: "Beta", required: false, position: 1}
+          ]
+        )
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      list_id = "custom-questions-list-meeting-type-form-edit-#{meeting_type.id}"
+
+      # A list with a duplicated id and a dropped id is not a permutation of the
+      # existing ids — it must be rejected, leaving the original list intact
+      # (no duplicated or vanished questions).
+      view
+      |> element("##{list_id}")
+      |> render_hook("reorder", %{"ids" => [id1, id1]})
+
+      html = render(view)
+      assert html =~ ~s(data-id="#{id1}" data-index="0")
+      assert html =~ ~s(data-id="#{id2}" data-index="1")
+      # The first question's list row appears exactly once — the tampered id
+      # list did not duplicate it. (Counting the bare label "Alpha" is unsafe:
+      # it also occurs in the row's label input value.)
+      assert length(String.split(html, ~s(data-id="#{id1}"))) == 2
+    end
+  end
+
+  describe "cancelling the question editor" do
+    test "cancel closes the editor without modifying custom_fields", %{conn: conn, user: user} do
+      question_id = UUID.generate()
+
+      meeting_type =
+        insert(:meeting_type,
+          user: user,
+          custom_fields: [
+            %{
+              id: question_id,
+              type: "short_text",
+              label: "Existing question",
+              required: false,
+              position: 0
+            }
+          ]
+        )
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      assert render(view) =~ "Existing question"
+      refute render(view) =~ "Edit question"
+
+      view
+      |> element("button[phx-click='edit_question'][phx-value-id='#{question_id}']")
+      |> render_click()
+
+      assert render(view) =~ "Edit question"
+
+      view
+      |> element("button[phx-click='cancel']")
+      |> render_click()
+
+      html = render(view)
+      # Editor is gone
+      refute html =~ "Edit question"
+      # The original field is unchanged
+      assert html =~ "Existing question"
+    end
+
+    test "cancel from add-question editor leaves the list unchanged", %{conn: conn, user: user} do
+      meeting_type = insert(:meeting_type, user: user)
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      assert render(view) =~ "No custom questions yet"
+
+      view |> element("button", "Add question") |> render_click()
+      assert render(view) =~ "Add question"
+
+      view
+      |> element("button[phx-click='cancel']")
+      |> render_click()
+
+      html = render(view)
+      # Editor is gone
+      refute html =~ "Save question"
+      # No new question was added
+      assert html =~ "No custom questions yet"
+    end
+  end
+
+  describe "end-to-end persistence" do
+    test "adding a custom question auto-saves it to the database", %{
+      conn: conn,
+      user: user
+    } do
+      meeting_type = insert(:meeting_type, user: user)
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      open_edit_form(view, meeting_type)
+
+      # Add a custom question via the editor
+      view |> element("button", "Add question") |> render_click()
+      assert render(view) =~ "Add question"
+
+      view
+      |> form("form[phx-submit='save']", %{
+        "definition" => %{"label" => "Company", "type" => "short_text"}
+      })
+      |> render_submit()
+
+      assert render(view) =~ "Company"
+
+      # Adding the question auto-saves it — no outer form submit is involved.
+      reloaded = Repo.reload!(meeting_type)
+      assert [%{label: "Company"}] = reloaded.custom_fields
+    end
+  end
+end

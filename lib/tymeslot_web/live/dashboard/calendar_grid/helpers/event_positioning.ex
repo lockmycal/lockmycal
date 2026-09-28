@@ -1,0 +1,138 @@
+defmodule TymeslotWeb.Dashboard.CalendarGrid.Helpers.EventPositioning do
+  @moduledoc "CSS positioning helpers for timed calendar events: top offset, height, column layout, and colour assignment."
+
+  alias Tymeslot.Integrations.Calendar.EventColour
+
+  @spec top_rem(DateTime.t(), String.t()) :: float()
+  def top_rem(dt, tz) do
+    local_dt = DateTime.shift_zone!(dt, tz)
+    minutes = local_dt.hour * 60 + local_dt.minute
+    Float.round(minutes / 60 * 4, 3)
+  end
+
+  @spec height_rem(DateTime.t(), DateTime.t()) :: float()
+  def height_rem(start_dt, end_dt) do
+    duration_minutes = DateTime.diff(end_dt, start_dt, :second) / 60
+    max(0.5, Float.round(duration_minutes / 60 * 4, 3))
+  end
+
+  @spec left_pct(integer(), integer()) :: float()
+  def left_pct(col_idx, total_cols) do
+    Float.round(col_idx / total_cols * 100, 2)
+  end
+
+  @spec width_pct(integer()) :: float()
+  def width_pct(total_cols) do
+    Float.round(1 / total_cols * 100, 2)
+  end
+
+  # `CalendarGrid.integration_colour_classes/1` resolves the class, so this is
+  # a lookup with a fallback for the ids it does not cover: an event whose
+  # integration was hidden, deleted, or is not the current user's.
+  @spec color_class_for_integration(map(), term()) :: String.t()
+  def color_class_for_integration(integration_colors, integration_id) do
+    Map.get(integration_colors, integration_id, EventColour.fallback_class())
+  end
+
+  @spec color_dot(map(), map()) :: String.t()
+  def color_dot(assigns, integration) do
+    color_class_for_integration(assigns.integration_colors, integration.id)
+  end
+
+  # Precedence, first match winning: the event's own palette override, then the
+  # organiser's colour for the calendar it sits in, then the integration's
+  # colour, then the rotation. Every step is a lookup that may miss, so an event
+  # whose calendar was deleted or never had a choice still paints. An
+  # unrecognised stored value (e.g. a raw inbound provider colour) resolves to a
+  # neutral class via `EventColour` and never crashes.
+  @doc "True when the event is a Tymeslot booking projection rather than a cached provider event."
+  @spec booking?(map()) :: boolean()
+  def booking?(%{kind: :booking}), do: true
+  def booking?(_event), do: false
+
+  # Click wiring for an event block. Bookings open the read-only booking
+  # detail modal; provider events open the editable event detail modal. One
+  # helper so every view (timed grid, month, agenda, overflow chip) stays in
+  # agreement about which modal an entry opens.
+  @spec open_event_attrs(map()) :: keyword()
+  def open_event_attrs(%{kind: :booking} = event),
+    do: ["phx-click": "show_booking", "phx-value-meeting-id": event.meeting_id]
+
+  def open_event_attrs(event),
+    do: ["phx-click": "show_event", "phx-value-event-id": event.id]
+
+  @spec color_for_event(map(), map()) :: String.t()
+  def color_for_event(_assigns, %{kind: :booking}), do: "bg-primary-600"
+
+  def color_for_event(assigns, event) do
+    with nil <- EventColour.tailwind_class(Map.get(event, :colour)),
+         nil <- calendar_colour(assigns, event) do
+      color_class_for_integration(assigns.integration_colors, event.calendar_integration_id)
+    end
+  end
+
+  # A booking still waiting on the organiser's approval is highlighted the
+  # same way the dashboard flags anything else needing attention (see
+  # `MeetingCardComponents.calendar_sync_banner/1`) rather than painted in
+  # its usual calendar colour, so it stands out at a glance in the grid.
+  # Approving sets the meeting's status to "confirmed" (falls back to the
+  # ordinary treatment below); rejecting removes it from the grid's query
+  # entirely — either way this clears itself with no extra state to track.
+  @doc "True when a booking is still waiting on the organiser's approval."
+  @spec pending_approval?(map()) :: boolean()
+  def pending_approval?(%{kind: :booking, status: "awaiting_approval"}), do: true
+  def pending_approval?(_event), do: false
+
+  @doc """
+  Background/border/text classes for a solid event block (timed grid, month
+  bars and chips). A pending-approval booking gets a red-alert treatment
+  instead of its usual calendar colour; everything else keeps the existing
+  colour on white text.
+  """
+  @spec event_block_class(map(), map()) :: String.t()
+  def event_block_class(assigns, event) do
+    if pending_approval?(event) do
+      "bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-300 font-bold"
+    else
+      "#{color_for_event(assigns, event)} text-white font-medium"
+    end
+  end
+
+  @doc """
+  Text colour/weight for a list-style event row (agenda view), which already
+  sits on a plain background rather than a coloured block.
+  """
+  @spec event_text_class(map()) :: String.t()
+  def event_text_class(event) do
+    if pending_approval?(event),
+      do: "text-red-800 dark:text-red-300 font-bold",
+      else: "text-neutral-800 dark:text-neutral-200 font-medium"
+  end
+
+  @doc """
+  Dot colour for a list-style/overflow event marker. A pending-approval
+  booking gets a red dot instead of its usual calendar colour.
+  """
+  @spec event_dot_class(map(), map()) :: String.t()
+  def event_dot_class(assigns, event) do
+    if pending_approval?(event), do: "bg-red-500", else: color_for_event(assigns, event)
+  end
+
+  # `assigns.calendar_colors`, not `Map.get(assigns, :calendar_colors, %{})`.
+  # The forgiving version defaulted a missing assign to "no choices", which is
+  # indistinguishable from a real empty map: when a view component forgot to
+  # declare and receive the assign, every event quietly kept its integration's
+  # colour and nothing failed. A view that paints events must be given the map.
+  defp calendar_colour(assigns, event) do
+    key = {event.calendar_integration_id, Map.get(event, :provider_calendar_id)}
+
+    Map.get(assigns.calendar_colors, key)
+  end
+
+  @spec event_display_date(map(), String.t()) :: Date.t()
+  def event_display_date(%{all_day: true, start_date: %Date{} = date}, _timezone), do: date
+
+  def event_display_date(%{start_at: %DateTime{} = start_at}, timezone) do
+    start_at |> DateTime.shift_zone!(timezone) |> DateTime.to_date()
+  end
+end

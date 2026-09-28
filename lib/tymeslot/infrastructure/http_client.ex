@@ -1,0 +1,544 @@
+defmodule Tymeslot.Infrastructure.ResponseTooLargeError do
+  @moduledoc """
+  Returned by `Tymeslot.Infrastructure.HTTPClient` when a response body exceeds
+  the request's byte budget. The transfer is aborted at the chunk that crosses
+  the budget, so the oversized body is never fully held in memory.
+  """
+
+  alias Tymeslot.Infrastructure.HTTPClient
+
+  # `message/1` reduces the URL to an origin, but a caller logging this struct
+  # with `inspect/1` bypasses `message/1` entirely and would print the whole
+  # URL, secrets in the path included.
+  @derive {Inspect, except: [:url]}
+  defexception [:url, :max_bytes]
+
+  @impl Exception
+  def message(%__MODULE__{url: url, max_bytes: max_bytes}) do
+    origin = HTTPClient.log_safe_origin(url)
+    "response from #{origin} exceeded the #{max_bytes} byte limit"
+  end
+end
+
+defmodule Tymeslot.Infrastructure.HTTPClient do
+  @moduledoc """
+  Standardized HTTP client for the application.
+  Wraps Req and provides consistent interface for all HTTP requests.
+
+  Every response body is streamed through a byte budget (`:max_response_bytes`,
+  defaulting to `config :tymeslot, :http_max_response_bytes`) and the transfer is
+  aborted as soon as it is exceeded, so no single remote server can exhaust the
+  node's memory with an unbounded body. Requests supplying their own `:into`
+  option own their body handling and are left alone.
+  """
+
+  @behaviour Tymeslot.Infrastructure.HTTPClientBehaviour
+
+  require Logger
+  alias Req.{Request, Response}
+  alias Tymeslot.Infrastructure.{FinchPool, Metrics, ProxyConfig, ResponseTooLargeError}
+  alias Tymeslot.Security.{ConnectionPinning, SsrfBlockedError, SsrfGuard}
+
+  # Generous enough that no legitimate response comes close: the largest bodies
+  # the app handles are a full CalDAV REPORT and a 2,500-event Google page, both
+  # single-digit megabytes.
+  @max_response_bytes Application.compile_env(
+                        :tymeslot,
+                        :http_max_response_bytes,
+                        50 * 1024 * 1024
+                      )
+
+  @operation_timeouts %{
+    # Read operations get standard timeout
+    get: 30_000,
+    head: 30_000,
+    options: 30_000,
+
+    # Write operations get longer timeout
+    post: 45_000,
+    put: 45_000,
+    delete: 45_000,
+    patch: 45_000,
+
+    # CalDAV operations can be slow with large calendars
+    report: 60_000,
+    propfind: 60_000
+  }
+
+  # How long a request waits to check a connection out of its Finch pool unless
+  # it passes `pool_timeout:`. This is Finch's own default; the application's
+  # pools do not change it.
+  @default_pool_timeout_ms 5_000
+
+  @doc """
+  How long a single request sent with `method` and `options` may wait on its
+  pool and the network, in milliseconds: checking a connection out of the pool,
+  connecting, and waiting for the response, as `request/5` applies them.
+
+  The connect timeout is the request's `connect_options: [timeout: ms]`, or the
+  one the shared pool connects with (`Tymeslot.Infrastructure.FinchPool`).
+
+  This is a hard bound only for a request that passes `request_timeout:`,
+  which caps the whole response, and does not follow redirects (every request
+  guarded by `ssrf_protect: true` refuses them). Without `request_timeout:` the
+  receive timeout applies to each chunk of the body rather than to the
+  response as a whole, and each redirect followed starts afresh, so a server
+  trickling its answer can exceed it. Name resolution is never counted: the
+  system resolver has no timeout of its own here.
+
+  A caller that has to outlast a request, such as a job running it under a
+  timeout of its own, derives that timeout from this rather than repeating the
+  numbers, and passes `request_timeout:` when it needs the bound to hold.
+  """
+  @spec request_budget_ms(atom(), keyword()) :: pos_integer()
+  def request_budget_ms(method, options \\ []) when is_atom(method) do
+    Keyword.get(options, :pool_timeout, @default_pool_timeout_ms) +
+      connect_timeout_ms(options) + response_timeout_ms(method, options)
+  end
+
+  defp connect_timeout_ms(options) do
+    options
+    |> Keyword.get(:connect_options, [])
+    |> Keyword.get_lazy(:timeout, fn ->
+      FinchPool.default_options()
+      |> Keyword.fetch!(:conn_opts)
+      |> get_in([:transport_opts, :timeout])
+    end)
+  end
+
+  defp response_timeout_ms(method, options) do
+    case Keyword.get(options, :request_timeout) do
+      timeout when is_integer(timeout) -> timeout
+      _unbounded -> get_timeout(method, options)
+    end
+  end
+
+  @doc """
+  Reduces a URL to `scheme://host` for logging: never the path or query,
+  since some destinations (the Telegram Bot API) carry their credential in
+  the URL path. Falls back to `"unknown"` for a URL with no scheme/host
+  (relative or malformed) rather than logging a bare `"://"`.
+  """
+  @spec log_safe_origin(String.t()) :: String.t()
+  def log_safe_origin(url) do
+    case URI.parse(url) do
+      %URI{scheme: scheme, host: host} when is_binary(scheme) and is_binary(host) ->
+        "#{scheme}://#{host}"
+
+      _other ->
+        "unknown"
+    end
+  end
+
+  @doc """
+  Performs a GET request.
+  """
+  @spec get(String.t(), list(), keyword()) ::
+          {:ok, Response.t()} | {:error, Exception.t()}
+  def get(url, headers \\ [], options \\ []) do
+    request(:get, url, "", headers, options)
+  end
+
+  @doc """
+  Performs a POST request.
+  """
+  @spec post(String.t(), any(), list(), keyword()) ::
+          {:ok, Response.t()} | {:error, Exception.t()}
+  def post(url, body, headers \\ [], options \\ []) do
+    request(:post, url, body, headers, options)
+  end
+
+  @doc """
+  Performs a PUT request.
+  """
+  @spec put(String.t(), any(), list(), keyword()) ::
+          {:ok, Response.t()} | {:error, Exception.t()}
+  def put(url, body, headers, options) do
+    request(:put, url, body, headers, options)
+  end
+
+  @doc """
+  Performs a DELETE request.
+  """
+  @spec delete(String.t(), list(), keyword()) ::
+          {:ok, Response.t()} | {:error, Exception.t()}
+  def delete(url, headers, options) do
+    request(:delete, url, "", headers, options)
+  end
+
+  @doc """
+  Performs a HEAD request.
+  """
+  @spec head(String.t(), list(), keyword()) ::
+          {:ok, Response.t()} | {:error, Exception.t()}
+  def head(url, headers \\ [], options \\ []) do
+    request(:head, url, "", headers, options)
+  end
+
+  @doc """
+  Performs a REPORT request (CalDAV specific).
+  """
+  @spec report(String.t(), any(), list(), keyword()) ::
+          {:ok, Response.t()} | {:error, Exception.t()}
+  def report(url, body, headers, options) do
+    request(:report, url, body, headers, options)
+  end
+
+  @allowed_methods %{
+    "get" => :get,
+    "post" => :post,
+    "put" => :put,
+    "patch" => :patch,
+    "delete" => :delete,
+    "head" => :head,
+    "options" => :options,
+    "report" => :report,
+    "propfind" => :propfind
+  }
+
+  @doc """
+  Performs any HTTP method request.
+  Supports both atom and string method names.
+  """
+  @spec request(atom() | String.t(), String.t(), any(), list(), keyword()) ::
+          {:ok, Response.t()} | {:error, Exception.t()}
+  def request(method, url, body \\ "", headers \\ [], options \\ [])
+
+  def request(method, url, body, headers, options) when is_atom(method) do
+    if Keyword.get(options, :ssrf_protect, false) do
+      guarded_request(method, url, body, headers, options)
+    else
+      do_request(method, url, body, headers, options)
+    end
+  end
+
+  def request(method, url, body, headers, options) when is_binary(method) do
+    downcased = String.downcase(method)
+
+    case Map.fetch(@allowed_methods, downcased) do
+      {:ok, atom_method} ->
+        request(atom_method, url, body, headers, options)
+
+      :error ->
+        {:error, %RuntimeError{message: "Invalid HTTP method: #{method}"}}
+    end
+  end
+
+  def request(method, _url, _body, _headers, _options) do
+    {:error, %RuntimeError{message: "Invalid HTTP method: #{inspect(method)}"}}
+  end
+
+  # Private functions
+
+  @spec do_request(atom(), String.t(), any(), list(), keyword()) ::
+          {:ok, Response.t()} | {:error, Exception.t()}
+  defp do_request(method, url, body, headers, options) do
+    req_options = build_req_options(method, url, body, headers, options)
+
+    result =
+      track_request(method, url, fn ->
+        Req.request(req_options)
+      end)
+
+    # Metrics are recorded first so an oversized response still reports the
+    # status and duration the server actually produced.
+    if Keyword.has_key?(options, :into) do
+      result
+    else
+      finish_capped_body(result, url, max_response_bytes(options))
+    end
+  end
+
+  @spec max_response_bytes(keyword()) :: pos_integer()
+  defp max_response_bytes(options) do
+    Keyword.get(options, :max_response_bytes, @max_response_bytes)
+  end
+
+  # `capped_collector/1` accumulates chunks as iodata and flags the response
+  # once the budget is crossed; this turns that back into the plain binary body
+  # every caller expects, or into an error when the transfer was aborted.
+  @spec finish_capped_body(
+          {:ok, Response.t()} | {:error, Exception.t()},
+          String.t(),
+          pos_integer()
+        ) ::
+          {:ok, Response.t()} | {:error, Exception.t()}
+  defp finish_capped_body({:ok, %Response{} = response}, url, max_bytes) do
+    if Response.get_private(response, :tymeslot_body_too_large, false) do
+      Logger.warning("Aborted an oversized HTTP response",
+        url: log_safe_origin(url),
+        status_code: response.status,
+        max_response_bytes: max_bytes
+      )
+
+      {:error, %ResponseTooLargeError{url: url, max_bytes: max_bytes}}
+    else
+      {:ok, %{response | body: IO.iodata_to_binary(response.body)}}
+    end
+  end
+
+  defp finish_capped_body(result, _url, _max_bytes), do: result
+
+  @spec capped_collector(pos_integer()) ::
+          ({:data, binary()}, {Request.t(), Response.t()} ->
+             {:cont | :halt, {Request.t(), Response.t()}})
+  defp capped_collector(max_bytes) do
+    fn {:data, chunk}, {request, response} ->
+      received =
+        Response.get_private(response, :tymeslot_received_bytes, 0) + byte_size(chunk)
+
+      if received > max_bytes do
+        {:halt, {request, Response.put_private(response, :tymeslot_body_too_large, true)}}
+      else
+        response =
+          response
+          |> Map.update!(:body, &[&1, chunk])
+          |> Response.put_private(:tymeslot_received_bytes, received)
+
+        {:cont, {request, response}}
+      end
+    end
+  end
+
+  # Request-time SSRF protection for user-supplied hosts (CalDAV, self-hosted
+  # video). Validates that the URL does not resolve to a private/local address
+  # immediately before connecting, then connects to the address that check
+  # approved rather than letting Finch resolve the hostname again — without
+  # that, a short-TTL record could answer public to the check and loopback to
+  # the socket. Req's automatic redirect following is disabled too, so a 3xx
+  # from a public host cannot silently bounce the request onto an internal
+  # address past a check that has already run.
+  @spec guarded_request(atom(), String.t(), any(), list(), keyword()) ::
+          {:ok, Response.t()} | {:error, Exception.t()}
+  defp guarded_request(method, url, body, headers, options) do
+    guard_opts =
+      case Keyword.fetch(options, :ssrf_allow_private) do
+        {:ok, allow_private} -> [allow_private: allow_private]
+        :error -> []
+      end
+
+    case SsrfGuard.validate_pinned(url, guard_opts) do
+      {:ok, addresses} ->
+        safe_options =
+          options
+          |> Keyword.drop([:ssrf_protect, :ssrf_allow_private])
+          |> Keyword.put(:redirect, false)
+
+        {pinned_url, pinned_options} =
+          ConnectionPinning.pin_request(url, addresses, safe_options)
+
+        do_request(method, pinned_url, body, headers, pinned_options)
+
+      {:error, reason} ->
+        Logger.warning("Blocked outbound request by SSRF protection",
+          url: log_safe_origin(url),
+          reason: inspect(reason)
+        )
+
+        {:error, %SsrfBlockedError{url: url, reason: reason}}
+    end
+  end
+
+  # Standard HTTP methods that Finch accepts as atoms.
+  # Non-standard methods (e.g. PROPFIND, REPORT) must be passed as uppercase strings.
+  @standard_methods ~w(get post put patch delete head options)a
+
+  @spec build_req_options(atom(), String.t(), any(), list(), keyword()) :: keyword()
+  defp build_req_options(method, url, body, headers, user_options) do
+    # Get timeout for this operation
+    timeout = get_timeout(method, user_options)
+
+    # Get proxy configuration for this URL (considers NO_PROXY, HTTP vs HTTPS)
+    proxy_options = get_proxy_options(url, user_options)
+
+    req_method = normalize_method(method)
+
+    base_options = [
+      method: req_method,
+      url: url,
+      headers: headers,
+      receive_timeout: timeout,
+      # Disable Req's default retry: :safe_transient which silently retries
+      # GET/HEAD/OPTIONS on 5xx and transient errors. Retries are handled
+      # explicitly at the CalDAV layer (RetryLogic) and Oban layer.
+      retry: false,
+      # Disable automatic JSON decoding to match HTTPoison behavior
+      # Callers handle JSON parsing explicitly with Jason.decode!
+      decode_body: false
+    ]
+
+    {transport_key, transport_val} = req_transport_option(proxy_options)
+    base_options = Keyword.put(base_options, transport_key, transport_val)
+
+    # Add body if present (and not empty)
+    options_with_body =
+      if body != "" and body != nil do
+        Keyword.put(base_options, :body, body)
+      else
+        base_options
+      end
+
+    # Stream the response through the byte budget unless the caller is handling
+    # the body itself. Setting `:into` also disables Req's `compressed` and
+    # `decompress_body` steps, which is the point: both inflate the whole body
+    # into memory with no size limit, so a cap that ran after them would not be
+    # a cap at all.
+    options_with_cap =
+      if Keyword.has_key?(user_options, :into) do
+        options_with_body
+      else
+        Keyword.put(options_with_body, :into, capped_collector(max_response_bytes(user_options)))
+      end
+
+    # Merge with user options (user options take precedence)
+    # Strip HTTPoison-style timeout keys that were handled by get_timeout/2,
+    # and :max_response_bytes, which Req does not recognise
+    user_opts_clean =
+      Keyword.drop(user_options, [:timeout, :recv_timeout, :max_response_bytes, :bypass_proxy])
+
+    # The proxy's connection options and the caller's are one set: both
+    # describe the same socket, so they are merged and handed to the pool
+    # together rather than one being a special case of the other.
+    connect_options =
+      Keyword.merge(
+        Keyword.get(proxy_options, :connect_options, []),
+        Keyword.get(user_opts_clean, :connect_options, [])
+      )
+
+    options_with_cap
+    |> Keyword.merge(Keyword.delete(user_opts_clean, :connect_options))
+    |> apply_connect_options(url, connect_options)
+  end
+
+  # Req refuses `:finch` and `:connect_options` on the same request: hand it
+  # connection options and it serves them from a Finch instance it starts and
+  # names itself, one per distinct set of options, kept forever. Connection
+  # pinning passes the target's hostname that way on every SSRF-guarded
+  # request, so that used to mean a permanent extra instance per destination.
+  # `FinchPool` says the same thing as a tagged pool on `Tymeslot.Finch`, and
+  # the request then carries `:finch` alone.
+  #
+  # The fallback is the behaviour that preceded it, and runs whenever the
+  # request is not going through Finch at all — the suite routes Req through a
+  # test plug, which opens no socket and has no pool to register.
+  defp apply_connect_options(options, _url, []), do: options
+
+  defp apply_connect_options(options, url, connect_options) do
+    with {:ok, finch_options} <- Keyword.fetch(options, :finch),
+         {:ok, pooled_options} <- FinchPool.request_option(url, connect_options) do
+      Keyword.put(options, :finch, Keyword.merge(finch_options, pooled_options))
+    else
+      _no_finch_instance ->
+        options
+        |> Keyword.delete(:finch)
+        |> Keyword.put(:connect_options, connect_options)
+    end
+  end
+
+  # A proxied request never goes through the test plug. The proxy is the thing
+  # being exercised on those paths, and a plug opens no socket for it to
+  # traverse, so there would be nothing left to observe.
+  defp req_transport_option([]), do: req_transport_option()
+  defp req_transport_option(_proxy_options), do: {:finch, [name: FinchPool.instance()]}
+
+  # Req 0.7 moved the Finch adapter's settings under a keyword list; the bare
+  # `finch: name` form still works but is deprecated and goes away in 0.8.
+  defp req_transport_option do
+    case Application.get_env(:tymeslot, :req_test_plug) do
+      nil -> {:finch, [name: Tymeslot.Finch]}
+      plug -> {:plug, plug}
+    end
+  end
+
+  defp normalize_method(method) when method in @standard_methods, do: method
+
+  defp normalize_method(method) when is_atom(method) do
+    method |> Atom.to_string() |> String.upcase()
+  end
+
+  # `bypass_proxy: true` sends one request directly while the global proxy
+  # configuration stays in place. Two things set it.
+  #
+  # `Infrastructure.ProxyVerifier` sets it deliberately: the only way to know a
+  # proxied request truly traversed the proxy is to compare the origin it
+  # reports against the address this machine leaves from on its own, and that
+  # second request must skip the proxy without disturbing the configuration
+  # every other request is using concurrently.
+  #
+  # `Security.ConnectionPinning` sets it as a verdict rather than a wish. A
+  # pinned request arrives here with its host already rewritten to the IP
+  # literal the SSRF check approved, and asking `ProxyConfig` about that
+  # literal answers a different question from the one the pin answered about
+  # the hostname: an operator's `NO_PROXY` names hosts, so the bypass they
+  # configured would stop matching and the request would take a proxy the pin
+  # had already established does not apply. Pinning happens only when no proxy
+  # applies, so honouring the flag here is what keeps the decision single.
+  @spec get_proxy_options(String.t(), keyword()) :: keyword()
+  defp get_proxy_options(url, options) do
+    if Keyword.get(options, :bypass_proxy, false) do
+      []
+    else
+      proxy_options_for(url)
+    end
+  end
+
+  @spec proxy_options_for(String.t()) :: keyword()
+  defp proxy_options_for(url) do
+    # Get proxy config for this URL (considers NO_PROXY and URL scheme)
+    proxy_config = ProxyConfig.get_proxy_for_url(url)
+
+    # Log proxy usage for debugging. Scheme and host only, never the path or
+    # query: some destinations (the Telegram Bot API) carry their credential
+    # in the URL path, and this debug log is not the place to re-derive which
+    # paths are safe to print.
+    if proxy_config do
+      Logger.debug("Using proxy for request",
+        proxy: "#{proxy_config.host}:#{proxy_config.port}",
+        url: log_safe_origin(url)
+      )
+    end
+
+    # Build Req-compatible proxy options. The URL goes along because the socket
+    # options for the hop to the proxy depend on the target's scheme: mint
+    # proxies http:// and https:// through different modules, and they need
+    # opposite settings. See `ProxyConfig.build_req_proxy_options/2`.
+    ProxyConfig.build_req_proxy_options(proxy_config, url)
+  end
+
+  @spec get_timeout(atom(), keyword()) :: non_neg_integer()
+  defp get_timeout(method, user_options) do
+    cond do
+      # User-provided timeout takes highest precedence
+      user_options[:timeout] ->
+        user_options[:timeout]
+
+      user_options[:receive_timeout] ->
+        user_options[:receive_timeout]
+
+      # Otherwise use operation-specific timeout
+      true ->
+        Map.get(@operation_timeouts, method, 30_000)
+    end
+  end
+
+  @spec track_request(atom(), String.t(), (-> {:ok, Response.t()} | {:error, Exception.t()})) ::
+          {:ok, Response.t()} | {:error, Exception.t()}
+  defp track_request(method, url, request_fn) when is_atom(method) do
+    start_time = System.monotonic_time()
+
+    result = request_fn.()
+
+    duration = System.monotonic_time() - start_time
+    duration_ms = System.convert_time_unit(duration, :native, :millisecond)
+
+    status_code =
+      case result do
+        {:ok, %{status: code}} -> code
+        _error -> 0
+      end
+
+    Metrics.track_http_request(to_string(method), url, status_code, duration_ms)
+
+    result
+  end
+end

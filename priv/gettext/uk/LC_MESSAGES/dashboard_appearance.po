@@ -1,0 +1,371 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: uk\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100 != 11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10||n%100>=20) ? 1 : 2);\n"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_preview.ex
+#, elixir-autogen, elixir-format
+msgid "%{theme_name} Theme"
+msgstr "Тема %{theme_name}"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_preview.ex
+#, elixir-autogen, elixir-format
+msgid "%{theme_name} Theme Preview"
+msgstr "Попередній перегляд теми %{theme_name}"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization_component.ex
+#, elixir-autogen, elixir-format
+msgid "An error occurred. Please refresh the page and try again."
+msgstr "Сталася помилка. Оновіть сторінку та спробуйте ще раз."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#, elixir-autogen, elixir-format
+msgid "Background Design"
+msgstr "Дизайн фону"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Choose Your Style"
+msgstr "Оберіть свій стиль"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#, elixir-autogen, elixir-format
+msgid "Choose a visual style that matches your professional identity."
+msgstr "Оберіть візуальний стиль, який відповідає вашому професійному іміджу."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/image_picker.ex
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/video_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Choose from our collection"
+msgstr "Оберіть із нашої колекції"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#, elixir-autogen, elixir-format
+msgid "Close"
+msgstr "Закрити"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#, elixir-autogen, elixir-format
+msgid "Color Palette"
+msgstr "Колірна палітра"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/theme_preview_inline.ex
+#, elixir-autogen, elixir-format
+msgid "Confirm"
+msgstr "Підтвердити"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Connect Calendar to Preview"
+msgstr "Підключіть календар для попереднього перегляду"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/current_indicator.ex
+#, elixir-autogen, elixir-format
+msgid "Current"
+msgstr "Поточний"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Current Style"
+msgstr "Поточний стиль"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/color_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Custom"
+msgstr "Власний"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Customize Style"
+msgstr "Налаштувати стиль"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update theme"
+msgstr "Не вдалося оновити тему"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#, elixir-autogen, elixir-format
+msgid "Gradient"
+msgstr "Градієнт"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/colour_picker_widget.ex
+#, elixir-autogen, elixir-format
+msgid "Hex colour value"
+msgstr "Hex-код кольору"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/colour_picker_widget.ex
+#, elixir-autogen, elixir-format
+msgid "Hue"
+msgstr "Відтінок"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#, elixir-autogen, elixir-format
+msgid "Image"
+msgstr "Зображення"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Invalid theme selection"
+msgstr "Некоректний вибір теми"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Live Preview"
+msgstr "Перегляд наживо"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "More Styles Coming Soon"
+msgstr "Нові стилі вже скоро"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/image_picker.ex
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/video_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Or upload your own"
+msgstr "Або завантажте свій файл"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Our design team is busy crafting new themes to help you express your unique professional style."
+msgstr "Наша команда дизайнерів активно працює над новими темами, щоб допомогти вам виразити свій унікальний професійний стиль."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/theme_preview_inline.ex
+#, elixir-autogen, elixir-format
+msgid "Primary"
+msgstr "Основний"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/theme_preview_inline.ex
+#, elixir-autogen, elixir-format
+msgid "Secondary"
+msgstr "Додатковий"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/image_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Select Image"
+msgstr "Вибрати зображення"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/video_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Select Video"
+msgstr "Вибрати відео"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/color_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Select a solid color"
+msgstr "Виберіть суцільний колір"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Select the interface that best represents your personal brand and creates the best experience for your clients."
+msgstr "Оберіть інтерфейс, який найкраще відображає ваш особистий бренд і створює найкращий досвід для ваших клієнтів."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#, elixir-autogen, elixir-format
+msgid "Select the primary colors for your booking page interface."
+msgstr "Виберіть основні кольори для інтерфейсу сторінки бронювання."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/color_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Solid Color"
+msgstr "Суцільний колір"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/theme_preview_inline.ex
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_preview.ex
+#, elixir-autogen, elixir-format
+msgid "Theme Preview"
+msgstr "Попередній перегляд теми"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Theme updated to %{theme_name}"
+msgstr "Тему оновлено на %{theme_name}"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/theme_preview_inline.ex
+#, elixir-autogen, elixir-format
+msgid "This preview reflects your current color scheme and background."
+msgstr "Цей попередній перегляд відображає вашу поточну колірну схему та фон."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/background_uploads.ex
+#, elixir-autogen, elixir-format
+msgid "Too many upload attempts. Please wait a few minutes and try again."
+msgstr "Забагато спроб завантаження. Зачекайте кілька хвилин і спробуйте ще раз."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/image_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Upload Image"
+msgstr "Завантажити зображення"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/video_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Upload Video"
+msgstr "Завантажити відео"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/image_picker.ex
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/video_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Upload not available"
+msgstr "Завантаження недоступне"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#, elixir-autogen, elixir-format
+msgid "Video"
+msgstr "Відео"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/image_picker.ex
+#, elixir-autogen, elixir-format
+msgid "You have a custom image. Selecting a preset will remove it."
+msgstr "Ви використовуєте власне зображення. Вибір шаблону призведе до його видалення."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/video_picker.ex
+#, elixir-autogen, elixir-format
+msgid "You have a custom video. Selecting a preset will remove it."
+msgstr "Ви використовуєте власне відео. Вибір шаблону призведе до його видалення."
+
+#: lib/tymeslot_web/themes/quill/theme.ex
+#, elixir-autogen, elixir-format
+msgid "Glass morphism design with elegant transparency effects and a 4-step booking flow."
+msgstr "Дизайн у стилі гласморфізму з елегантними ефектами прозорості та 4-кроковим процесом бронювання."
+
+#: lib/tymeslot_web/themes/rhythm/theme.ex
+#, elixir-autogen, elixir-format
+msgid "Modern sliding design with video background and a 4-slide booking flow."
+msgstr "Сучасний дизайн зі слайдами, відеофоном та процесом бронювання на 4 слайди."
+
+#: lib/tymeslot/theme_customizations.ex
+#, elixir-autogen, elixir-format
+msgid "Could not save your theme customization. Please try again."
+msgstr "Не вдалося зберегти налаштування теми. Спробуйте ще раз."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "(your current theme)"
+msgstr "(ваша поточна тема)"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Booking Page Text"
+msgstr "Текст сторінки бронювання"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Booking page preview"
+msgstr "Попередній перегляд сторінки бронювання"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Greeting"
+msgstr "Привітання"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Heading"
+msgstr "Заголовок"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Instruction"
+msgstr "Підказка"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "No preview yet"
+msgstr "Попереднього перегляду ще немає"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Pick a username for your booking page to see it here."
+msgstr "Оберіть ім’я користувача для сторінки бронювання, щоб побачити її тут."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Replace the wording that introduces you at the top of your booking page. Applies to every theme."
+msgstr "Замініть текст, який представляє вас угорі сторінки бронювання. Діє для всіх тем."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Use my own wording"
+msgstr "Використовувати власний текст"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Your heading replaces:"
+msgstr "Ваш заголовок замінює:"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Your own wording is shown to everyone, in whatever language they pick. Only the built-in text is translated."
+msgstr "Ваш власний текст бачать усі, незалежно від обраної мови. Перекладається лише вбудований текст."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "All changes saved"
+msgstr "Усі зміни збережено"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Couldn't save changes"
+msgstr "Не вдалося зберегти зміни"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "The preview updates as your changes are saved."
+msgstr "Перегляд оновлюється в міру збереження ваших змін."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Too many changes - saving shortly…"
+msgstr "Забагато змін - збереження за мить…"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Turn this off to go back to the built-in text, which is translated into every language Tymeslot supports. Your own wording is discarded."
+msgstr "Вимкніть це, щоб повернутися до вбудованого тексту, перекладеного всіма мовами, які підтримує Tymeslot. Ваш власний текст буде видалено."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Unsaved changes"
+msgstr "Незбережені зміни"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
+#, elixir-autogen, elixir-format
+msgid "Complete the form to save"
+msgstr "Заповніть форму, щоб зберегти"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#, elixir-autogen, elixir-format
+msgid "Fine-tune the colors and background of your booking page."
+msgstr "Точно налаштуйте кольори та фон своєї сторінки бронювання."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/gradient_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Select a gradient background"
+msgstr "Обрати градієнтний фон"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/image_picker.ex
+#, elixir-autogen, elixir-format
+msgid "JPG, PNG or WebP. Max %{mb}MB."
+msgstr "JPG, PNG або WebP. Максимум %{mb} МБ."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/video_picker.ex
+#, elixir-autogen, elixir-format
+msgid "MP4, WebM or MOV. Max %{mb}MB."
+msgstr "MP4, WebM або MOV. Максимум %{mb} МБ."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/image_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Your current custom background image"
+msgstr "Ваше поточне власне фонове зображення"

@@ -1,0 +1,571 @@
+defmodule TymeslotWeb.Router do
+  use TymeslotWeb, :router
+
+  require Logger
+
+  alias Plug.Conn
+  alias TymeslotWeb.Plugs.LocalePlug
+
+  # =============================================================================
+  # Healthcheck (early to avoid wildcard username routes)
+  # =============================================================================
+
+  scope "/", TymeslotWeb do
+    pipe_through :api
+
+    get "/healthcheck", HealthcheckController, :index
+  end
+
+  # Public free/busy feed — token-gated, declared early so it wins over the
+  # wildcard username booking routes.
+  scope "/", TymeslotWeb do
+    pipe_through :public_feed
+
+    get "/free-busy/:token", FreebusyController, :index
+  end
+
+  # =============================================================================
+  # Webhook Routes
+  # =============================================================================
+
+  # A webhook whose signature covers the request body declares
+  # `metadata: %{raw_body: true}`: `TymeslotWeb.Plugs.WebhookBodyCachePlug`
+  # keeps the raw body of exactly those routes, since `Plug.Parsers` consumes
+  # it before the controller can verify it.
+
+  scope "/webhooks", TymeslotWeb do
+    pipe_through :webhook
+
+    post "/stripe", StripeWebhookController, :webhook, metadata: %{raw_body: true}
+    post "/stripe/connect", StripeWebhookController, :connect, metadata: %{raw_body: true}
+  end
+
+  # Calendar provider webhooks negotiate `text/plain` for their subscription
+  # validation handshake, so they run through `:calendar_webhook` rather than the
+  # json-only `:api` pipeline (which would 406 the handshake — see tymeslot_web.ex).
+  scope "/webhooks", TymeslotWeb do
+    pipe_through :calendar_webhook
+
+    post "/google-calendar", GoogleCalendarWebhookController, :webhook
+    post "/outlook-calendar", OutlookCalendarWebhookController, :notification
+    post "/outlook-lifecycle", OutlookCalendarWebhookController, :lifecycle
+  end
+
+  # Zoom app deauthorization endpoint — POSTed by Zoom when a user uninstalls
+  # the Marketplace app. Lives under /auth to mirror the OAuth callback path
+  # and runs through the unauthenticated :api pipeline (no CSRF).
+  scope "/", TymeslotWeb do
+    pipe_through :api
+
+    post "/auth/zoom/deauthorize", ZoomDeauthController, :deauthorize, metadata: %{raw_body: true}
+  end
+
+  # Telegram bot webhook (unauthenticated, outside :browser pipeline)
+  scope "/api/telegram", TymeslotWeb do
+    pipe_through :api
+
+    post "/webhook", TelegramWebhookController, :webhook
+  end
+
+  # Slack OAuth start/callback (authenticated browser flow — the user must be
+  # logged in to begin the dance and the callback needs the session cookie to
+  # redirect them back to /dashboard/automation).
+  scope "/api/slack", TymeslotWeb do
+    pipe_through [
+      :browser,
+      :require_authenticated_user,
+      TymeslotWeb.Plugs.AdditionalDashboardPlugs
+    ]
+
+    get "/oauth/start", SlackOAuthController, :start
+    get "/oauth/callback", SlackOAuthController, :callback
+  end
+
+  # =============================================================================
+  # Dev-Only Routes
+  # =============================================================================
+
+  if Application.compile_env(:tymeslot, :dev_routes, false) do
+    scope "/dev", TymeslotWeb.Dev do
+      pipe_through :browser
+
+      get "/embed-test", EmbedTestController, :index
+    end
+
+    scope "/dev", TymeslotWeb do
+      pipe_through :browser
+
+      live_session :dev_announcements_preview do
+        live "/announcements", Dev.AnnouncementsPreviewLive, :index
+      end
+    end
+
+    scope "/dev", TymeslotWeb do
+      pipe_through [:browser, :require_authenticated_user]
+
+      live_session :dev_onboarding,
+        on_mount: [
+          {TymeslotWeb.Hooks.AuthLiveSessionHook, :ensure_authenticated},
+          TymeslotWeb.Hooks.ClientInfoHook
+        ] do
+        live "/onboarding", OnboardingLive, :debug_welcome
+        live "/onboarding/:step", OnboardingLive, :debug_step
+      end
+    end
+  end
+
+  # =============================================================================
+  # Core Root Route
+  # =============================================================================
+
+  scope "/", TymeslotWeb do
+    pipe_through :browser
+
+    get "/", RootRedirectController, :index
+  end
+
+  # Answering a booking request from the link in the host's email. No session
+  # is required — the signed token in the path is the authorisation — but
+  # nothing is decided by loading the page; see `TymeslotWeb.MeetingRequestLive`.
+  scope "/", TymeslotWeb do
+    pipe_through :browser
+
+    live_session :meeting_request,
+      session: {TymeslotWeb.Plugs.LocalePlug, :live_session_data, []},
+      on_mount: [TymeslotWeb.Hooks.LocaleHook, TymeslotWeb.Hooks.ClientInfoHook] do
+      live "/meeting-request/:token", MeetingRequestLive, :show
+    end
+  end
+
+  # =============================================================================
+  # Authentication Routes
+  # =============================================================================
+
+  scope "/", TymeslotWeb do
+    pipe_through :browser
+
+    # LiveView authentication routes with route bundle loading. A signed-in
+    # user is sent on from the login and sign-up screens; the emailed-link
+    # screens (password reset, email verification) stay reachable.
+    live_session :auth,
+      session: {TymeslotWeb.Plugs.LocalePlug, :live_session_data, []},
+      on_mount: [
+        TymeslotWeb.Hooks.LocaleHook,
+        {TymeslotWeb.Hooks.AuthLiveSessionHook,
+         {:redirect_if_authenticated, actions: [:login, :signup], events: ["submit_signup"]}},
+        TymeslotWeb.Hooks.RouteBundleHook
+      ] do
+      live "/auth/login", AuthLive, :login
+      live "/auth/signup", AuthLive, :signup
+      live "/auth/verify-email", AuthLive, :verify_email
+      live "/auth/reset-password", AuthLive, :reset_password
+      live "/auth/reset-password-sent", AuthLive, :reset_password_sent
+      live "/auth/reset-password/:token", AuthLive, :reset_password_form
+      live "/auth/complete-registration", AuthLive, :complete_registration
+      live "/auth/password-reset-success", AuthLive, :password_reset_success
+    end
+
+    # Convenience redirects for mistyped auth slugs. Defined before the
+    # `/:username` booking-page catch-all so they resolve here rather than as a
+    # username lookup. See TymeslotWeb.AuthAliasController.
+    get "/login", AuthAliasController, :login
+    get "/signin", AuthAliasController, :login
+    get "/sign-in", AuthAliasController, :login
+    get "/signup", AuthAliasController, :signup
+    get "/sign-up", AuthAliasController, :signup
+    get "/register", AuthAliasController, :signup
+
+    # Emailed one-time links (email change here, verification below): GET only
+    # renders a confirmation page, so link prefetchers cannot consume the
+    # token; POST performs the change (CSRF-protected via :browser).
+    get "/email-change/:token", EmailChangeController, :confirm
+    post "/email-change/:token", EmailChangeController, :verify
+
+    # Public guest RSVP (accept/decline) from the tokenised email link.
+    # GET renders a confirmation landing page (no mutation — safe for link prefetchers).
+    # POST performs the RSVP write (CSRF-protected via the :browser pipeline).
+    get "/guest/:token/:response", GuestRsvpController, :confirm
+    post "/guest/:token/:response", GuestRsvpController, :submit
+
+    # OAuth routes (must remain as controllers for external redirects)
+    get "/auth/:provider", OAuthController, :request
+    get "/auth/:provider/callback", OAuthController, :callback
+    post "/auth/complete", OAuthController, :complete
+    get "/auth/oauth/confirm/:token", OAuthController, :confirm_signup
+    post "/auth/oauth/confirm/:token", OAuthController, :finish_signup
+
+    # Calendar OAuth routes
+    get "/auth/google/calendar/callback", CalendarOAuthController, :google_callback
+    get "/auth/outlook/calendar/callback", CalendarOAuthController, :outlook_callback
+
+    # Video OAuth routes
+    get "/auth/google/video/callback", VideoOAuthController, :google_callback
+    get "/auth/teams/video/callback", VideoOAuthController, :teams_callback
+    get "/auth/zoom/video/callback", VideoOAuthController, :zoom_callback
+
+    # Session management routes
+    delete "/auth/logout", SessionController, :delete
+    get "/auth/verify-complete/:token", SessionController, :confirm_verification
+    post "/auth/verify-complete/:token", SessionController, :verify_and_login
+  end
+
+  # The password login form posts here. A signed-in user is sent on rather
+  # than authenticated a second time.
+  scope "/", TymeslotWeb do
+    pipe_through [:browser, TymeslotWeb.Plugs.RedirectIfAuthenticated]
+
+    post "/auth/session", SessionController, :create
+  end
+
+  # =============================================================================
+  # Authenticated Routes
+  # =============================================================================
+
+  # Dashboard routes
+  scope "/", TymeslotWeb do
+    pipe_through [
+      :browser,
+      :require_authenticated_user,
+      TymeslotWeb.Plugs.AdditionalDashboardPlugs
+    ]
+
+    @dashboard_hooks [
+      {TymeslotWeb.Hooks.AuthLiveSessionHook, :ensure_authenticated},
+      TymeslotWeb.Hooks.AppLocaleHook,
+      TymeslotWeb.Hooks.AppAppearanceHook,
+      TymeslotWeb.Hooks.ClientInfoHook,
+      TymeslotWeb.Hooks.DashboardInitHook,
+      {TymeslotWeb.Hooks.FeatureAssignsHook, :set_feature_assigns},
+      TymeslotWeb.Hooks.RouteBundleHook
+    ]
+
+    @onboarding_hooks [
+      {TymeslotWeb.Hooks.AuthLiveSessionHook, :ensure_authenticated},
+      TymeslotWeb.Hooks.AppLocaleHook,
+      TymeslotWeb.Hooks.AppAppearanceHook,
+      TymeslotWeb.Hooks.ClientInfoHook
+    ]
+
+    @doc false
+    @spec on_mount(
+            :dashboard_hooks | :onboarding_hooks,
+            map(),
+            map(),
+            Phoenix.LiveView.Socket.t()
+          ) :: {:cont, Phoenix.LiveView.Socket.t()} | {:halt, Phoenix.LiveView.Socket.t()}
+    def on_mount(:dashboard_hooks, params, session, socket) do
+      hooks =
+        @dashboard_hooks ++
+          dashboard_additional_hooks() ++
+          [{TymeslotWeb.Hooks.AnnouncementsHook, :load_unseen_announcements}]
+
+      run_hooks(hooks, params, session, socket)
+    end
+
+    # Onboarding sits outside the dashboard proper (DashboardInitHook would
+    # redirect an unfinished user straight back here), but the deployment's
+    # additional gates apply to it all the same.
+    def on_mount(:onboarding_hooks, params, session, socket) do
+      run_hooks(@onboarding_hooks ++ dashboard_additional_hooks(), params, session, socket)
+    end
+
+    @doc """
+    The on_mount hooks configured under `:dashboard_additional_hooks`.
+
+    These are deployment gates (a legal-acceptance check, for instance), so a
+    configuration they cannot be run from raises rather than being skipped: a
+    typo must not quietly switch a gate off.
+    """
+    @spec dashboard_additional_hooks() :: list()
+    def dashboard_additional_hooks do
+      :tymeslot
+      |> Application.get_env(:dashboard_additional_hooks, [])
+      |> normalise_additional_hooks()
+      |> Enum.map(&validate_additional_hook!/1)
+    end
+
+    @doc """
+    Boot-time check of `:dashboard_additional_hooks`: on top of the shape
+    check every mount repeats, each hook module must be loadable and export
+    `on_mount/4`, so a misspelt module name stops the application starting
+    instead of surfacing at the first dashboard mount.
+    """
+    @spec validate_additional_hooks!() :: :ok
+    def validate_additional_hooks! do
+      Enum.each(dashboard_additional_hooks(), fn hook ->
+        module = hook_module(hook)
+
+        unless Code.ensure_loaded?(module) and function_exported?(module, :on_mount, 4) do
+          raise ArgumentError,
+                ":dashboard_additional_hooks entry #{inspect(hook)} names " <>
+                  "#{inspect(module)}, which does not define on_mount/4"
+        end
+      end)
+    end
+
+    defp hook_module({module, _hook_name}), do: module
+    defp hook_module(module), do: module
+
+    defp normalise_additional_hooks(hooks) when is_list(hooks), do: hooks
+
+    defp normalise_additional_hooks(hook) when is_tuple(hook) or is_atom(hook) do
+      Logger.warning(
+        "Expected :dashboard_additional_hooks to be a list, received a single hook. Wrapping."
+      )
+
+      [hook]
+    end
+
+    defp normalise_additional_hooks(other) do
+      raise ArgumentError,
+            "expected :dashboard_additional_hooks to be a list of hooks, got: #{inspect(other)}"
+    end
+
+    defp validate_additional_hook!({module, hook_name} = hook)
+         when is_atom(module) and is_atom(hook_name),
+         do: hook
+
+    defp validate_additional_hook!(module) when is_atom(module), do: module
+
+    defp validate_additional_hook!(other) do
+      raise ArgumentError,
+            "unrecognised :dashboard_additional_hooks entry #{inspect(other)}; " <>
+              "expected a module or a {module, hook_name} tuple"
+    end
+
+    defp run_hooks(hooks, params, session, socket) do
+      Enum.reduce_while(hooks, {:cont, socket}, fn hook, {:cont, socket} ->
+        case run_hook(hook, params, session, socket) do
+          {:cont, socket} -> {:cont, {:cont, socket}}
+          {:halt, socket} -> {:halt, {:halt, socket}}
+        end
+      end)
+    end
+
+    defp run_hook({module, hook_name}, params, session, socket),
+      do: module.on_mount(hook_name, params, session, socket)
+
+    defp run_hook(module, params, session, socket),
+      do: module.on_mount(:default, params, session, socket)
+
+    live_session :authenticated,
+      session: {TymeslotWeb.Plugs.LocalePlug, :live_session_data, []},
+      on_mount: {__MODULE__, :dashboard_hooks} do
+      live "/dashboard", DashboardLive, :calendar
+      live "/dashboard/overview", DashboardLive, :overview
+      live "/dashboard/settings", DashboardLive, :settings
+      live "/dashboard/availability", DashboardLive, :availability
+      live "/dashboard/meeting-settings", DashboardLive, :meeting_settings
+      live "/dashboard/calendar", DashboardLive, :calendar
+      live "/dashboard/calendar-integration", DashboardLive, :calendar_integration
+      live "/dashboard/video-integration", DashboardLive, :video_integration
+      live "/dashboard/integrations", DashboardLive, :integrations
+      live "/dashboard/automation", DashboardLive, :automation
+      live "/dashboard/theme", DashboardLive, :theme
+      live "/dashboard/theme/customize/:theme_id", DashboardLive, :theme_customization
+      live "/dashboard/meetings", DashboardLive, :meetings
+      live "/dashboard/polls", DashboardLive, :polls
+      live "/dashboard/contacts", DashboardLive, :contacts
+      live "/dashboard/embed", DashboardLive, :embed
+      live "/dashboard/analytics", Dashboard.AnalyticsLive, :index
+      live "/dashboard/payments", DashboardLive, :payments
+
+      # Admin hub (self-hosted only — locked down in SaaS via enable_admin_ui).
+      # Lives in the same live_session as the rest of the dashboard so it
+      # patches in like any other menu item rather than opening as a
+      # standalone page; `DashboardLive.handle_params/3` is what actually
+      # enforces admin-only access (see `verify_admin/1` there).
+      live "/dashboard/admin", DashboardLive, :admin
+      live "/dashboard/admin/users", DashboardLive, :admin_users
+      live "/dashboard/admin/audit", DashboardLive, :admin_audit
+    end
+
+    post "/dashboard/payments/connect", Dashboard.PaymentsController, :connect
+    post "/dashboard/settings/delete-account", AccountDeletionController, :delete
+  end
+
+  # Onboarding routes. The deployment's additional dashboard gates (plugs and
+  # on_mount hooks) apply here too; see `on_mount(:onboarding_hooks, ...)`.
+  scope "/", TymeslotWeb do
+    pipe_through [
+      :browser,
+      :require_authenticated_user,
+      TymeslotWeb.Plugs.AdditionalDashboardPlugs
+    ]
+
+    live_session :onboarding,
+      session: {TymeslotWeb.Plugs.LocalePlug, :live_session_data, []},
+      on_mount: {TymeslotWeb.Router, :onboarding_hooks} do
+      live "/onboarding", OnboardingLive, :welcome
+      live "/onboarding/:step", OnboardingLive, :step
+    end
+  end
+
+  # =============================================================================
+  # Theme/Scheduling Routes
+  # =============================================================================
+
+  # Meeting management routes
+  scope "/", TymeslotWeb do
+    pipe_through :theme_browser
+
+    live_session :meeting_management,
+      session: {TymeslotWeb.Plugs.LocalePlug, :live_session_data, []},
+      on_mount: [
+        {TymeslotWeb.Hooks.AuthLiveSessionHook, :fetch_current_user},
+        TymeslotWeb.Hooks.LocaleHook,
+        TymeslotWeb.Hooks.ThemeHook,
+        TymeslotWeb.Hooks.ClientInfoHook
+      ] do
+      live "/:username/meeting/:meeting_uid/cancel", Themes.Core.Dispatcher, :cancel
+
+      live "/:username/meeting/:meeting_uid/cancel-confirmed",
+           Themes.Core.Dispatcher,
+           :cancel_confirmed
+
+      live "/:username/meeting/:meeting_uid/reschedule", Themes.Core.Dispatcher, :reschedule
+    end
+  end
+
+  # Theme-aware payment return pages (Stripe Checkout success/cancel)
+  scope "/", TymeslotWeb do
+    pipe_through :theme_browser
+
+    live_session :payment_return,
+      session: {TymeslotWeb.Plugs.LocalePlug, :live_session_data, []},
+      on_mount: [
+        TymeslotWeb.Hooks.LocaleHook,
+        TymeslotWeb.Hooks.ClientInfoHook
+      ] do
+      live "/themes/quill/payment-processing/:meeting_id",
+           Themes.Quill.PaymentProcessingLive
+
+      live "/themes/quill/payment-cancelled/:meeting_id",
+           Themes.Quill.PaymentCancelledLive
+
+      live "/themes/rhythm/payment-processing/:meeting_id",
+           Themes.Rhythm.PaymentProcessingLive
+
+      live "/themes/rhythm/payment-cancelled/:meeting_id",
+           Themes.Rhythm.PaymentCancelledLive
+    end
+  end
+
+  # Public notice shown inside the iframe when an embed is rejected (the
+  # embedding origin isn't allow-listed). Must be declared before the
+  # `/:username` catch-all so it isn't shadowed by a username route, and runs
+  # through its own pipeline so it frames on any origin.
+  scope "/", TymeslotWeb do
+    pipe_through :embed_notice
+
+    get "/embed-unavailable", EmbedBlockedController, :index
+  end
+
+  # Public per-meeting calendar download (.ics). Access is gated by the
+  # unguessable meeting UID scoped to the organiser's username (IDOR-safe).
+  # Runs through :public_feed (accepts the `ics` format) and must be declared
+  # before the `/:username` catch-all so it isn't shadowed by a username route.
+  scope "/", TymeslotWeb do
+    pipe_through :public_feed
+
+    get "/:username/meeting/:meeting_uid/calendar.ics", MeetingCalendarController, :show
+  end
+
+  # Public poll voting page. Declared before `:username_scheduling` so the
+  # `/:username/poll/:token` route is matched ahead of the `/:username/:slug`
+  # scheduling catch-all, which would otherwise swallow it.
+  scope "/", TymeslotWeb do
+    pipe_through :theme_browser
+
+    live_session :poll_voting,
+      session: {TymeslotWeb.Plugs.LocalePlug, :live_session_data, []},
+      on_mount: [
+        {TymeslotWeb.Hooks.AuthLiveSessionHook, :fetch_current_user},
+        TymeslotWeb.Hooks.LocaleHook,
+        TymeslotWeb.Hooks.ThemeHook,
+        TymeslotWeb.Hooks.ClientInfoHook
+      ] do
+      live "/:username/poll/:token", Themes.Core.Dispatcher, :poll_voting
+    end
+  end
+
+  # Public, read-only busy/free calendar for an organiser. Shows no event
+  # titles/attendees (see Tymeslot.FreeBusy) and is unauthenticated, so it
+  # must be declared before the `/:username` catch-all below. Uses
+  # :theme_browser (not :browser) so it renders through the same per-theme
+  # booking-page CSS/layout as the scheduling flow (see
+  # TymeslotWeb.Public.CalendarLive's moduledoc) — ThemeHook resolves
+  # theme_id from the organiser's profile.booking_theme, same as the
+  # scheduling routes below.
+  scope "/", TymeslotWeb do
+    pipe_through :theme_browser
+
+    live_session :public_calendar,
+      session: {TymeslotWeb.Plugs.LocalePlug, :live_session_data, []},
+      on_mount: [
+        {TymeslotWeb.Hooks.AuthLiveSessionHook, :fetch_current_user},
+        TymeslotWeb.Hooks.ThemeHook,
+        TymeslotWeb.Hooks.ClientInfoHook,
+        TymeslotWeb.Hooks.LocaleHook
+      ] do
+      live "/:username/calendar", Public.CalendarLive, :index
+    end
+  end
+
+  # Username-based scheduling routes (must be before catch-all)
+  scope "/", TymeslotWeb do
+    pipe_through [:theme_browser, TymeslotWeb.Plugs.CaptureReferrerPlug]
+
+    live_session :username_scheduling,
+      session: {__MODULE__, :scheduling_session, []},
+      on_mount: [
+        TymeslotWeb.Hooks.EmbedAuthHook,
+        {TymeslotWeb.Hooks.AuthLiveSessionHook, :fetch_current_user},
+        TymeslotWeb.Hooks.LocaleHook,
+        TymeslotWeb.Hooks.ThemeHook,
+        TymeslotWeb.Hooks.ClientInfoHook,
+        TymeslotWeb.Hooks.PageViewHook
+      ] do
+      live "/:username", Themes.Core.Dispatcher, :overview
+      live "/:username/thank-you", Themes.Core.Dispatcher, :confirmation
+      live "/:username/:slug", Themes.Core.Dispatcher, :schedule
+      live "/:username/:slug/book", Themes.Core.Dispatcher, :booking
+    end
+  end
+
+  # =============================================================================
+  # API Routes
+  # =============================================================================
+  # =============================================================================
+  # Catch-all Route
+  # =============================================================================
+
+  scope "/", TymeslotWeb do
+    pipe_through :browser
+
+    get "/*path", FallbackController, :index
+  end
+
+  @doc false
+  @spec scheduling_session(Plug.Conn.t()) :: map()
+  def scheduling_session(conn) do
+    conn
+    |> LocalePlug.live_session_data()
+    |> Map.merge(%{
+      "embed_token" => conn.assigns[:embed_token],
+      "scheduling_referrer" => Conn.get_session(conn, "scheduling_referrer"),
+      # Forwarded so PageViewHook can recognise an organiser viewing their own
+      # booking page and skip logging that self-visit. Only the id travels:
+      # this map is signed, not encrypted, into the public page's HTML, so the
+      # session token must never be put here.
+      "viewer_user_id" => viewer_user_id(conn)
+    })
+  end
+
+  defp viewer_user_id(conn) do
+    case conn.assigns[:current_user] do
+      %{id: id} -> id
+      _anonymous -> nil
+    end
+  end
+end

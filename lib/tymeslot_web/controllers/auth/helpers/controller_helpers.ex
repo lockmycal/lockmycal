@@ -1,0 +1,153 @@
+defmodule TymeslotWeb.AuthControllerHelpers do
+  @moduledoc """
+  Shared helper functions for authentication controllers.
+
+  Provides common functionality used across all auth controllers including:
+  - IP address extraction
+  - Rate limiting logic
+  - Common error handling patterns
+  - OAuth error formatting
+  """
+
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  import Phoenix.Controller
+
+  alias Tymeslot.Auth
+
+  @doc """
+  Handles rate limited response with flash message and redirect.
+
+  ## Parameters
+  - `conn`: The Plug connection
+  - `message`: Error message to show
+  - `redirect_path`: Path to redirect to
+  """
+  @spec handle_rate_limited(Plug.Conn.t(), String.t(), String.t()) :: Plug.Conn.t()
+  def handle_rate_limited(conn, message, redirect_path) do
+    conn
+    |> put_flash(:error, message)
+    |> redirect(to: redirect_path)
+  end
+
+  # -------------------------------------------------------------------
+  # OAuth error formatting
+  # -------------------------------------------------------------------
+
+  @doc """
+  Formats an OAuth error reason into a user-facing flash message.
+  """
+  @spec format_oauth_error_for_flash(any()) :: String.t()
+  def format_oauth_error_for_flash(%Ecto.Changeset{} = changeset) do
+    case changeset.errors do
+      [email: {"can't be blank", _opts}] ->
+        dgettext("auth", "Email address is required to complete registration.")
+
+      [email: {message, _opts}] when is_binary(message) ->
+        email_error_flash(message)
+
+      _other_errors ->
+        dgettext(
+          "auth",
+          "Registration failed due to validation errors. Please check your information and try again."
+        )
+    end
+  end
+
+  def format_oauth_error_for_flash(:email_required),
+    do: dgettext("auth", "Email address is required to complete registration.")
+
+  def format_oauth_error_for_flash(:invalid_email),
+    do: dgettext("auth", "Please provide a valid email address.")
+
+  def format_oauth_error_for_flash(:terms_not_accepted),
+    do: dgettext("auth", "You must accept the terms to continue.")
+
+  def format_oauth_error_for_flash(:email_already_taken),
+    do:
+      dgettext("auth", "This email is already registered. Please use a different email address.")
+
+  def format_oauth_error_for_flash(_unknown_error),
+    do: dgettext("auth", "Authentication failed. Please try again.")
+
+  # The changeset's email error carries an internal English diagnostic — either Ecto's
+  # constraint message, or one of `EmailValidator`'s strings, which already begin with
+  # "Email" ("Email format is invalid (missing @ symbol)"). It is never display text:
+  # interpolating it produced "Email Email format is invalid …", and no translation can
+  # inflect an embedded English fragment. Each case maps to a complete msgid instead.
+  @email_taken_messages ["has already been taken", "is already registered"]
+
+  defp email_error_flash(message) when message in @email_taken_messages do
+    dgettext("auth", "An account with that email address already exists. Please log in instead.")
+  end
+
+  defp email_error_flash(_message) do
+    dgettext(
+      "auth",
+      "The email address from your login provider is not valid. Please try a different account."
+    )
+  end
+
+  @doc """
+  Converts an OAuth error reason into a URL-safe query parameter value.
+  """
+  @spec format_oauth_error_for_params(any()) :: String.t()
+  def format_oauth_error_for_params(%Ecto.Changeset{}), do: "validation_failed"
+  def format_oauth_error_for_params(:email_required), do: "email_required"
+  def format_oauth_error_for_params(:invalid_email), do: "invalid_email"
+  def format_oauth_error_for_params(:terms_not_accepted), do: "terms_not_accepted"
+  def format_oauth_error_for_params(:email_already_taken), do: "email_taken"
+  def format_oauth_error_for_params(_unknown_error), do: "unknown_error"
+
+  @doc """
+  Renders a flash error and redirects for a generic OAuth failure reason.
+
+  Handles known domain error atoms (`:user_creation_failed`, `:email_required`,
+  etc.) and falls back to a generic message for unrecognised reasons.
+  """
+  @spec oauth_error_response(Plug.Conn.t(), any(), String.t()) :: Plug.Conn.t()
+  def oauth_error_response(conn, reason, redirect_path) do
+    error_message =
+      case reason do
+        %Ecto.Changeset{} = changeset ->
+          format_oauth_error_for_flash(changeset)
+
+        :user_creation_failed ->
+          dgettext("auth", "Failed to create user account. Please try again.")
+
+        :invalid_oauth_data ->
+          dgettext("auth", "Invalid OAuth data received. Please try again.")
+
+        :email_required ->
+          dgettext(
+            "auth",
+            "Email address is required to complete registration. Please provide your email address."
+          )
+
+        :invalid_email ->
+          dgettext("auth", "Please provide a valid email address.")
+
+        :terms_not_accepted ->
+          dgettext("auth", "You must accept the terms to continue.")
+
+        # The provider vouched for this address, so the person reading this
+        # owns it: their account was made with a password or another
+        # provider, and they should be pointed back to it, not away from it.
+        :email_already_taken ->
+          dgettext(
+            "auth",
+            "An account with this email address already exists. Sign in with your password or with the service you originally signed up with. If you have forgotten your password, you can reset it from the sign-in page."
+          )
+
+        :registration_disabled ->
+          Auth.error_message(:registration_disabled)
+
+        _unknown_error ->
+          dgettext("auth", "Authentication failed. Please try again.")
+      end
+
+    conn
+    |> put_flash(:error, error_message)
+    |> redirect(to: redirect_path)
+  end
+end

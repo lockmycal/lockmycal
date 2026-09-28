@@ -1,0 +1,323 @@
+defmodule Tymeslot.Integrations.HealthCheck.AssessorTest do
+  use Tymeslot.DataCase, async: true
+  @moduletag :integrations
+
+  import Mox
+
+  alias Tymeslot.Integrations.HealthCheck.Assessor
+
+  setup :verify_on_exit!
+
+  describe "assess/2 for calendar integrations" do
+    test "reports the in-memory debug calendar healthy without probing a provider" do
+      user = insert(:user)
+      integration = insert(:calendar_integration, user: user, provider: "debug")
+
+      # No provider mock is expected — the debug provider must be short-circuited.
+      # If it attempted a real connection probe the test would crash.
+      {result, duration} = Assessor.assess(:calendar, integration)
+
+      assert {:ok, :debug} = result
+      assert is_integer(duration)
+      assert duration >= 0
+    end
+
+    test "returns success result and duration" do
+      user = insert(:user)
+      integration = insert(:calendar_integration, user: user, provider: "google")
+
+      expect(GoogleCalendarAPIMock, :list_primary_events, 1, fn _int, _start, _end ->
+        {:ok, []}
+      end)
+
+      {result, duration} = Assessor.assess(:calendar, integration)
+
+      assert match?({:ok, _result}, result)
+      assert is_integer(duration)
+      assert duration >= 0
+    end
+
+    test "returns error result and duration" do
+      user = insert(:user)
+      integration = insert(:calendar_integration, user: user, provider: "google")
+
+      expect(GoogleCalendarAPIMock, :list_primary_events, 1, fn _int, _start, _end ->
+        {:error, :unauthorized, "Invalid credentials"}
+      end)
+
+      {result, duration} = Assessor.assess(:calendar, integration)
+
+      # Should be an error tuple (could be 2 or 3 element tuple)
+      assert {:error, _reason} = result
+      assert is_integer(duration)
+      assert duration >= 0
+    end
+
+    test "handles exceptions gracefully" do
+      user = insert(:user)
+      integration = insert(:calendar_integration, user: user, provider: "google")
+
+      expect(GoogleCalendarAPIMock, :list_primary_events, 1, fn _int, _start, _end ->
+        raise "Connection failed"
+      end)
+
+      {result, duration} = Assessor.assess(:calendar, integration)
+
+      assert {:error, {:exception, message}} = result
+      assert message == "Connection failed"
+      assert is_integer(duration)
+    end
+
+    test "does not leak a CalDAV password when the connection probe raises a KeyError" do
+      user = insert(:user)
+      integration = insert(:calendar_integration, user: user, provider: "google")
+
+      expect(GoogleCalendarAPIMock, :list_primary_events, 1, fn _int, _start, _end ->
+        raise KeyError,
+          key: :missing_key,
+          # Deliberately low-entropy and obviously synthetic: redaction does not
+          # depend on the value, and a realistic-looking one trips the secret scan.
+          term: %{username: "caldav-user", password: "synthetic-caldav-password"}
+      end)
+
+      {result, _duration} = Assessor.assess(:calendar, integration)
+
+      assert {:error, {:exception, message}} = result
+
+      # The security property: the credential never survives into the reason,
+      # which `IntegrationHealthWorker` logs verbatim.
+      refute message =~ "synthetic-caldav-password"
+      assert message =~ "[REDACTED]"
+
+      # The message itself is kept (redacted, not discarded) so the substrings
+      # `ErrorAnalysis.classify_error/1` matches on survive — dropping it would
+      # silently downgrade a permanent auth failure to a transient one.
+      assert message =~ "caldav-user"
+    end
+
+    test "keeps the auth markers error classification depends on" do
+      user = insert(:user)
+      integration = insert(:calendar_integration, user: user, provider: "google")
+
+      expect(GoogleCalendarAPIMock, :list_primary_events, 1, fn _int, _start, _end ->
+        raise CaseClauseError, term: %{"error" => "invalid_grant", "password" => "SECRET-PW"}
+      end)
+
+      {result, _duration} = Assessor.assess(:calendar, integration)
+
+      assert {:error, {:exception, message}} = result
+      refute message =~ "SECRET-PW"
+      assert message =~ "invalid_grant"
+    end
+
+    test "decrypts CalDAV credentials before testing connection" do
+      user = insert(:user)
+
+      # Factory stores encrypted credentials; virtual fields are nil until decrypted.
+      # Without the fix, the health check sends empty auth (nil username:password → "Basic Og==")
+      # and the server rejects with 403. This test verifies credentials are decrypted first.
+      integration =
+        insert(:calendar_integration,
+          user: user,
+          provider: "radicale",
+          base_url: "https://radicale.example.com"
+        )
+
+      empty_auth = "Basic " <> Base.encode64(":")
+
+      expect(Tymeslot.HTTPClientMock, :request, fn :propfind, _url, _body, headers, _opts ->
+        auth = List.keyfind(headers, "Authorization", 0)
+
+        assert auth != nil, "No Authorization header was sent"
+
+        refute auth == {"Authorization", empty_auth},
+               "Nil credentials were sent — decrypt_credentials was not called"
+
+        {:ok, %Req.Response{status: 207, body: ""}}
+      end)
+
+      {result, duration} = Assessor.assess(:calendar, integration)
+
+      assert {:ok, _message} = result
+      assert is_integer(duration)
+    end
+  end
+
+  describe "assess/2 for video integrations" do
+    test "returns success for valid mirotalk integration" do
+      user = insert(:user)
+
+      integration =
+        insert(:video_integration,
+          user: user,
+          provider: "mirotalk",
+          base_url: "https://mirotalk.example.com"
+        )
+
+      # The provider probes more than once (internal retries), so stub rather
+      # than expecting an exact call count.
+      stub(Tymeslot.HTTPClientMock, :post, fn _url, _body, _headers, _opts ->
+        {:ok, %Req.Response{status: 200, body: "OK"}}
+      end)
+
+      {result, duration} = Assessor.assess(:video, integration)
+
+      assert {:ok, _details} = result
+      assert is_integer(duration)
+    end
+
+    test "returns error for unsupported provider" do
+      user = insert(:user)
+      integration = insert(:video_integration, user: user, provider: "invalid_provider")
+
+      {result, duration} = Assessor.assess(:video, integration)
+
+      # Provider adapter returns error message for unknown providers
+      assert match?({:error, _reason}, result)
+      assert is_integer(duration)
+    end
+
+    test "returns unsupported_provider for unrecognised provider without calling decrypt" do
+      user = insert(:user)
+
+      integration =
+        insert(:video_integration,
+          user: user,
+          provider: "nonexistent_provider_xyz_#{System.unique_integer()}"
+        )
+
+      {result, duration} = Assessor.assess(:video, integration)
+
+      assert result == {:error, :unsupported_provider}
+      assert is_integer(duration)
+    end
+
+    test "handles empty provider name" do
+      user = insert(:user)
+      integration = insert(:video_integration, user: user, provider: "")
+
+      {result, duration} = Assessor.assess(:video, integration)
+
+      assert result == {:error, :unsupported_provider}
+      assert is_integer(duration)
+    end
+
+    test "returns error when custom integration has no URL configured" do
+      user = insert(:user)
+
+      integration =
+        insert(:video_integration, user: user, provider: "custom", custom_meeting_url: nil)
+
+      {result, duration} = Assessor.assess(:video, integration)
+
+      assert {:error, reason} = result
+      assert reason =~ "URL"
+      assert is_integer(duration)
+    end
+
+    test "passes custom_meeting_url to test_connection" do
+      user = insert(:user)
+
+      # The URL the reachability probe is pointed at is the proof that the
+      # configured value was forwarded (the bug returned "No custom meeting URL
+      # provided" when the config was built as an empty map instead).
+      integration =
+        insert(:video_integration,
+          user: user,
+          provider: "custom",
+          custom_meeting_url: "https://meet.example.com/meeting"
+        )
+
+      expect(Tymeslot.HTTPClientMock, :head, fn url, _headers, _opts ->
+        send(self(), {:probed, url})
+        {:ok, %Req.Response{status: 200}}
+      end)
+
+      {result, _duration} = Assessor.assess(:video, integration)
+
+      assert_received {:probed, "https://meet.example.com/meeting"}
+      assert {:ok, _status} = result
+    end
+
+    test "returns success for valid google_meet integration" do
+      user = insert(:user)
+
+      integration =
+        insert(:video_integration,
+          user: user,
+          provider: "google_meet",
+          token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        )
+
+      expect(Tymeslot.HTTPClientMock, :request, fn :get, _url, _body, _headers, _opts ->
+        {:ok, %Req.Response{status: 200, body: Jason.encode!(%{"items" => []})}}
+      end)
+
+      {result, duration} = Assessor.assess(:video, integration)
+
+      assert {:ok, _message} = result
+      assert is_integer(duration)
+    end
+
+    test "returns success for valid teams integration" do
+      user = insert(:user)
+
+      integration =
+        insert(:video_integration,
+          user: user,
+          provider: "teams"
+        )
+
+      expect(Tymeslot.TeamsOAuthHelperMock, :validate_token, fn _config ->
+        {:ok, :valid}
+      end)
+
+      {result, duration} = Assessor.assess(:video, integration)
+
+      assert {:ok, _message} = result
+      assert is_integer(duration)
+    end
+
+    test "returns success for valid zoom integration" do
+      user = insert(:user)
+
+      # Regression: the assessor previously had no Zoom config builder, so the
+      # health check validated an empty config and always failed with
+      # "Missing required fields: access_token, refresh_token, token_expires_at"
+      # regardless of the stored tokens. Delegating to the provider's build_config/3
+      # forwards the decrypted credentials, so a valid integration now passes.
+      integration =
+        insert(:video_integration,
+          user: user,
+          provider: "zoom",
+          token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        )
+
+      expect(Tymeslot.ZoomOAuthHelperMock, :validate_token, fn config ->
+        assert %{access_token: "test-access-token", refresh_token: "test-refresh-token"} = config
+        {:ok, :valid}
+      end)
+
+      {result, duration} = Assessor.assess(:video, integration)
+
+      assert {:ok, _message} = result
+      assert is_integer(duration)
+    end
+  end
+
+  describe "telemetry recording" do
+    test "records telemetry for successful checks" do
+      user = insert(:user)
+      integration = insert(:calendar_integration, user: user, provider: "google")
+
+      expect(GoogleCalendarAPIMock, :list_primary_events, 1, fn _int, _start, _end ->
+        {:ok, []}
+      end)
+
+      # Telemetry is recorded internally
+      {result, _duration} = Assessor.assess(:calendar, integration)
+
+      assert {:ok, _result} = result
+    end
+  end
+end

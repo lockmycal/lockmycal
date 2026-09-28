@@ -1,0 +1,633 @@
+defmodule Tymeslot.ProfilesContextTest do
+  @moduledoc """
+  Comprehensive behavior tests for the Profiles context module.
+  Focuses on user-facing functionality and business rules.
+  """
+
+  use Tymeslot.DataCase, async: true
+  @moduletag :profiles
+  @moduletag :unit
+
+  alias Tymeslot.Availability.Schedules
+  alias Tymeslot.Locales
+  alias Tymeslot.Profiles
+  alias Tymeslot.Profiles.Avatars
+  alias Tymeslot.Profiles.ProfileQueries
+  alias Tymeslot.Profiles.ReservedPaths
+  alias Tymeslot.Security.FieldValidators.UsernameValidator
+  alias TymeslotWeb.Themes.Core.ThemeInfo
+
+  # =====================================
+  # Profile Retrieval Behaviors
+  # =====================================
+
+  describe "profile retrieval" do
+    test "returns profile when it exists" do
+      user = insert(:user)
+      profile = insert(:profile, user: user)
+
+      result = Profiles.get_profile(user.id)
+
+      assert result.id == profile.id
+      assert result.user_id == user.id
+    end
+
+    test "returns nil when profile does not exist" do
+      assert Profiles.get_profile(999_999) == nil
+    end
+
+    test "get_or_create_profile returns existing profile" do
+      user = insert(:user)
+      existing_profile = insert(:profile, user: user)
+
+      {:ok, profile} = Profiles.get_or_create_profile(user.id)
+
+      assert profile.id == existing_profile.id
+    end
+
+    test "get_or_create_profile creates new profile if none exists" do
+      user = insert(:user)
+
+      assert {:ok, profile} = Profiles.get_or_create_profile(user.id)
+      assert profile.user_id == user.id
+      assert is_nil(profile.timezone)
+    end
+
+    test "get_profile_by_username returns profile when username exists" do
+      user = insert(:user)
+      profile = insert(:profile, user: user, username: "testuser")
+
+      result = Profiles.get_profile_by_username("testuser")
+
+      assert result.id == profile.id
+      assert result.username == "testuser"
+    end
+  end
+
+  # =====================================
+  # Profile Settings & Updates
+  # =====================================
+
+  describe "profile settings" do
+    setup do
+      user = insert(:user)
+      profile = insert(:profile, user: user)
+      %{user: user, profile: profile}
+    end
+
+    test "get_profile_settings returns configured settings", %{user: user} do
+      _profile =
+        update_profile_settings(user.id, %{
+          timezone: "America/Los_Angeles",
+          max_bookings_per_day: 3,
+          max_bookings_per_week: 12,
+          max_bookings_per_month: 40
+        })
+
+      settings = Profiles.get_profile_settings(user.id)
+
+      assert settings.timezone == "America/Los_Angeles"
+      assert settings.max_bookings_per_day == 3
+      assert settings.max_bookings_per_week == 12
+      assert settings.max_bookings_per_month == 40
+    end
+
+    test "update_profile updates multiple fields", %{profile: profile} do
+      attrs = %{
+        timezone: "Asia/Tokyo",
+        max_bookings_per_day: 5,
+        full_name: "Test User"
+      }
+
+      assert {:ok, updated} = Profiles.update_profile(profile, attrs)
+      assert updated.timezone == "Asia/Tokyo"
+      assert updated.max_bookings_per_day == 5
+      assert updated.full_name == "Test User"
+    end
+  end
+
+  # =====================================
+  # Username Management
+  # =====================================
+
+  describe "username management" do
+    test "generate_default_username returns available username" do
+      user = insert(:user)
+      username = Profiles.generate_default_username(user.id)
+
+      assert String.starts_with?(username, "user_#{user.id}")
+      assert Profiles.username_available?(username)
+    end
+
+    test "update_username successfully updates valid username" do
+      user = insert(:user)
+      profile = insert(:profile, user: user)
+      new_username = "newuser#{System.unique_integer([:positive])}"
+
+      assert {:ok, updated} = Profiles.update_username(profile, new_username, user.id)
+      assert updated.username == new_username
+    end
+
+    test "update_username respects rate limits" do
+      user = insert(:user)
+      profile = insert(:profile, user: user)
+
+      # We don't want to test the exact limit of the RateLimiter here,
+      # but that Profiles.update_username calls it.
+      # In a real scenario, we might mock RateLimiter, but for now we just verify it works.
+      new_username = "user#{System.unique_integer([:positive])}"
+      assert {:ok, _result} = Profiles.update_username(profile, new_username, user.id)
+    end
+
+    test "update_username does not use up a change on a username it rejects" do
+      user = insert(:user)
+      profile = insert(:profile, user: user, username: "sarah")
+
+      # Six refusals, the whole two-hour allowance, must leave it untouched.
+      for _attempt <- 1..6 do
+        assert {:error, reason} = Profiles.update_username(profile, "admin", user.id)
+        assert reason =~ "reserved"
+      end
+
+      assert {:ok, %{username: "sarah-r"}} = Profiles.update_username(profile, "sarah-r", user.id)
+    end
+
+    test "username validation rejects invalid formats" do
+      reserved = [reserved_words: ReservedPaths.list()]
+
+      # too short
+      assert {:error, _reason} = UsernameValidator.validate("ab", reserved)
+      # reserved
+      assert {:error, _reason} = UsernameValidator.validate("admin", reserved)
+      # spaces/caps
+      assert {:error, _reason} = UsernameValidator.validate("Invalid User", reserved)
+      assert UsernameValidator.validate("valid_user-123", reserved) == :ok
+    end
+
+    test "username_available? returns true for reserved usernames (DB-only check)" do
+      # username_available? only queries the DB — it has no knowledge of reserved names.
+      # Reserved names ARE "available" in the DB sense; rejection happens upstream in
+      # UsernameValidator.validate / InputProcessor before this function is ever reached.
+      assert Profiles.username_available?("admin") == true
+    end
+
+    test "update_username rejects reserved usernames" do
+      user = insert(:user)
+      profile = insert(:profile, user: user)
+
+      assert {:error, reason} = Profiles.update_username(profile, "admin", user.id)
+      assert reason =~ "reserved"
+    end
+
+    test "every reserved path is written in lowercase" do
+      # Usernames must be lowercase, so an entry with a capital letter can never
+      # match one and reserves nothing.
+      assert Enum.reject(ReservedPaths.list(), &(&1 == String.downcase(&1))) == []
+    end
+
+    test "every supported locale code is a reserved path" do
+      # Locale codes are top-level URL prefixes on localised deployments; a
+      # username matching one would shadow the locale scope (or vice versa),
+      # so reservation must track the locale config rather than a hardcoded
+      # list.
+      reserved = ReservedPaths.list()
+
+      for code <- Locales.supported_codes() do
+        assert code in reserved
+      end
+    end
+  end
+
+  # =====================================
+  # Scheduling Preferences
+  # =====================================
+
+  # The scheduling policy is owned by the profile's default availability
+  # schedule, so the edits go through Schedules.update_policy/2 rather than
+  # the Profiles context.
+  describe "scheduling preferences" do
+    setup do
+      profile = insert(:profile)
+      %{schedule: insert(:availability_schedule, profile: profile, is_default: true)}
+    end
+
+    test "update_policy accepts a valid buffer_minutes value", %{schedule: schedule} do
+      assert {:ok, updated} = Schedules.update_policy(schedule, %{buffer_minutes: 30})
+      assert updated.buffer_minutes == 30
+    end
+
+    test "update_policy rejects an out-of-range buffer_minutes value", %{schedule: schedule} do
+      assert {:error, changeset} = Schedules.update_policy(schedule, %{buffer_minutes: 200})
+      assert "must be less than or equal to 120" in errors_on(changeset).buffer_minutes
+    end
+
+    test "update_policy accepts a valid advance_booking_days value", %{schedule: schedule} do
+      assert {:ok, updated} = Schedules.update_policy(schedule, %{advance_booking_days: 60})
+      assert updated.advance_booking_days == 60
+    end
+
+    test "update_policy rejects an out-of-range advance_booking_days value", %{
+      schedule: schedule
+    } do
+      assert {:error, changeset} = Schedules.update_policy(schedule, %{advance_booking_days: 0})
+
+      assert "must be greater than or equal to 1" in errors_on(changeset).advance_booking_days
+    end
+
+    test "update_policy accepts a valid min_advance_hours value", %{schedule: schedule} do
+      assert {:ok, updated} = Schedules.update_policy(schedule, %{min_advance_hours: 12})
+      assert updated.min_advance_hours == 12
+    end
+
+    test "update_policy rejects an out-of-range min_advance_hours value", %{schedule: schedule} do
+      assert {:error, changeset} = Schedules.update_policy(schedule, %{min_advance_hours: 200})
+      assert "must be less than or equal to 168" in errors_on(changeset).min_advance_hours
+    end
+  end
+
+  # =====================================
+  # Avatar & Display
+  # =====================================
+
+  describe "avatar and display" do
+    test "avatar_url returns correct path or fallback" do
+      profile = insert(:profile, avatar: "test.jpg")
+      assert Profiles.avatar_url(profile) =~ "/uploads/avatars/"
+      assert Profiles.avatar_url(profile) =~ "test.jpg"
+
+      assert Profiles.avatar_url(nil) =~ "data:image/svg+xml"
+      assert Profiles.avatar_url(%{profile | avatar: nil}) =~ "data:image/svg+xml"
+    end
+
+    test "uploaded_avatar_url is absolute for an upload and nil otherwise, never a data URI" do
+      profile = insert(:profile, avatar: "test.jpg")
+
+      assert Profiles.uploaded_avatar_url(profile) ==
+               "http://localhost:4002/uploads/avatars/#{profile.id}/test.jpg"
+
+      assert Profiles.uploaded_avatar_url(%{profile | avatar: nil}) == nil
+      assert Profiles.uploaded_avatar_url(nil) == nil
+    end
+
+    test "update_avatar validates image content" do
+      user = insert(:user)
+      profile = insert(:profile, user: user)
+
+      # Create a fake "image" that is just text
+      fake_path = "/tmp/fake_image.jpg"
+      File.write!(fake_path, "not an image")
+      on_exit(fn -> File.rm(fake_path) end)
+
+      entry = %{
+        path: fake_path,
+        client_name: "fake.jpg"
+      }
+
+      assert {:error, :invalid_image_format} = Avatars.update_avatar(profile, entry)
+    end
+
+    test "update_avatar accepts valid image content" do
+      user = insert(:user)
+      profile = insert(:profile, user: user)
+
+      # 1x1 transparent PNG
+      png_binary =
+        <<137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8,
+          6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 11, 73, 68, 65, 84, 8, 153, 99, 96, 0, 2, 0, 0,
+          5, 0, 1, 34, 38, 10, 75, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130>>
+
+      fake_path = "/tmp/valid_image.png"
+      File.write!(fake_path, png_binary)
+      upload_dir = Application.get_env(:tymeslot, :upload_directory, "uploads")
+
+      on_exit(fn ->
+        File.rm(fake_path)
+        File.rm_rf(Path.join(upload_dir, "avatars/#{profile.id}"))
+      end)
+
+      entry = %{
+        path: fake_path,
+        client_name: "valid.png"
+      }
+
+      assert {:ok, updated_profile} = Avatars.update_avatar(profile, entry)
+      assert updated_profile.avatar =~ "_avatar_"
+    end
+
+    test "delete_avatar removes the avatar from the profile" do
+      user = insert(:user)
+      profile = insert(:profile, user: user, avatar: "some_avatar.png")
+
+      assert {:ok, updated} = Profiles.delete_avatar(profile)
+      assert is_nil(updated.avatar)
+    end
+
+    test "display_name returns full_name when present" do
+      assert Profiles.display_name(insert(:profile, full_name: "John Doe")) == "John Doe"
+    end
+
+    test "display_name returns nil for nil profile" do
+      assert Profiles.display_name(nil) == nil
+    end
+
+    test "display_name falls back to user.name when full_name is blank" do
+      user = insert(:user, name: "Jane Smith")
+      profile = insert(:profile, user: user, full_name: nil)
+      assert Profiles.display_name(profile) == "Jane Smith"
+
+      profile_empty = insert(:profile, user: insert(:user, name: "Fallback"), full_name: "")
+      assert Profiles.display_name(profile_empty) == "Fallback"
+    end
+
+    test "display_name returns nil when both full_name and user.name are blank" do
+      user = insert(:user, name: nil)
+      profile = insert(:profile, user: user, full_name: "")
+      assert Profiles.display_name(profile) == nil
+    end
+
+    test "display_name returns nil for whitespace-only names" do
+      user = insert(:user, name: "   ")
+      profile = insert(:profile, user: user, full_name: "   ")
+      assert Profiles.display_name(profile) == nil
+    end
+
+    test "display_name returns nil when user association is not loaded" do
+      profile = insert(:profile, full_name: nil)
+
+      unloaded = %{
+        profile
+        | user: %Ecto.Association.NotLoaded{
+            __field__: :user,
+            __cardinality__: :one,
+            __owner__: profile.__struct__
+          }
+      }
+
+      assert Profiles.display_name(unloaded) == nil
+    end
+
+    test "user_display_name returns nil for nil user" do
+      assert Profiles.user_display_name(nil) == nil
+    end
+
+    test "user_display_name uses the profile's full name when the profile is loaded" do
+      user = insert(:user, name: "Ada from GitHub")
+      profile = insert(:profile, user: user, full_name: "Ada Lovelace")
+      loaded_user = %{user | profile: profile}
+
+      assert Profiles.user_display_name(loaded_user) == "Ada Lovelace"
+    end
+
+    test "user_display_name raises when the profile association is not loaded" do
+      user = insert(:user, name: "Ada from GitHub")
+
+      assert_raise ArgumentError, ~r/user.profile must be preloaded/, fn ->
+        Profiles.user_display_name(user)
+      end
+    end
+  end
+
+  # =====================================
+  # Display Name & Timezone Updates
+  # =====================================
+
+  describe "display name and timezone updates" do
+    setup do
+      user = insert(:user)
+      profile = insert(:profile, user: user)
+      %{user: user, profile: profile}
+    end
+
+    test "update_full_name persists the new name", %{profile: profile} do
+      assert {:ok, updated} = Profiles.update_full_name(profile, "Jane Smith")
+      assert updated.full_name == "Jane Smith"
+    end
+
+    test "update_full_name accepts empty string", %{profile: profile} do
+      assert {:ok, updated} = Profiles.update_full_name(profile, "")
+      # Ecto's :string type coerces "" to nil on cast, so nil is the persisted value.
+      assert is_nil(updated.full_name)
+    end
+
+    test "update_timezone persists the new timezone", %{profile: profile} do
+      assert {:ok, updated} = Profiles.update_timezone(profile, "America/New_York")
+      assert updated.timezone == "America/New_York"
+    end
+
+    test "update_timezone rejects invalid timezone", %{profile: profile} do
+      assert {:error, _reason} = Profiles.update_timezone(profile, "Not/AReal_Zone")
+    end
+  end
+
+  # =====================================
+  # Timezone Prefill
+  # =====================================
+
+  describe "prefill_timezone" do
+    test "returns nil unchanged when profile is nil" do
+      assert Profiles.prefill_timezone(nil, "America/New_York") == nil
+    end
+
+    test "keeps saved timezone even when it matches the default" do
+      profile = insert(:profile, timezone: Profiles.get_default_timezone())
+      prefilled = Profiles.prefill_timezone(profile, "America/Chicago")
+
+      # Saved value is the source of truth — never override with detected
+      assert prefilled.timezone == Profiles.get_default_timezone()
+    end
+
+    test "does not overwrite an already-customised timezone" do
+      profile = insert(:profile, timezone: "Asia/Tokyo")
+      prefilled = Profiles.prefill_timezone(profile, "America/Chicago")
+
+      # Existing explicit timezone wins over browser detection
+      assert prefilled.timezone == "Asia/Tokyo"
+    end
+
+    test "handles nil detected timezone gracefully" do
+      profile = insert(:profile)
+      result = Profiles.prefill_timezone(profile, nil)
+
+      # Profile has a saved timezone — detected value is irrelevant.
+      assert result.timezone == profile.timezone
+    end
+
+    test "uses detected timezone when profile has no saved timezone" do
+      profile = insert(:profile, timezone: nil)
+      prefilled = Profiles.prefill_timezone(profile, "America/Chicago")
+
+      assert prefilled.timezone == "America/Chicago"
+    end
+
+    test "keeps custom timezone when detected timezone is nil" do
+      profile = insert(:profile, timezone: "Asia/Tokyo")
+      result = Profiles.prefill_timezone(profile, nil)
+
+      # Custom timezone is not the default, so should_use_detected? returns false.
+      # The profile's existing timezone is returned unchanged.
+      assert result.timezone == "Asia/Tokyo"
+    end
+  end
+
+  describe "ensure_timezone/2" do
+    test "never overwrites a timezone the profile already has" do
+      profile = insert(:profile, timezone: "Asia/Tokyo")
+
+      assert {:ok, ensured} = Profiles.ensure_timezone(profile, "America/Chicago")
+      assert ensured.timezone == "Asia/Tokyo"
+      assert Repo.reload!(profile).timezone == "Asia/Tokyo"
+    end
+
+    test "persists the detected timezone when the profile has none" do
+      profile = insert(:profile, timezone: nil)
+
+      assert {:ok, ensured} = Profiles.ensure_timezone(profile, "America/Chicago")
+      assert ensured.timezone == "America/Chicago"
+      assert Repo.reload!(profile).timezone == "America/Chicago"
+    end
+
+    test "persists the default instead of an unrecognised detected timezone" do
+      profile = insert(:profile, timezone: nil)
+
+      assert {:ok, ensured} = Profiles.ensure_timezone(profile, "Etc/Unknown")
+      assert ensured.timezone == Profiles.get_default_timezone()
+      assert Repo.reload!(profile).timezone == Profiles.get_default_timezone()
+    end
+
+    test "persists the default when no timezone was detected" do
+      profile = insert(:profile, timezone: nil)
+
+      assert {:ok, ensured} = Profiles.ensure_timezone(profile, nil)
+      assert ensured.timezone == Profiles.get_default_timezone()
+      assert Repo.reload!(profile).timezone == Profiles.get_default_timezone()
+    end
+  end
+
+  # =====================================
+  # Theme & Embed Domain Updates
+  # =====================================
+
+  describe "update_booking_theme" do
+    setup do
+      %{profile: insert(:profile)}
+    end
+
+    test "accepts a valid registered theme ID", %{profile: profile} do
+      # ThemeInfo.all_themes() returns a map; Enum.at/2 yields a {id, config} tuple.
+      themes = ThemeInfo.all_themes()
+      assert map_size(themes) > 0, "No themes are registered"
+      {valid_theme, _config} = Enum.at(themes, 0)
+
+      assert {:ok, updated} = Profiles.update_booking_theme(profile, valid_theme)
+      assert updated.booking_theme == valid_theme
+    end
+
+    test "rejects an unrecognised theme ID", %{profile: profile} do
+      assert {:error, _reason} = Profiles.update_booking_theme(profile, "nonexistent-theme")
+    end
+  end
+
+  describe "update_allowed_embed_domains" do
+    setup do
+      %{profile: insert(:profile)}
+    end
+
+    test "treats empty string as the 'none' disabled state", %{profile: profile} do
+      assert {:ok, updated} = Profiles.update_allowed_embed_domains(profile, "")
+      assert updated.allowed_embed_domains == ["none"]
+    end
+  end
+
+  # =====================================
+  # Organizer Context
+  # =====================================
+
+  describe "organizer context" do
+    test "resolve_organizer_context returns full context" do
+      user = insert(:user)
+      _profile = insert(:profile, user: user, username: "org", full_name: "Org Name")
+      _mt = insert(:meeting_type, user: user)
+
+      assert {:ok, context} = Profiles.resolve_organizer_context("org")
+      assert context.username == "org"
+      assert context.profile.full_name == "Org Name"
+      assert context.meeting_types != []
+      assert context.page_title =~ "Org Name"
+    end
+  end
+
+  describe "mark_booking_page_published/1" do
+    test "publishes when the profile has a username and was not yet published" do
+      user = insert(:user)
+      profile = insert(:profile, user: user, username: "host")
+
+      assert {:ok, :published} = Profiles.mark_booking_page_published(profile)
+
+      {:ok, reloaded} = ProfileQueries.get_by_user_id(user.id)
+      assert %DateTime{} = reloaded.booking_page_published_at
+    end
+
+    test "is idempotent — a second call is a no-op" do
+      user = insert(:user)
+      profile = insert(:profile, user: user, username: "host")
+
+      assert {:ok, :published} = Profiles.mark_booking_page_published(profile)
+      {:ok, published} = ProfileQueries.get_by_user_id(user.id)
+
+      assert {:ok, :noop} = Profiles.mark_booking_page_published(published)
+
+      {:ok, reloaded} = ProfileQueries.get_by_user_id(user.id)
+      assert reloaded.booking_page_published_at == published.booking_page_published_at
+    end
+
+    test "is a no-op when the profile has no username" do
+      user = insert(:user)
+      profile = insert(:profile, user: user, username: nil)
+
+      assert {:ok, :noop} = Profiles.mark_booking_page_published(profile)
+
+      {:ok, reloaded} = ProfileQueries.get_by_user_id(user.id)
+      assert reloaded.booking_page_published_at == nil
+    end
+  end
+
+  describe "publishing the booking page on username set" do
+    test "update_username/3 publishes when the user already has an active meeting type" do
+      user = insert(:user)
+      profile = insert(:profile, user: user, username: nil)
+      insert(:meeting_type, user: user, is_active: true)
+
+      assert {:ok, _updated} = Profiles.update_username(profile, "newhost", user.id)
+
+      {:ok, reloaded} = ProfileQueries.get_by_user_id(user.id)
+      assert %DateTime{} = reloaded.booking_page_published_at
+    end
+
+    test "update_username/3 does not publish when the user has no active meeting type" do
+      user = insert(:user)
+      profile = insert(:profile, user: user, username: nil)
+
+      assert {:ok, _updated} = Profiles.update_username(profile, "newhost", user.id)
+
+      {:ok, reloaded} = ProfileQueries.get_by_user_id(user.id)
+      assert reloaded.booking_page_published_at == nil
+    end
+
+    test "assign_default_username/2 publishes when the user already has an active meeting type" do
+      user = insert(:user)
+      profile = insert(:profile, user: user, username: nil)
+      insert(:meeting_type, user: user, is_active: true)
+
+      assert {:ok, _updated} = Profiles.assign_default_username(profile, "autohost")
+
+      {:ok, reloaded} = ProfileQueries.get_by_user_id(user.id)
+      assert %DateTime{} = reloaded.booking_page_published_at
+    end
+  end
+
+  # Helper to update settings directly in DB for testing retrieval
+  defp update_profile_settings(user_id, attrs) do
+    {:ok, profile} = ProfileQueries.get_by_user_id(user_id)
+    ProfileQueries.update_profile(profile, attrs)
+  end
+end

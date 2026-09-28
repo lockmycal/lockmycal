@@ -1,0 +1,212 @@
+defmodule CredoChecks.TestModuleTagRequired do
+  @moduledoc """
+  Ensures every test module declares at least one `@moduletag` from the **domain**
+  category of the approved taxonomy.
+
+  Targeted runs select on the domain category alone: `mix test --only payments` and
+  `mix test.affected` answer "which tests cover this feature?", and only a domain tag
+  answers that. The other categories are orthogonal to subject matter, since `:unit`,
+  `:live` and `:components` describe how a test is written or which layer it touches
+  and are spread across every feature. A module tagged only with those is unreachable
+  by any targeted run, so requiring a tag from the taxonomy at large is too weak: the
+  tag has to name the subject.
+
+  The allowed tag list is maintained in `Tymeslot.Test.TagTaxonomy` (in `test/support/`) —
+  that module is the single source of truth for the taxonomy. Edit it there to add or rename tags.
+
+  ## Examples
+
+      # Bad — no @moduletag at all
+      defmodule MyApp.AuthTest do
+        use MyApp.DataCase, async: true
+        # ...
+      end
+
+      # Bad — unrecognised tag not in the taxonomy
+      defmodule MyApp.AuthTest do
+        use MyApp.DataCase, async: true
+        @moduletag :my_custom_thing
+        # ...
+      end
+
+      # Bad — tagged, but only with a layer or test-type tag: nothing names the subject
+      defmodule MyApp.AuthTest do
+        use MyApp.DataCase, async: true
+        @moduletag :unit
+        @moduletag :live
+        # ...
+      end
+
+      # Good — tagged with an approved domain tag
+      defmodule MyApp.AuthTest do
+        use MyApp.DataCase, async: true
+        @moduletag :auth
+        # ...
+      end
+
+      # Good — a domain tag plus any number of orthogonal ones
+      defmodule MyApp.AuthTest do
+        use MyApp.DataCase, async: true
+        @moduletag :auth
+        @moduletag :unit
+        @moduletag backup_tests: true
+        # ...
+      end
+  """
+
+  use Credo.Check,
+    base_priority: :high,
+    category: :design,
+    explanations: [
+      check: """
+      Every test module must declare at least one @moduletag from the domain
+      category of the approved taxonomy.
+
+      Targeted runs (mix test --only <domain>, mix test.affected) select on the
+      domain category alone, so a module tagged only :unit or :live cannot be
+      reached by any of them.
+      The taxonomy lives in Tymeslot.Test.TagTaxonomy (test/support/tag_taxonomy.ex).
+      """,
+      params: [
+        allowed_tags:
+          "Override the required tag list. Defaults to the domain category of " <>
+            "Tymeslot.Test.TagTaxonomy."
+      ]
+    ]
+
+  alias Credo.Code
+  alias Credo.IssueMeta
+  alias Tymeslot.Test.TagTaxonomy
+
+  @doc false
+  @impl Credo.Check
+  @spec run(Credo.SourceFile.t(), keyword()) :: list()
+  def run(%Credo.SourceFile{} = source_file, params) do
+    if test_file?(source_file.filename) do
+      issue_meta = IssueMeta.for(source_file, params)
+      allowed_tags = Keyword.get(params, :allowed_tags, domain_tags())
+      Code.prewalk(source_file, &traverse(&1, &2, issue_meta, allowed_tags))
+    else
+      []
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Private helpers
+  # ---------------------------------------------------------------------------
+
+  defp domain_tags, do: TagTaxonomy.by_category() |> Map.fetch!(:domain)
+
+  # Credo reports repo-relative filenames ("test/tymeslot/auth/auth_test.exs"),
+  # so an earlier `String.contains?(filename, "/test/")` guard here never
+  # matched and this check silently passed every file in both repositories.
+  # Match on the path segment instead, which holds for relative and absolute
+  # paths alike.
+  defp test_file?(filename) do
+    segments = Path.split(filename)
+
+    String.ends_with?(filename, "_test.exs") and
+      "test" in segments and
+      not support_file?(segments)
+  end
+
+  defp support_file?(segments) do
+    segments
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.any?(&(&1 == ["test", "support"]))
+  end
+
+  # Returns true only for modules whose last name segment ends with "Test",
+  # e.g. Tymeslot.Auth.AuthTest — skips inline helper/mock modules.
+  defp test_module?({:__aliases__, _, segments}) when is_list(segments) do
+    case List.last(segments) do
+      name when is_atom(name) -> name |> to_string() |> String.ends_with?("Test")
+      _ -> false
+    end
+  end
+
+  defp test_module?(_), do: false
+
+  # Multi-expression module body — only check modules whose name ends in "Test"
+  defp traverse(
+         {:defmodule, meta, [name, [do: {:__block__, _meta, body}]]} = ast,
+         issues,
+         issue_meta,
+         allowed_tags
+       ) do
+    if test_module?(name) do
+      check_body(ast, meta[:line], body, issues, issue_meta, allowed_tags)
+    else
+      {ast, issues}
+    end
+  end
+
+  # Single-expression module body (no __block__ wrapper)
+  defp traverse(
+         {:defmodule, meta, [name, [do: single_expr]]} = ast,
+         issues,
+         issue_meta,
+         allowed_tags
+       )
+       when not is_list(single_expr) do
+    if test_module?(name) do
+      check_body(ast, meta[:line], [single_expr], issues, issue_meta, allowed_tags)
+    else
+      {ast, issues}
+    end
+  end
+
+  defp traverse(ast, issues, _issue_meta, _allowed_tags), do: {ast, issues}
+
+  defp check_body(ast, line_no, body, issues, issue_meta, allowed_tags) do
+    tags = collect_moduletags(body)
+
+    if has_valid_tag?(tags, allowed_tags) do
+      {ast, issues}
+    else
+      {ast, [build_issue(issue_meta, line_no, tags, allowed_tags) | issues]}
+    end
+  end
+
+  # Collect tag identifiers from the direct body of a module (non-recursive).
+  # Handles:
+  #   @moduletag :some_atom          → [:some_atom]
+  #   @moduletag key: val            → [:key]
+  #   @moduletag key1: v, key2: v    → [:key1, :key2]
+  defp collect_moduletags(body) when is_list(body) do
+    Enum.flat_map(body, fn
+      {:@, _, [{:moduletag, _, [tag]}]} when is_atom(tag) ->
+        [tag]
+
+      {:@, _, [{:moduletag, _, [keyword_list]}]} when is_list(keyword_list) ->
+        Keyword.keys(keyword_list)
+
+      _ ->
+        []
+    end)
+  end
+
+  defp has_valid_tag?(tags, allowed_tags), do: Enum.any?(tags, &(&1 in allowed_tags))
+
+  defp build_issue(issue_meta, line_no, [], _allowed_tags) do
+    format_issue(issue_meta,
+      message:
+        "Test module is missing a domain @moduletag. " <>
+          "See the domain category of Tymeslot.Test.TagTaxonomy.",
+      line_no: line_no,
+      trigger: "defmodule"
+    )
+  end
+
+  defp build_issue(issue_meta, line_no, tags, _allowed_tags) do
+    format_issue(issue_meta,
+      message:
+        "Test module is tagged #{inspect(tags)}, none of which names a domain. " <>
+          "Add a tag from the domain category of Tymeslot.Test.TagTaxonomy: a " <>
+          "layer or test-type tag alone leaves the module unreachable by " <>
+          "`mix test --only <domain>` and `mix test.affected`.",
+      line_no: line_no,
+      trigger: "@moduletag"
+    )
+  end
+end

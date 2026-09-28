@@ -1,0 +1,427 @@
+defmodule Tymeslot.Integrations.Calendar.ProviderConfigTest do
+  use ExUnit.Case, async: true
+  @moduletag :integrations
+
+  alias Tymeslot.Integrations.Calendar.ProviderConfig
+  alias Tymeslot.Integrations.Providers.Families
+
+  describe "caldav_based_provider_strings/0" do
+    test "returns the caldav-based provider list as strings" do
+      assert ProviderConfig.caldav_based_provider_strings() == [
+               "caldav",
+               "radicale",
+               "nextcloud",
+               "zimbra",
+               "mailbox_org",
+               "apple",
+               "baikal"
+             ]
+    end
+
+    test "produces no duplicate strings" do
+      strings = ProviderConfig.caldav_based_provider_strings()
+      assert length(strings) == length(Enum.uniq(strings))
+    end
+
+    test "all elements are binaries (database string shape)" do
+      assert Enum.all?(ProviderConfig.caldav_based_provider_strings(), &is_binary/1)
+    end
+  end
+
+  describe "family predicates" do
+    test "every predicate answers identically for the atom and the string form" do
+      providers = ProviderConfig.provider_constraint_list()
+      assert providers != []
+
+      disagreeing =
+        Enum.reject(providers, fn string ->
+          {:ok, atom} = ProviderConfig.parse_known(string)
+
+          ProviderConfig.family_of(atom) == ProviderConfig.family_of(string) and
+            ProviderConfig.oauth_provider?(atom) == ProviderConfig.oauth_provider?(string) and
+            ProviderConfig.caldav_based?(atom) == ProviderConfig.caldav_based?(string) and
+            ProviderConfig.subscription?(atom) == ProviderConfig.subscription?(string)
+        end)
+
+      assert disagreeing == [],
+             "these providers get different answers as an atom than as a string: " <>
+               inspect(disagreeing)
+    end
+
+    test "caldav_based?/1 recognises the string form the database column carries" do
+      assert ProviderConfig.caldav_based?("caldav")
+      assert ProviderConfig.caldav_based?("nextcloud")
+      refute ProviderConfig.caldav_based?("ics_url")
+      refute ProviderConfig.caldav_based?("google")
+    end
+
+    test "oauth_provider?/1 recognises the string form the database column carries" do
+      assert ProviderConfig.oauth_provider?("google")
+      assert ProviderConfig.oauth_provider?("outlook")
+      refute ProviderConfig.oauth_provider?("caldav")
+    end
+
+    test "subscription?/1 recognises both forms" do
+      assert ProviderConfig.subscription?(:ics_url)
+      assert ProviderConfig.subscription?("ics_url")
+      refute ProviderConfig.subscription?("caldav")
+    end
+
+    test "family_of/1 files each provider under the family that describes it" do
+      assert ProviderConfig.family_of(:google) == :oauth
+      assert ProviderConfig.family_of(:baikal) == :caldav
+      assert ProviderConfig.family_of(:ics_url) == :subscription
+      assert ProviderConfig.family_of(:demo) == :other
+    end
+
+    test "every known provider is filed under a family in the shared vocabulary" do
+      providers = ProviderConfig.provider_constraint_list()
+      assert providers != []
+
+      unfiled = Enum.reject(providers, &(ProviderConfig.family_of(&1) in Families.all()))
+
+      assert unfiled == []
+    end
+
+    test "anything that is not a provider is :other and in no family" do
+      for value <- [:totally_unknown_atom, "totally_unknown_string_xyzzy", nil, 42] do
+        assert ProviderConfig.family_of(value) == :other
+        refute ProviderConfig.oauth_provider?(value)
+        refute ProviderConfig.caldav_based?(value)
+        refute ProviderConfig.subscription?(value)
+      end
+    end
+
+    test "in_family?/2 is the general form the named predicates spell out" do
+      assert ProviderConfig.in_family?("apple", :caldav)
+      refute ProviderConfig.in_family?("apple", :oauth)
+    end
+
+    test "the string list accessors hold exactly the providers their predicate accepts" do
+      providers = ProviderConfig.provider_constraint_list()
+
+      assert Enum.filter(providers, &ProviderConfig.caldav_based?/1) ==
+               ProviderConfig.caldav_based_provider_strings()
+
+      assert Enum.filter(providers, &ProviderConfig.subscription?/1) ==
+               ProviderConfig.subscription_provider_strings()
+    end
+  end
+
+  describe "locked_url_for/1" do
+    test "atom key returns a map with :url and :tooltip for a locked provider" do
+      result = ProviderConfig.locked_url_for(:mailbox_org)
+
+      assert result == %{
+               url: "https://dav.mailbox.org",
+               tooltip:
+                 "mailbox.org always uses this CalDAV server — the address cannot be changed"
+             }
+    end
+
+    test "string key returns the same map as the atom key" do
+      assert ProviderConfig.locked_url_for("mailbox_org") ==
+               ProviderConfig.locked_url_for(:mailbox_org)
+    end
+
+    test "Apple iCloud has a locked CalDAV URL" do
+      assert %{url: "https://caldav.icloud.com"} = ProviderConfig.locked_url_for(:apple)
+      assert ProviderConfig.caldav_based?(:apple)
+      assert ProviderConfig.display_name(:apple) == "Apple iCloud"
+    end
+
+    test "atom key for a provider without a locked URL returns nil" do
+      assert ProviderConfig.locked_url_for(:caldav) == nil
+    end
+
+    test "string key for an unknown provider returns nil" do
+      assert ProviderConfig.locked_url_for("unknown") == nil
+    end
+
+    test "nil returns nil" do
+      assert ProviderConfig.locked_url_for(nil) == nil
+    end
+  end
+
+  describe "parse/1" do
+    test "accepts a valid provider atom" do
+      assert ProviderConfig.parse(:caldav) == {:ok, :caldav}
+    end
+
+    test "accepts a valid provider string" do
+      assert ProviderConfig.parse("google") == {:ok, :google}
+    end
+
+    test "rejects an atom that is known to the VM but not a valid provider" do
+      assert ProviderConfig.parse(:totally_unknown_atom) == {:error, :unknown}
+    end
+
+    test "rejects a string whose atom has never been created (truly unknown)" do
+      assert ProviderConfig.parse("totally_unknown_string_xyzzy") == {:error, :unknown}
+    end
+
+    test "rejects a non-string, non-atom value" do
+      assert ProviderConfig.parse(42) == {:error, :unknown}
+    end
+
+    test "accepts all enabled provider atoms" do
+      for provider <- ProviderConfig.all_providers() do
+        assert ProviderConfig.parse(provider) == {:ok, provider}
+      end
+    end
+
+    test "accepts all enabled provider strings" do
+      for provider <- ProviderConfig.all_providers() do
+        assert ProviderConfig.parse(Atom.to_string(provider)) == {:ok, provider}
+      end
+    end
+
+    test "rejects providers that are statically known but disabled via toggle" do
+      # :demo is in @providers but pinned off via test config; parse/1 must
+      # refuse to surface it because it gates user-input setup flows.
+      assert ProviderConfig.parse(:demo) == {:error, :unknown}
+      assert ProviderConfig.parse("demo") == {:error, :unknown}
+    end
+  end
+
+  describe "parse_known/1" do
+    test "accepts a valid provider atom" do
+      assert ProviderConfig.parse_known(:caldav) == {:ok, :caldav}
+    end
+
+    test "accepts a valid provider string" do
+      assert ProviderConfig.parse_known("google") == {:ok, :google}
+    end
+
+    test "accepts dev-only providers regardless of toggle (e.g. :debug)" do
+      assert ProviderConfig.parse_known(:debug) == {:ok, :debug}
+      assert ProviderConfig.parse_known("debug") == {:ok, :debug}
+    end
+
+    test "accepts providers that may be disabled via config but are statically known" do
+      # `:demo` is disabled in the test environment but is part of @providers,
+      # so parse_known/1 must still return {:ok, :demo} — this is the whole
+      # point of the toggle-agnostic variant.
+      assert ProviderConfig.parse_known(:demo) == {:ok, :demo}
+      assert ProviderConfig.parse_known("demo") == {:ok, :demo}
+    end
+
+    test "rejects an atom that is not a known provider" do
+      assert ProviderConfig.parse_known(:totally_unknown_atom) == {:error, :unknown}
+    end
+
+    test "rejects a string whose atom has never been created" do
+      assert ProviderConfig.parse_known("totally_unknown_string_xyzzy") == {:error, :unknown}
+    end
+
+    test "rejects a non-string, non-atom value" do
+      assert ProviderConfig.parse_known(42) == {:error, :unknown}
+    end
+  end
+
+  describe "providers_with_circuit_breakers/0" do
+    test "includes every CalDAV-based and OAuth provider" do
+      breakers = ProviderConfig.providers_with_circuit_breakers()
+
+      Enum.each(ProviderConfig.caldav_based_providers(), fn p ->
+        assert p in breakers, "expected CalDAV provider #{inspect(p)} to have a breaker"
+      end)
+
+      Enum.each([:google, :outlook], fn p ->
+        assert p in breakers, "expected OAuth provider #{inspect(p)} to have a breaker"
+      end)
+    end
+
+    test "excludes providers whose metadata disables circuit breakers" do
+      breakers = ProviderConfig.providers_with_circuit_breakers()
+
+      refute :demo in breakers
+    end
+
+    test "excludes ics_url: a provider-global breaker is the wrong shape for arbitrary per-user feed hosts" do
+      breakers = ProviderConfig.providers_with_circuit_breakers()
+
+      refute :ics_url in breakers
+    end
+
+    test "stays in sync with metadata's circuit_breaker_enabled flag" do
+      breakers = ProviderConfig.providers_with_circuit_breakers()
+
+      Enum.each(breakers, fn p ->
+        assert ProviderConfig.circuit_breaker_enabled?(p),
+               "#{inspect(p)} listed but its metadata disables circuit breakers"
+      end)
+    end
+
+    test "omits no provider whose metadata enables circuit breakers" do
+      breakers = ProviderConfig.providers_with_circuit_breakers()
+
+      # Walking the list itself can only show that nothing extra is in it. The
+      # direction that matters is the other one: a provider that should be
+      # monitored and silently isn't. The candidates come from the static
+      # constraint list, which no runtime toggle can shorten.
+      wanted =
+        ProviderConfig.provider_constraint_list()
+        |> Enum.map(fn name ->
+          {:ok, provider} = ProviderConfig.parse_known(name)
+          provider
+        end)
+        |> Enum.filter(&ProviderConfig.circuit_breaker_enabled?/1)
+
+      Enum.each(wanted, fn p ->
+        assert p in breakers,
+               "#{inspect(p)} enables circuit breakers in its metadata but is not listed"
+      end)
+    end
+  end
+
+  describe "valid_provider?/1" do
+    test "returns true for valid providers" do
+      assert ProviderConfig.valid_provider?(:caldav)
+      assert ProviderConfig.valid_provider?(:google)
+      assert ProviderConfig.valid_provider?(:nextcloud)
+      assert ProviderConfig.valid_provider?(:radicale)
+    end
+
+    test "returns false for unknown providers and non-atoms" do
+      refute ProviderConfig.valid_provider?(:invalid)
+      refute ProviderConfig.valid_provider?(:unknown)
+      refute ProviderConfig.valid_provider?("google")
+    end
+  end
+
+  describe "exchange provider" do
+    test "is a known, enabled provider" do
+      assert :exchange in ProviderConfig.all_providers()
+      assert ProviderConfig.valid_provider?(:exchange)
+      assert {:ok, :exchange} = ProviderConfig.parse("exchange")
+      assert {:ok, :exchange} = ProviderConfig.parse_known("exchange")
+    end
+
+    test "resolves to the Exchange provider module" do
+      assert ProviderConfig.get_provider_module(:exchange) ==
+               Tymeslot.Integrations.Calendar.Exchange.Provider
+    end
+
+    test "has a display name and metadata" do
+      assert ProviderConfig.display_name(:exchange) == "Microsoft Exchange"
+      assert ProviderConfig.icon(:exchange) == "exchange"
+      assert ProviderConfig.circuit_breaker_enabled?(:exchange)
+    end
+
+    test "is its own family, neither CalDAV nor a subscription" do
+      assert ProviderConfig.ews?(:exchange)
+      refute ProviderConfig.caldav_based?(:exchange)
+      refute ProviderConfig.subscription?(:exchange)
+      refute ProviderConfig.oauth_provider?(:exchange)
+    end
+
+    test "is kept out of the lists that build a CalDAV client" do
+      refute :exchange in ProviderConfig.caldav_based_providers()
+      refute "exchange" in ProviderConfig.caldav_based_provider_strings()
+      refute "exchange" in ProviderConfig.subscription_provider_strings()
+    end
+
+    test "is allowed by the database constraint list" do
+      assert "exchange" in ProviderConfig.provider_constraint_list()
+    end
+  end
+
+  describe "read_only?/1" do
+    test "names the providers whose module refuses every write" do
+      assert ProviderConfig.read_only?(:ics_url)
+      assert ProviderConfig.read_only?("ics_url")
+    end
+
+    test "no longer names exchange, whose provider now writes" do
+      # It was on the list for as long as the EWS provider had no write path.
+      # Leaving it there once the path landed would keep every Exchange folder
+      # out of the booking pickers while the provider was perfectly able to
+      # accept one.
+      refute ProviderConfig.read_only?(:exchange)
+      refute ProviderConfig.read_only?("exchange")
+    end
+
+    test "answers false for every provider that can receive a booking" do
+      writable =
+        ProviderConfig.provider_constraint_list()
+        |> Enum.map(fn name ->
+          {:ok, provider} = ProviderConfig.parse_known(name)
+          provider
+        end)
+        |> Enum.reject(&(&1 == :ics_url))
+
+      assert writable != []
+      assert Enum.filter(writable, &ProviderConfig.read_only?/1) == []
+    end
+
+    test "answers false for a term that is not a provider" do
+      refute ProviderConfig.read_only?(nil)
+      refute ProviderConfig.read_only?("not_a_provider")
+    end
+
+    test "agrees with the provider module refusing writes" do
+      # The list is hand-maintained, so pin it to the property it claims:
+      # every provider it names must actually reject a create.
+      assert {:error, :read_only} =
+               Tymeslot.Integrations.Calendar.Ics.Provider.create_event(%{}, %{})
+
+      assert ProviderConfig.get_provider_module(:ics_url) ==
+               Tymeslot.Integrations.Calendar.Ics.Provider
+    end
+
+    test "agrees with the exchange provider, which no longer refuses a create" do
+      # The other direction of the same property, and the one that would have
+      # caught the list and the module disagreeing when the write path landed:
+      # a provider absent from the list must not answer `:read_only`.
+      # Reaching the transport's credential check *is* the assertion: a
+      # provider that still refused writes would answer `{:error, :read_only}`
+      # before any request was built, and this call would return rather than
+      # raise.
+      assert_raise ArgumentError, ~r/credentials/, fn ->
+        Tymeslot.Integrations.Calendar.Exchange.Provider.create_event(
+          %{base_url: "https://mail.example.com/EWS/Exchange.asmx"},
+          %{
+            summary: "x",
+            start_time: ~U[2026-10-05 09:00:00Z],
+            end_time: ~U[2026-10-05 09:30:00Z]
+          }
+        )
+      end
+    end
+  end
+
+  describe "ews?/1" do
+    test "answers for the string form the database stores" do
+      assert ProviderConfig.ews?("exchange")
+
+      # `integration.provider` is a string column, so every EWS provider has
+      # to be recognised from its stored name and not only from the atom.
+      # Asserting over the list rather than the literal keeps this true of a
+      # second EWS provider instead of failing on its arrival.
+      providers = ProviderConfig.ews_providers()
+
+      assert :exchange in providers
+      assert Enum.reject(providers, &ProviderConfig.ews?(Atom.to_string(&1))) == []
+    end
+
+    test "answers false for every other provider" do
+      others =
+        ProviderConfig.provider_constraint_list()
+        |> Enum.map(fn name ->
+          {:ok, provider} = ProviderConfig.parse_known(name)
+          provider
+        end)
+        |> Enum.reject(&(&1 == :exchange))
+
+      assert others != []
+      assert Enum.reject(others, &(ProviderConfig.ews?(&1) == false)) == []
+    end
+
+    test "answers false for a non-provider term" do
+      refute ProviderConfig.ews?("caldav")
+      refute ProviderConfig.ews?(nil)
+      refute ProviderConfig.ews?(%{})
+    end
+  end
+end

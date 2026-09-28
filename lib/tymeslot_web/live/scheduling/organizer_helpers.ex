@@ -1,0 +1,171 @@
+defmodule TymeslotWeb.Live.Scheduling.OrganizerHelpers do
+  @moduledoc """
+  Per-request organizer setup helpers for the scheduling flow.
+
+  Owns the slice of socket state that does not depend on calendar
+  availability: username resolution, the booking form, and the client
+  IP captured at mount.
+  """
+
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  require Logger
+
+  alias Phoenix.Component
+  alias Tymeslot.Availability.Schedules
+  alias Tymeslot.Demo
+  alias Tymeslot.Security.InputProcessor
+  alias TymeslotWeb.Helpers.ClientIP
+  alias TymeslotWeb.Live.Scheduling.BookingConfig
+
+  import Component, only: [assign: 3]
+
+  @default_booking_window_days 90
+
+  @doc """
+  Handles username resolution and organizer setup.
+  """
+  @spec handle_username_resolution(Phoenix.LiveView.Socket.t(), String.t() | nil) ::
+          Phoenix.LiveView.Socket.t()
+  def handle_username_resolution(socket, nil) do
+    socket
+    |> store_client_ip()
+    |> assign(:username_context, nil)
+  end
+
+  def handle_username_resolution(socket, username) do
+    # Store client IP during username resolution to ensure it's available later
+    socket = store_client_ip(socket)
+
+    case Demo.resolve_organizer_context(username) do
+      {:error, :profile_not_found} ->
+        # During mount, we can't use put_flash/redirect - let the mount handle this
+        socket
+        |> assign(:username_context, nil)
+        |> assign(:organizer_profile, nil)
+        |> assign(:booking_window_days, booking_window_days(nil))
+        |> assign(:organizer_user_id, nil)
+        |> assign(:meeting_types, [])
+        |> assign(:page_title, dgettext("errors", "Page not found"))
+
+      {:ok, context} ->
+        socket
+        |> assign(:username_context, context.username)
+        |> assign(:organizer_profile, context.profile)
+        |> assign(:booking_window_days, booking_window_days(context.profile))
+        |> assign(:organizer_user_id, context.user_id)
+        |> assign(:meeting_types, context.meeting_types)
+        |> assign(:page_title, context.page_title)
+    end
+  end
+
+  @doc """
+  Resolves the booking window, in days, to show a visitor for an organiser.
+
+  Read from the schedule the given meeting type resolves to, falling back to the
+  organiser's default schedule before one is chosen. It cannot be read from the
+  default alone: this figure both advertises the window and disables the
+  calendar's forward navigation, and a meeting type's schedule may open a
+  *longer* window than the default, whose dates would then be unreachable.
+
+  Demo organisers are plain maps supplied by the overlay rather than persisted
+  profiles, so they carry no schedule and are answered by the demo provider.
+  """
+  @spec booking_window_days(map() | nil, map() | nil) :: pos_integer()
+  def booking_window_days(profile, meeting_type \\ nil)
+
+  def booking_window_days(nil, _meeting_type), do: @default_booking_window_days
+
+  def booking_window_days(profile, meeting_type) do
+    if Demo.demo_profile?(profile) do
+      Demo.booking_window_days(profile)
+    else
+      case Schedules.resolve_for(meeting_type, profile) do
+        nil -> @default_booking_window_days
+        schedule -> schedule.advance_booking_days
+      end
+    end
+  end
+
+  @doc """
+  Re-reads the booking window for whatever meeting type is now selected.
+
+  Call after assigning `:meeting_type`; the window is first assigned at mount,
+  when no meeting type has been picked yet.
+  """
+  @spec assign_booking_window(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  def assign_booking_window(socket) do
+    assign(
+      socket,
+      :booking_window_days,
+      booking_window_days(
+        socket.assigns[:organizer_profile],
+        socket.assigns[:meeting_type]
+      )
+    )
+  end
+
+  @doc "Initialises form, touched-field, validation-error, and saving assigns."
+  @spec setup_form_state(Phoenix.LiveView.Socket.t(), map(), keyword()) ::
+          Phoenix.LiveView.Socket.t()
+  def setup_form_state(socket, form_data, opts) do
+    as = Keyword.get(opts, :as)
+
+    socket
+    |> assign(:form, Component.to_form(form_data, as: as))
+    |> assign(:touched_fields, MapSet.new())
+    |> assign(:validation_errors, %{})
+    |> assign(:saving, false)
+  end
+
+  @doc """
+  Marks a form field as touched.
+  """
+  @spec mark_field_touched(Phoenix.LiveView.Socket.t(), String.t()) :: Phoenix.LiveView.Socket.t()
+  def mark_field_touched(socket, field_name) do
+    assign(socket, :touched_fields, MapSet.put(socket.assigns.touched_fields, field_name))
+  end
+
+  # Stores client IP in socket assigns during mount, to capture the IP for
+  # later use.
+  @spec store_client_ip(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  defp store_client_ip(socket) do
+    # Try mount-specific extraction first if not already in assigns
+    ip =
+      case socket.assigns[:client_ip] do
+        ip when is_binary(ip) ->
+          ip
+
+        _other ->
+          # get_from_mount/1 should only be called during mount.
+          # We wrap it in try-rescue to prevent crashes if called during events.
+          try do
+            ClientIP.get_from_mount(socket)
+          rescue
+            exception ->
+              # Debug rather than warning: this is the expected outcome whenever
+              # the helper runs outside mount, which is why it is wrapped at all.
+              Logger.debug("Client IP unavailable outside mount",
+                error: Exception.message(exception)
+              )
+
+              "unknown"
+          end
+      end
+
+    assign(socket, :client_ip, ip)
+  end
+
+  @doc """
+  Validates if form is complete and valid.
+  """
+  @spec form_valid?(Phoenix.HTML.Form.t()) :: boolean()
+  def form_valid?(%{source: source}) when is_map(source) do
+    case InputProcessor.validate_form(source, BookingConfig.booking_field_spec()) do
+      {:ok, _result} -> true
+      {:error, _reason} -> false
+    end
+  end
+
+  def form_valid?(_form), do: false
+end

@@ -1,0 +1,203 @@
+defmodule TymeslotWeb.Dashboard.Availability.ScheduleSwitcher do
+  @moduledoc """
+  Schedule picker and management actions for the availability page.
+
+  A profile owns several named schedules, exactly one of which is the default.
+  This switcher chooses which one the page below it is editing and exposes the
+  actions that change the set itself: create, rename, duplicate, promote to
+  default, and delete.
+
+  Follows the same shape every other dashboard list uses (see Meetings:
+  `subsection_header` + an "Add" button above a plain tab/list surface)
+  rather than a colour-framed panel — the tabs must still outweigh everything
+  around them, because every schedule renders the same weekly grid below and
+  the strip is the only thing saying which one is being edited, but that no
+  longer needs a schedule-coloured frame to read as "this belongs to the
+  active tab"; the actions that merely *manage* a schedule sit in a menu
+  rather than competing as five buttons. And a schedule only means anything
+  once a meeting type is booked against it, which is decided on a different
+  page entirely, so the strip states which meeting types use the selected
+  schedule rather than leaving that link invisible.
+  """
+  use TymeslotWeb, :html
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  @doc """
+  Renders the schedule tabs above the surface that edits the selected schedule.
+  """
+  attr :schedules, :list, required: true
+  attr :selected_schedule, :map, default: nil
+  attr :meeting_type_names, :list, required: true
+  attr :max_schedules, :integer, required: true
+  attr :menu_open, :boolean, default: false
+  attr :myself, :any, required: true
+  slot :inner_block, required: true
+
+  @spec schedule_panel(map()) :: Phoenix.LiveView.Rendered.t()
+  def schedule_panel(assigns) do
+    assigns = assign(assigns, :can_create, length(assigns.schedules) < assigns.max_schedules)
+
+    ~H"""
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <.subsection_header
+        icon="hero-calendar-days"
+        title={dgettext("dashboard_availability", "Schedules")}
+      />
+      <%!-- Kept in place once the cap is reached rather than removed: a
+      button that greys out says there is a ceiling and what it is, whereas
+      one that disappears just looks like a feature that went missing. --%>
+      <button
+        type="button"
+        disabled={not @can_create}
+        phx-click={@can_create && "show_schedule_form"}
+        phx-value-mode="create"
+        phx-target={@myself}
+        title={limit_hint(@can_create, @max_schedules)}
+        class="btn btn-primary inline-flex items-center gap-2"
+      >
+        <.icon name="hero-plus" class="w-4 h-4" />
+        <span>{dgettext("dashboard_availability", "New schedule")}</span>
+      </button>
+    </div>
+
+    <div class="mb-8">
+      <.tab_bar
+        variant={:card}
+        class="max-w-fit"
+        active_tab={active_tab(@selected_schedule)}
+        target={@myself}
+        event="switch_tab"
+        tabs={schedule_tabs(@schedules)}
+      >
+        <%!-- The menu acts on the schedule whose tab it sits in, so it rides
+        inside that tab rather than standing off in the corner, where it read as
+        a control over the whole page. --%>
+        <:tab_action>
+          <.dropdown
+            :if={@selected_schedule}
+            id="schedule-actions-dropdown"
+            open={@menu_open}
+            on_toggle="toggle_schedule_menu"
+            on_close="close_schedule_menu"
+            target={@myself}
+            trigger_class="flex items-center justify-center w-8 h-8 rounded-token-lg text-white/80 hover:bg-white/20 hover:text-white transition-all duration-300 focus:outline-hidden focus:ring-2 focus:ring-white/60"
+            class="bg-white dark:bg-twilight-indigo-950 border-2 border-neutral-300 dark:border-twilight-indigo-700 rounded-token-xl shadow-lg py-1 w-56"
+            aria-label={dgettext("dashboard_availability", "Manage this schedule")}
+          >
+            <:trigger>
+              <.icon name="hero-ellipsis-horizontal" class="w-5 h-5" />
+            </:trigger>
+            <:panel>
+              <.dropdown_item
+                label={dgettext("dashboard_availability", "Rename")}
+                icon="hero-pencil-square"
+                phx-click="show_schedule_form"
+                phx-value-mode="rename"
+                phx-target={@myself}
+              />
+              <.dropdown_item
+                :if={@can_create}
+                label={dgettext("dashboard_availability", "Duplicate")}
+                icon="hero-document-duplicate"
+                phx-click="duplicate_schedule"
+                phx-target={@myself}
+              />
+              <.dropdown_item
+                :if={not @selected_schedule.is_default}
+                label={dgettext("dashboard_availability", "Make default")}
+                icon="hero-star"
+                phx-click="set_default_schedule"
+                phx-target={@myself}
+              />
+              <.dropdown_divider :if={not @selected_schedule.is_default} />
+              <.dropdown_item
+                :if={not @selected_schedule.is_default}
+                label={dgettext("dashboard_availability", "Delete")}
+                icon="hero-trash"
+                danger
+                phx-click="show_delete_schedule_modal"
+                phx-target={@myself}
+              />
+            </:panel>
+          </.dropdown>
+        </:tab_action>
+      </.tab_bar>
+    </div>
+
+    <p class="text-token-sm text-neutral-500 font-medium mb-6">
+      {usage_summary(@selected_schedule, @meeting_type_names)}
+    </p>
+
+    <%!-- Spelled out as well as shown on the disabled button, because a
+    title only surfaces on hover and never on a touch screen. --%>
+    <p :if={not @can_create} class="-mt-4 mb-6 text-token-sm text-neutral-400 font-medium">
+      {limit_message(@max_schedules)}
+    </p>
+
+    <div class="space-y-8">
+      {render_slot(@inner_block)}
+    </div>
+    """
+  end
+
+  defp limit_hint(true, _max), do: nil
+  defp limit_hint(false, max), do: limit_message(max)
+
+  defp limit_message(max) do
+    dgettext(
+      "dashboard_availability",
+      "You have reached the limit of %{count} schedules. Delete one to add another.",
+      count: max
+    )
+  end
+
+  defp schedule_tabs(schedules) do
+    Enum.map(schedules, fn schedule ->
+      %{id: to_string(schedule.id), label: tab_label(schedule)}
+    end)
+  end
+
+  # The active tab is matched by string id, so a page with no schedule at all
+  # simply has no tab selected rather than crashing on a nil lookup.
+  defp active_tab(nil), do: nil
+  defp active_tab(schedule), do: to_string(schedule.id)
+
+  defp tab_label(%{is_default: true, name: name}),
+    do: dgettext("dashboard_availability", "%{name} (default)", name: name)
+
+  defp tab_label(%{name: name}), do: name
+
+  # Spelling out where a schedule takes effect, because that is decided on the
+  # meeting type and is otherwise invisible from this page. The default's
+  # catch-all applies whether or not anything also names it explicitly, so it is
+  # stated in both of its branches rather than only when the list is empty.
+  defp usage_summary(nil, _names), do: nil
+
+  defp usage_summary(%{is_default: true}, []) do
+    dgettext(
+      "dashboard_availability",
+      "Used by every meeting type that has no schedule of its own."
+    )
+  end
+
+  defp usage_summary(%{is_default: true}, names) do
+    dgettext(
+      "dashboard_availability",
+      "Used by %{meeting_types}, and by every meeting type that has no schedule of its own.",
+      meeting_types: Enum.join(names, ", ")
+    )
+  end
+
+  defp usage_summary(_schedule, []) do
+    dgettext(
+      "dashboard_availability",
+      "No meeting type uses these hours yet. Pick this schedule under a meeting type's booking rules."
+    )
+  end
+
+  defp usage_summary(_schedule, names) do
+    dgettext("dashboard_availability", "Used by %{meeting_types}.",
+      meeting_types: Enum.join(names, ", ")
+    )
+  end
+end

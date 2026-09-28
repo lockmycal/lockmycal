@@ -1,0 +1,70 @@
+defmodule Tymeslot.Workers.DeadChannelAlertWorker do
+  @moduledoc """
+  Oban worker that detects calendar integrations with silent webhook channels.
+
+  An integration is flagged when ALL of the following are true:
+  - The integration is active
+  - The channel/subscription has not expired
+  - No notification has been received in the past 12 hours (or ever)
+  - At least one confirmed meeting linked to this integration exists within the past 72 hours
+
+  Runs every 6 hours. Raises a `:dead_webhook_channel` admin alert for each
+  flagged integration — deduped per integration for 24h (see
+  `AlertTypes.dedup_key/2`) so a channel that's still dead by the next run
+  doesn't re-alert every 6 hours.
+  """
+
+  use Oban.Worker,
+    queue: :calendar_integrations,
+    max_attempts: 1,
+    unique: [period: 21_600, states: [:available, :scheduled, :executing, :retryable, :suspended]]
+
+  require Logger
+
+  alias Tymeslot.Infrastructure.AdminAlerts
+  alias Tymeslot.Integrations.Calendar.CalendarIntegrationWebhookQueries
+
+  @silence_threshold_hours 12
+  @meeting_lookback_hours 72
+
+  @impl Oban.Worker
+  def perform(%Oban.Job{}) do
+    cutoff = DateTime.add(DateTime.utc_now(), -@silence_threshold_hours * 3600, :second)
+    meeting_since = DateTime.add(DateTime.utc_now(), -@meeting_lookback_hours * 3600, :second)
+
+    dead_google =
+      CalendarIntegrationWebhookQueries.list_silent_google_channels(cutoff, meeting_since)
+
+    dead_outlook =
+      CalendarIntegrationWebhookQueries.list_silent_outlook_subscriptions(cutoff, meeting_since)
+
+    Enum.each(dead_google ++ dead_outlook, fn integration ->
+      AdminAlerts.report(:dead_webhook_channel,
+        summary: "Calendar integration silent — possible dead channel",
+        context: %{
+          calendar_integration_id: integration.id,
+          provider: integration.provider,
+          user_id: integration.user_id,
+          last_notification_at: format_timestamp(notification_timestamp(integration))
+        }
+      )
+    end)
+
+    count = length(dead_google) + length(dead_outlook)
+
+    Logger.info("DeadChannelAlertWorker complete",
+      flagged_google: length(dead_google),
+      flagged_outlook: length(dead_outlook),
+      total_flagged: count
+    )
+
+    :ok
+  end
+
+  defp notification_timestamp(%{provider: "google"} = i), do: i.last_google_notification_at
+  defp notification_timestamp(%{provider: "outlook"} = i), do: i.last_outlook_notification_at
+  defp notification_timestamp(_integration), do: nil
+
+  defp format_timestamp(nil), do: "never"
+  defp format_timestamp(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
+end

@@ -1,0 +1,311 @@
+defmodule Tymeslot.Integrations.Calendar.Google.Provider do
+  @moduledoc """
+  Google Calendar provider implementation.
+
+  This provider integrates with Google Calendar API using OAuth 2.0
+  to fetch calendar events for availability calculation.
+  """
+
+  use Tymeslot.Integrations.Common.OAuthBase,
+    provider_name: "google",
+    display_name: "Google Calendar",
+    base_url: "https://www.googleapis.com/calendar/v3"
+
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Tymeslot.Infrastructure.Config
+  alias Tymeslot.Integrations.Calendar.CalendarEntry
+  alias Tymeslot.Integrations.Calendar.CalendarIntegrationSchema
+  alias Tymeslot.Integrations.Calendar.Google.ConferenceData
+  alias Tymeslot.Integrations.Calendar.Google.EventNormaliser
+  alias Tymeslot.Integrations.Calendar.Shared.{ErrorHandler, ProviderCommon}
+  alias Tymeslot.Integrations.Calendar.Shared.FetchAggregate.Outcome
+  alias Tymeslot.Integrations.Calendar.Shared.MultiCalendarFetch
+
+  @typep converted_event :: %{
+           required(:uid) => String.t() | nil,
+           required(:ical_uid) => String.t() | nil,
+           required(:summary) => String.t() | nil,
+           required(:description) => String.t() | nil,
+           required(:location) => String.t() | nil,
+           required(:all_day) => boolean(),
+           required(:start_time) => DateTime.t() | Date.t() | nil,
+           required(:end_time) => DateTime.t() | Date.t() | nil,
+           required(:status) => String.t() | nil,
+           required(:transparency) => String.t() | nil,
+           required(:meet_url) => String.t() | nil
+         }
+
+  # The only scope this app requests or recognises as granting write access to
+  # calendar events, needed for Google Meet creation via
+  # calendar.v3.Events.Insert. `calendar.readonly` and
+  # `calendar.events.readonly` are intentionally excluded, and so is the
+  # broader `calendar` scope (it also grants managing the calendar list and
+  # calendars themselves, which this app never does) — it is no longer
+  # requested and a legacy integration still holding it is treated the same
+  # as one needing a scope upgrade.
+  @calendar_write_scopes MapSet.new([
+                           "https://www.googleapis.com/auth/calendar.events"
+                         ])
+
+  @doc """
+  Returns true when the integration's stored scope lacks any write-capable
+  calendar scope. Read-only and absent scopes both qualify.
+  """
+  @spec needs_scope_upgrade?(term()) :: boolean()
+  def needs_scope_upgrade?(%CalendarIntegrationSchema{oauth_scope: scope})
+      when is_binary(scope) do
+    not has_calendar_write_scope?(scope)
+  end
+
+  def needs_scope_upgrade?(_integration), do: false
+
+  @doc """
+  Returns true when the given OAuth scope string grants calendar event write
+  access. Exposed for the OAuth callback to validate freshly returned tokens
+  before persisting an integration.
+  """
+  @spec has_calendar_write_scope?(String.t() | nil) :: boolean()
+  def has_calendar_write_scope?(scope) when is_binary(scope) do
+    granted = scope |> String.split(" ", trim: true) |> MapSet.new()
+    not MapSet.disjoint?(@calendar_write_scopes, granted)
+  end
+
+  def has_calendar_write_scope?(_scope), do: false
+
+  # Required callbacks for OAuth base
+
+  @spec validate_oauth_scope(map()) :: :ok | {:error, String.t()}
+  def validate_oauth_scope(config) do
+    case Map.get(config, :oauth_scope) do
+      scope when is_binary(scope) ->
+        if has_calendar_write_scope?(scope) do
+          :ok
+        else
+          {:error,
+           "OAuth scope must grant calendar write access (calendar.readonly is not sufficient)"}
+        end
+
+      _other ->
+        {:error, "Invalid oauth_scope format"}
+    end
+  end
+
+  # --- Provider behaviour ---
+
+  @impl Tymeslot.Integrations.Calendar.Provider
+  def normalise_events(raw_events, context) do
+    EventNormaliser.normalise_events(raw_events, context)
+  end
+
+  # --- Legacy conversion (used by OAuthBase get_events / create_event / update_event) ---
+
+  @spec convert_events(list(map())) :: list(converted_event())
+  def convert_events(google_events) do
+    Enum.map(google_events, &convert_event/1)
+  end
+
+  @spec convert_event(map()) :: converted_event()
+  def convert_event(google_event) do
+    %{
+      uid: google_event["id"],
+      # The key sync caches the event under (`EventNormaliser`), which Google
+      # assigns itself: it is not derived from the id, even one Tymeslot chose.
+      ical_uid: google_event["iCalUID"],
+      summary: google_event["summary"],
+      description: google_event["description"],
+      location: google_event["location"],
+      all_day: all_day_google_event?(google_event),
+      start_time: parse_datetime(google_event["start"]),
+      end_time: parse_datetime(google_event["end"]),
+      status: google_event["status"],
+      transparency: google_event["transparency"],
+      meet_url: ConferenceData.meet_url_from_google_event(google_event)
+    }
+  end
+
+  @spec get_calendar_api_module() :: module()
+  def get_calendar_api_module, do: api_module()
+
+  @spec call_list_events(CalendarIntegrationSchema.t(), DateTime.t(), DateTime.t()) ::
+          {:ok, list(map())} | {:error, Outcome.t()} | {:error, atom(), String.t()}
+  def call_list_events(integration, start_time, end_time) do
+    MultiCalendarFetch.list_events_with_selection(
+      integration,
+      start_time,
+      end_time,
+      api_module()
+    )
+  end
+
+  @spec call_create_event(CalendarIntegrationSchema.t(), map()) ::
+          {:ok, map()} | {:error, atom(), String.t()}
+  def call_create_event(integration, event_attrs) do
+    calendar_id =
+      event_attrs[:calendar_id] || integration.default_booking_calendar_id || "primary"
+
+    api_module().create_event(integration, calendar_id, event_attrs)
+  end
+
+  @spec call_update_event(CalendarIntegrationSchema.t(), String.t(), map()) ::
+          {:ok, map()} | {:error, atom(), String.t()}
+  def call_update_event(integration, event_id, %{colour_only: true} = event_attrs) do
+    calendar_id =
+      event_attrs[:calendar_id] || integration.default_booking_calendar_id || "primary"
+
+    effective_id = event_attrs[:provider_event_id] || event_id
+    api_module().patch_event_colour(integration, calendar_id, effective_id, event_attrs[:colour])
+  end
+
+  def call_update_event(integration, event_id, event_attrs) do
+    calendar_id =
+      event_attrs[:calendar_id] || integration.default_booking_calendar_id || "primary"
+
+    # Prefer the provider-native event ID when available (avoids iCalUID→ID conversion)
+    effective_id = event_attrs[:provider_event_id] || event_id
+    api_module().update_event(integration, calendar_id, effective_id, event_attrs)
+  end
+
+  @doc """
+  Fetches one event by the Google event id in `provider_event_id`, from the
+  calendar in `calendar_id`. Google addresses an event only within its
+  calendar, so without both the event cannot be looked up.
+  """
+  @impl Tymeslot.Integrations.Calendar.Provider
+  def fetch_event(integration, %{provider_event_id: event_id, calendar_id: calendar_id} = ref)
+      when is_binary(event_id) and event_id != "" and is_binary(calendar_id) and calendar_id != "" do
+    case api_module().get_event(integration, calendar_id, event_id) do
+      {:ok, %{"status" => "cancelled"}} ->
+        {:error, :not_found}
+
+      {:ok, raw} ->
+        EventNormaliser.normalise_events([raw], fetch_context(ref, calendar_id))
+
+      {:error, type, _message} when type in [:not_found, :gone] ->
+        {:error, :not_found}
+
+      {:error, type, _message} ->
+        {:error, type}
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  def fetch_event(_integration, _ref), do: {:error, :unaddressable}
+
+  defp fetch_context(ref, calendar_id),
+    do: %{
+      calendar_integration_id: Map.get(ref, :calendar_integration_id),
+      provider_calendar_id: calendar_id,
+      synced_at: DateTime.utc_now()
+    }
+
+  @spec call_delete_event(CalendarIntegrationSchema.t(), String.t(), keyword()) ::
+          {:ok, term()} | {:error, atom(), String.t()}
+  def call_delete_event(integration, event_id, opts) do
+    # The calendar the event is on, exactly as create and update already read
+    # it. Falling straight to the default booking calendar addressed the wrong
+    # resource for every event on a secondary calendar, which Google answers
+    # with a 404.
+    calendar_id =
+      opts[:calendar_id] || integration.default_booking_calendar_id || "primary"
+
+    api_module().delete_event(integration, calendar_id, event_id)
+  end
+
+  @doc """
+  Discovers all available calendars for the authenticated Google account.
+  """
+  @impl Tymeslot.Integrations.Calendar.Provider
+  @spec discover_calendars(CalendarIntegrationSchema.t()) ::
+          {:ok, [CalendarEntry.t()]} | {:error, term()}
+  def discover_calendars(integration) do
+    ProviderCommon.discover_calendars(
+      integration,
+      fn int -> api_module().list_calendars(int) end,
+      &format_calendar/1
+    )
+  end
+
+  @impl Tymeslot.Integrations.Calendar.Provider
+  def discover_calendars_for_integration(integration), do: discover_calendars(integration)
+
+  @impl Tymeslot.Integrations.Calendar.Provider
+  def build_client_configs(integration), do: [integration]
+
+  @impl Tymeslot.Integrations.Calendar.Provider
+  def build_booking_client_config(integration), do: integration
+
+  @doc """
+  Tests the connection to Google Calendar API.
+  Makes a simple API call to verify OAuth token validity and API accessibility.
+  """
+  @impl Tymeslot.Integrations.Calendar.Provider
+  @spec perform_connection_test(CalendarIntegrationSchema.t()) ::
+          {:ok, String.t()} | {:error, term()}
+  def perform_connection_test(integration) do
+    case api_module().list_primary_events(
+           integration,
+           DateTime.utc_now(),
+           DateTime.add(DateTime.utc_now(), 1, :day)
+         ) do
+      {:ok, _events} ->
+        {:ok, dgettext("dashboard_calendar_providers", "Google Calendar connection successful")}
+
+      {:error, :unauthorized, message} ->
+        {:error, ProviderCommon.unauthorized_reason(message)}
+
+      {:error, :rate_limited, _message} ->
+        {:error,
+         dgettext("dashboard_calendar_providers", "Rate limited - please try again later")}
+
+      {:error, _type, reason} ->
+        message = ErrorHandler.sanitize_error_message(reason, :google)
+
+        {:error, message}
+    end
+  end
+
+  # Private helper functions
+
+  defp api_module, do: Config.google_calendar_api_module()
+
+  defp all_day_google_event?(%{"start" => %{"date" => _date}}), do: true
+  defp all_day_google_event?(_other), do: false
+
+  defp parse_datetime(%{"dateTime" => datetime_str}) do
+    case DateTime.from_iso8601(datetime_str) do
+      {:ok, datetime, _offset} -> datetime
+      {:error, _reason} -> nil
+    end
+  end
+
+  defp parse_datetime(%{"date" => date_str}) do
+    case Date.from_iso8601(date_str) do
+      {:ok, date} -> date
+      {:error, _reason} -> nil
+    end
+  end
+
+  defp parse_datetime(_other), do: nil
+
+  defp format_calendar(cal) do
+    %{
+      id: cal["id"],
+      name: cal["summary"] || cal["id"],
+      description: cal["description"],
+      primary: cal["primary"] || false,
+      selected: cal["primary"] || false,
+      access_role: cal["accessRole"],
+      read_only: read_only_access_role?(cal["accessRole"]),
+      color: cal["backgroundColor"]
+    }
+    |> CalendarEntry.normalize()
+    |> CalendarEntry.with_defaults()
+  end
+
+  # Google's accessRole reports the caller's permission on the calendar:
+  # "owner"/"writer" can create events, "reader"/"freeBusyReader" cannot.
+  defp read_only_access_role?(role), do: role in ["reader", "freeBusyReader"]
+end

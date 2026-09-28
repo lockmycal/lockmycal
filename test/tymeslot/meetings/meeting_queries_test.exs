@@ -1,0 +1,478 @@
+defmodule Tymeslot.Meetings.MeetingQueriesTest do
+  @moduledoc false
+
+  use Tymeslot.DataCase, async: true
+
+  @moduletag :database
+  @moduletag :queries
+
+  alias Tymeslot.Meetings.MeetingListQueries
+  alias Tymeslot.Meetings.MeetingQueries
+  alias Tymeslot.Meetings.Scheduling
+
+  # Helper functions to reduce duplication in test setup
+  defp build_base_start_time(offset_days) do
+    DateTime.utc_now()
+    |> DateTime.add(offset_days, :day)
+    |> DateTime.truncate(:second)
+  end
+
+  defp build_meeting_times(start_offset_days, duration_minutes) do
+    start_time = build_base_start_time(start_offset_days)
+    end_time = DateTime.add(start_time, duration_minutes, :minute)
+    {start_time, end_time}
+  end
+
+  describe "upsert_reminder_sent/2" do
+    test "appends a new per-recipient entry for a reminder config not seen before" do
+      meeting = insert(:meeting, reminders_sent: [])
+
+      {:ok, updated} =
+        MeetingQueries.upsert_reminder_sent(meeting, %{
+          value: 30,
+          unit: "minutes",
+          organizer_sent: true,
+          attendee_sent: false
+        })
+
+      assert updated.reminders_sent == [
+               %{
+                 "value" => 30,
+                 "unit" => "minutes",
+                 "organizer_sent" => true,
+                 "attendee_sent" => false
+               }
+             ]
+
+      assert updated.reminder_email_sent == true
+    end
+
+    test "OR-merges flags into an existing entry instead of duplicating it" do
+      meeting = insert(:meeting, reminders_sent: [])
+
+      {:ok, updated} =
+        MeetingQueries.upsert_reminder_sent(meeting, %{
+          value: 30,
+          unit: "minutes",
+          organizer_sent: true,
+          attendee_sent: false
+        })
+
+      {:ok, updated2} =
+        MeetingQueries.upsert_reminder_sent(updated, %{
+          value: 30,
+          unit: "minutes",
+          organizer_sent: false,
+          attendee_sent: true
+        })
+
+      assert updated2.reminders_sent == [
+               %{
+                 "value" => 30,
+                 "unit" => "minutes",
+                 "organizer_sent" => true,
+                 "attendee_sent" => true
+               }
+             ]
+
+      # A second, distinct reminder config gets its own entry.
+      {:ok, updated3} =
+        MeetingQueries.upsert_reminder_sent(updated2, %{
+          value: 1,
+          unit: "hours",
+          organizer_sent: true,
+          attendee_sent: true
+        })
+
+      assert length(updated3.reminders_sent) == 2
+
+      assert %{
+               "value" => 1,
+               "unit" => "hours",
+               "organizer_sent" => true,
+               "attendee_sent" => true
+             } in updated3.reminders_sent
+    end
+
+    test "handles nil reminders_sent" do
+      meeting = insert(:meeting, reminders_sent: nil)
+
+      {:ok, updated} =
+        MeetingQueries.upsert_reminder_sent(meeting, %{
+          value: 30,
+          unit: "minutes",
+          organizer_sent: true,
+          attendee_sent: true
+        })
+
+      assert updated.reminders_sent == [
+               %{
+                 "value" => 30,
+                 "unit" => "minutes",
+                 "organizer_sent" => true,
+                 "attendee_sent" => true
+               }
+             ]
+    end
+
+    test "treats a pre-existing entry with no per-recipient flags as already fully sent" do
+      meeting =
+        insert(:meeting, reminders_sent: [%{"value" => 30, "unit" => "minutes"}])
+
+      {:ok, updated} =
+        MeetingQueries.upsert_reminder_sent(meeting, %{
+          value: 30,
+          unit: "minutes",
+          organizer_sent: false,
+          attendee_sent: true
+        })
+
+      assert updated.reminders_sent == [
+               %{
+                 "value" => 30,
+                 "unit" => "minutes",
+                 "organizer_sent" => true,
+                 "attendee_sent" => true
+               }
+             ]
+    end
+  end
+
+  describe "safe meeting creation (prevents double booking)" do
+    test "creates meeting when no conflicts exist" do
+      {start_time, end_time} = build_meeting_times(1, 60)
+
+      attrs = %{
+        uid: "safe-meeting-123",
+        title: "Safe Meeting",
+        start_time: start_time,
+        end_time: end_time,
+        organizer_name: "Test Organizer",
+        organizer_email: "organizer@example.com",
+        attendee_name: "Test Attendee",
+        attendee_email: "attendee@example.com"
+      }
+
+      {:ok, meeting} = Scheduling.create_meeting_with_conflict_check(attrs)
+      assert meeting.uid == "safe-meeting-123"
+    end
+
+    test "prevents double booking with conflict error" do
+      {existing_start, existing_end} = build_meeting_times(1, 60)
+
+      insert(:meeting,
+        start_time: existing_start,
+        end_time: existing_end,
+        status: "confirmed"
+      )
+
+      conflicting_attrs = %{
+        uid: "conflicting-meeting-456",
+        title: "Conflicting Meeting",
+        start_time: DateTime.add(existing_start, 30, :minute),
+        end_time: DateTime.add(existing_end, 30, :minute),
+        organizer_name: "Test Organizer",
+        organizer_email: "organizer@example.com",
+        attendee_name: "Test Attendee",
+        attendee_email: "attendee@example.com"
+      }
+
+      {:error, :time_conflict} =
+        Scheduling.create_meeting_with_conflict_check(conflicting_attrs)
+    end
+  end
+
+  describe "safe meeting updates (prevents conflicts)" do
+    test "updates meeting when no conflicts exist" do
+      meeting = insert(:meeting)
+      {new_start, new_end} = build_meeting_times(2, 60)
+
+      attrs = %{
+        title: "Rescheduled Meeting",
+        start_time: new_start,
+        end_time: new_end
+      }
+
+      {:ok, updated} = Scheduling.update_meeting_with_conflict_check(meeting, attrs)
+      assert updated.start_time == new_start
+    end
+
+    test "prevents reschedule conflicts" do
+      meeting1 = insert(:meeting)
+
+      {start_time2, end_time2} = build_meeting_times(2, 60)
+
+      meeting2 =
+        insert(:meeting,
+          start_time: start_time2,
+          end_time: end_time2,
+          status: "confirmed"
+        )
+
+      conflicting_reschedule = %{
+        start_time: DateTime.add(meeting2.start_time, 30, :minute),
+        end_time: DateTime.add(meeting2.end_time, 30, :minute)
+      }
+
+      {:error, :time_conflict} =
+        Scheduling.update_meeting_with_conflict_check(meeting1, conflicting_reschedule)
+    end
+  end
+
+  describe "buffer time conflict detection" do
+    test "respects buffer time between meetings" do
+      user = insert(:user)
+      profile = insert(:profile, user: user)
+      insert(:availability_schedule, profile: profile, is_default: true, buffer_minutes: 30)
+
+      {start_time1, end_time1} = build_meeting_times(1, 60)
+
+      attrs1 = %{
+        uid: "first-meeting",
+        title: "First Meeting",
+        start_time: start_time1,
+        end_time: end_time1,
+        organizer_name: "Test Organizer",
+        organizer_email: "organizer@example.com",
+        organizer_user_id: user.id,
+        attendee_name: "Test Attendee",
+        attendee_email: "attendee@example.com",
+        status: "confirmed"
+      }
+
+      {:ok, _meeting1} = Scheduling.create_meeting_with_conflict_check(attrs1)
+
+      # Should conflict: only 15 minutes buffer
+      insufficient_buffer_start = DateTime.add(end_time1, 15, :minute)
+
+      insufficient_buffer_attrs =
+        Map.merge(attrs1, %{
+          uid: "insufficient-buffer",
+          start_time: insufficient_buffer_start,
+          end_time: DateTime.add(insufficient_buffer_start, 60, :minute)
+        })
+
+      {:error, :time_conflict} =
+        Scheduling.create_meeting_with_conflict_check(insufficient_buffer_attrs)
+
+      # Should succeed: 45 minutes buffer (exceeds required 30)
+      sufficient_buffer_start = DateTime.add(end_time1, 45, :minute)
+
+      sufficient_buffer_attrs =
+        Map.merge(attrs1, %{
+          uid: "sufficient-buffer",
+          start_time: sufficient_buffer_start,
+          end_time: DateTime.add(sufficient_buffer_start, 60, :minute)
+        })
+
+      {:ok, meeting3} = Scheduling.create_meeting_with_conflict_check(sufficient_buffer_attrs)
+      assert meeting3.uid == "sufficient-buffer"
+    end
+  end
+
+  describe "count_bookings/3" do
+    test "counts bookings for the organizer within the window" do
+      user = insert(:user)
+      other_user = insert(:user)
+      now = DateTime.utc_now()
+      from = DateTime.add(now, -3600, :second)
+      to = DateTime.add(now, 3600, :second)
+      base = DateTime.truncate(DateTime.add(now, 1, :day), :second)
+
+      insert_meeting_at(user.id, base)
+      insert_meeting_at(user.id, DateTime.add(base, 3600, :second))
+      insert_meeting_at(other_user.id, base)
+
+      assert MeetingQueries.count_bookings(user.id, from, to) == 2
+      assert MeetingQueries.count_bookings(other_user.id, from, to) == 1
+    end
+
+    test "excludes bookings outside the date range" do
+      user = insert(:user)
+      now = DateTime.utc_now()
+      base = DateTime.truncate(DateTime.add(now, 1, :day), :second)
+
+      insert_meeting_at(user.id, base)
+
+      past_from = DateTime.add(now, -7200, :second)
+      past_to = DateTime.add(now, -3600, :second)
+
+      assert MeetingQueries.count_bookings(user.id, past_from, past_to) == 0
+    end
+
+    test "returns 0 when the user has no bookings" do
+      user = insert(:user)
+      now = DateTime.utc_now()
+      from = DateTime.add(now, -3600, :second)
+      to = DateTime.add(now, 3600, :second)
+
+      assert MeetingQueries.count_bookings(user.id, from, to) == 0
+    end
+  end
+
+  describe "count_by_utm_source/3" do
+    test "groups bookings by utm_source for the organizer" do
+      user = insert(:user)
+      now = DateTime.utc_now()
+      from = DateTime.add(now, -3600, :second)
+      to = DateTime.add(now, 3600, :second)
+      base = DateTime.truncate(DateTime.add(now, 1, :day), :second)
+
+      insert_meeting_at(user.id, base, utm_source: "linkedin")
+      insert_meeting_at(user.id, DateTime.add(base, 3600, :second), utm_source: "linkedin")
+      insert_meeting_at(user.id, DateTime.add(base, 7200, :second), utm_source: "twitter")
+
+      result = MeetingQueries.count_by_utm_source(user.id, from, to)
+
+      linkedin = Enum.find(result, &(&1.utm_source == "linkedin"))
+      twitter = Enum.find(result, &(&1.utm_source == "twitter"))
+
+      assert linkedin.bookings == 2
+      assert twitter.bookings == 1
+    end
+
+    test "does not return a row for nil utm_source (direct/unknown)" do
+      user = insert(:user)
+      now = DateTime.utc_now()
+      from = DateTime.add(now, -3600, :second)
+      to = DateTime.add(now, 3600, :second)
+      base = DateTime.truncate(DateTime.add(now, 1, :day), :second)
+
+      insert_meeting_at(user.id, base, utm_source: nil)
+      insert_meeting_at(user.id, DateTime.add(base, 3600, :second), utm_source: "linkedin")
+
+      result = MeetingQueries.count_by_utm_source(user.id, from, to)
+
+      assert length(result) == 1
+      assert hd(result).utm_source == "linkedin"
+    end
+
+    test "returns only rows for the given organizer" do
+      user = insert(:user)
+      other_user = insert(:user)
+      now = DateTime.utc_now()
+      from = DateTime.add(now, -3600, :second)
+      to = DateTime.add(now, 3600, :second)
+      base = DateTime.truncate(DateTime.add(now, 1, :day), :second)
+
+      insert_meeting_at(user.id, base, utm_source: "linkedin")
+      insert_meeting_at(other_user.id, base, utm_source: "twitter")
+
+      result = MeetingQueries.count_by_utm_source(user.id, from, to)
+
+      assert length(result) == 1
+      assert hd(result).utm_source == "linkedin"
+    end
+  end
+
+  describe "count_with_video_room_for_integration/3" do
+    setup do
+      user = insert(:user)
+      integration = insert(:video_integration, user: user, provider: "nextcloud_talk")
+      now = DateTime.utc_now()
+
+      insert_room(user, integration, 1, "upcoming")
+      insert_room(user, integration, -2, "ended")
+      insert_room(user, integration, 2, "cancelled", status: "cancelled")
+
+      # Neither of these holds a room this integration could delete.
+      insert_room(user, integration, 3, nil)
+      other = insert(:video_integration, user: user, provider: "nextcloud_talk")
+      insert_room(user, other, 4, "elsewhere")
+
+      %{integration: integration, now: now}
+    end
+
+    test "counts only upcoming live bookings for the upcoming scope", ctx do
+      assert MeetingQueries.count_with_video_room_for_integration(
+               ctx.integration.id,
+               :upcoming,
+               ctx.now
+             ) == 1
+    end
+
+    test "counts every room still held, ended and cancelled included, for the all scope",
+         ctx do
+      assert MeetingQueries.count_with_video_room_for_integration(
+               ctx.integration.id,
+               :all,
+               ctx.now
+             ) == 3
+    end
+  end
+
+  describe "list_upcoming_video_rooms_for_integration/3" do
+    setup do
+      user = insert(:user)
+      integration = insert(:video_integration, user: user, provider: "nextcloud_talk")
+      now = DateTime.utc_now(:second)
+
+      later = insert_room(user, integration, 2, "later")
+      sooner = insert_room(user, integration, 1, "sooner", status: "pending")
+
+      # Started an hour ago and still running: it has not ended, so it counts.
+      running =
+        insert_meeting_at(user.id, DateTime.add(now, -1, :hour),
+          end_time: DateTime.add(now, 1, :hour),
+          video_integration_id: integration.id,
+          video_room_id: "running"
+        )
+
+      cancelled = insert_room(user, integration, 3, "cancelled", status: "cancelled")
+      expired = insert_room(user, integration, 4, "expired", status: "expired")
+
+      insert_room(user, integration, -2, "ended")
+      insert_room(user, integration, 5, nil)
+      other = insert(:video_integration, user: user, provider: "nextcloud_talk")
+      insert_room(user, other, 6, "elsewhere")
+
+      expected = [
+        %{id: running.id, status: "confirmed"},
+        %{id: sooner.id, status: "pending"},
+        %{id: later.id, status: "confirmed"},
+        %{id: cancelled.id, status: "cancelled"},
+        %{id: expired.id, status: "expired"}
+      ]
+
+      %{integration: integration, now: now, expected: expected}
+    end
+
+    test "lists the meetings with a room that have not ended, soonest first, with their status",
+         ctx do
+      assert MeetingListQueries.list_upcoming_video_rooms_for_integration(
+               ctx.integration.id,
+               ctx.now,
+               10
+             ) == ctx.expected
+    end
+
+    test "returns no more than the limit, keeping the soonest", ctx do
+      assert MeetingListQueries.list_upcoming_video_rooms_for_integration(
+               ctx.integration.id,
+               ctx.now,
+               2
+             ) == Enum.take(ctx.expected, 2)
+    end
+  end
+
+  defp insert_room(user, integration, offset_days, room_id, extra \\ []) do
+    start_time = build_base_start_time(offset_days)
+
+    insert_meeting_at(
+      user.id,
+      start_time,
+      [video_integration_id: integration.id, video_room_id: room_id] ++ extra
+    )
+  end
+
+  defp insert_meeting_at(organizer_id, start_time, extra \\ []) do
+    attrs =
+      [
+        organizer_user_id: organizer_id,
+        start_time: start_time,
+        end_time: DateTime.add(start_time, 60, :minute)
+      ] ++ extra
+
+    insert(:meeting, attrs)
+  end
+end

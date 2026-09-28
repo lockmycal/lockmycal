@@ -1,0 +1,190 @@
+defmodule Tymeslot.Integrations.Calendar.Orchestration.Workflows do
+  @moduledoc """
+  Complex multi-step calendar workflows.
+
+  Responsibilities:
+  - Asynchronous calendar list refresh workflows
+  - Integration discovery and update pipelines
+  - Discovery with filtering and validation
+  """
+
+  require Logger
+  alias Tymeslot.Integrations.Calendar.Discovery
+  alias Tymeslot.Integrations.Calendar.Selection
+  alias Tymeslot.Integrations.CalendarManagement
+
+  @type user_id :: pos_integer()
+  @type integration_id :: pos_integer()
+
+  @doc """
+  Initiates an asynchronous calendar list refresh for an integration.
+  Discovers fresh calendars from the provider and updates the database.
+  Sends {:calendar_list_refreshed, component_id, integration_id, calendars} back to
+  the caller, where `calendars` is a `[CalendarEntry.t()]` — the same shape as
+  `integration.calendar_list` — so every consumer sees one shape regardless of path.
+  """
+  @spec refresh_calendar_list_async(integration_id(), user_id(), String.t()) :: {:ok, pid()}
+  def refresh_calendar_list_async(integration_id, user_id, component_id) do
+    parent = self()
+
+    Logger.info("Starting async calendar list refresh",
+      integration_id: integration_id,
+      user_id: user_id
+    )
+
+    Task.Supervisor.start_child(Tymeslot.TaskSupervisor, fn ->
+      case CalendarManagement.get_calendar_integration(integration_id, user_id) do
+        {:ok, integration} ->
+          case Discovery.discover_calendars_for_integration(integration) do
+            {:ok, calendars} ->
+              Logger.info("Successfully discovered calendars",
+                integration_id: integration_id,
+                count: length(calendars)
+              )
+
+              # Merge with existing selection so refreshing the list doesn't
+              # silently un-select calendars the user previously enabled.
+              merged =
+                calendars
+                |> Selection.unify_discovered_with_existing(integration.calendar_list)
+                |> keep_selection_if_emptied(integration.calendar_list)
+
+              case Selection.persist_calendar_list(integration, merged) do
+                {:ok, _integration} ->
+                  send(
+                    parent,
+                    {:calendar_list_refreshed, component_id, integration_id, merged}
+                  )
+
+                {:error, reason} ->
+                  Logger.error("Failed to persist calendar list",
+                    integration_id: integration_id,
+                    error: inspect(reason)
+                  )
+
+                  send(
+                    parent,
+                    {:calendar_list_refreshed, component_id, integration_id,
+                     integration.calendar_list}
+                  )
+              end
+
+            {:error, reason} ->
+              Logger.error("Failed to discover calendars",
+                integration_id: integration_id,
+                error: inspect(reason)
+              )
+
+              send(
+                parent,
+                {:calendar_list_refreshed, component_id, integration_id,
+                 integration.calendar_list}
+              )
+          end
+
+        {:error, reason} ->
+          Logger.error("Failed to find integration for calendar refresh",
+            integration_id: integration_id,
+            error: inspect(reason)
+          )
+
+          send(parent, {:calendar_list_refreshed, component_id, integration_id, []})
+      end
+    end)
+  end
+
+  @doc """
+  Discover calendars and update the integration with merged selection state.
+  Persists the updated calendar_list to the database.
+
+  Preserves existing selection state if discovery returns empty but integration
+  previously had calendars selected, to prevent accidental data loss.
+  """
+  @spec update_integration_with_discovery(map()) ::
+          {:ok, Tymeslot.Integrations.Calendar.CalendarIntegrationSchema.t()} | {:error, term()}
+  def update_integration_with_discovery(integration) do
+    with {:ok, refreshed_integration} <- reload_integration(integration),
+         {:ok, merged} <- Selection.discover_with_selection(refreshed_integration) do
+      final_calendar_list =
+        keep_selection_if_emptied(merged, refreshed_integration.calendar_list)
+
+      case Selection.persist_calendar_list(refreshed_integration, final_calendar_list) do
+        {:ok, updated} -> {:ok, updated}
+        error -> error
+      end
+    else
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  Discovers calendars for raw credentials and filters them for valid paths.
+
+  `user_id` is the plain owner id the discovery is charged to; the
+  rate-limiter actor tuple is built here rather than by the caller.
+  """
+  @spec discover_and_filter_calendars(
+          atom() | String.t(),
+          String.t(),
+          String.t(),
+          String.t(),
+          user_id(),
+          keyword()
+        ) ::
+          {:ok, %{calendars: list(), discovery_credentials: map()}} | {:error, any()}
+  def discover_and_filter_calendars(provider, url, username, password, user_id, opts) do
+    case Discovery.discover_calendars_for_credentials(
+           provider,
+           url,
+           username,
+           password,
+           Keyword.merge(opts, force_refresh: true, actor: {:user, user_id})
+         ) do
+      {:ok, %{calendars: calendars, discovery_credentials: credentials}} ->
+        # Drops anything the sync could not later ask the server for. An EWS
+        # folder has no path of its own — it is named by the opaque `FolderId`
+        # the server issues — but `CalendarEntry.with_defaults/1` has already
+        # copied that id into `path` by this point, so one filter serves both
+        # families.
+        {:ok,
+         %{
+           calendars: Enum.filter(calendars, &is_binary(&1.path)),
+           discovery_credentials: credentials
+         }}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # --- Private Helpers ---
+
+  defp reload_integration(%{id: id, user_id: user_id} = _integration)
+       when is_integer(id) and is_integer(user_id) do
+    case CalendarManagement.get_calendar_integration(id, user_id) do
+      {:ok, fresh} -> {:ok, fresh}
+      {:error, :not_found} -> {:error, :not_found}
+    end
+  end
+
+  defp reload_integration(integration), do: {:ok, integration}
+
+  # `calendar_paths` is derived from the `selected` flags on `calendar_list`, so
+  # a re-discovery that matches nothing — an empty result, or a server that
+  # changed the shape of the hrefs it returns — silently deselects everything
+  # and leaves the integration syncing no calendars at all. Discovery is
+  # triggered by opening a meeting-type form, so this can happen without the
+  # owner touching their calendar settings. Keep the stored list whenever the
+  # merge would empty a selection that was not empty before; deselecting every
+  # calendar deliberately still works, because that goes through
+  # `Selection.persist_calendar_list/2` directly rather than through discovery.
+  defp keep_selection_if_emptied(merged, existing) do
+    if Selection.derive_selected_paths(merged) == [] and
+         Selection.derive_selected_paths(existing) != [] do
+      existing
+    else
+      merged
+    end
+  end
+end

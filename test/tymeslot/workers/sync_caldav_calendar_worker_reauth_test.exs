@@ -1,0 +1,217 @@
+defmodule Tymeslot.Workers.SyncCalDavCalendarWorkerReauthTest do
+  @moduledoc """
+  A sync worker that encounters a credential it cannot decrypt must flag the
+  integration as `needs_reauth` and complete the Oban job with `{:discard, _}`
+  — never crash. Once the user reconnects, the flag must clear so the
+  sweep-level `needs_reauth` filter doesn't keep the integration stranded.
+  """
+  use Tymeslot.DataCase, async: false
+
+  @moduletag :workers
+  @moduletag :calendar
+  @moduletag :security
+  @moduletag :integrations
+
+  use Oban.Testing, repo: Tymeslot.Repo
+
+  import Req.Test, only: [set_req_test_to_shared: 1]
+  import Tymeslot.ConfigTestHelpers
+
+  alias Plug.Conn
+  alias Req.Test, as: ReqTest
+  alias Tymeslot.Integrations.Calendar.CalendarIntegrationQueries
+  alias Tymeslot.Integrations.Calendar.CalendarIntegrationSchema
+  alias Tymeslot.Repo
+  alias Tymeslot.Security.Encryption
+  alias Tymeslot.Workers.SyncCalDavCalendarWorker
+
+  defp assert_flags_reauth_on_401(integration) do
+    ReqTest.stub(:tymeslot_http, fn conn -> Conn.send_resp(conn, 401, "Unauthorized") end)
+
+    assert {:discard, _reason} =
+             perform_job(SyncCalDavCalendarWorker, %{
+               "calendar_integration_id" => integration.id
+             })
+
+    reloaded = Repo.get!(CalendarIntegrationSchema, integration.id)
+    assert reloaded.needs_reauth == true
+
+    assert reloaded.sync_error ==
+             "CalDAV server rejected the stored credentials. Please reconnect the integration."
+  end
+
+  describe "perform/1 when the CalDAV server returns 401" do
+    # Route CalDAV HTTP through the real HTTPClient so `Req.Test` can intercept
+    # the PROPFIND the worker sends on the tier-detection probe.
+    setup :set_req_test_to_shared
+
+    setup do
+      with_config(:tymeslot, :http_client_module, Tymeslot.Infrastructure.HTTPClient)
+      with_config(:tymeslot, :req_test_plug, {Req.Test, :tymeslot_http})
+      :ok
+    end
+
+    setup do
+      integration =
+        insert(:calendar_integration,
+          provider: "caldav",
+          base_url: "http://localhost:65432",
+          username_encrypted: Encryption.encrypt("alice"),
+          password_encrypted: Encryption.encrypt("expired"),
+          calendar_paths: ["/calendars/alice/default/"],
+          provider_account_id: "http://localhost:65432||alice",
+          is_active: true,
+          needs_reauth: false
+        )
+
+      %{integration: integration}
+    end
+
+    test "flips needs_reauth and records a sync error", %{integration: integration} do
+      # Every request the worker makes to the CalDAV server comes back 401,
+      # mirroring a server-side credential rejection.
+      assert_flags_reauth_on_401(integration)
+    end
+  end
+
+  describe "perform/1 when the CalDAV server returns 401 mid-sync (after tier detection)" do
+    # Route CalDAV HTTP through the real HTTPClient so `Req.Test` can intercept
+    # the sync request the worker sends after tier detection is skipped.
+    setup :set_req_test_to_shared
+
+    setup do
+      with_config(:tymeslot, :http_client_module, Tymeslot.Infrastructure.HTTPClient)
+      with_config(:tymeslot, :req_test_plug, {Req.Test, :tymeslot_http})
+      :ok
+    end
+
+    setup do
+      # Pre-set caldav_sync_tier to 1 so tier detection is skipped and the
+      # sync goes straight into Tier 1. With no stored token, the first request
+      # the worker makes is the sync-token PROPFIND, which returns 401 —
+      # exercising the mid-sync reauth branch rather than the tier-detection
+      # one.
+      integration =
+        insert(:calendar_integration,
+          provider: "caldav",
+          base_url: "http://localhost:65432",
+          username_encrypted: Encryption.encrypt("alice"),
+          password_encrypted: Encryption.encrypt("expired"),
+          calendar_paths: ["/calendars/alice/default/"],
+          provider_account_id: "http://localhost:65432||alice",
+          is_active: true,
+          needs_reauth: false,
+          caldav_sync_tier: 1
+        )
+
+      %{integration: integration}
+    end
+
+    test "flags needs_reauth and discards the job", %{integration: integration} do
+      # Every request the worker makes returns 401 — the Tier 1 sync-token
+      # PROPFIND that fires after tier detection was skipped returns
+      # :unauthorized, and the worker flags the integration for reauth.
+      assert_flags_reauth_on_401(integration)
+    end
+  end
+
+  describe "perform/1 when stored credentials cannot be decrypted" do
+    test "flags the integration for reauth and discards the job without crashing" do
+      # A credential encrypted under a key that is genuinely gone (or a corrupt
+      # value) verifies under no key in the keyring. Since the data key is now
+      # decoupled from SECRET_KEY_BASE, rotating the session secret no longer
+      # produces this — so simulate real key loss with undecryptable bytes.
+      integration =
+        insert(:calendar_integration,
+          provider: "caldav",
+          is_active: true,
+          username_encrypted: :crypto.strong_rand_bytes(40),
+          password_encrypted: :crypto.strong_rand_bytes(40)
+        )
+
+      refute integration.needs_reauth
+
+      assert {:discard, reason} =
+               perform_job(SyncCalDavCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+
+      assert reason =~ "reauthentication"
+
+      reloaded = Repo.get!(CalendarIntegrationSchema, integration.id)
+      assert reloaded.needs_reauth == true
+      assert reloaded.sync_error =~ "could not be decrypted"
+    end
+  end
+
+  describe "sweep filter" do
+    test "stream_all_active skips integrations with needs_reauth: true" do
+      healthy = insert(:calendar_integration, provider: "caldav", is_active: true)
+
+      flagged =
+        insert(:calendar_integration,
+          provider: "caldav",
+          is_active: true,
+          needs_reauth: true
+        )
+
+      ids =
+        CalendarIntegrationQueries.stream_all_active(100, [], fn row, acc ->
+          [row.id | acc]
+        end)
+
+      assert healthy.id in ids
+      refute flagged.id in ids
+    end
+  end
+
+  describe "clearing needs_reauth on reconnect" do
+    setup do
+      integration =
+        insert(:calendar_integration,
+          provider: "caldav",
+          is_active: true,
+          needs_reauth: true
+        )
+
+      %{integration: integration}
+    end
+
+    test "update_credentials/2 clears the flag", %{integration: integration} do
+      {:ok, reconnected} =
+        CalendarIntegrationQueries.update_credentials(integration, %{
+          username: "user@example.com",
+          password: "new-password"
+        })
+
+      refute reconnected.needs_reauth
+    end
+
+    test "update/2 leaves the flag intact even when it writes credentials", %{
+      integration: integration
+    } do
+      # The regression this guards: credentials are encrypted with a fresh
+      # nonce per write, so any update that touches one produces a changed
+      # ciphertext whether or not the credential itself changed. Clearing the
+      # flag on that signal meant the hourly background token refresh silently
+      # un-flagged integrations that were broken for unrelated reasons, putting
+      # them straight back into the sync sweep.
+      {:ok, refreshed} =
+        CalendarIntegrationQueries.update(integration, %{
+          username: "user@example.com",
+          password: "new-password"
+        })
+
+      assert refreshed.needs_reauth
+    end
+
+    test "update/2 without credential changes leaves the flag intact", %{
+      integration: integration
+    } do
+      {:ok, renamed} =
+        CalendarIntegrationQueries.update(integration, %{name: "Renamed only"})
+
+      assert renamed.needs_reauth
+    end
+  end
+end

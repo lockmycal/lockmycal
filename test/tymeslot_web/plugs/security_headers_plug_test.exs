@@ -1,0 +1,549 @@
+defmodule TymeslotWeb.Plugs.SecurityHeadersPlugTest do
+  # async: false: :analytics_providers is read by SecurityHeadersPlug on every request and
+  # by the layout on every render, so writing it concurrently rewrites the CSP
+  # of every test in flight.
+  use TymeslotWeb.ConnCase, async: false
+
+  @moduletag :plugs
+  @moduletag :security
+
+  alias TymeslotWeb.Plugs.SecurityHeadersPlug
+  import Tymeslot.Factory
+
+  describe "security headers without embedding" do
+    test "sets default security headers", %{conn: conn} do
+      conn = SecurityHeadersPlug.call(conn, [])
+
+      assert get_resp_header(conn, "x-frame-options") == ["DENY"]
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "frame-ancestors 'none'"
+      assert get_resp_header(conn, "x-content-type-options") == ["nosniff"]
+      assert get_resp_header(conn, "referrer-policy") == ["strict-origin-when-cross-origin"]
+
+      # Core's shipped default: `max-age` binds this host, and neither
+      # directive that reaches an operator's other subdomains is sent unless
+      # they opt in. Pinned as a literal rather than rebuilt from :hsts config,
+      # so a change to that default fails here instead of moving with it.
+      # Every directive combination is covered in
+      # TymeslotWeb.Plugs.SecurityHeaders.HstsTest.
+      assert get_resp_header(conn, "strict-transport-security") == ["max-age=31536000"]
+
+      # Legacy headers must no longer be sent (deprecated / obsolete).
+      assert get_resp_header(conn, "x-xss-protection") == []
+      assert get_resp_header(conn, "expect-ct") == []
+    end
+
+    test "CSP header contains required directives", %{conn: conn} do
+      conn = SecurityHeadersPlug.call(conn, [])
+      [csp] = get_resp_header(conn, "content-security-policy")
+
+      assert csp =~ "default-src 'self'"
+      assert csp =~ "script-src"
+      assert csp =~ "style-src"
+      assert csp =~ "img-src"
+      assert csp =~ "font-src"
+      assert csp =~ "connect-src"
+      assert csp =~ "frame-src"
+      assert csp =~ "base-uri 'self'"
+      assert csp =~ "form-action 'self'"
+
+      # Connect onboarding posts to a controller that redirects to
+      # connect.stripe.com; Chrome enforces form-action on the redirect.
+      assert csp =~
+               "form-action 'self' https://billing.stripe.com https://checkout.stripe.com https://connect.stripe.com"
+    end
+  end
+
+  describe "security headers with universal framing (:any)" do
+    test "omits frame-ancestors so the page frames on any origin", %{conn: conn} do
+      conn = SecurityHeadersPlug.call(conn, allow_embedding: :any)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      refute csp =~ "frame-ancestors"
+      # Other directives are still present.
+      assert csp =~ "default-src 'self'"
+      assert csp =~ "script-src"
+    end
+
+    test "sends no X-Frame-Options, deleting any set upstream", %{conn: conn} do
+      conn =
+        conn
+        |> put_resp_header("x-frame-options", "SAMEORIGIN")
+        |> SecurityHeadersPlug.call(allow_embedding: :any)
+
+      assert get_resp_header(conn, "x-frame-options") == []
+    end
+  end
+
+  describe "security headers with embedding enabled (configured domains)" do
+    setup do
+      user = insert(:user)
+
+      profile =
+        insert(:profile,
+          user: user,
+          username: "testuser",
+          allowed_embed_domains: ["example.com", "my-site.net"]
+        )
+
+      {:ok, profile: profile}
+    end
+
+    test "sets frame-ancestors with allowed domains and their www variants", %{
+      conn: conn,
+      profile: profile
+    } do
+      conn =
+        conn
+        |> Map.put(:request_path, "/#{profile.username}")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      # X-Frame-Options is omitted — frame-ancestors is the authority and browsers
+      # log a warning when both are present
+      assert get_resp_header(conn, "x-frame-options") == []
+
+      # CSP frame-ancestors should list allowed domains plus www variants
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "https://example.com"
+      assert csp =~ "https://www.example.com"
+      assert csp =~ "https://my-site.net"
+      assert csp =~ "https://www.my-site.net"
+    end
+
+    test "builds HTTPS URLs for allowed domains", %{conn: conn, profile: profile} do
+      conn =
+        conn
+        |> Map.put(:request_path, "/#{profile.username}")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "https://example.com"
+      assert csp =~ "https://my-site.net"
+      refute csp =~ "http://example.com"
+    end
+
+    test "handles local development hosts with HTTP and port wildcards", %{conn: conn} do
+      user = insert(:user)
+
+      profile =
+        insert(:profile,
+          user: user,
+          username: "devuser",
+          allowed_embed_domains: ["localhost", "127.0.0.1", "::1"]
+        )
+
+      conn =
+        conn
+        |> Map.put(:request_path, "/#{profile.username}")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "frame-ancestors 'self' http://localhost:* http://127.0.0.1:* http://::1:*"
+
+      assert get_resp_header(conn, "x-frame-options") == []
+    end
+
+    test "does not expand www for wildcard domains", %{conn: conn} do
+      user = insert(:user)
+
+      insert(:profile,
+        user: user,
+        username: "wildcardwww",
+        allowed_embed_domains: ["*.example.com"]
+      )
+
+      conn =
+        conn
+        |> Map.put(:request_path, "/wildcardwww")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "https://*.example.com"
+      # Wildcard already covers www, so no www.*.example.com should appear
+      refute csp =~ "www.*.example.com"
+    end
+
+    test "expands www.example.com to include bare domain in CSP", %{conn: conn} do
+      user = insert(:user)
+
+      insert(:profile,
+        user: user,
+        username: "wwwuser",
+        allowed_embed_domains: ["www.mysite.com"]
+      )
+
+      conn =
+        conn
+        |> Map.put(:request_path, "/wwwuser")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "https://www.mysite.com"
+      assert csp =~ "https://mysite.com"
+    end
+
+    test "handles wildcard domains in CSP", %{conn: conn} do
+      user = insert(:user)
+
+      profile =
+        insert(:profile,
+          user: user,
+          username: "wildcarduser",
+          allowed_embed_domains: ["*.example.com", "other-site.net"]
+        )
+
+      conn =
+        conn
+        |> Map.put(:request_path, "/#{profile.username}")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "https://*.example.com"
+      assert csp =~ "https://other-site.net"
+    end
+
+    test "omits X-Frame-Options for embed-allowed pages", %{conn: conn, profile: profile} do
+      conn =
+        conn
+        |> Map.put(:request_path, "/#{profile.username}")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      # X-Frame-Options is omitted entirely when frame-ancestors is present — browsers
+      # log a warning when both headers are set
+      assert get_resp_header(conn, "x-frame-options") == []
+    end
+
+    test "preview=true still uses configured domains when they are set", %{
+      conn: conn,
+      profile: profile
+    } do
+      # When a profile has allowed domains, 'self' is always included in
+      # frame-ancestors, so the same-origin dashboard Live Preview works without
+      # any special handling. preview=true only changes behaviour for profiles
+      # that have no configured domains (disabled state).
+      conn =
+        conn
+        |> Map.put(:request_path, "/#{profile.username}")
+        |> Map.put(:query_params, %{"preview" => "true"})
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      # 'self' is always in frame-ancestors when domains are configured, so the
+      # dashboard (same-origin) can embed the preview iframe regardless.
+      assert csp =~ "frame-ancestors 'self'"
+      assert csp =~ "https://example.com"
+    end
+  end
+
+  describe "security headers with embedding enabled (permissive)" do
+    test "allows localhost embedding when no domains are configured (dev/test env)", %{conn: conn} do
+      user = insert(:user)
+      profile = insert(:profile, user: user, username: "openuser", allowed_embed_domains: [])
+
+      conn =
+        conn
+        |> Map.put(:request_path, "/#{profile.username}")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      # X-Frame-Options is omitted — CSP frame-ancestors is the authority
+      assert get_resp_header(conn, "x-frame-options") == []
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "frame-ancestors 'self' http://localhost:* http://127.0.0.1:*"
+    end
+
+    test "allows localhost embedding when allowed_embed_domains is nil (dev/test env)", %{
+      conn: conn
+    } do
+      user = insert(:user)
+      profile = insert(:profile, user: user, username: "niluser", allowed_embed_domains: nil)
+
+      conn =
+        conn
+        |> Map.put(:request_path, "/#{profile.username}")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "frame-ancestors 'self' http://localhost:* http://127.0.0.1:*"
+
+      assert get_resp_header(conn, "x-frame-options") == []
+    end
+
+    test "blocks all embeds when no username is in path", %{conn: conn} do
+      conn =
+        conn
+        |> Map.put(:request_path, "/demo/test")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "frame-ancestors 'none'"
+
+      assert get_resp_header(conn, "x-frame-options") == ["DENY"]
+    end
+
+    test "falls back to blocking when profile not found", %{conn: conn} do
+      conn =
+        conn
+        |> Map.put(:request_path, "/nonexistentuser")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "frame-ancestors 'none'"
+
+      assert get_resp_header(conn, "x-frame-options") == ["DENY"]
+    end
+
+    test "doesn't extract username from reserved paths and blocks embedding", %{conn: conn} do
+      reserved_paths = [
+        "/auth/login",
+        "/dashboard",
+        "/api/endpoint",
+        "/assets/app.js",
+        "/docs/embed",
+        "/embed.js"
+      ]
+
+      for path <- reserved_paths do
+        conn =
+          conn
+          |> Map.put(:request_path, path)
+          |> SecurityHeadersPlug.call(allow_embedding: true)
+
+        assert [csp] = get_resp_header(conn, "content-security-policy")
+        assert csp =~ "frame-ancestors 'none'"
+      end
+    end
+
+    test "allows SAMEORIGIN framing when preview=true is passed", %{conn: conn} do
+      user = insert(:user)
+      profile = insert(:profile, user: user, username: "previewuser", allowed_embed_domains: [])
+
+      conn =
+        conn
+        |> Map.put(:request_path, "/#{profile.username}")
+        |> Map.put(:query_params, %{"preview" => "true"})
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert get_resp_header(conn, "x-frame-options") == ["SAMEORIGIN"]
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "frame-ancestors 'self'"
+    end
+
+    test "preview=true does NOT open framing to a disallowed third-party origin", %{conn: conn} do
+      # Defense-in-depth regression: EmbedAuthHook skips the application-level
+      # allowlist check on a preview render, so CSP frame-ancestors is the ONLY
+      # thing stopping a disallowed origin from framing a preview URL. This test
+      # locks that in — preview=true must keep frame-ancestors at 'self' (same
+      # origin only) and must NOT echo any arbitrary cross-origin host. A
+      # disallowed embedder (https://evil.com) therefore cannot frame the page
+      # at all, regardless of the hook's preview exemption.
+      user = insert(:user)
+      profile = insert(:profile, user: user, username: "previewguard", allowed_embed_domains: [])
+
+      conn =
+        conn
+        |> Map.put(:request_path, "/#{profile.username}")
+        |> Map.put(:query_params, %{"preview" => "true"})
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      refute csp =~ "evil.com"
+
+      # Isolate the frame-ancestors directive — other directives (script-src,
+      # etc.) legitimately carry https origins, so the assertion must target
+      # only the framing directive.
+      [frame_ancestors] =
+        csp
+        |> String.split("; ")
+        |> Enum.filter(&String.starts_with?(&1, "frame-ancestors"))
+
+      # 'self' is the whole allowance — no third-party origin is permitted.
+      assert frame_ancestors == "frame-ancestors 'self'"
+    end
+  end
+
+  describe "username extraction" do
+    test "extracts username from root path", %{conn: conn} do
+      user = insert(:user)
+      _profile = insert(:profile, user: user, username: "john", allowed_embed_domains: [])
+
+      conn =
+        conn
+        |> Map.put(:request_path, "/john")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      # Should find the profile and use its settings
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "frame-ancestors"
+    end
+
+    test "extracts username from nested paths", %{conn: conn} do
+      user = insert(:user)
+
+      _profile =
+        insert(:profile, user: user, username: "sarah", allowed_embed_domains: ["example.com"])
+
+      conn =
+        conn
+        |> Map.put(:request_path, "/sarah/30")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "https://example.com"
+    end
+  end
+
+  describe "analytics provider script-src origins" do
+    setup do
+      original = Application.get_env(:tymeslot, :analytics_providers)
+      on_exit(fn -> Application.put_env(:tymeslot, :analytics_providers, original) end)
+      :ok
+    end
+
+    test "includes analytics script origin in script-src when a provider is configured", %{
+      conn: conn
+    } do
+      Application.put_env(:tymeslot, :analytics_providers, [
+        %{
+          provider: :umami,
+          script_url: "https://umami.example.com/script.js",
+          website_id: "abc123"
+        }
+      ])
+
+      conn = SecurityHeadersPlug.call(conn, [])
+      [csp] = get_resp_header(conn, "content-security-policy")
+
+      [script_src_directive] =
+        Enum.filter(String.split(csp, "; "), &String.starts_with?(&1, "script-src"))
+
+      assert script_src_directive =~ "https://umami.example.com"
+    end
+
+    test "does not add extra origins to script-src when no providers are configured", %{
+      conn: conn
+    } do
+      Application.put_env(:tymeslot, :analytics_providers, [])
+
+      conn = SecurityHeadersPlug.call(conn, [])
+      [csp] = get_resp_header(conn, "content-security-policy")
+
+      [script_src_directive] =
+        Enum.filter(String.split(csp, "; "), &String.starts_with?(&1, "script-src"))
+
+      nonce = conn.assigns.csp_nonce
+
+      assert script_src_directive ==
+               "script-src 'self' 'nonce-#{nonce}' https://www.google.com https://www.gstatic.com https://challenges.cloudflare.com https://js.stripe.com"
+    end
+
+    test "does not allow 'unsafe-eval' or 'unsafe-inline' in script-src", %{conn: conn} do
+      Application.put_env(:tymeslot, :analytics_providers, [])
+
+      conn = SecurityHeadersPlug.call(conn, [])
+      [csp] = get_resp_header(conn, "content-security-policy")
+
+      [script_src_directive] =
+        Enum.filter(String.split(csp, "; "), &String.starts_with?(&1, "script-src"))
+
+      refute script_src_directive =~ "unsafe-eval"
+      refute script_src_directive =~ "unsafe-inline"
+    end
+
+    test "assigns a per-request nonce and embeds the same value in script-src", %{conn: conn} do
+      conn = SecurityHeadersPlug.call(conn, [])
+      [csp] = get_resp_header(conn, "content-security-policy")
+
+      nonce = conn.assigns.csp_nonce
+
+      assert is_binary(nonce) and byte_size(nonce) >= 20
+      assert csp =~ "'nonce-#{nonce}'"
+    end
+
+    test "generates a fresh nonce on each request", %{conn: conn} do
+      nonce1 = SecurityHeadersPlug.call(conn, []).assigns.csp_nonce
+      nonce2 = SecurityHeadersPlug.call(conn, []).assigns.csp_nonce
+
+      refute nonce1 == nonce2
+    end
+
+    test "deduplicates origins when two providers share the same host", %{conn: conn} do
+      Application.put_env(:tymeslot, :analytics_providers, [
+        %{
+          provider: :umami,
+          script_url: "https://analytics.example.com/script.js",
+          website_id: "abc"
+        },
+        %{
+          provider: :umami,
+          script_url: "https://analytics.example.com/alt.js",
+          website_id: "def"
+        }
+      ])
+
+      conn = SecurityHeadersPlug.call(conn, [])
+      [csp] = get_resp_header(conn, "content-security-policy")
+
+      [script_src_directive] =
+        Enum.filter(String.split(csp, "; "), &String.starts_with?(&1, "script-src"))
+
+      origin_count =
+        script_src_directive
+        |> String.split(" ")
+        |> Enum.count(&(&1 == "https://analytics.example.com"))
+
+      assert origin_count == 1
+    end
+  end
+
+  # Production-environment tests live in SecurityHeadersPlugProdTest: they mutate
+  # the global `:tymeslot, :environment`, so they cannot run async alongside these.
+
+  describe "security header combinations" do
+    test "all security headers are present together", %{conn: conn} do
+      conn = SecurityHeadersPlug.call(conn, allow_embedding: false)
+
+      # Verify all important security headers are present
+      assert get_resp_header(conn, "content-security-policy") != []
+      assert get_resp_header(conn, "x-content-type-options") != []
+      assert get_resp_header(conn, "referrer-policy") != []
+      assert get_resp_header(conn, "strict-transport-security") != []
+      assert get_resp_header(conn, "x-frame-options") != []
+    end
+
+    test "permissions-policy denies camera, microphone and geolocation outright", %{conn: conn} do
+      conn = SecurityHeadersPlug.call(conn, allow_embedding: false)
+
+      # The empty allowlist `()` is what denies the feature; `self` or `*`
+      # would silently hand it back, so the value is pinned exactly.
+      assert get_resp_header(conn, "permissions-policy") == [
+               "camera=(), microphone=(), geolocation=()"
+             ]
+    end
+
+    test "CSP frame-ancestors is the sole embedding authority for configured domains", %{
+      conn: conn
+    } do
+      user = insert(:user)
+
+      profile =
+        insert(:profile,
+          user: user,
+          username: "restricted",
+          allowed_embed_domains: ["trusted.com"]
+        )
+
+      conn =
+        conn
+        |> Map.put(:request_path, "/#{profile.username}")
+        |> SecurityHeadersPlug.call(allow_embedding: true)
+
+      assert [csp] = get_resp_header(conn, "content-security-policy")
+      assert csp =~ "frame-ancestors 'self' https://trusted.com"
+
+      # X-Frame-Options is omitted — browsers warn when both are present
+      assert get_resp_header(conn, "x-frame-options") == []
+    end
+  end
+end

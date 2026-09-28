@@ -1,0 +1,322 @@
+defmodule Tymeslot.Integrations.Video.EventDetailsTest do
+  use Tymeslot.DataCase, async: true
+  @moduletag :integrations
+
+  import Tymeslot.Factory
+
+  alias Tymeslot.Integrations.Calendar.Attendee
+  alias Tymeslot.Integrations.Video.EventDetails
+
+  describe "from_creating_form/1" do
+    test "builds a struct from a creating map with all fields" do
+      now = DateTime.utc_now()
+      later = DateTime.add(now, 3600, :second)
+
+      creating = %{
+        title: "Team Standup",
+        description: "Daily sync",
+        start_time: now,
+        end_time: later,
+        attendees: ["alice@example.com", "bob@example.com"]
+      }
+
+      details = EventDetails.from_creating_form(creating)
+
+      assert details.summary == "Team Standup"
+      assert details.description == "Daily sync"
+      assert details.start_time == now
+      assert details.end_time == later
+
+      assert details.attendees == [
+               Attendee.new(email: "alice@example.com"),
+               Attendee.new(email: "bob@example.com")
+             ]
+    end
+
+    test "normalises bare-string attendees to nameless attendees with email trimmed and downcased" do
+      creating = %{title: "Call", attendees: ["  Alice@Example.COM  "]}
+
+      details = EventDetails.from_creating_form(creating)
+
+      assert details.attendees == [Attendee.new(email: "alice@example.com")]
+    end
+
+    test "normalises empty title to nil" do
+      details = EventDetails.from_creating_form(%{title: ""})
+
+      assert details.summary == nil
+    end
+
+    test "normalises whitespace-only title to nil" do
+      details = EventDetails.from_creating_form(%{title: "   "})
+
+      assert details.summary == nil
+    end
+
+    test "defaults description to empty string when missing" do
+      details = EventDetails.from_creating_form(%{title: "Call"})
+
+      assert details.description == ""
+    end
+
+    test "yields empty attendees list when attendees key is absent" do
+      details = EventDetails.from_creating_form(%{title: "Call"})
+
+      assert details.attendees == []
+    end
+
+    test "yields empty attendees list when attendees list is empty" do
+      details = EventDetails.from_creating_form(%{title: "Call", attendees: []})
+
+      assert details.attendees == []
+    end
+  end
+
+  describe "from_grid_event/1" do
+    test "builds a struct from an atom-keyed event map" do
+      now = DateTime.utc_now()
+      later = DateTime.add(now, 3600, :second)
+
+      event = %{
+        summary: "Planning",
+        description: "Quarterly plan",
+        start_at: now,
+        end_at: later,
+        attendees: [%{email: "carol@example.com", name: "Carol"}]
+      }
+
+      details = EventDetails.from_grid_event(event)
+
+      assert details.summary == "Planning"
+      assert details.description == "Quarterly plan"
+      assert details.start_time == now
+      assert details.end_time == later
+
+      assert details.attendees == [
+               Attendee.new(email: "carol@example.com", display_name: "Carol")
+             ]
+    end
+
+    test "accepts string-key attendee maps and normalises them" do
+      event = %{
+        summary: "Meeting",
+        attendees: [%{"email" => "Dave@Example.COM", "name" => "Dave"}]
+      }
+
+      details = EventDetails.from_grid_event(event)
+
+      assert details.attendees == [Attendee.new(email: "dave@example.com", display_name: "Dave")]
+    end
+
+    test "accepts atom-key attendee maps and normalises email" do
+      event = %{
+        summary: "Meeting",
+        attendees: [%{email: "  Eve@Example.COM  ", name: "Eve"}]
+      }
+
+      details = EventDetails.from_grid_event(event)
+
+      assert details.attendees == [Attendee.new(email: "eve@example.com", display_name: "Eve")]
+    end
+
+    test "keeps the name and reply of a synced attendee read back from the cache" do
+      # The cache column is JSONB, so a synced attendee comes back string-keyed
+      # and spells its label `display_name`, not the grid's old `name`.
+      event = %{
+        summary: "Review",
+        attendees: [
+          %{
+            "email" => "Ivy@Example.COM",
+            "display_name" => "Ivy",
+            "response_status" => "accepted",
+            "optional" => false
+          }
+        ]
+      }
+
+      details = EventDetails.from_grid_event(event)
+
+      assert details.attendees == [
+               Attendee.new(
+                 email: "ivy@example.com",
+                 display_name: "Ivy",
+                 response_status: :accepted
+               )
+             ]
+    end
+
+    test "normalises mixed list of bare strings and maps consistently" do
+      event = %{
+        summary: "Mixed",
+        attendees: [
+          "frank@example.com",
+          %{"email" => "Grace@Example.COM", "name" => "Grace"},
+          %{email: "henry@example.com", name: "Henry"}
+        ]
+      }
+
+      details = EventDetails.from_grid_event(event)
+
+      assert details.attendees == [
+               Attendee.new(email: "frank@example.com"),
+               Attendee.new(email: "grace@example.com", display_name: "Grace"),
+               Attendee.new(email: "henry@example.com", display_name: "Henry")
+             ]
+    end
+
+    test "yields empty attendees list when attendees key is absent" do
+      details = EventDetails.from_grid_event(%{summary: "Meeting"})
+
+      assert details.attendees == []
+    end
+
+    test "rejects attendee entries with missing or empty email" do
+      event = %{
+        summary: "Meeting",
+        attendees: [
+          %{email: "", name: "No Email"},
+          %{"email" => "", "name" => "Also No Email"},
+          "valid@example.com"
+        ]
+      }
+
+      details = EventDetails.from_grid_event(event)
+
+      assert details.attendees == [Attendee.new(email: "valid@example.com")]
+    end
+
+    test "normalises empty summary to nil" do
+      details = EventDetails.from_grid_event(%{summary: ""})
+
+      assert details.summary == nil
+    end
+
+    test "defaults description to empty string when missing" do
+      details = EventDetails.from_grid_event(%{summary: "Meeting"})
+
+      assert details.description == ""
+    end
+  end
+
+  describe "from_meeting/1" do
+    test "carries the meeting's summary, times, description, and attendee" do
+      meeting =
+        build(:meeting,
+          summary: "Discovery Call",
+          description: "First conversation",
+          attendee_email: "alice@example.com",
+          attendee_name: "Alice"
+        )
+
+      details = EventDetails.from_meeting(meeting)
+
+      assert details.summary == "Discovery Call"
+      assert details.description == "First conversation"
+      assert details.start_time == meeting.start_time
+      assert details.end_time == meeting.end_time
+
+      assert details.attendees == [
+               Attendee.new(email: "alice@example.com", display_name: "Alice")
+             ]
+    end
+
+    test "falls back to title when summary is nil and defaults description to empty string" do
+      meeting = build(:meeting, summary: nil, title: "Onboarding Sync", description: nil)
+
+      details = EventDetails.from_meeting(meeting)
+
+      assert details.summary == "Onboarding Sync"
+      assert details.description == ""
+    end
+
+    test "omits attendee entry when attendee_email is missing" do
+      meeting = build(:meeting, attendee_email: nil)
+
+      details = EventDetails.from_meeting(meeting)
+
+      assert details.attendees == []
+    end
+
+    test "downcases and trims attendee email" do
+      meeting =
+        build(:meeting,
+          attendee_email: "  Alice@Example.COM  ",
+          attendee_name: "Alice"
+        )
+
+      details = EventDetails.from_meeting(meeting)
+
+      assert details.attendees == [
+               Attendee.new(email: "alice@example.com", display_name: "Alice")
+             ]
+    end
+  end
+
+  describe "from_provider_config/1" do
+    @start ~U[2030-03-14 09:30:00Z]
+    @finish ~U[2030-03-14 10:15:00Z]
+
+    test "returns the attached event details as they are" do
+      details = %EventDetails{
+        summary: "Quarterly review",
+        description: "Agenda",
+        start_time: @start,
+        end_time: @finish,
+        attendees: [Attendee.new(email: "guest@example.com")]
+      }
+
+      assert EventDetails.from_provider_config(%{event_details: details}) == details
+    end
+
+    test "builds the struct from a plain map of event details" do
+      config = %{event_details: %{summary: "From a map", start_time: @start, end_time: @finish}}
+
+      assert %EventDetails{summary: "From a map", start_time: @start, end_time: @finish} =
+               EventDetails.from_provider_config(config)
+    end
+
+    test "reads the flat update keys when no event details are attached" do
+      config = %{
+        meeting_topic: "  Moved review  ",
+        meeting_start_time: @start,
+        meeting_end_time: @finish
+      }
+
+      assert %EventDetails{summary: "Moved review", start_time: @start, end_time: @finish} =
+               EventDetails.from_provider_config(config)
+    end
+
+    test "prefers the event details field by field, filling gaps from the flat keys" do
+      config = %{
+        event_details: %EventDetails{summary: "Booked title", start_time: @start},
+        meeting_topic: "Flat title",
+        meeting_start_time: ~U[2031-01-01 00:00:00Z],
+        meeting_end_time: @finish
+      }
+
+      assert %EventDetails{summary: "Booked title", start_time: @start, end_time: @finish} =
+               EventDetails.from_provider_config(config)
+    end
+
+    test "keeps every field of the event details over conflicting flat keys" do
+      config = %{
+        event_details: %EventDetails{
+          summary: "Booked title",
+          start_time: @start,
+          end_time: @finish
+        },
+        meeting_topic: "Flat title",
+        meeting_start_time: ~U[2031-01-01 00:00:00Z],
+        meeting_end_time: ~U[2031-01-01 01:00:00Z]
+      }
+
+      assert %EventDetails{summary: "Booked title", start_time: @start, end_time: @finish} =
+               EventDetails.from_provider_config(config)
+    end
+
+    test "leaves a field neither source carries nil rather than guessing it" do
+      assert %EventDetails{summary: nil, start_time: nil, end_time: nil} =
+               EventDetails.from_provider_config(%{meeting_topic: "   "})
+    end
+  end
+end

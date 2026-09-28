@@ -1,0 +1,142 @@
+defmodule Tymeslot.Workers.ObanMaintenanceWorker do
+  @moduledoc """
+  Performs regular maintenance on Oban jobs:
+
+  1. Cleans up stuck jobs in "executing" state
+  2. Deletes delivery claims (`Tymeslot.Workers.DeliveryClaims`) whose job
+     Oban has pruned
+  3. Provides metrics and logging for job health monitoring
+
+  This worker runs every 30 minutes to ensure job queue health.
+
+  Discarding a stuck job is the last rung of the ladder in
+  `Tymeslot.Infrastructure.ObanRescue`, not the first: `Oban.Lifeline` returns
+  an abandoned job to `available` hours earlier, so anything still `executing`
+  by the time this sweep sees it is a row the lifeline never reached, on an
+  installation that has none configured or whose leader is unreachable. The
+  threshold comes from `ObanRescue.discard_after_hours/0` for that reason: a
+  discarded job never runs again, so this sweep must never pre-empt the rescue
+  that would have recovered the work.
+
+  Terminal-job retention (completed/discarded/cancelled) is handled by
+  `Oban.Plugins.Pruner`, not here: its `max_age` is a week in every
+  environment, so a second sweep with a longer window would never find
+  anything left to delete.
+  """
+
+  use Oban.Worker,
+    queue: :maintenance,
+    priority: 3,
+    max_attempts: 3,
+    # Prevent overlapping runs (30 minutes)
+    unique: [period: 1800]
+
+  require Logger
+
+  alias Tymeslot.Infrastructure.ObanRescue
+  alias Tymeslot.Jobs
+  alias Tymeslot.Workers.DeliveryClaims
+
+  @stuck_job_threshold_hours ObanRescue.discard_after_hours()
+
+  @impl Oban.Worker
+  def perform(%Oban.Job{args: args}) do
+    Logger.info("Starting Oban maintenance", args: args)
+
+    {:ok, stuck_count} = cleanup_stuck_jobs()
+    claims_pruned = DeliveryClaims.prune_orphaned()
+
+    Logger.info("Oban maintenance completed",
+      stuck_jobs_cleaned: stuck_count,
+      delivery_claims_pruned: claims_pruned
+    )
+
+    # Schedule next run
+    schedule_next_run()
+
+    {:ok, %{stuck_cleaned: stuck_count, claims_pruned: claims_pruned}}
+  end
+
+  @spec schedule_next_run() :: {:ok, Oban.Job.t()} | {:error, term()}
+  defp schedule_next_run do
+    %{}
+    # 30 minutes
+    |> new(schedule_in: 1800)
+    |> Oban.insert()
+  end
+
+  # Private functions
+
+  defp cleanup_stuck_jobs do
+    threshold = DateTime.add(DateTime.utc_now(), -@stuck_job_threshold_hours, :hour)
+
+    # Find stuck executing jobs
+    stuck_jobs = Jobs.get_stuck_executing_jobs(threshold)
+
+    # Clean up each stuck job
+    cleaned_count =
+      Enum.reduce(stuck_jobs, 0, fn job, count ->
+        case transition_stuck_job_to_discarded(job) do
+          {:ok, _result} ->
+            count + 1
+
+          {:error, reason} ->
+            Logger.error("Failed to clean stuck job",
+              job_id: job.id,
+              reason: reason
+            )
+
+            count
+        end
+      end)
+
+    if cleaned_count > 0 do
+      Logger.warning("Cleaned up stuck jobs",
+        count: cleaned_count,
+        threshold_hours: @stuck_job_threshold_hours
+      )
+    end
+
+    {:ok, cleaned_count}
+  end
+
+  defp transition_stuck_job_to_discarded(job) do
+    # Calculate how long the job was stuck (guard against nil attempted_at)
+    stuck_duration =
+      if job.attempted_at do
+        DateTime.diff(DateTime.utc_now(), job.attempted_at, :second)
+      else
+        0
+      end
+
+    # Build error information
+    error_info = %{
+      at: DateTime.utc_now(),
+      attempt: job.attempt,
+      error: "Job stuck in executing state for #{format_duration(stuck_duration)}",
+      kind: "stuck_job_cleanup",
+      cleanup_metadata: %{
+        worker: job.worker,
+        queue: job.queue,
+        attempted_at: job.attempted_at,
+        stuck_duration_seconds: stuck_duration,
+        cleanup_reason: "automatic_maintenance"
+      }
+    }
+
+    # Update the job to discarded state
+    Jobs.update_job_to_discarded(job, error_info)
+  end
+
+  defp format_duration(seconds) when seconds < 3600 do
+    "#{div(seconds, 60)} minutes"
+  end
+
+  defp format_duration(seconds) when seconds < 86_400 do
+    "#{Float.round(seconds / 3600, 1)} hours"
+  end
+
+  defp format_duration(seconds) do
+    "#{Float.round(seconds / 86400, 1)} days"
+  end
+end

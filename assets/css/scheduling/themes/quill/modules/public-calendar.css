@@ -1,0 +1,357 @@
+/* Public read-only calendar (TymeslotWeb.Public.CalendarLive) — a month grid
+   of busy/free blocks for an organiser, reusing this theme's glass-card and
+   calendar-nav-button primitives (see glass-card.css / calendar.css) rather
+   than duplicating them. Self-contained: layout + day cells + chips + legend. */
+
+/* Full page width (not the reading-width `.container` the booking steps use)
+   — this page is a data grid, not prose, so it benefits from the extra room
+   the same way the dashboard's calendar does. */
+.public-calendar-container {
+  width: 100%;
+  padding: var(--space-lg) var(--space-md) var(--space-2xl);
+}
+
+/* Cancels glass-card.css's ultra-wide cap (`.glass-morphism-card { max-width:
+   var(--container-lg); margin: 0 auto; }` past 1440px/621px), which would
+   otherwise pin this card to 800px same as the booking steps' reading-width
+   cards — this one is a data grid, so it should use the room. Mirrors
+   overview.css's identical override for the overview step's card. */
+.public-calendar-container .glass-morphism-card {
+  max-width: 100%;
+}
+
+.public-calendar-not-found {
+  text-align: center;
+  padding: var(--space-3xl) 0;
+  font-size: var(--theme-font-size-lg);
+}
+
+.public-calendar-body {
+  padding: var(--space-lg);
+}
+
+.public-calendar-month-header {
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.public-calendar-title {
+  font-size: var(--theme-font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--theme-text);
+  order: -1;
+  flex-basis: 100%;
+}
+
+@media (min-width: 640px) {
+  .public-calendar-title {
+    order: 0;
+    flex-basis: auto;
+  }
+}
+
+.public-calendar-nav-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* The prev/next arrows, Today, and the month picker trigger sit in one row —
+   force them to the same height explicitly rather than relying on matching
+   padding, since the picker also carries an icon whose inline box-model
+   made it taller than the plain-text arrow/Today buttons. */
+.public-calendar-month-header .calendar-nav-button,
+.public-calendar-month-header .public-calendar-today-button,
+.public-calendar-month-header .public-calendar-month-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 2.25rem;
+}
+
+.public-calendar-today-button {
+  padding: var(--space-3xs);
+  font-size: var(--theme-font-size-xs);
+}
+
+/* Month picker — a native <details>/<summary> dropdown, styled to match the
+   language switcher's dark glass panel (see language-switcher.css). */
+.public-calendar-month-picker {
+  position: relative;
+}
+
+.public-calendar-month-picker-trigger {
+  gap: var(--space-3xs);
+  padding: 0 var(--space-sm);
+  border-radius: var(--radius-lg);
+  background: var(--surface-light);
+  border: var(--border-width-thin) solid var(--border-intense);
+  color: white;
+  font-size: var(--theme-font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  list-style: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: var(--transition-normal);
+}
+
+.public-calendar-month-picker-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.public-calendar-month-picker-trigger:hover {
+  background: var(--border-medium);
+}
+
+/* Fixed width (sized for the longest realistic "month year" string across
+   the supported locales, e.g. "septembre 2026") so the trigger — and every
+   button after it in the row — doesn't shift horizontally as the visitor
+   pages between months of different name lengths. */
+.public-calendar-month-picker-label {
+  display: inline-block;
+  min-width: 7.5rem;
+  text-align: center;
+}
+
+.public-calendar-month-picker-panel {
+  position: absolute;
+  z-index: var(--z-dropdown);
+  top: calc(100% + var(--space-3xs));
+  left: 0;
+  width: var(--dropdown-width-sm);
+  max-height: var(--dropdown-max-height);
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.95);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: var(--border-width-thin) solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-2xs) 0;
+}
+
+.public-calendar-month-picker-item {
+  display: block;
+  padding: var(--space-2xs) var(--space-sm);
+  font-size: var(--theme-font-size-xs);
+  color: #1e293b;
+  text-decoration: none;
+}
+
+.public-calendar-month-picker-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.public-calendar-month-picker-item.active {
+  font-weight: var(--font-weight-bold);
+  color: var(--theme-primary);
+}
+
+/* ===== Month Grid ===== */
+
+.public-calendar-grid {
+  margin-top: var(--space-md);
+  border: var(--border-width-thin) solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.public-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--surface-subtle);
+  border-bottom: var(--border-width-thin) solid var(--border-medium);
+}
+
+.public-calendar-weekday {
+  text-align: center;
+  padding: var(--space-2xs) 0;
+  font-size: var(--theme-font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.public-calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.public-calendar-day {
+  position: relative;
+  min-height: 8rem;
+  padding: var(--space-2xs);
+  border-bottom: var(--border-width-thin) solid var(--border-medium);
+  border-right: var(--border-width-thin) solid var(--border-medium);
+  transition: var(--transition-normal);
+}
+
+.public-calendar-day:nth-child(7n) {
+  border-right: none;
+}
+
+.public-calendar-day--other-month {
+  background: var(--surface-transparent);
+}
+
+.public-calendar-day--other-month .public-calendar-day-number {
+  color: var(--text-opacity-very-subtle);
+}
+
+.public-calendar-day--bookable:hover {
+  background: var(--surface-light);
+}
+
+.public-calendar-day--unavailable {
+  opacity: 0.45;
+}
+
+.public-calendar-day-link {
+  position: absolute;
+  inset: 0;
+}
+
+.public-calendar-day-number {
+  position: relative;
+  font-size: var(--theme-font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--theme-text);
+  pointer-events: none;
+}
+
+.public-calendar-day--today .public-calendar-day-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-full);
+  background: var(--theme-primary);
+  color: white;
+}
+
+.public-calendar-day-chips {
+  position: relative;
+  pointer-events: none;
+  margin-top: var(--space-3xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-hairline);
+}
+
+.public-calendar-chip {
+  border-radius: var(--radius-sm);
+  padding: var(--space-hairline) var(--space-3xs);
+  color: white;
+  font-size: var(--theme-font-size-3xs);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.2;
+}
+
+.public-calendar-chip--default {
+  background: var(--theme-primary);
+}
+
+/* Matches the dashboard grid's "awaiting approval" red treatment
+   (EventPositioning.pending_approval?/1: bg-red-50/border-red-300/
+   text-red-800) rather than this component's usual solid-fill/white-text
+   chip, so a pending meeting reads as a distinct, urgent state here too. */
+.public-calendar-chip--pending {
+  background: var(--color-red-50);
+  border: 1px solid var(--color-red-300);
+  color: var(--color-red-800);
+  font-weight: var(--font-weight-bold);
+}
+
+/* An event the calendar marks as free (e.g. an unanswered invitation): shown,
+   but outlined instead of filled so it reads as "not blocking". */
+.public-calendar-chip--non-blocking {
+  background: transparent;
+  border: 1px dashed var(--text-opacity-subtle);
+  color: var(--text-opacity-subtle);
+}
+
+.public-calendar-chip-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-calendar-chip-more {
+  font-size: var(--theme-font-size-3xs);
+  color: var(--text-opacity-subtle);
+  /* Parent has pointer-events: none (clicks fall through to the day's
+     booking link) — re-enable just this chip so its hover tooltip works.
+     align-self keeps the hit area to the text itself instead of the full
+     flex-stretched row, so it doesn't eat into the day-click target. */
+  pointer-events: auto;
+  align-self: flex-start;
+  cursor: help;
+}
+
+/* ===== Legend ===== */
+
+.public-calendar-legend {
+  margin-top: var(--space-sm);
+  font-size: var(--theme-font-size-xs);
+  color: var(--text-opacity-subtle);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.public-calendar-legend-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3xs);
+}
+
+.public-calendar-legend-dot {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: var(--radius-sm);
+  background: var(--theme-primary);
+}
+
+.public-calendar-legend-pending,
+.public-calendar-legend-non-blocking {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3xs);
+}
+
+.public-calendar-legend-dot--pending {
+  background: var(--color-red-500);
+}
+
+.public-calendar-legend-dot--non-blocking {
+  background: transparent;
+  border: 1px dashed var(--text-opacity-subtle);
+}
+
+.public-calendar-legend-hint {
+  margin-left: var(--space-sm);
+}
+
+/* ===== Responsive ===== */
+
+@media (max-width: 640px) {
+  .public-calendar-day {
+    min-height: 4rem;
+  }
+
+  .public-calendar-chip-text {
+    display: none;
+  }
+
+  .public-calendar-chip {
+    width: 0.375rem;
+    height: 0.375rem;
+    padding: 0;
+    border-radius: var(--radius-full);
+  }
+}

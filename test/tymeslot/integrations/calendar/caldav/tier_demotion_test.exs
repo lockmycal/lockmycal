@@ -1,0 +1,256 @@
+defmodule Tymeslot.Integrations.Calendar.CalDAV.TierDemotionTest do
+  @moduledoc """
+  The sync tier is chosen from what a server advertises in its property list.
+  Some servers advertise `sync-collection` and then refuse every REPORT that
+  uses it: Infomaniak answers 500, and because the stored tier was never
+  revisited, one production calendar retried that same refused request every
+  fifteen minutes for twelve days and synced only on its daily forced full
+  fetch.
+
+  A refusal must therefore demote the integration to the tier that needs no
+  extension, and the same cycle must still fetch the events. A server that
+  simply failed to answer must not, or a blip of packet loss costs a working
+  delta sync.
+  """
+  use Tymeslot.DataCase, async: false
+
+  @moduletag :calendar
+  @moduletag :integrations
+
+  use Oban.Testing, repo: Tymeslot.Repo
+
+  import Req.Test, only: [set_req_test_to_shared: 1]
+  import Tymeslot.ConfigTestHelpers
+
+  alias Ecto.Changeset
+  alias Plug.Conn
+  alias Req.Test, as: ReqTest
+  alias Tymeslot.Integrations.Calendar.CalendarIntegrationSchema
+  alias Tymeslot.Repo
+  alias Tymeslot.Security.Encryption
+  alias Tymeslot.Workers.SyncCalDavCalendarWorker
+
+  @empty_multistatus ~s(<?xml version="1.0"?><multistatus xmlns="DAV:"></multistatus>)
+
+  @ctag_multistatus ~s(<?xml version="1.0"?><multistatus xmlns="DAV:" ) <>
+                      ~s(xmlns:cs="http://calendarserver.org/ns/"><response><propstat><prop>) <>
+                      ~s(<cs:getctag>ctag-1</cs:getctag></prop></propstat></response></multistatus>)
+
+  # How a server without RFC 6578 answers a PROPFIND for `sync-token`: the
+  # property is echoed back, empty, under a 404 propstat. The tier detector's
+  # presence check reads that as support.
+  @no_sync_token_multistatus ~s(<?xml version="1.0"?><multistatus xmlns="DAV:">) <>
+                               ~s(<response><href>/calendars/alice/default/</href>) <>
+                               ~s(<propstat><prop><sync-token/></prop>) <>
+                               ~s(<status>HTTP/1.1 404 Not Found</status></propstat>) <>
+                               ~s(</response></multistatus>)
+
+  setup :set_req_test_to_shared
+
+  setup do
+    with_config(:tymeslot, :http_client_module, Tymeslot.Infrastructure.HTTPClient)
+    with_config(:tymeslot, :req_test_plug, {Req.Test, :tymeslot_http})
+
+    integration =
+      insert(:calendar_integration,
+        provider: "caldav",
+        base_url: "http://localhost:65432",
+        username_encrypted: Encryption.encrypt("alice"),
+        password_encrypted: Encryption.encrypt("s3cret"),
+        calendar_paths: ["/calendars/alice/default/"],
+        provider_account_id: "http://localhost:65432||alice",
+        is_active: true,
+        needs_reauth: false,
+        # Detection has already run and believed the server's advertisement,
+        # and an earlier cycle stored a token, so this one asks for a delta.
+        caldav_sync_tier: 1,
+        caldav_sync_tokens: %{"/calendars/alice/default/" => "token-1"}
+      )
+
+    %{integration: integration}
+  end
+
+  defp stored_tier(integration) do
+    Repo.get!(CalendarIntegrationSchema, integration.id).caldav_sync_tier
+  end
+
+  defp run_sync(integration) do
+    perform_job(SyncCalDavCalendarWorker, %{"calendar_integration_id" => integration.id})
+  end
+
+  # Answers the sync-collection REPORT with `sync_collection_response` and
+  # everything else with an empty multistatus, so a demoted cycle completes.
+  # `ctag` decides whether the server appears to support the getctag extension,
+  # which is what separates a demotion to tier 2 from one to tier 3.
+  defp stub_server(sync_collection_response, opts \\ []) do
+    ctag? = Keyword.get(opts, :ctag, false)
+
+    ReqTest.stub(:tymeslot_http, fn conn ->
+      {:ok, body, conn} = Conn.read_body(conn)
+
+      cond do
+        conn.method == "REPORT" and String.contains?(body, "sync-collection") ->
+          sync_collection_response.(conn)
+
+        ctag? and String.contains?(body, "getctag") ->
+          respond(conn, @ctag_multistatus)
+
+        true ->
+          respond(conn, @empty_multistatus)
+      end
+    end)
+  end
+
+  defp respond(conn, xml) do
+    conn
+    |> Conn.put_resp_content_type("application/xml")
+    |> Conn.send_resp(207, xml)
+  end
+
+  describe "a server that refuses the sync-collection it advertised" do
+    test "demotes to the full-fetch tier and still syncs this cycle",
+         %{integration: integration} do
+      stub_server(fn conn -> Conn.send_resp(conn, 500, "Internal Server Error") end)
+
+      assert :ok = run_sync(integration)
+
+      # Tier 3 needs no extension, and the same run fell through to it rather
+      # than leaving the cycle with nothing fetched.
+      assert stored_tier(integration) == 3
+    end
+
+    test "demotes to the CTag tier when the server supports that instead",
+         %{integration: integration} do
+      # Dropping straight to a full fetch every cycle would punish a server
+      # that is already struggling to answer. Tier 2 skips the fetch entirely
+      # while the calendar is unchanged, and costs one PROPFIND to find out.
+      stub_server(fn conn -> Conn.send_resp(conn, 500, "Internal Server Error") end, ctag: true)
+
+      assert :ok = run_sync(integration)
+      assert stored_tier(integration) == 2
+    end
+
+    test "demotes on a 405 as readily as on a 500", %{integration: integration} do
+      # A server that answers "method not allowed" to a REPORT it advertised is
+      # making the same claim as one that 500s: the feature is not there.
+      stub_server(fn conn -> Conn.send_resp(conn, 405, "Method Not Allowed") end)
+
+      assert :ok = run_sync(integration)
+      assert stored_tier(integration) == 3
+    end
+
+    test "the next cycle goes straight to the full fetch", %{integration: integration} do
+      stub_server(fn conn -> Conn.send_resp(conn, 500, "Internal Server Error") end)
+      assert :ok = run_sync(integration)
+
+      # Nothing may ask for sync-collection again while the demotion stands;
+      # the whole point is that the refused request stops being sent.
+      stub_server(fn conn ->
+        send(self(), :asked_for_sync_collection)
+        Conn.send_resp(conn, 500, "Internal Server Error")
+      end)
+
+      reloaded = Repo.get!(CalendarIntegrationSchema, integration.id)
+      assert :ok = run_sync(reloaded)
+
+      refute_received :asked_for_sync_collection
+      assert stored_tier(integration) == 3
+    end
+  end
+
+  describe "a server that refuses sync-collection on one calendar only" do
+    test "demotes the whole integration and still syncs every calendar this cycle",
+         %{integration: integration} do
+      primary = "/calendars/alice/default/"
+      extra = "/calendars/alice/shared/"
+      test_pid = self()
+
+      integration =
+        integration
+        |> Changeset.change(
+          calendar_paths: [primary, extra],
+          caldav_sync_tokens: %{primary => "token-1", extra => "token-2"}
+        )
+        |> Repo.update!()
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        {:ok, body, conn} = Conn.read_body(conn)
+        sync_collection? = String.contains?(body, "sync-collection")
+        send(test_pid, {:request, conn.request_path, sync_collection?})
+
+        if sync_collection? and conn.request_path == extra do
+          Conn.send_resp(conn, 500, "Internal Server Error")
+        else
+          respond(conn, @empty_multistatus)
+        end
+      end)
+
+      assert :ok = run_sync(integration)
+      assert stored_tier(integration) == 3
+
+      # The refusal on the second calendar neither failed the job nor left it
+      # unsynced: the demoted tier's full fetch reached both calendars.
+      assert_received {:request, ^primary, false}
+      assert_received {:request, ^extra, false}
+    end
+  end
+
+  describe "a server that has no sync token to give" do
+    setup %{integration: integration} do
+      # A path with no token yet reads one as a property before its first
+      # fetch, rather than sending the initial REPORT that used to expose the
+      # refusal. The demotion has to come from that probe instead.
+      integration =
+        integration
+        |> Changeset.change(caldav_sync_tokens: %{})
+        |> Repo.update!()
+
+      %{integration: integration}
+    end
+
+    test "demotes to the CTag tier instead of fetching the whole window every cycle",
+         %{integration: integration} do
+      test_pid = self()
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        {:ok, body, conn} = Conn.read_body(conn)
+
+        cond do
+          String.contains?(body, "getctag") ->
+            respond(conn, @ctag_multistatus)
+
+          conn.method == "PROPFIND" and String.contains?(body, "sync-token") ->
+            respond(conn, @no_sync_token_multistatus)
+
+          conn.method == "REPORT" ->
+            send(test_pid, {:report, String.contains?(body, "sync-collection")})
+            respond(conn, @empty_multistatus)
+
+          true ->
+            respond(conn, @empty_multistatus)
+        end
+      end)
+
+      assert :ok = run_sync(integration)
+
+      # Demoted, and the same cycle still fetched the calendar: a demotion
+      # that skipped the fetch would leave this cycle with nothing.
+      assert stored_tier(integration) == 2
+      assert_received {:report, false}
+      refute_received {:report, true}
+    end
+  end
+
+  describe "a server that simply did not answer" do
+    test "keeps delta sync rather than abandoning it over a transport failure",
+         %{integration: integration} do
+      # A timeout says nothing about which features the server supports, and
+      # demoting on one would trade a working delta sync for packet loss.
+      stub_server(fn conn -> ReqTest.transport_error(conn, :timeout) end)
+
+      run_sync(integration)
+
+      assert stored_tier(integration) == 1
+    end
+  end
+end

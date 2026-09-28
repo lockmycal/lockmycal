@@ -1,0 +1,370 @@
+defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModal do
+  @moduledoc "Create event modal for the calendar grid."
+
+  use TymeslotWeb, :html
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Phoenix.LiveView.JS
+  alias Tymeslot.Integrations.Calendar
+  alias TymeslotWeb.Components.Dashboard.ContactPicker
+  alias TymeslotWeb.Components.UI.StatusSwitch
+  alias TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow
+  alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
+  alias TymeslotWeb.Dashboard.CalendarGrid.Modals.CalendarPicker
+  alias TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor
+  alias TymeslotWeb.Dashboard.CalendarGrid.Modals.RemindersEditor
+  alias TymeslotWeb.Dashboard.CalendarGrid.VideoPicker
+
+  attr :creating_event, :map, required: true
+  attr :integrations, :list, required: true
+  attr :integration_colors, :map, required: true
+  attr :saving, :boolean, default: false
+  attr :user_timezone, :string, required: true
+  attr :myself, :any, required: true
+  attr :video_integrations, :list, default: []
+  attr :contacts_allowed, :boolean, default: true
+  attr :contact_picker_query, :string, default: ""
+  attr :contact_picker_open, :boolean, default: false
+  attr :contact_picker_results, :list, default: []
+
+  attr :show_mode_toggle, :boolean,
+    default: true,
+    doc: """
+    When `false`, hides the Event/Meeting tabs even with a calendar
+    connected, locking the dialog into whatever `creating_event.mode`
+    already is. Currently unused: both callers (the calendar grid and the
+    Meetings page's own quick-add dialog) rely on the `true` default — the
+    Meetings page's dialog supports both modes too, same as the calendar's.
+    """
+
+  @spec create_event_modal(map()) :: Phoenix.LiveView.Rendered.t()
+  def create_event_modal(assigns) do
+    assigns =
+      assigns
+      |> assign(:meeting_mode, assigns.creating_event[:mode] == :meeting)
+      # A subscribed calendar is no more a target than no calendar at all, so
+      # the mode toggle and the picker follow what can be written to, not what
+      # is connected.
+      |> assign(:targets, Calendar.writable_integrations(assigns.integrations))
+
+    ~H"""
+    <.modal
+      id="create-event-modal"
+      show={true}
+      on_cancel={JS.push("close_create_form", target: @myself)}
+      size={:medium}
+    >
+      <:header>
+        {if @meeting_mode,
+          do: dgettext("dashboard_calendar_events", "New Meeting"),
+          else: dgettext("dashboard_calendar_events", "New Event")}
+      </:header>
+
+      <%!-- Mode toggle: a bare provider event vs an ad-hoc Tymeslot meeting.
+            Hidden when no calendar is connected — the form is then fixed to
+            meeting mode, the only kind that can exist without one. --%>
+      <div :if={@targets != [] and @show_mode_toggle} class="mb-4">
+        <div
+          class="inline-flex rounded-token-lg border border-neutral-300 dark:border-twilight-indigo-700 p-0.5 gap-0.5"
+          role="tablist"
+          aria-label={dgettext("dashboard_calendar_events", "What to create")}
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={to_string(!@meeting_mode)}
+            phx-click="set_create_mode"
+            phx-value-mode="event"
+            phx-target={@myself}
+            class={"px-3 py-1.5 rounded-token-md text-token-sm font-semibold transition-colors #{if !@meeting_mode, do: "bg-primary-600 text-white", else: "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-900"}"}
+          >
+            {dgettext("dashboard_calendar_events", "Event")}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={to_string(@meeting_mode)}
+            phx-click="set_create_mode"
+            phx-value-mode="meeting"
+            phx-target={@myself}
+            data-testid="create-mode-meeting"
+            class={"px-3 py-1.5 rounded-token-md text-token-sm font-semibold transition-colors #{if @meeting_mode, do: "bg-primary-600 text-white", else: "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-900"}"}
+          >
+            {dgettext("dashboard_calendar_events", "Meeting with a guest")}
+          </button>
+        </div>
+        <p
+          :if={@meeting_mode}
+          class="mt-1.5 text-token-xs text-neutral-400 dark:text-twilight-indigo-300"
+        >
+          {dgettext(
+            "dashboard_calendar_events",
+            "Books the slot, emails the guest an invitation, and adds it to your calendar."
+          )}
+        </p>
+      </div>
+
+      <div class="mb-3">
+        <.input
+          type="text"
+          name="title"
+          value={@creating_event.title}
+          label={dgettext("dashboard_calendar_events", "Title")}
+          placeholder={dgettext("dashboard_calendar_events", "Add title")}
+          id="create-event-title"
+          phx-mounted={JS.focus()}
+          phx-blur="update_create_title"
+          phx-target={@myself}
+        />
+      </div>
+
+      <%!-- Guest details (meeting mode only) --%>
+      <div :if={@meeting_mode} class="mb-3 space-y-2">
+        <div :if={@contacts_allowed}>
+          <p class="text-token-xs font-medium text-neutral-400 dark:text-twilight-indigo-300 mb-1">
+            {dgettext("dashboard_calendar_events", "Pick from contacts (optional)")}
+          </p>
+          <ContactPicker.contact_picker
+            id="create-meeting-contact-picker"
+            contacts={@contact_picker_results}
+            query={@contact_picker_query}
+            open={@contact_picker_open}
+            target={@myself}
+            query_event="guest_contact_query"
+            select_event="select_guest_contact"
+            close_event="close_guest_contact_picker"
+            placeholder={dgettext("dashboard_calendar_events", "Pick from contacts")}
+          />
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <.input
+            type="text"
+            name="guest_name"
+            value={@creating_event[:guest_name] || ""}
+            label={dgettext("dashboard_calendar_events", "Guest name")}
+            placeholder={dgettext("dashboard_calendar_events", "Ada Lovelace")}
+            id="create-meeting-guest-name"
+            phx-blur="update_create_guest_name"
+            phx-target={@myself}
+          />
+          <.input
+            type="email"
+            name="guest_email"
+            value={@creating_event[:guest_email] || ""}
+            label={dgettext("dashboard_calendar_events", "Guest email")}
+            placeholder="guest@example.com"
+            id="create-meeting-guest-email"
+            phx-blur="update_create_guest_email"
+            phx-target={@myself}
+          />
+        </div>
+      </div>
+
+      <div :if={!@meeting_mode} class="mb-3 flex items-center justify-between">
+        <p class="text-token-sm font-medium text-neutral-700 dark:text-twilight-indigo-100">
+          {dgettext("dashboard_calendar_events", "All day")}
+        </p>
+        <StatusSwitch.status_switch
+          id="create-event-all-day"
+          checked={@creating_event[:all_day] || false}
+          on_change="toggle_create_all_day"
+          target={@myself}
+          size={:small}
+        />
+      </div>
+
+      <div class="mb-3">
+        <form
+          id="create-event-time-form"
+          phx-change="update_create_time"
+          phx-target={@myself}
+          class="flex flex-wrap items-center gap-1 text-token-sm text-neutral-600 dark:text-twilight-indigo-200"
+        >
+          <input
+            type="date"
+            id="create-event-start-date"
+            name="start-date"
+            value={@creating_event.date}
+            class="bg-transparent border-0 border-b border-transparent hover:border-neutral-300 dark:hover:border-twilight-indigo-600 focus:border-primary-500 focus:ring-0 text-token-sm text-neutral-700 dark:text-twilight-indigo-100 font-medium px-0 py-0 transition-colors cursor-text"
+          />
+          <input
+            :if={!@creating_event[:all_day]}
+            type="time"
+            id="create-event-start-time"
+            name="start-time"
+            value={
+              EditWorkflow.format_time_value(@creating_event.start_hour, @creating_event.start_minute)
+            }
+            class="bg-transparent border-0 border-b border-transparent hover:border-neutral-300 dark:hover:border-twilight-indigo-600 focus:border-primary-500 focus:ring-0 text-token-sm text-neutral-700 dark:text-twilight-indigo-100 font-medium px-0 py-0 transition-colors cursor-text"
+          />
+          <span class="text-neutral-400 dark:text-twilight-indigo-300">&ndash;</span>
+          <input
+            type="date"
+            id="create-event-end-date"
+            name="end-date"
+            value={@creating_event.end_date}
+            class="bg-transparent border-0 border-b border-transparent hover:border-neutral-300 dark:hover:border-twilight-indigo-600 focus:border-primary-500 focus:ring-0 text-token-sm text-neutral-700 dark:text-twilight-indigo-100 font-medium px-0 py-0 transition-colors cursor-text"
+          />
+          <input
+            :if={!@creating_event[:all_day]}
+            type="time"
+            id="create-event-end-time"
+            name="end-time"
+            value={
+              EditWorkflow.format_time_value(@creating_event.end_hour, @creating_event.end_minute)
+            }
+            class="bg-transparent border-0 border-b border-transparent hover:border-neutral-300 dark:hover:border-twilight-indigo-600 focus:border-primary-500 focus:ring-0 text-token-sm text-neutral-700 dark:text-twilight-indigo-100 font-medium px-0 py-0 transition-colors cursor-text"
+          />
+          <span
+            :if={!@creating_event[:all_day]}
+            class="text-token-xs font-normal text-neutral-400 dark:text-twilight-indigo-300 ml-1"
+          >{Helpers.tz_abbr(@user_timezone)}</span>
+        </form>
+      </div>
+
+      <CalendarPicker.calendar_picker
+        :if={@targets != []}
+        integrations={@integrations}
+        integration_colors={@integration_colors}
+        selected_integration_id={@creating_event.integration_id}
+        selected_calendar_id={@creating_event[:calendar_id]}
+        myself={@myself}
+        event_name="update_create_integration"
+      />
+
+      <%!-- Video: which provider backs the event's join link. Offered for a
+      plain event as much as a meeting, and before attendees are added, so an
+      event can be created with a room in one step. --%>
+      <div
+        :if={@video_integrations != []}
+        class="border-t border-neutral-300 dark:border-twilight-indigo-800 pt-3 mt-3"
+      >
+        <p class="text-token-xs font-medium text-neutral-400 dark:text-twilight-indigo-300 mb-1.5">
+          {dgettext("dashboard_calendar_events", "Video")}
+        </p>
+        <VideoPicker.video_picker
+          video_integrations={@video_integrations}
+          selected_id={@creating_event[:video_integration_id]}
+          target={@myself}
+          phx_event="update_create_video"
+        />
+      </div>
+
+      <%!-- Repeat --%>
+      <div
+        :if={!@meeting_mode}
+        class="border-t border-neutral-300 dark:border-twilight-indigo-800 pt-3 mt-3"
+      >
+        <RecurrenceEditor.recurrence_editor
+          recurrence_rule={@creating_event[:recurrence_rule]}
+          timezone={@user_timezone}
+          myself={@myself}
+          change_event="update_create_recurrence"
+        />
+      </div>
+
+      <%!-- Reminders (both modes: synced to the calendar as a VALARM, and for a
+            meeting also folded into the reminder email Tymeslot already sends —
+            see `Tymeslot.Integrations.Calendar.CalendarEventBuilder`) --%>
+      <div class="border-t border-neutral-300 dark:border-twilight-indigo-800 pt-3 mt-3">
+        <RemindersEditor.reminders_editor
+          reminders={@creating_event[:reminders] || []}
+          myself={@myself}
+          add_event="add_create_reminder"
+          remove_event="remove_create_reminder"
+        />
+      </div>
+
+      <%!-- Attendee section --%>
+      <div
+        :if={!@meeting_mode}
+        class="space-y-3 border-t border-neutral-300 dark:border-twilight-indigo-800 pt-3 mt-3"
+      >
+        <p class="text-token-xs font-medium text-neutral-400 dark:text-twilight-indigo-300">
+          {dgettext("dashboard_calendar_events", "Invite attendees (optional)")}
+        </p>
+        <div>
+          <div
+            :if={@creating_event[:attendees] != []}
+            class="flex flex-wrap gap-1.5 mb-2"
+          >
+            <span
+              :for={email <- @creating_event[:attendees] || []}
+              class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-dashed border-amber-300 dark:border-amber-700 text-token-xs text-amber-800 dark:text-amber-300"
+            >
+              {email}
+              <button
+                type="button"
+                phx-click="remove_create_attendee"
+                phx-value-email={email}
+                phx-target={@myself}
+                class="w-4 h-4 rounded-full hover:bg-amber-200 flex items-center justify-center transition-colors"
+                aria-label={dgettext("dashboard_calendar_events", "Remove %{email}", email: email)}
+              >
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="3"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </span>
+          </div>
+          <form
+            id="create-add-attendee-form"
+            phx-submit="add_create_attendee"
+            phx-target={@myself}
+            class="flex gap-2"
+          >
+            <input
+              type="email"
+              id="create-attendee-email"
+              name="email"
+              value={@creating_event[:attendee_input] || ""}
+              phx-change="update_create_attendee_input"
+              phx-target={@myself}
+              placeholder="attendee@example.com"
+              class="flex-1 rounded-md border border-neutral-300 dark:border-twilight-indigo-700 bg-white dark:bg-twilight-indigo-900/60 text-neutral-900 dark:text-twilight-indigo-100 placeholder:text-neutral-400 dark:placeholder:text-twilight-indigo-400 text-token-sm focus:border-primary-500 focus:ring-primary-500"
+            />
+            <button
+              type="submit"
+              class="px-3 py-1.5 rounded-md border border-neutral-300 dark:border-twilight-indigo-700 text-token-xs text-neutral-600 dark:text-twilight-indigo-200 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-900 transition-colors"
+            >
+              {dgettext("dashboard_calendar_events", "Add")}
+            </button>
+          </form>
+          <p class="text-token-xs text-neutral-400 dark:text-twilight-indigo-300 mt-1">
+            {dgettext(
+              "dashboard_calendar_events",
+              "Invitations will be sent when you create the event."
+            )}
+          </p>
+        </div>
+      </div>
+
+      <:footer>
+        <div class="flex gap-2">
+          <.action_button
+            variant={:secondary}
+            disabled={@saving}
+            phx-click={JS.push("close_create_form", target: @myself)}
+          >
+            {dgettext("dashboard_calendar_events", "Cancel")}
+          </.action_button>
+          <.loading_button
+            variant={:primary}
+            loading={@saving}
+            loading_text={dgettext("dashboard_calendar_events", "Creating...")}
+            phx-click="save_event"
+            phx-target={@myself}
+          >
+            {dgettext("dashboard_calendar_events", "Create")}
+          </.loading_button>
+        </div>
+      </:footer>
+    </.modal>
+    """
+  end
+end

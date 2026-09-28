@@ -1,0 +1,395 @@
+defmodule TymeslotWeb.Dashboard.OnboardingChecklist do
+  @moduledoc """
+  Dashboard onboarding widget: a compact, dismissible checklist of recommended
+  setup actions — connect a calendar, add video, customise the theme, review
+  meeting types, share the booking page — each linking straight to where it is
+  done.
+
+  Two of the items complete themselves from real state (a connected calendar or
+  video provider tick automatically); the rest, plus any the host wants to skip
+  (e.g. video for in-person-only scheduling), can be ticked off by hand and grey
+  out immediately. The whole widget can also be closed. Both the per-item ticks
+  and the global close persist on the user via `Tymeslot.Onboarding`.
+
+  Gate rendering on `visible?/2`: the widget hides once every item is done or the
+  host has closed it, so a fully set-up user never sees it and no empty container
+  is left behind. Which items may be ticked by hand is a rule of
+  `Tymeslot.Onboarding.manual_dashboard_setup_items/0`; the catalogue here only
+  mirrors it, giving each manual item a checkbox and each provider item none.
+  """
+  use TymeslotWeb, :html
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Tymeslot.Onboarding
+  alias Tymeslot.Scheduling.LinkAccessPolicy
+  alias TymeslotWeb.Components.UI.CheckToggle
+  alias TymeslotWeb.Endpoint
+
+  @doc """
+  Whether the widget should render for this host: not closed, and at least one
+  setup item still outstanding.
+  """
+  @spec visible?(map(), map()) :: boolean()
+  def visible?(current_user, integration_status) do
+    not Onboarding.dashboard_setup_dismissed?(current_user) and
+      Enum.any?(items(integration_status, current_user), &(not &1.done))
+  end
+
+  attr :integration_status, :map, required: true
+  attr :current_user, :map, required: true
+  attr :profile, :any, required: true
+
+  attr :variant, :atom,
+    default: :full,
+    doc: "`:full` for the overview card, `:compact` for the collapsed strip above the calendar."
+
+  @spec onboarding_checklist(map()) :: Phoenix.LiveView.Rendered.t()
+  def onboarding_checklist(assigns) do
+    items =
+      assigns.integration_status
+      |> items(assigns.current_user)
+      |> Enum.map(&with_copy_state(&1, assigns.integration_status, assigns.profile))
+
+    assigns
+    |> assign(
+      items: items,
+      done_count: Enum.count(items, & &1.done),
+      total: length(items)
+    )
+    |> checklist_body()
+  end
+
+  # The calendar owns its whole viewport, so there the checklist is a single
+  # collapsed row that opens on demand rather than a card that pushes the grid
+  # below the fold. `<details>` keeps the open/closed state in the DOM, so
+  # expanding it costs no LiveView round trip and survives grid re-renders.
+  defp checklist_body(%{variant: :compact} = assigns) do
+    assigns = assign(assigns, :next_item, Enum.find(assigns.items, &(not &1.done)))
+
+    ~H"""
+    <div
+      class="flex items-center gap-2 rounded-token-xl border border-primary-200 bg-white dark:bg-twilight-indigo-950 px-3 py-2 shadow-sm"
+      data-testid="onboarding-checklist"
+      data-tour="quick-actions"
+      phx-remove={JS.transition("onboarding-checklist--leaving", time: 500)}
+    >
+      <details class="group min-w-0 flex-1 [&>summary::-webkit-details-marker]:hidden">
+        <summary
+          class="flex cursor-pointer list-none items-center gap-2 text-token-sm"
+          aria-label={dgettext("onboarding_wizard", "Setup checklist")}
+        >
+          <span class="shrink-0 rounded-full bg-primary-50 dark:bg-primary-900 px-2 py-0.5 text-token-xs font-black tabular-nums text-primary-700 dark:text-primary-300">
+            {@done_count}/{@total}
+          </span>
+          <span class="font-bold text-neutral-800 dark:text-neutral-100">
+            {dgettext("onboarding_wizard", "Finish setting up")}
+          </span>
+          <span
+            :if={@next_item}
+            class="hidden truncate text-neutral-500 dark:text-twilight-indigo-200 sm:inline"
+          >
+            · {@next_item.title}
+          </span>
+          <.icon
+            name="hero-chevron-down"
+            class="ml-auto h-4 w-4 shrink-0 text-neutral-400 dark:text-twilight-indigo-300 transition-transform group-open:rotate-180"
+          />
+        </summary>
+
+        <ul class="mt-3 space-y-2">
+          <li :for={item <- @items}>
+            <.item_row item={item} />
+          </li>
+        </ul>
+      </details>
+
+      <button
+        type="button"
+        phx-click="onboarding:dismiss"
+        aria-label={dgettext("onboarding_wizard", "Dismiss setup checklist")}
+        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-twilight-indigo-800 hover:text-neutral-600 dark:text-neutral-300"
+      >
+        <.icon name="hero-x-mark" class="h-5 w-5" />
+      </button>
+    </div>
+    """
+  end
+
+  defp checklist_body(assigns) do
+    ~H"""
+    <section
+      class="card-glass onboarding-checklist"
+      data-testid="onboarding-checklist"
+      data-tour="quick-actions"
+      aria-label={dgettext("onboarding_wizard", "Setup checklist")}
+      phx-remove={JS.transition("onboarding-checklist--leaving", time: 500)}
+    >
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div class="min-w-0">
+          <h2 class="text-token-xl font-black tracking-tight text-neutral-900 dark:text-neutral-50">
+            {dgettext("onboarding_wizard", "Finish setting up")}
+          </h2>
+          <p class="text-token-sm font-bold text-neutral-500 dark:text-twilight-indigo-200 mt-1 text-pretty">
+            {dgettext(
+              "onboarding_wizard",
+              "A few recommended steps - tick off the ones you don't need."
+            )}
+          </p>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+          <span class="px-3 py-1 rounded-full bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-300 text-token-sm font-black tabular-nums">
+            {@done_count}/{@total}
+          </span>
+          <button
+            type="button"
+            phx-click="onboarding:dismiss"
+            aria-label={dgettext("onboarding_wizard", "Dismiss setup checklist")}
+            class="w-8 h-8 flex items-center justify-center rounded-token-lg text-neutral-400 hover:text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-twilight-indigo-800 transition-colors"
+          >
+            <.icon name="hero-x-mark" class="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      <div class="h-2 w-full rounded-full bg-neutral-100 dark:bg-twilight-indigo-800 overflow-hidden mb-6">
+        <div
+          class="h-full rounded-full bg-linear-to-r from-primary-500 to-secondary-500 transition-all duration-500"
+          style={"width: #{round(@done_count / @total * 100)}%"}
+        >
+        </div>
+      </div>
+
+      <ul class="space-y-3">
+        <li :for={item <- @items}>
+          <.item_row item={item} />
+        </li>
+      </ul>
+    </section>
+    """
+  end
+
+  attr :item, :map, required: true
+
+  defp item_row(assigns) do
+    ~H"""
+    <div class={[
+      "flex flex-wrap items-center gap-3 sm:gap-4 p-4 rounded-token-2xl border-2 transition-all",
+      if(@item.done,
+        do:
+          "bg-neutral-50/50 dark:bg-twilight-indigo-900/40 border-neutral-300 dark:border-twilight-indigo-800",
+        else:
+          "bg-white dark:bg-twilight-indigo-950 border-primary-100 dark:border-primary-800 hover:border-primary-200 dark:hover:border-primary-700 hover:shadow-lg hover:shadow-primary-500/5"
+      )
+    ]}>
+      <%!-- Manual recommendations get a tick; deterministic provider items get
+           none — they complete only from a real connection, so there is nothing
+           to click. --%>
+      <CheckToggle.check_toggle
+        :if={@item.manual}
+        id={"setup-toggle-#{@item.key}"}
+        checked={@item.done}
+        on_change="onboarding:toggle"
+        phx_value_id={@item.key}
+        label={
+          if @item.done,
+            do: dgettext("onboarding_wizard", "Mark %{title} as not done", title: @item.title),
+            else: dgettext("onboarding_wizard", "Mark %{title} as done", title: @item.title)
+        }
+      />
+      <span :if={not @item.manual} class="shrink-0 w-6" aria-hidden="true"></span>
+
+      <div class={[
+        "shrink-0 w-11 h-11 rounded-token-xl flex items-center justify-center shadow-sm transition-colors",
+        if(@item.done,
+          do:
+            "bg-neutral-100 dark:bg-twilight-indigo-800 text-neutral-400 dark:text-twilight-indigo-300",
+          else: "bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-300"
+        )
+      ]}>
+        <.icon name={@item.icon} class="w-6 h-6" />
+      </div>
+
+      <%!-- basis-0 keeps this column shrinking rather than pushing the action
+           control onto the next line at desktop widths; the action's own
+           `w-full` below `sm` is what forces the wrap on phones. --%>
+      <div class="flex-1 basis-0 min-w-0">
+        <div class={[
+          "font-black tracking-tight text-balance",
+          if(@item.done,
+            do: "text-neutral-400 dark:text-twilight-indigo-300",
+            else: "text-neutral-900 dark:text-neutral-50"
+          )
+        ]}>
+          {@item.title}
+        </div>
+        <%!-- Truncation only pays off once the action sits beside the text and
+             the column is narrow; on phones the row is the description's own,
+             so let it wrap rather than ellipsis away half the sentence. --%>
+        <div class={[
+          "text-token-sm font-bold sm:truncate",
+          if(@item.done,
+            do: "text-neutral-400 dark:text-twilight-indigo-300",
+            else: "text-neutral-500 dark:text-twilight-indigo-200"
+          )
+        ]}>
+          {@item.description}
+        </div>
+      </div>
+
+      <.item_cta item={@item} />
+    </div>
+    """
+  end
+
+  # Geometry shared by every actionable variant below: full width on phones, so
+  # the control drops onto its own line and leaves the title and description the
+  # whole row; one fixed width from `sm` up, so the actions line up in a column.
+  @cta_class "shrink-0 inline-flex items-center justify-center w-full sm:w-32 px-4 py-2 rounded-token-xl text-token-sm font-black transition-colors"
+  defp cta_class, do: @cta_class
+
+  # The row's action. A done item shows a static "Done"; the share item copies
+  # the public booking link when the page is live (same readiness gate as the
+  # sidebar) and greys out otherwise; every other item links to where it is
+  # completed.
+  attr :item, :map, required: true
+
+  # A status rather than an action, so it needs none of the button geometry —
+  # only the same wrap behaviour, so a completed row lines up with the rest.
+  defp item_cta(%{item: %{done: true}} = assigns) do
+    ~H"""
+    <span class="shrink-0 w-full sm:w-32 text-center text-token-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
+      {dgettext("onboarding_wizard", "Done")}
+    </span>
+    """
+  end
+
+  defp item_cta(%{item: %{action: :copy, shareable: true}} = assigns) do
+    ~H"""
+    <button
+      type="button"
+      id={"setup-copy-#{@item.key}"}
+      phx-hook="CopyOnClick"
+      data-copy-text={@item.copy_url}
+      data-copy-feedback={dgettext("onboarding_wizard", "Booking link copied to clipboard!")}
+      class={[cta_class(), "gap-1.5 bg-primary-600 hover:bg-primary-700 text-white"]}
+    >
+      <.icon name="hero-clipboard" class="w-4 h-4" /> {@item.cta}
+    </button>
+    """
+  end
+
+  defp item_cta(%{item: %{action: :copy}} = assigns) do
+    ~H"""
+    <span
+      class={[
+        cta_class(),
+        "gap-1.5 bg-neutral-100 dark:bg-twilight-indigo-800 text-neutral-400 dark:text-twilight-indigo-300 cursor-not-allowed"
+      ]}
+      title={@item.disabled_tooltip}
+    >
+      <.icon name="hero-clipboard" class="w-4 h-4" /> {@item.cta}
+    </span>
+    """
+  end
+
+  defp item_cta(assigns) do
+    ~H"""
+    <.link
+      patch={@item.path}
+      class={[cta_class(), "gap-1 bg-primary-600 hover:bg-primary-700 text-white group"]}
+    >
+      {@item.cta} <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+    </.link>
+    """
+  end
+
+  # Attaches the share item's live copy state. When the booking page is ready
+  # (same `LinkAccessPolicy` gate the sidebar uses) it carries the full link to
+  # copy; otherwise it carries the reason it is disabled. Other items pass through.
+  @spec with_copy_state(map(), map(), map() | nil) :: map()
+  defp with_copy_state(%{action: :copy} = item, integration_status, profile) do
+    if LinkAccessPolicy.can_link?(profile, integration_status) do
+      Map.merge(item, %{
+        shareable: true,
+        copy_url: Endpoint.url() <> LinkAccessPolicy.scheduling_path(profile)
+      })
+    else
+      Map.merge(item, %{
+        shareable: false,
+        disabled_tooltip: LinkAccessPolicy.disabled_tooltip(profile, integration_status)
+      })
+    end
+  end
+
+  defp with_copy_state(item, _integration_status, _profile), do: item
+
+  # Merges live completion state onto the static catalogue. An item is done when
+  # its underlying state is set (`auto_done`) or the host ticked it by hand.
+  @spec items(map(), map()) :: [map()]
+  defp items(integration_status, current_user) do
+    manual = current_user.dashboard_setup_done_items || []
+
+    Enum.map(catalog(), fn item ->
+      manual? = is_nil(item.auto)
+      # Deterministic items complete only from real state; manual ones only from
+      # the host's own ticks — the two never mix.
+      done =
+        if manual?, do: item.key in manual, else: Map.get(integration_status, item.auto, false)
+
+      Map.merge(item, %{manual: manual?, done: done})
+    end)
+  end
+
+  # Static definition of the setup items. `auto` names the `integration_status`
+  # key that completes the item automatically, or `nil` for manual-only items.
+  @spec catalog() :: [map()]
+  defp catalog do
+    [
+      %{
+        key: "calendar",
+        auto: :has_calendar,
+        icon: "hero-calendar-days",
+        title: dgettext("onboarding_wizard", "Connect a calendar"),
+        description: dgettext("onboarding_wizard", "Sync to avoid double-bookings"),
+        cta: dgettext("onboarding_wizard", "Connect"),
+        path: ~p"/dashboard/calendar-integration"
+      },
+      %{
+        key: "video",
+        auto: :has_video,
+        icon: "hero-video-camera",
+        title: dgettext("onboarding_wizard", "Add a video provider"),
+        description: dgettext("onboarding_wizard", "Auto-add links to online meetings"),
+        cta: dgettext("onboarding_wizard", "Connect"),
+        path: ~p"/dashboard/video-integration"
+      },
+      %{
+        key: "theme",
+        auto: nil,
+        icon: "hero-paint-brush",
+        title: dgettext("onboarding_wizard", "Customise your theme"),
+        description: dgettext("onboarding_wizard", "Make your booking page yours"),
+        cta: dgettext("onboarding_wizard", "Customise"),
+        path: ~p"/dashboard/theme"
+      },
+      %{
+        key: "meeting_types",
+        auto: nil,
+        icon: "hero-squares-2x2",
+        title: dgettext("onboarding_wizard", "Review your meeting types"),
+        description: dgettext("onboarding_wizard", "Tune durations and questions"),
+        cta: dgettext("onboarding_wizard", "Review"),
+        path: ~p"/dashboard/meeting-settings"
+      },
+      %{
+        key: "share",
+        auto: nil,
+        action: :copy,
+        icon: "hero-arrow-top-right-on-square",
+        title: dgettext("onboarding_wizard", "Share your booking page"),
+        description: dgettext("onboarding_wizard", "Send guests your booking link"),
+        cta: dgettext("onboarding_wizard", "Copy link")
+      }
+    ]
+  end
+end

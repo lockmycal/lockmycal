@@ -1,0 +1,281 @@
+@import "tailwindcss";
+
+/* Import design tokens */
+@import "./base/variables.css";
+@import "./base/dark-tokens.css";
+@import "./base/typography.css";
+@import "./base/base.css";
+
+/* Import design token utility classes */
+@import "./design-tokens.css";
+
+/* Import layout utilities */
+@import "./layout/utilities.css";
+
+/* Import animations */
+@import "./animations/keyframes.css";
+@import "./animations/animate-enter.css";
+
+/* Import components */
+@import "./components/buttons.css";
+@import "./components/forms.css";
+@import "./components/cards.css";
+@import "./components/misc.css";
+@import "./components/dashboard.css";
+@import "./components/theme-customization.css";
+@import "./components/embed-cards.css";
+@import "./components/onboarding.css";
+@import "./components/tour.css";
+@import "./modal.css";
+
+/* Import glass morphism components */
+@import "./components/glass-morphism.css";
+@import "./components/background-motion.css";
+
+/* Import auth-specific styles */
+@import "./auth/auth-buttons.css";
+
+/* Import reCAPTCHA styles */
+@import "./recaptcha.css";
+
+/* ===========================================================================
+   Tailwind v4 CSS-first configuration
+   ---------------------------------------------------------------------------
+   The standalone v4 CLI cannot load a legacy JS config via @config (it fails
+   transpiling it), so the former tailwind.config.js theme.extend / plugins /
+   content / safelist are expressed here in CSS instead. All @import statements
+   must precede every at-rule below.
+   =========================================================================== */
+
+/* Plugins. @tailwindcss/forms is bundled inside the v4 standalone binary.
+   Heroicons are no longer a Tailwind plugin: they render as inline SVG from
+   TymeslotWeb.Components.CoreComponents.Heroicons, so there is no .hero-* mask
+   utility to compile and no hero-* safelist to maintain. */
+@plugin "@tailwindcss/forms";
+
+/* LiveView state variants (formerly addVariant() plugins in tailwind.config.js).
+   Lets classes like `phx-submit-loading:opacity-50` apply while the parent
+   carries the matching LiveView class. The block form with @slot is required:
+   the inline array form `([".sel&", ".sel &"])` is emitted verbatim as a literal
+   selector by the v4 standalone CLI instead of being expanded, so the variant
+   never matches. */
+@custom-variant phx-click-loading {
+  .phx-click-loading& { @slot; }
+  .phx-click-loading & { @slot; }
+}
+@custom-variant phx-submit-loading {
+  .phx-submit-loading& { @slot; }
+  .phx-submit-loading & { @slot; }
+}
+@custom-variant phx-change-loading {
+  .phx-change-loading& { @slot; }
+  .phx-change-loading & { @slot; }
+}
+
+/* Dashboard dark mode. Explicit opt-in via a `.dark` class on <html> (or an
+   ancestor) — never a bare `prefers-color-scheme` media variant, so an
+   explicit Light choice always wins over the OS setting. "System" mode is
+   resolved server-side (AppAppearanceHook) or, when the server can't yet know
+   the OS preference, by a tiny inline bootstrap script — see root.html.heex. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Content sources (formerly the `content` globs). v4 auto-detects file
+   extensions; paths are relative to this file. */
+@source "../js";
+@source "../../lib/tymeslot_web.ex";
+@source "../../lib/tymeslot_web";
+
+/* Safelist (formerly `safelist`). These classes are produced by runtime string
+   interpolation or live only in SaaS templates, so static scanning misses them. */
+@source inline("display-xl display-lg display-md");
+@source inline("bg-calendar-{1,2,3,4,5,6,7,8} bg-calendar-fallback");
+@source inline("bg-calendar-{tomato,tangerine,banana,sage,peacock,blueberry,grape,graphite}");
+@source inline("w-6 h-6 w-8 h-8 w-10 h-10 h-16 h-20 box-border");
+/* Poll response-bar segments. These are returned as bare strings from
+   `PollResults.bar_segment_class/1` rather than written into a template, and the
+   scanner does not extract class names from Elixir string literals — three of
+   the four only resolved because unrelated templates happened to use the same
+   shades. Listed here so the bar owns its own colours. */
+@source inline("bg-green-500 bg-amber-400 bg-red-400 bg-neutral-200");
+
+@theme {
+  /* --- Brand + extended palette (formerly theme.extend.colors) --- */
+  --color-brand: #f18805;
+
+  --color-primary-50: #fef3e6;
+  --color-primary-100: #fee8cd;
+  --color-primary-200: #fdd19b;
+  --color-primary-300: #fcba69;
+  --color-primary-400: #fba337;
+  --color-primary-500: #fa8c05;
+  --color-primary-600: #c87004;
+  --color-primary-700: #965403;
+  --color-primary-800: #643802;
+  --color-primary-900: #321c01;
+  --color-primary-950: #231401;
+
+  --color-secondary-50: #fbedea;
+  --color-secondary-100: #f7dcd4;
+  --color-secondary-200: #efb8a9;
+  --color-secondary-300: #e7957e;
+  --color-secondary-400: #de7254;
+  --color-secondary-500: #d64e29;
+  --color-secondary-600: #ab3f21;
+  --color-secondary-700: #812f18;
+  --color-secondary-800: #561f10;
+  --color-secondary-900: #2b1008;
+  --color-secondary-950: #1e0b06;
+
+  --color-tertiary-50: #eceff8;
+  --color-tertiary-100: #d9dff2;
+  --color-tertiary-200: #b3c0e5;
+  --color-tertiary-300: #8da0d8;
+  --color-tertiary-400: #6780cb;
+  --color-tertiary-500: #4160be;
+  --color-tertiary-600: #344d98;
+  --color-tertiary-700: #273a72;
+  --color-tertiary-800: #1a274c;
+  --color-tertiary-900: #0d1326;
+  --color-tertiary-950: #090d1b;
+
+  /* --- Dark-mode surface scales (docs/DESIGN_GUIDE.md "DESIGN NOTE - used
+     colors" section) — twilight-indigo is the mid-tone dark surface,
+     prussian-blue the near-black base, golden-orange a reserved distinct
+     highlight accent not yet used by any component. twilight-indigo and
+     prussian-blue land on nearly identical dark ends (#0d1326/#090d1x) —
+     that's a genuine quirk of the source palette, not a transcription bug;
+     both are kept as separate tokens (twilight-indigo for a slightly
+     lighter, elevated surface such as card hover; prussian-blue as the base
+     `.dark` background). --- */
+  --color-twilight-indigo-50: #eceff8;
+  --color-twilight-indigo-100: #d9dff2;
+  --color-twilight-indigo-200: #b3c0e5;
+  --color-twilight-indigo-300: #8da0d8;
+  --color-twilight-indigo-400: #6780cb;
+  --color-twilight-indigo-500: #4160be;
+  --color-twilight-indigo-600: #344d98;
+  --color-twilight-indigo-700: #273a72;
+  --color-twilight-indigo-800: #1a274c;
+  --color-twilight-indigo-900: #0d1326;
+  --color-twilight-indigo-950: #090d1b;
+
+  --color-prussian-blue-50: #eceff8;
+  --color-prussian-blue-100: #d9dff2;
+  --color-prussian-blue-200: #b4bfe4;
+  --color-prussian-blue-300: #8e9fd7;
+  --color-prussian-blue-400: #687fca;
+  --color-prussian-blue-500: #425fbd;
+  --color-prussian-blue-600: #354c97;
+  --color-prussian-blue-700: #283971;
+  --color-prussian-blue-800: #1b264b;
+  --color-prussian-blue-900: #0d1326;
+  --color-prussian-blue-950: #090d1a;
+
+  --color-golden-orange-50: #fff6e6;
+  --color-golden-orange-100: #feeecd;
+  --color-golden-orange-200: #fedd9a;
+  --color-golden-orange-300: #fdcb68;
+  --color-golden-orange-400: #fdba35;
+  --color-golden-orange-500: #fca903;
+  --color-golden-orange-600: #ca8702;
+  --color-golden-orange-700: #976502;
+  --color-golden-orange-800: #654401;
+  --color-golden-orange-900: #322201;
+  --color-golden-orange-950: #231800;
+
+  /* Gray scale: Tailwind's built-in --color-neutral-* is used directly (see
+     dev_support/credo_checks/use_color_scale.ex), no custom registration needed. */
+
+  /* Glass background colours reference the design tokens (distinct names, so no
+     self-reference). Enables bg-glass-light, bg-glass-card, etc. */
+  --color-glass-light: var(--color-glass-bg-light);
+  --color-glass-medium: var(--color-glass-bg-medium);
+  --color-glass-strong: var(--color-glass-bg-strong);
+  --color-glass-card: var(--color-glass-bg-card);
+  --color-glass-card-enhanced: var(--color-glass-bg-card-enhanced);
+  --color-glass-overlay: var(--color-glass-bg-overlay);
+  --color-glass-overlay-enhanced: var(--color-glass-bg-overlay-enhanced);
+
+  /* Calendar integration colours. The v4 utility var name collides with the
+     design token of the same name, so the values are inlined here (kept in sync
+     with base/variables.css) to avoid a circular reference. */
+  --color-calendar-1: #14b8a6;
+  --color-calendar-2: #3b82f6;
+  --color-calendar-3: #a855f7;
+  --color-calendar-4: #0d9488;
+  --color-calendar-5: #06b6d4;
+  --color-calendar-6: #6366f1;
+  --color-calendar-7: #f43f5e;
+  --color-calendar-8: #f59e0b;
+  --color-calendar-fallback: #a1a1aa;
+
+  /* Calendar palette colours — the pickable ones, named rather than numbered.
+     Same inlining rationale as the rotation above. */
+  --color-calendar-tomato: #f43f5e;
+  --color-calendar-tangerine: #f97316;
+  --color-calendar-banana: #eab308;
+  --color-calendar-sage: #65a30d;
+  --color-calendar-peacock: #06b6d4;
+  --color-calendar-blueberry: #3b82f6;
+  --color-calendar-grape: #a855f7;
+  --color-calendar-graphite: #71717a;
+
+  /* --- Token font sizes → text-token-* (formerly theme.extend.fontSize) --- */
+  --text-token-2xs: var(--font-size-2xs);
+  --text-token-xs: var(--font-size-xs);
+  --text-token-sm: var(--font-size-sm);
+  --text-token-base: var(--font-size-base);
+  --text-token-lg: var(--font-size-lg);
+  --text-token-xl: var(--font-size-xl);
+  --text-token-2xl: var(--font-size-2xl);
+  --text-token-3xl: var(--font-size-3xl);
+  --text-token-4xl: var(--font-size-4xl);
+  --text-token-5xl: var(--font-size-5xl);
+  --text-token-6xl: var(--font-size-6xl);
+  --text-token-7xl: var(--font-size-7xl);
+
+  /* --- Token radii → rounded-token-* (formerly theme.extend.borderRadius) --- */
+  --radius-token-sm: var(--radius-sm);
+  --radius-token-md: var(--radius-md);
+  --radius-token-lg: var(--radius-lg);
+  --radius-token-xl: var(--radius-xl);
+  --radius-token-2xl: var(--radius-2xl);
+  --radius-token-3xl: var(--radius-3xl);
+  --radius-token-full: var(--radius-full);
+
+  /* --- Glass shadows → shadow-glass-* (values inlined to avoid the
+     self-referential collision with the --shadow-glass-* design tokens) --- */
+  --shadow-glass-sm: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --shadow-glass-md: 0 6px 20px rgba(0, 0, 0, 0.3);
+  --shadow-glass-lg: 0 8px 24px rgba(20, 20, 40, 0.4);
+  --shadow-glass-xl: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-glass-card: var(--shadow-glass-card-enhanced);
+
+  /* --- Glass backdrop blur → backdrop-blur-glass-* (raw lengths; v4 wraps
+     them in blur()) --- */
+  --blur-glass-light: 10px;
+  --blur-glass-medium: 15px;
+  --blur-glass-strong: 20px;
+  --blur-glass-heavy: 25px;
+
+  /* --- Glass transition property → transition-glass --- */
+  --transition-property-glass: var(--transition-glass);
+
+  /* v4 compatibility: restore v3's 3px blue-500 default ring (v4 defaults to
+     1px currentColor). */
+  --default-ring-width: 3px;
+  --default-ring-color: var(--color-blue-500);
+}
+
+/* v4 compatibility: v4 changed the default border colour from gray-200 to
+   currentColor. Restore the v3 default so existing un-coloured borders render
+   unchanged. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}

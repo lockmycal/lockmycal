@@ -1,0 +1,586 @@
+defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
+  @moduledoc """
+  LiveComponent that renders and manages the Meeting Type form UI state.
+
+  It handles local UI events (validate, icon selection, calendar destination).
+  When editing an existing meeting type, each change auto-saves via
+  `MeetingTypeForm.Autosave`; when creating a new one, the parent component
+  handles the final "Create" submit/persist event.
+  """
+  use TymeslotWeb, :live_component
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  # Follow project rule: ALWAYS alias nested modules and organize alphabetically within groups
+  alias Ecto.UUID
+  alias Tymeslot.Availability.Schedules
+  alias Tymeslot.Locales
+  alias Tymeslot.MeetingTypes
+  alias Tymeslot.MeetingTypes.ApprovalWindow
+  alias Tymeslot.MeetingTypes.MeetingTypeTranslation
+  alias Tymeslot.Utils.ReminderUtils
+  alias TymeslotWeb.Dashboard.MeetingSettings.Components.Reminders
+  alias TymeslotWeb.Dashboard.MeetingSettings.Helpers
+
+  alias TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.{
+    Autosave,
+    FormView,
+    Init,
+    Validation
+  }
+
+  alias TymeslotWeb.CustomInputModeHelper
+  alias TymeslotWeb.Live.Shared.Flash
+  alias TymeslotWeb.Live.Shared.FormValidationHelpers
+
+  # Public assigns passed from parent
+  # - type: existing meeting type or nil
+  # - is_edit: whether we are editing
+  # - video_integrations: list for selection
+  # - parent_myself: phx-target for parent events (submit/cancel)
+  # - saving: parent's saving state to control the button disabled state
+  # - current_user: used for security metadata in validation
+
+  @impl Phoenix.LiveComponent
+  def mount(socket) do
+    {:ok,
+     socket
+     |> assign(:form_errors, %{})
+     |> assign(:form_data, %{})
+     |> assign(:selected_icon, "none")
+     |> assign(:locations, [])
+     |> assign(:selected_calendar_integration_id, nil)
+     |> assign(:selected_target_calendar_id, nil)
+     |> assign(:selected_availability_schedule_id, nil)
+     |> assign(:schedules, [])
+     |> assign(:default_schedule_name, Schedules.default_schedule_name())
+     |> assign(:available_calendars, [])
+     |> assign(:no_writable_calendars, false)
+     |> assign(:target_calendar_status, :ok)
+     |> assign(:refreshing_calendars, false)
+     |> assign(:reminders, [])
+     |> assign(:max_reminders, MeetingTypes.max_reminders())
+     |> assign(:new_reminder_value, "")
+     |> assign(:new_reminder_unit, "minutes")
+     |> assign(:reminder_error, nil)
+     |> assign(:show_custom_reminder, false)
+     |> assign(:reminder_confirmation, nil)
+     |> assign(:custom_fields, [])
+     |> assign(:translations, [])
+     |> assign(:active_translation_locale, Locales.default_locale())
+     |> assign(:save_status, :saved)
+     |> assign(:editing_question, nil)
+     |> assign(:editing_question_mode, :add)
+     |> assign(:editing_location, nil)
+     |> assign(:editing_location_mode, :add)
+     |> assign(:custom_questions_allowed, true)
+     |> assign(:payments_feature_enabled, false)
+     |> assign(:payments_charges_enabled, false)
+     |> assign(:payment_currency, "usd")
+     |> assign(:payment_currency_minimum_cents, 50)
+     |> assign(:payment_required, false)
+     |> assign(:payment_price, "")
+     |> assign(:allow_guests, false)
+     |> assign(:requires_approval, false)
+     |> assign(:approval_window_hours, nil)
+     |> assign(:show_as_free, false)
+     |> assign(:booking_limits, Init.get_booking_limits(nil))
+     |> assign(:active_tab, "details")
+     |> assign(:__initialized__, false)}
+  end
+
+  @impl Phoenix.LiveComponent
+  def update(assigns, socket) do
+    socket =
+      socket
+      |> assign(assigns)
+      |> Init.maybe_initialize()
+
+    # Custom-question and location edits arrive here as a `send_update`
+    # carrying `:custom_fields` or `:locations` (add/edit/delete/reorder).
+    # Persist them like any other change so auto-save covers both editors.
+    #
+    # Deferred autosave retries (throttle backoff) arrive as `trigger_autosave: true`.
+    #
+    # Other send_updates (calendar refresh, reminder-confirmation clearing) don't
+    # carry either key and skip the autosave.
+    if Map.has_key?(assigns, :custom_fields) or Map.has_key?(assigns, :locations) or
+         Map.get(assigns, :trigger_autosave) == true do
+      {:ok, Autosave.maybe_run(socket)}
+    else
+      {:ok, socket}
+    end
+  end
+
+  @impl Phoenix.LiveComponent
+  def render(assigns), do: FormView.form(assigns)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("switch_tab", %{"tab" => tab}, socket)
+      when tab in ~w(details location booking questions reminders) do
+    {:noreply, assign(socket, :active_tab, tab)}
+  end
+
+  # The tab-switcher inside the "details" panel that picks which locale's
+  # name/description are shown/edited — unrelated to the 5-panel `active_tab`
+  # switcher above. `option_toggle` posts the chosen value as `"option"`.
+  @impl Phoenix.LiveComponent
+  def handle_event("switch_translation_locale", %{"option" => locale}, socket) do
+    if locale in Locales.supported_codes() do
+      {:noreply, assign(socket, :active_translation_locale, locale)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("validate_meeting_type_translation", %{"translation" => params}, socket) do
+    locale = socket.assigns.active_translation_locale
+    translations = upsert_translation(socket.assigns.translations, locale, params)
+
+    {:noreply,
+     socket
+     |> assign(:translations, translations)
+     |> Autosave.maybe_run()}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("validate_meeting_type", %{"meeting_type" => params}, socket) do
+    metadata = Helpers.get_security_metadata(socket)
+
+    # The interval dropdown's "Custom…" entry names a mode, not a duration, so
+    # it is read for the mode and then dropped: the number input it reveals is
+    # what posts the value. Left in, it would reach the validator as a
+    # non-numeric interval and raise an error against a choice that never
+    # claimed to be one.
+    socket = sync_slot_interval_mode(socket, params)
+    params = drop_interval_mode_sentinel(params)
+
+    # Merge incoming params into existing form data to prevent wiping other fields
+    new_data = Map.merge(socket.assigns.form_data || %{}, params)
+
+    # Determine which fields changed (input-level phx-change sends only the targeted field)
+    changed_fields = Map.keys(params)
+
+    # Start from existing errors and update only the changed fields
+    current_errors = socket.assigns.form_errors || %{}
+
+    {updated_data, updated_errors} =
+      Enum.reduce(changed_fields, {new_data, current_errors}, fn field, {acc_data, acc_errors} ->
+        Validation.validate_and_update_field(
+          field,
+          Map.get(params, field),
+          metadata,
+          acc_data,
+          acc_errors
+        )
+      end)
+
+    {:noreply,
+     socket
+     |> assign(form_data: updated_data, form_errors: updated_errors)
+     |> Autosave.maybe_run()}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("select_icon", %{"icon" => icon}, socket) do
+    {:noreply, socket |> assign(:selected_icon, icon) |> Autosave.maybe_run()}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("select_calendar_integration", %{"id" => id}, socket) do
+    integration_id =
+      case id do
+        id when is_binary(id) -> String.to_integer(id)
+        id when is_integer(id) -> id
+      end
+
+    # Send a message to parent to fetch fresh calendars
+    send(self(), {:refresh_calendar_list, socket.assigns.id, integration_id})
+
+    socket =
+      socket
+      |> assign(:selected_calendar_integration_id, integration_id)
+      |> assign(:refreshing_calendars, true)
+      |> assign(:available_calendars, [])
+      |> assign(:no_writable_calendars, false)
+      |> assign(:target_calendar_status, :ok)
+      |> assign(:selected_target_calendar_id, nil)
+      |> assign(
+        :form_errors,
+        FormValidationHelpers.delete_field_error(
+          socket.assigns.form_errors,
+          :calendar_integration
+        )
+      )
+
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("select_target_calendar", %{"id" => id}, socket) do
+    socket =
+      socket
+      |> assign(:selected_target_calendar_id, id)
+      # The picker only offers writable calendars, so any pick clears the
+      # warning raised about the calendar that was stored before.
+      |> assign(:target_calendar_status, :ok)
+      |> assign(
+        :form_errors,
+        FormValidationHelpers.delete_field_error(socket.assigns.form_errors, :target_calendar)
+      )
+
+    {:noreply, Autosave.maybe_run(socket)}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_availability_schedule", %{"schedule" => schedule}, socket) do
+    # Blank is the "default schedule" chip, and parses to nil, so the meeting
+    # type keeps following whichever schedule is default rather than pinning
+    # the one that happened to be default when it was chosen.
+    socket =
+      socket
+      |> assign(:selected_availability_schedule_id, parse_schedule_id(schedule))
+      |> Autosave.maybe_run()
+
+    {:noreply, flash_schedule_saved(socket)}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_payment_required", %{"state" => state}, socket) do
+    # Guard: hosts who cannot accept charges must not flip the toggle even
+    # if a stale/forged event arrives — the control renders disabled.
+    if socket.assigns.payments_charges_enabled do
+      {:noreply,
+       socket
+       |> assign(:payment_required, state == "true")
+       |> assign(
+         :form_errors,
+         FormValidationHelpers.delete_field_error(socket.assigns.form_errors, :payment_required)
+       )
+       |> Autosave.maybe_run()}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_requires_approval", %{"state" => state}, socket) do
+    {:noreply,
+     socket
+     |> assign(:requires_approval, state == "true")
+     |> Autosave.maybe_run()}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_approval_window", params, socket) do
+    # The input sits inside the meeting-type form, so the event carries the
+    # whole form's params under "meeting_type".
+    raw =
+      params
+      |> Map.get("meeting_type", %{})
+      |> Map.get("approval_window_hours")
+
+    case ApprovalWindow.parse(raw) do
+      {:ok, hours} ->
+        {:noreply,
+         socket
+         |> assign(:approval_window_hours, hours)
+         |> assign(
+           :form_errors,
+           FormValidationHelpers.delete_field_error(
+             socket.assigns.form_errors,
+             :approval_window_hours
+           )
+         )
+         |> Autosave.maybe_run()}
+
+      # Leave the stored value and last successful save untouched: surfacing
+      # the error and stopping here is what stops a half-typed number from
+      # autosaving over a good previously saved window.
+      {:error, :invalid_approval_window} ->
+        {:noreply,
+         assign(
+           socket,
+           :form_errors,
+           Map.put(
+             socket.assigns.form_errors,
+             :approval_window_hours,
+             dgettext(
+               "dashboard_meeting_form",
+               "Enter a whole number of hours, or leave blank to use the default."
+             )
+           )
+         )}
+    end
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_allow_guests", %{"state" => state}, socket) do
+    {:noreply,
+     socket
+     |> assign(:allow_guests, state == "true")
+     |> Autosave.maybe_run()}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_booking_limits", params, socket) do
+    # The inputs sit inside the meeting-type form, so the event carries the
+    # whole form's params under "meeting_type".
+    type_params = Map.get(params, "meeting_type", %{})
+
+    limits =
+      Map.new(Init.get_booking_limits(nil), fn {key, _default} ->
+        {key, parse_booking_limit(type_params[key])}
+      end)
+
+    {:noreply,
+     socket
+     |> assign(:booking_limits, limits)
+     |> Autosave.maybe_run()}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_show_as_free", %{"state" => state}, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_as_free, state == "true")
+     |> Autosave.maybe_run()}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("change_payment_price", %{"meeting_type" => %{"price_input" => price}}, socket) do
+    {:noreply,
+     socket
+     |> assign(:payment_price, price)
+     |> assign(
+       :form_errors,
+       FormValidationHelpers.delete_field_error(socket.assigns.form_errors, :price_cents)
+     )
+     |> Autosave.maybe_run()}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_reminder_input", %{"reminder" => reminder_params}, socket) do
+    reminder_value = Map.get(reminder_params, "value", socket.assigns.new_reminder_value)
+    reminder_unit = Map.get(reminder_params, "unit", socket.assigns.new_reminder_unit)
+
+    {:noreply,
+     assign(socket,
+       new_reminder_value: reminder_value,
+       new_reminder_unit: reminder_unit,
+       reminder_error: nil
+     )}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_custom_reminder", _params, socket) do
+    {:noreply,
+     assign(socket,
+       show_custom_reminder: !socket.assigns.show_custom_reminder,
+       reminder_confirmation: nil
+     )}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("add_quick_reminder", params, socket) do
+    # Handle map from JS.push
+    {amount, unit} =
+      case params do
+        %{"amount" => a, "unit" => u} -> {a, u}
+        _other -> {nil, nil}
+      end
+
+    case Validation.validate_new_reminder(socket.assigns.reminders, amount, unit) do
+      {:ok, reminder} ->
+        reminders = socket.assigns.reminders ++ [reminder]
+
+        # Clear any existing confirmation timer if we had one
+        Process.send_after(self(), {:clear_reminder_confirmation, socket.assigns.id}, 3000)
+
+        {:noreply,
+         socket
+         |> assign(:reminders, reminders)
+         |> assign(
+           :reminder_confirmation,
+           dgettext("dashboard_meeting_form", "Added %{label} before",
+             label: Reminders.reminder_label(reminder.value, reminder.unit)
+           )
+         )
+         |> assign(:reminder_error, nil)
+         |> Autosave.maybe_run()}
+
+      {:error, message} ->
+        {:noreply, assign(socket, reminder_error: message)}
+    end
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("add_reminder", _params, socket) do
+    value = socket.assigns.new_reminder_value
+    unit = socket.assigns.new_reminder_unit
+
+    case Validation.validate_new_reminder(socket.assigns.reminders, value, unit) do
+      {:ok, reminder} ->
+        reminders = socket.assigns.reminders ++ [reminder]
+
+        Process.send_after(self(), {:clear_reminder_confirmation, socket.assigns.id}, 3000)
+
+        {:noreply,
+         socket
+         |> assign(
+           reminders: reminders,
+           new_reminder_value: "",
+           reminder_error: nil,
+           show_custom_reminder: false,
+           reminder_confirmation:
+             dgettext("dashboard_meeting_form", "Added %{label} before",
+               label: Reminders.reminder_label(reminder.value, reminder.unit)
+             )
+         )
+         |> Autosave.maybe_run()}
+
+      {:error, message} ->
+        {:noreply, assign(socket, reminder_error: message)}
+    end
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("remove_reminder", params, socket) do
+    # Handle both JS.push map and individual phx-value-params
+    {value, unit} =
+      case params do
+        %{"value" => %{"value" => v, "unit" => u}} -> {v, u}
+        %{"value" => v, "unit" => u} -> {v, u}
+        _other -> {nil, nil}
+      end
+
+    reminders =
+      Enum.reject(socket.assigns.reminders, fn reminder ->
+        reminder.value == ReminderUtils.parse_reminder_value(value) and reminder.unit == unit
+      end)
+
+    {:noreply,
+     socket
+     |> assign(reminders: reminders, reminder_error: nil)
+     |> Autosave.maybe_run()}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("flush_autosave", _params, socket) do
+    # Edit-mode submit (e.g. pressing Enter) persists current state in place
+    # without closing the overlay — there is no separate "save" action.
+    {:noreply, Autosave.maybe_run(socket)}
+  end
+
+  # Picking a schedule is one deliberate click on a chip, so it is worth a flash
+  # confirming the change is already stored: the inline indicator sits beside
+  # "Done", far from the chips, and reads as ambient. Autosave's other triggers
+  # stay silent on purpose — typing a name would fire one per keystroke, which
+  # is exactly what `Autosave.indicator/1` exists to avoid.
+  defp flash_schedule_saved(%{assigns: %{is_edit: true, save_status: :saved}} = socket) do
+    Flash.info(dgettext("dashboard_meeting_form", "Schedule updated and saved"))
+    socket
+  end
+
+  # Creating still saves on submit, and a failed save already shows its own
+  # error, so neither gets a "saved" flash.
+  defp flash_schedule_saved(socket), do: socket
+
+  # Blank means "follow the profile's default schedule", stored as nil; the
+  # same goes for anything unparseable, since the chips only ever offer the
+  # blank default and the profile's own schedule ids.
+  defp parse_schedule_id(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {id, ""} when id > 0 -> id
+      _other -> nil
+    end
+  end
+
+  defp parse_schedule_id(_value), do: nil
+
+  # Blank clears the limit; anything unparseable is treated as blank (the
+  # number input constrains typing, and the changeset enforces the range).
+  # Blank is a real choice here: it means "use the application default", which
+  # the domain resolves at read time. So a cleared field stores nil rather than
+  # reverting to whatever the default happened to be when it was cleared.
+  defp parse_booking_limit(nil), do: nil
+
+  defp parse_booking_limit(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {limit, ""} when limit > 0 -> limit
+      _other -> nil
+    end
+  end
+
+  # Picking anything other than "Custom…" from the dropdown closes the number
+  # input, which is the only way back out of custom mode. A value the dropdown
+  # does not offer keeps it open, since that value has nowhere else to be
+  # edited.
+  #
+  # Only fires when the interval was the field that changed: the form posts one
+  # field at a time, so every other change must leave the mode alone.
+  defp sync_slot_interval_mode(socket, %{"slot_interval" => value}) do
+    custom? = custom_interval_sentinel?(value) or off_preset_interval?(value)
+    CustomInputModeHelper.set_custom_mode(socket, :slot_interval_minutes, custom?)
+  end
+
+  defp sync_slot_interval_mode(socket, _params), do: socket
+
+  defp drop_interval_mode_sentinel(%{"slot_interval" => value} = params) do
+    if custom_interval_sentinel?(value), do: Map.delete(params, "slot_interval"), else: params
+  end
+
+  defp drop_interval_mode_sentinel(params), do: params
+
+  defp custom_interval_sentinel?(value), do: value == FormView.custom_interval_option()
+
+  defp off_preset_interval?(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {interval, ""} -> not CustomInputModeHelper.preset_value?(:slot_interval_minutes, interval)
+      _not_an_integer -> false
+    end
+  end
+
+  defp off_preset_interval?(_value), do: false
+
+  # Upserts one locale's row into the in-memory translations list, matching
+  # `custom_questions_section.ex`'s idiom for a new `%FieldDefinition{}`: build
+  # the struct directly, id included, since full changeset validation only
+  # happens once at persist time (`MeetingTypeTranslation.changeset/2`).
+  #
+  # `params` carries only the one field that actually changed — each
+  # translation input fires its own `phx-change`, same as the base
+  # `meeting_type[name]`/`[description]` inputs — so an existing row is
+  # updated one field at a time; the field absent from `params` must be left
+  # exactly as it was, not reset to blank.
+  defp upsert_translation(translations, locale, params) do
+    case Enum.find_index(translations, &(&1.locale == locale)) do
+      nil ->
+        new_row = %MeetingTypeTranslation{
+          id: UUID.generate(),
+          locale: locale,
+          name: blank_to_nil(Map.get(params, "name", "")),
+          description: blank_to_nil(Map.get(params, "description", ""))
+        }
+
+        translations ++ [new_row]
+
+      index ->
+        List.update_at(translations, index, &put_translation_fields(&1, params))
+    end
+  end
+
+  defp put_translation_fields(row, params) do
+    row
+    |> maybe_put_translation_field(:name, params["name"])
+    |> maybe_put_translation_field(:description, params["description"])
+  end
+
+  defp maybe_put_translation_field(row, _field, nil), do: row
+
+  defp maybe_put_translation_field(row, field, value),
+    do: Map.put(row, field, blank_to_nil(value))
+
+  defp blank_to_nil(""), do: nil
+  defp blank_to_nil(value), do: value
+end

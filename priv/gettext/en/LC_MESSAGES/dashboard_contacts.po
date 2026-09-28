@@ -1,0 +1,213 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: en\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "%{date} at %{time}"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} will be removed from your contacts. This does not affect their past or upcoming meetings."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Actions"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Add Contact"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Add contact"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "Close"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Company"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact Details"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact added"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact deleted"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact not found"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact updated"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contacts"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Contacts from new bookings will appear here, or add one manually."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contacts is available on Pro plans."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contacts is available on the Pro plan."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "Delete Contact"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "Delete Contact?"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Delete contact"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Edit Contact"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Edit contact"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Email"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to delete contact"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Keep track of the people who book with you."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Name"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "No contacts match your search."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "No contacts yet"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "No meetings yet"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Note"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "People who booked with you, captured automatically from new bookings."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Phone"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Private to you — visible only on this contact's row and form."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Saving..."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Search contacts"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Unable to perform this action. Please try again."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Update Contact"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "View meetings"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Contact List"
+msgstr ""

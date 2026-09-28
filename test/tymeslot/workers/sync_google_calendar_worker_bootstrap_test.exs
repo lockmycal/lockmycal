@@ -1,0 +1,346 @@
+defmodule Tymeslot.Workers.SyncGoogleCalendarWorkerBootstrapTest do
+  use Tymeslot.DataCase, async: false
+
+  @moduletag :workers
+  @moduletag :calendar
+
+  use Oban.Testing, repo: Tymeslot.Repo
+  import Mox
+  import Tymeslot.Factory
+
+  alias Tymeslot.Integrations.Calendar.CalendarIntegrationQueries
+  alias Tymeslot.Integrations.Calendar.ProviderCalendarEventSchema
+  alias Tymeslot.Integrations.HealthCheck.Monitor
+  alias Tymeslot.Repo
+  alias Tymeslot.Workers.SyncGoogleCalendarWorker
+
+  setup :verify_on_exit!
+
+  defp health(integration), do: Monitor.get_state(:calendar, integration.id, integration.user_id)
+
+  describe "perform/1 - booking calendar no longer exists (HTTP 404)" do
+    test "flags the integration for reconnection and discards on incremental 404" do
+      integration =
+        insert(:calendar_integration,
+          provider: "google",
+          google_sync_token: "valid-token"
+        )
+
+      expect(GoogleCalendarAPIMock, :list_events_incremental, fn _integration ->
+        {:error, :not_found, "Calendar not found"}
+      end)
+
+      assert {:discard, _reason} =
+               perform_job(SyncGoogleCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+
+      {:ok, refreshed} = CalendarIntegrationQueries.get(integration.id)
+      assert refreshed.needs_reauth == true
+      assert refreshed.sync_error =~ "no longer exists"
+    end
+
+    test "flags the integration for reconnection and discards on bootstrap 404" do
+      integration =
+        insert(:calendar_integration,
+          provider: "google",
+          google_sync_token: nil
+        )
+
+      expect(GoogleCalendarAPIMock, :list_events_incremental, fn _integration ->
+        {:error, :no_sync_token}
+      end)
+
+      expect(GoogleCalendarAPIMock, :bootstrap_sync, fn _integration ->
+        {:error, :not_found, "Calendar not found"}
+      end)
+
+      assert {:discard, _reason} =
+               perform_job(SyncGoogleCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+
+      {:ok, refreshed} = CalendarIntegrationQueries.get(integration.id)
+      assert refreshed.needs_reauth == true
+    end
+  end
+
+  describe "perform/1 - Google account has no Google Calendar (403 notACalendarUser)" do
+    # Retrying this can never succeed. Returning {:error, _} let Oban exhaust
+    # five attempts, raise a permanent-failure admin alert, and the stale
+    # refresh enqueue a fresh job straight away: an alert every two minutes.
+    test "flags for reconnection, emails the owner and discards on bootstrap" do
+      integration = insert(:calendar_integration, provider: "google", google_sync_token: nil)
+
+      expect(GoogleCalendarAPIMock, :list_events_incremental, fn _integration ->
+        {:error, :no_sync_token}
+      end)
+
+      expect(GoogleCalendarAPIMock, :bootstrap_sync, fn _integration ->
+        {:error, :not_a_calendar_user, "The user must be signed up for Google Calendar."}
+      end)
+
+      assert {:discard, _reason} =
+               perform_job(SyncGoogleCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+
+      {:ok, refreshed} = CalendarIntegrationQueries.get(integration.id)
+      assert refreshed.needs_reauth == true
+      assert refreshed.sync_error =~ "doesn't have Google Calendar enabled"
+
+      assert_enqueued(
+        worker: Tymeslot.Workers.EmailWorker,
+        args: %{
+          "action" => "send_integration_reauth_notification",
+          "user_id" => integration.user_id,
+          "integration_id" => integration.id,
+          "integration_type" => "calendar"
+        }
+      )
+    end
+
+    test "flags for reconnection and discards on incremental sync" do
+      integration =
+        insert(:calendar_integration, provider: "google", google_sync_token: "valid-token")
+
+      expect(GoogleCalendarAPIMock, :list_events_incremental, fn _integration ->
+        {:error, :not_a_calendar_user, "The user must be signed up for Google Calendar."}
+      end)
+
+      assert {:discard, _reason} =
+               perform_job(SyncGoogleCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+
+      {:ok, refreshed} = CalendarIntegrationQueries.get(integration.id)
+      assert refreshed.needs_reauth == true
+    end
+  end
+
+  describe "perform/1 - pagination cap exceeded during bootstrap" do
+    test "discards the job instead of retrying when bootstrap listing exceeds the page cap" do
+      integration =
+        insert(:calendar_integration,
+          provider: "google",
+          google_sync_token: nil
+        )
+
+      expect(GoogleCalendarAPIMock, :list_events_incremental, fn _integration ->
+        {:error, :no_sync_token}
+      end)
+
+      expect(GoogleCalendarAPIMock, :bootstrap_sync, fn _integration ->
+        {:error, :too_many_pages, "Event listing exceeded 200 pages of 2500 events"}
+      end)
+
+      assert {:discard, reason} =
+               perform_job(SyncGoogleCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+
+      assert reason =~ "exceeded 200 pages"
+    end
+
+    test "records the cap hit against the integration's health, same as the incremental path" do
+      integration =
+        insert(:calendar_integration,
+          provider: "google",
+          google_sync_token: nil
+        )
+
+      assert health(integration).consecutive_sync_failures == 0
+
+      expect(GoogleCalendarAPIMock, :list_events_incremental, fn _integration ->
+        {:error, :no_sync_token}
+      end)
+
+      expect(GoogleCalendarAPIMock, :bootstrap_sync, fn _integration ->
+        {:error, :too_many_pages, "Event listing exceeded 200 pages of 2500 events"}
+      end)
+
+      assert {:discard, _reason} =
+               perform_job(SyncGoogleCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+
+      assert health(integration).consecutive_sync_failures == 1
+    end
+  end
+
+  describe "perform/1 - sync token expired (HTTP 410)" do
+    test "re-bootstraps and persists events + fresh sync token when token is gone" do
+      integration =
+        insert(:calendar_integration,
+          provider: "google",
+          google_sync_token: "expired-sync-token"
+        )
+
+      event = %{
+        "id" => "google-event-resync",
+        "iCalUID" => "resync-uid@google.com",
+        "summary" => "After resync",
+        "status" => "confirmed",
+        "start" => %{"dateTime" => "2030-05-01T10:00:00Z"},
+        "end" => %{"dateTime" => "2030-05-01T11:00:00Z"}
+      }
+
+      expect(GoogleCalendarAPIMock, :list_events_incremental, fn _integration ->
+        {:error, :gone, "Sync token expired"}
+      end)
+
+      expect(GoogleCalendarAPIMock, :bootstrap_sync, fn _integration ->
+        {:ok, %{events: [event], next_sync_token: "fresh-token-after-gone"}}
+      end)
+
+      assert :ok =
+               perform_job(SyncGoogleCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+
+      cached = Repo.get_by(ProviderCalendarEventSchema, uid: "resync-uid@google.com")
+      assert %{summary: "After resync"} = cached
+
+      {:ok, refreshed} =
+        CalendarIntegrationQueries.get(integration.id)
+
+      assert refreshed.google_sync_token == "fresh-token-after-gone"
+    end
+  end
+
+  describe "perform/1 - initial bootstrap (no sync token)" do
+    test "fresh integration backfills events and persists sync token regardless of webhook URL" do
+      integration =
+        insert(:calendar_integration,
+          provider: "google",
+          google_sync_token: nil
+        )
+
+      events = [
+        %{
+          "id" => "google-backfill-1",
+          "iCalUID" => "backfill-1@google.com",
+          "summary" => "Existing event A",
+          "status" => "confirmed",
+          "start" => %{"dateTime" => "2030-06-01T10:00:00Z"},
+          "end" => %{"dateTime" => "2030-06-01T11:00:00Z"}
+        },
+        %{
+          "id" => "google-backfill-2",
+          "iCalUID" => "backfill-2@google.com",
+          "summary" => "Existing event B",
+          "status" => "confirmed",
+          "start" => %{"date" => "2030-06-02"},
+          "end" => %{"date" => "2030-06-03"}
+        }
+      ]
+
+      expect(GoogleCalendarAPIMock, :list_events_incremental, fn _integration ->
+        {:error, :no_sync_token}
+      end)
+
+      expect(GoogleCalendarAPIMock, :bootstrap_sync, fn _integration ->
+        {:ok, %{events: events, next_sync_token: "initial-sync-token"}}
+      end)
+
+      assert :ok =
+               perform_job(SyncGoogleCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+
+      cached_a = Repo.get_by(ProviderCalendarEventSchema, uid: "backfill-1@google.com")
+      cached_b = Repo.get_by(ProviderCalendarEventSchema, uid: "backfill-2@google.com")
+      assert %{summary: "Existing event A", all_day: false} = cached_a
+      assert %{summary: "Existing event B", all_day: true} = cached_b
+
+      {:ok, refreshed} =
+        CalendarIntegrationQueries.get(integration.id)
+
+      assert refreshed.google_sync_token == "initial-sync-token"
+    end
+
+    test "bootstrap snoozes when circuit breaker is open" do
+      integration =
+        insert(:calendar_integration,
+          provider: "google",
+          google_sync_token: nil
+        )
+
+      expect(GoogleCalendarAPIMock, :list_events_incremental, fn _integration ->
+        {:error, :no_sync_token}
+      end)
+
+      expect(GoogleCalendarAPIMock, :bootstrap_sync, fn _integration ->
+        {:error, :circuit_open}
+      end)
+
+      assert {:snooze, 120} =
+               perform_job(SyncGoogleCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+    end
+
+    test "bootstrap discards on unauthorised errors without crashing" do
+      integration =
+        insert(:calendar_integration,
+          provider: "google",
+          google_sync_token: nil
+        )
+
+      expect(GoogleCalendarAPIMock, :list_events_incremental, fn _integration ->
+        {:error, :no_sync_token}
+      end)
+
+      expect(GoogleCalendarAPIMock, :bootstrap_sync, fn _integration ->
+        {:error, :unauthorized, "Token revoked"}
+      end)
+
+      assert {:discard, _reason} =
+               perform_job(SyncGoogleCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+    end
+
+    test "bootstrap returns error and allows Oban to retry on network error" do
+      integration =
+        insert(:calendar_integration,
+          provider: "google",
+          google_sync_token: nil
+        )
+
+      expect(GoogleCalendarAPIMock, :list_events_incremental, fn _integration ->
+        {:error, :no_sync_token}
+      end)
+
+      expect(GoogleCalendarAPIMock, :bootstrap_sync, fn _integration ->
+        {:error, :rate_limited, "Quota exceeded"}
+      end)
+
+      assert {:error, "Quota exceeded"} =
+               perform_job(SyncGoogleCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+    end
+
+    test "bootstrap returns error on bare 2-tuple from token layer without crashing" do
+      integration =
+        insert(:calendar_integration,
+          provider: "google",
+          google_sync_token: nil
+        )
+
+      expect(GoogleCalendarAPIMock, :list_events_incremental, fn _integration ->
+        {:error, :no_sync_token}
+      end)
+
+      expect(GoogleCalendarAPIMock, :bootstrap_sync, fn _integration ->
+        {:error, :lock_timeout}
+      end)
+
+      assert {:error, :lock_timeout} =
+               perform_job(SyncGoogleCalendarWorker, %{
+                 "calendar_integration_id" => integration.id
+               })
+    end
+  end
+end

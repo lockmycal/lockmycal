@@ -1,0 +1,137 @@
+# Build stage
+#
+# BASE_IMAGE is the single source of truth shared with Dockerfile.dev (passed as a build
+# arg from BASE_IMAGE in .env, via docker-compose.build.yml's build.args) so dev and prod
+# can never silently drift onto different Erlang/OTP versions — the floating `elixir:1.20.1`
+# tag used to track whichever OTP the image was rebuilt against, which silently moved this
+# image a major release ahead of every other target. The Debian release is pinned to trixie
+# to match the runtime stage below, so the bundled ERTS links against the same OpenSSL and
+# ncurses it will find there.
+ARG BASE_IMAGE=hexpm/elixir:1.20.3-erlang-28.5.0.5-debian-trixie-20260803-slim
+FROM ${BASE_IMAGE} AS build
+
+# Avoid prompts from apt and configure debconf
+ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBCONF_NONINTERACTIVE_SEEN=true
+
+# Set the locale to UTF-8
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# Configure debconf and install build dependencies
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
+    apt-get update && apt-get install -y \
+    git \
+    curl \
+    build-essential \
+    autoconf \
+    m4 \
+    libncurses5-dev \
+    libssl-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set the working directory
+WORKDIR /app
+
+# Set build ENV early (before any mix commands)
+ENV MIX_ENV=prod \
+    NODE_ENV=production \
+    DEPLOYMENT_TYPE=docker
+
+# Copy mix files and config (build context is the repository root)
+COPY mix.exs mix.lock ./
+COPY config ./config
+
+# Get dependencies using committed lock file
+RUN mix deps.get --only prod
+
+# Copy the rest of the application code. Wipe any locally-built assets first
+# so the image build is hermetic — assets are always produced by mix assets.deploy
+# below, never snuck in from the developer's local priv/static/assets/ directory.
+COPY . .
+RUN rm -rf priv/static/assets/
+
+# Compile dependencies and application code
+RUN mix do deps.compile + compile
+
+# Install Tailwind and esbuild with retry mechanism
+RUN for i in 1 2 3 4 5; do \
+        echo "Attempt $i: Installing tailwind and esbuild" && \
+        mix do tailwind.install + esbuild.install && break || sleep 5; \
+    done  
+
+# Compile assets
+RUN mix assets.deploy
+
+# Create the release. mix release embeds config/runtime.exs in the release
+# itself, so no extra copy is needed.
+RUN mix release tymeslot
+
+# Shared runtime base for both production images — debian only, no Elixir
+# SDK, no PostgreSQL server. The release bundles its own ERTS.
+# postgresql-client is kept for pg_isready, which the entrypoint uses to wait
+# for the database, whether it's local or external.
+FROM debian:trixie-slim AS release-base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    libssl3 \
+    libncurses6 \
+    libsctp1 \
+    ca-certificates \
+    locales \
+    tzdata \
+    ffmpeg \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Locale and timezone
+RUN locale-gen C.UTF-8 && update-locale LANG=C.UTF-8 LC_ALL=C.UTF-8
+RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime && \
+    dpkg-reconfigure -f noninteractive tzdata
+
+# App user and data directories. UID/GID are pinned (rather than left as
+# "first free UID") so ownership of the persisted /app/data volume stays
+# stable across image rebuilds and base-image bumps.
+ARG APP_UID=1000
+ARG APP_GID=1000
+RUN groupadd --gid ${APP_GID} app && \
+    useradd --uid ${APP_UID} --gid ${APP_GID} --create-home --shell /bin/bash app && \
+    mkdir -p /app /app/data /app/data/uploads && \
+    chown -R app:app /app
+
+WORKDIR /app
+
+# Copy the release from build stage
+COPY --from=build --chown=app:app /app/_build/prod/rel/tymeslot ./
+
+# Copy start script and the .env reader it sources
+COPY --chown=app:app start-docker.sh /app/start-docker.sh
+COPY --chown=app:app scripts/dotenv-reader.sh /app/dotenv-reader.sh
+RUN chmod +x /app/start-docker.sh
+
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    MIX_ENV=prod \
+    DEPLOYMENT_TYPE=docker \
+    PHX_SERVER=true \
+    PORT=4000 \
+    TYMESLOT_EMBEDDED_DB=false
+
+EXPOSE 4000
+
+VOLUME ["/app/data"]
+
+# The entrypoint (start-docker.sh) runs as root only to chown /app/data (a
+# volume that may arrive freshly created and root-owned, or root-owned from
+# an older image with a different app UID) and, when TYMESLOT_EMBEDDED_DB
+# isn't forced false, to su into the bundled `postgres` OS user. It then
+# execs the actual Phoenix server via `su -p app -c "... bin/tymeslot
+# start"`, so the long-running process itself already runs as the non-root
+# `app` user — this `USER root` reflects that brief root-init phase, not
+# the running server's privilege level.
+USER root
+
+CMD ["/app/start-docker.sh"]
+

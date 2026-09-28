@@ -1,0 +1,467 @@
+defmodule TymeslotWeb.Layouts do
+  @moduledoc """
+  This module holds different layouts used by your application.
+
+  See the `layouts` directory for all templates available.
+  The "root" layout is a skeleton rendered as part of the
+  application router. The "app" layout is set as the default
+  layout on both `use TymeslotWeb, :controller` and
+  `use TymeslotWeb, :live_view`.
+  """
+  use TymeslotWeb, :html
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  import TymeslotWeb.Components.CoreComponents
+
+  import TymeslotWeb.Components.SiteBanner,
+    only: [site_banner: 1, site_banner_dismissal_script: 1]
+
+  alias Tymeslot.Infrastructure.Config
+  alias Tymeslot.Profiles
+  alias Tymeslot.Profiles.ProfileSchema
+  alias Tymeslot.SiteBanner
+  alias Tymeslot.Utils.UriUtils
+  alias TymeslotWeb.AuthLive
+  alias TymeslotWeb.Dashboard.AnalyticsLive
+  alias TymeslotWeb.DashboardLive
+  alias TymeslotWeb.Endpoint
+  alias TymeslotWeb.MeetingRequestLive
+  alias TymeslotWeb.OnboardingLive
+
+  embed_templates "layouts/*"
+
+  @doc """
+  Gets the canonical URL for use in canonical and meta tags.
+
+  Always uses the configured endpoint base URL (consistent scheme and host) combined
+  with the request path only — query parameters are intentionally excluded to avoid
+  creating distinct canonical URLs for filtered/parameterised variants of the same page.
+  Trailing slashes are normalised away (except for the root path) so that `/docs` and
+  `/docs/` both produce the same canonical.
+  """
+  @spec current_url(map()) :: String.t()
+  def current_url(assigns) do
+    path =
+      cond do
+        assigns[:conn] -> assigns[:conn].request_path
+        assigns[:uri] -> assigns[:uri].path
+        true -> assigns[:request_path] || "/"
+      end
+
+    normalized_path =
+      if path != "/" and String.ends_with?(path, "/"),
+        do: String.trim_trailing(path, "/"),
+        else: path
+
+    Endpoint.url() <> normalized_path
+  end
+
+  @doc """
+  Returns the absolute URL of the social-share (Open Graph) image for a
+  scheduling page.
+
+  Resolves in layers: the organiser's uploaded profile photo → a neutral
+  default avatar → the Tymeslot brand card. The brand card is a defensive
+  fallback used only when there is no organiser context (e.g. error pages).
+  """
+  @spec booking_og_image(map()) :: String.t()
+  def booking_og_image(assigns) do
+    Endpoint.url() <> booking_og_image_path(assigns[:organizer_profile])
+  end
+
+  defp booking_og_image_path(%ProfileSchema{} = profile) do
+    Profiles.uploaded_avatar_path(profile) || ~p"/images/brand/default-avatar.png"
+  end
+
+  defp booking_og_image_path(_profile), do: ~p"/images/brand/og-image.png"
+
+  @doc """
+  Returns the Twitter card type for a scheduling page.
+
+  A square avatar/photo pairs with the `summary` card; the wide brand fallback
+  (no organiser context) pairs with `summary_large_image`.
+  """
+  @spec booking_twitter_card(map()) :: String.t()
+  def booking_twitter_card(assigns) do
+    if assigns[:organizer_profile], do: "summary", else: "summary_large_image"
+  end
+
+  @doc """
+  Returns the social-share description for a scheduling page, personalised with
+  the organiser's name when available.
+  """
+  @spec booking_og_description(map()) :: String.t()
+  def booking_og_description(assigns) do
+    case booking_organizer_name(assigns) do
+      nil ->
+        dgettext("booking", "Pick a time that works for you and book a meeting in seconds.")
+
+      name ->
+        dgettext("booking", "Book a meeting with %{name}. Pick a time that works for you.",
+          name: name
+        )
+    end
+  end
+
+  defp booking_organizer_name(assigns) do
+    case assigns[:organizer_profile] do
+      %ProfileSchema{} = profile -> Profiles.display_name(profile) || assigns[:username_context]
+      _no_organizer -> nil
+    end
+  end
+
+  @spec render_theme_css(String.t()) :: Phoenix.LiveView.Rendered.t()
+  defp render_theme_css(theme_id) do
+    theme_css_path =
+      case theme_id do
+        "1" -> ~p"/assets/scheduling-theme-quill.css"
+        "2" -> ~p"/assets/scheduling-theme-rhythm.css"
+        _other -> ~p"/assets/scheduling-theme-quill.css"
+      end
+
+    assigns = %{theme_css_path: theme_css_path}
+
+    ~H"""
+    <link phx-track-static rel="stylesheet" href={@theme_css_path} />
+    """
+  end
+
+  # Which `Tymeslot.SiteBanner` surface each root-layout LiveView belongs to.
+  # Anything not listed (meeting-request links, guest RSVP, dev pages) shows
+  # no banner: those are one-off token pages, not part of any surface an
+  # admin switches the banner on for.
+  @site_banner_surfaces %{
+    AuthLive => :auth,
+    OnboardingLive => :app,
+    DashboardLive => :app,
+    AnalyticsLive => :app
+  }
+
+  # LiveViews rendered inside `DashboardLayout`, whose full-height flex column
+  # places the bar itself. Rendered from the root layout instead, the bar
+  # would sit above an already viewport-tall column and push the dashboard's
+  # bottom edge off-screen.
+  @dashboard_layout_views [DashboardLive, AnalyticsLive]
+
+  @doc """
+  The site banner for the `root` layout's current page, or nil. Used for the
+  `<head>` dismissal script, which every banner-bearing page needs.
+  """
+  @spec root_site_banner(map()) :: SiteBanner.t() | nil
+  def root_site_banner(assigns) do
+    case Map.fetch(@site_banner_surfaces, assigns[:live_module]) do
+      {:ok, surface} -> SiteBanner.for_surface(surface, assigns[:locale])
+      :error -> nil
+    end
+  end
+
+  @doc """
+  Like `root_site_banner/1`, but nil for the dashboard LiveViews, which render
+  the bar inside `DashboardLayout` instead (see `@dashboard_layout_views`).
+  """
+  @spec root_site_banner_bar(map()) :: SiteBanner.t() | nil
+  def root_site_banner_bar(%{live_module: live_module})
+      when live_module in @dashboard_layout_views,
+      do: nil
+
+  def root_site_banner_bar(assigns), do: root_site_banner(assigns)
+
+  @doc """
+  The site banner for a public booking page, or nil. Never shown inside an
+  iframe embed (`?embed=1`, which `EmbedTokenPlug` marks with
+  `:embed_token`): the embedding site did not opt into this instance's
+  announcements.
+  """
+  @spec scheduling_site_banner(map()) :: SiteBanner.t() | nil
+  def scheduling_site_banner(assigns) do
+    if assigns[:embed_token], do: nil, else: SiteBanner.for_surface(:public, assigns[:locale])
+  end
+
+  @doc """
+  Renders a full-screen noscript warning for browsers with JavaScript disabled.
+  """
+  attr :message, :string, required: true
+
+  @spec noscript_warning(map()) :: Phoenix.LiveView.Rendered.t()
+  def noscript_warning(assigns) do
+    ~H"""
+    <noscript>
+      <div style="position: fixed; top: 0; left: 0; width: 100%; z-index: 999999; background: #be123c; color: white; padding: 12px 24px; text-align: center; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; gap: 16px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <svg
+          style="width: 20px; height: 20px; flex-shrink: 0; color: #fecdd3;"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+        <span style="font-weight: 500; font-size: 14px; line-height: 1.4;">
+          <strong style="text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em; margin-right: 8px; color: #fecdd3;">
+            {dgettext("common", "JavaScript Disabled")}
+          </strong>
+          {@message}
+        </span>
+        <a
+          href="."
+          style="background: rgba(255,255,255,0.2); color: white; text-decoration: none; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; white-space: nowrap; transition: background 0.2s;"
+        >
+          {dgettext("common", "Refresh Page")}
+        </a>
+      </div>
+    </noscript>
+    """
+  end
+
+  @doc """
+  Renders a fallback error message for browsers that don't support ES modules.
+  This replaces the page content with a browser upgrade message.
+
+  WARNING: The `context` attribute must only contain trusted, static strings.
+  Never pass user-controlled input as it is embedded directly in JavaScript.
+  """
+  attr :context, :atom,
+    default: :application,
+    values: [:application, :scheduling_page],
+    doc: "Static context identifier (atom) for the error message"
+
+  attr :nonce, :string, default: nil, doc: "Per-request CSP nonce"
+
+  @spec nomodule_fallback(map()) :: Phoenix.LiveView.Rendered.t()
+  def nomodule_fallback(assigns) do
+    # Convert atom to human-readable string safely
+    assigns = assign(assigns, :context_str, context_to_string(assigns.context))
+
+    ~H"""
+    <script nomodule nonce={@nonce}>
+      document.body.innerHTML = '<div style="padding: 2rem; text-align: center; font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 4rem auto;">' +
+        '<svg style="width: 64px; height: 64px; margin: 0 auto 1.5rem; color: #dc2626;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>' +
+        '<h1 style="font-size: 1.5rem; font-weight: 700; color: #111827; margin-bottom: 0.75rem;"><%= dgettext("common", "Browser Not Supported") %></h1>' +
+        '<p style="color: #6b7280; line-height: 1.6; margin-bottom: 1.5rem;"><%= dgettext("common", "This %{context} requires a modern browser with ES module support. Please upgrade to the latest version of Chrome, Firefox, Safari, or Edge.", context: @context_str) %></p>' +
+        '<a href="https://browsehappy.com/" style="display: inline-block; padding: 0.75rem 1.5rem; background: #2563eb; color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 500;"><%= dgettext("common", "Learn About Modern Browsers") %></a>' +
+        '</div>';
+    </script>
+    """
+  end
+
+  # Convert context atom to safe display string
+  defp context_to_string(:application), do: dgettext("common", "application")
+  defp context_to_string(:scheduling_page), do: dgettext("common", "scheduling page")
+
+  @spec theme_class(String.t()) :: String.t()
+  defp theme_class(theme_id) do
+    case theme_id do
+      "1" -> "quill-theme"
+      "2" -> "rhythm-theme"
+      _other -> "quill-theme"
+    end
+  end
+
+  @doc """
+  Renders generic theme extensions configured in the application environment.
+  Allows external layers (like SaaS) to inject UI without Core awareness.
+  """
+  @spec render_theme_extensions(map()) :: Phoenix.LiveView.Rendered.t()
+  def render_theme_extensions(assigns) do
+    extensions = Application.get_env(:tymeslot, :theme_extensions, [])
+    assigns = assign(assigns, :extensions, filter_valid_extensions(extensions))
+
+    ~H"""
+    <%= for {mod, func} <- @extensions do %>
+      {apply(mod, func, [assigns])}
+    <% end %>
+    """
+  end
+
+  defp filter_valid_extensions(extensions) when is_list(extensions) do
+    Enum.filter(extensions, fn
+      {mod, func} when is_atom(mod) and is_atom(func) ->
+        if Code.ensure_loaded?(mod) and function_exported?(mod, func, 1) do
+          true
+        else
+          require Logger
+
+          Logger.warning("Theme extension is configured but not available",
+            module: inspect(mod),
+            function: func
+          )
+
+          false
+        end
+
+      other ->
+        require Logger
+        Logger.error("Invalid theme extension configuration", value: inspect(other))
+        false
+    end)
+  end
+
+  defp filter_valid_extensions(_arg), do: []
+
+  @doc """
+  Renders analytics scripts based on application configuration.
+  Currently supports Umami analytics.
+  Returns empty content if no analytics providers are configured.
+
+  The tracker is injected from an idle callback after `load` rather than shipped
+  as a `defer`red tag. A `defer`red tracker runs in the DOMContentLoaded pileup,
+  where the first thing it does is read layout-dependent properties — forcing a
+  synchronous layout of the whole document inside a script task, which counts in
+  full against Total Blocking Time. Injecting it once the page is idle moves that
+  layout back into the normal render pipeline.
+
+  Events fired before the tracker arrives are buffered by the `window.analytics`
+  facade (see `assets/js/analytics.js`) and flushed on the
+  `tymeslot:analytics-ready` event this loader dispatches, so the delay costs no
+  page views.
+
+  Pass `nonce` (the request's `@csp_nonce`) so the inline loader satisfies CSP.
+
+  Pass `live_module` (`assigns[:live_module]`, set automatically by
+  `Phoenix.LiveView.Controller.live_render/3` on every LiveView page) so this
+  renders nothing for any module in `@credential_bearing_views`: their URLs
+  carry a long-lived credential (a signed token, a magic link) that
+  authorises an action on someone's behalf, and the analytics vendor's script
+  reports the page path, which would ship that credential to the analytics
+  store and every intermediate proxy.
+
+  Pages that stay tracked still pass every address through the
+  `tymeslotAnalyticsBeforeSend` scrubber in `assets/js/analytics.js`, which
+  removes meeting uids from paths (the cancel and reschedule links share the
+  booking-page LiveView, so they cannot be excluded by module) and drops every
+  query parameter except `utm_*`. The loader skips the tracker entirely when the
+  scrubber is missing.
+  """
+  attr :nonce, :string, default: nil
+  attr :live_module, :atom, default: nil
+
+  # LiveViews whose URL itself is a credential (e.g. a signed
+  # `Phoenix.Token`), so the analytics vendor must never see the path.
+  # Add a module here the moment such a page is introduced; do not rely on
+  # its author remembering to edit this unrelated module.
+  @credential_bearing_views [MeetingRequestLive]
+
+  @spec analytics_scripts(map()) :: Phoenix.LiveView.Rendered.t()
+  def analytics_scripts(%{live_module: live_module} = assigns)
+      when live_module in @credential_bearing_views do
+    ~H""
+  end
+
+  def analytics_scripts(assigns) do
+    providers = Application.get_env(:tymeslot, :analytics_providers, nil)
+    assigns = assign(assigns, :providers, filter_valid_providers(providers))
+
+    ~H"""
+    <%= for provider <- @providers do %>
+      {render_provider_script(provider, assigns)}
+    <% end %>
+    """
+  end
+
+  @doc """
+  Renders `preconnect` resource hints for the configured analytics origins so the
+  DNS/TCP/TLS handshake to the tracker host overlaps with page render, rather than
+  stalling the `defer`red analytics request. Renders nothing when analytics is
+  unconfigured, and skips same-origin (relative) script URLs, which need no
+  preconnect. Place it early in `<head>` for maximum overlap.
+  """
+  @spec analytics_preconnect(map()) :: Phoenix.LiveView.Rendered.t()
+  def analytics_preconnect(assigns) do
+    origins =
+      :tymeslot
+      |> Application.get_env(:analytics_providers, nil)
+      |> filter_valid_providers()
+      |> Enum.map(fn %{script_url: url} -> UriUtils.origin(url) end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    assigns = assign(assigns, :origins, origins)
+
+    ~H"""
+    <%= for origin <- @origins do %>
+      <link rel="preconnect" href={origin} />
+    <% end %>
+    """
+  end
+
+  defp render_provider_script(%{provider: :umami, script_url: url, website_id: id}, assigns)
+       when is_binary(url) and is_binary(id) do
+    assigns =
+      assigns
+      |> assign(:url, url)
+      |> assign(:id, id)
+
+    # The URL and website id travel as data attributes on the loader tag rather
+    # than interpolated into the script body: HEEx does not interpolate inside a
+    # <script>, and reading them back off `document.currentScript` keeps
+    # configuration values out of the JavaScript source entirely.
+    ~H"""
+    <script
+      nonce={assigns[:nonce]}
+      data-analytics-src={@url}
+      data-analytics-website-id={@id}
+    >
+      (function () {
+        var tag = document.currentScript;
+        if (!tag) return;
+
+        function load() {
+          // Fail closed: without the scrubber that strips meeting uids and
+          // query strings, the tracker would record credential-bearing URLs.
+          if (typeof window.tymeslotAnalyticsBeforeSend !== "function") return;
+
+          var script = document.createElement("script");
+          script.src = tag.getAttribute("data-analytics-src");
+          script.setAttribute(
+            "data-website-id",
+            tag.getAttribute("data-analytics-website-id")
+          );
+          script.setAttribute("data-before-send", "tymeslotAnalyticsBeforeSend");
+          script.addEventListener("load", function () {
+            window.dispatchEvent(new Event("tymeslot:analytics-ready"));
+          });
+          document.head.appendChild(script);
+        }
+
+        function schedule() {
+          if (window.requestIdleCallback) {
+            window.requestIdleCallback(load, { timeout: 3000 });
+          } else {
+            window.setTimeout(load, 500);
+          }
+        }
+
+        if (document.readyState === "complete") {
+          schedule();
+        } else {
+          window.addEventListener("load", schedule, { once: true });
+        }
+      })();
+    </script>
+    """
+  end
+
+  defp render_provider_script(_other, assigns), do: ~H""
+
+  defp filter_valid_providers(nil), do: []
+  defp filter_valid_providers([]), do: []
+
+  defp filter_valid_providers(providers) when is_list(providers) do
+    Enum.filter(providers, fn provider ->
+      case provider do
+        %{provider: :umami, script_url: url, website_id: id}
+        when is_binary(url) and is_binary(id) and url != "" and id != "" ->
+          String.starts_with?(url, ["https://", "http://", "/"])
+
+        _other ->
+          false
+      end
+    end)
+  end
+
+  defp filter_valid_providers(_arg), do: []
+end

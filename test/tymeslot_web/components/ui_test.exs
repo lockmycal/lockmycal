@@ -1,0 +1,183 @@
+defmodule TymeslotWeb.Components.UITest do
+  use TymeslotWeb.ConnCase, async: true
+
+  @moduletag :utils
+
+  import Phoenix.LiveViewTest
+  import Phoenix.Component
+  alias TymeslotWeb.Components.CoreComponents.Buttons
+  alias TymeslotWeb.Components.UI.StatusSwitch
+  alias TymeslotWeb.Components.UI.Toggle
+
+  # The class attribute of the single element matching `selector`. Raises when
+  # the selector matches none, so a renamed element fails loudly rather than
+  # quietly asserting against an empty string.
+  defp class_of(doc, selector) do
+    [class] = Floki.attribute(doc, selector, "class")
+    class
+  end
+
+  describe "StatusSwitch" do
+    test "renders in checked state" do
+      assigns = %{id: "switch-1", checked: true, on_change: "toggle"}
+      html = render_component(&StatusSwitch.status_switch/1, assigns)
+
+      assert html =~ ~s(aria-checked="true")
+      assert html =~ "status-toggle--active"
+      assert html =~ "status-toggle-slider--active"
+      # Active icon (checkmark) should be visible
+      assert html =~ "status-toggle-icon--visible"
+    end
+
+    test "renders in unchecked state" do
+      assigns = %{id: "switch-1", checked: false, on_change: "toggle"}
+      html = render_component(&StatusSwitch.status_switch/1, assigns)
+
+      # `role="switch"` is only meaningful with an explicit aria-checked, so the
+      # false case has to render the attribute rather than drop it. Interpolating
+      # the boolean directly omits it, which reads to assistive tech as a switch
+      # with no state at all.
+      assert html =~ ~s(aria-checked="false")
+      assert html =~ "status-toggle--inactive"
+      refute html =~ "status-toggle-slider--active"
+    end
+
+    test "renders an explicit button type so it can sit inside a form" do
+      assigns = %{id: "switch-1", checked: false, on_change: "toggle"}
+      html = render_component(&StatusSwitch.status_switch/1, assigns)
+
+      # A bare <button> in a form defaults to type="submit", so without this the
+      # switch would submit the surrounding form instead of toggling.
+      assert html =~ ~s(type="button")
+    end
+
+    test "renders in disabled state" do
+      assigns = %{id: "switch-1", checked: true, on_change: "toggle", disabled: true}
+      html = render_component(&StatusSwitch.status_switch/1, assigns)
+
+      assert html =~ "disabled"
+      assert html =~ "opacity-50"
+      assert html =~ "cursor-not-allowed"
+    end
+
+    # {track dimensions, slider dimensions} per size. The id echoes the size
+    # name, so asserting on the id proves nothing about the size variant
+    # actually reaching the class list.
+    @switch_sizes %{
+      small: {"h-5 w-9", "h-4 w-4"},
+      medium: {"h-6 w-11", "h-5 w-5"},
+      large: {"h-7 w-12", "h-6 w-6"}
+    }
+
+    test "each size renders its own track and slider dimensions" do
+      for {size, {track, slider}} <- @switch_sizes do
+        assigns = %{id: "switch-#{size}", checked: true, on_change: "toggle", size: size}
+        html = render_component(&StatusSwitch.status_switch/1, assigns)
+
+        assert html =~ track
+        assert html =~ slider
+
+        for {_other_size, {other_track, _slider}} <- Map.delete(@switch_sizes, size) do
+          refute html =~ other_track
+        end
+      end
+    end
+  end
+
+  describe "Toggle" do
+    setup do
+      options = [
+        %{value: :list, label: "List View", icon: "list"},
+        %{value: :grid, label: "Grid View", icon: "grid"}
+      ]
+
+      {:ok, options: options}
+    end
+
+    test "renders all options", %{options: options} do
+      assigns = %{id: "toggle-1", active_option: :list, options: options, phx_click: "switch"}
+      html = render_component(&Toggle.toggle/1, assigns)
+
+      assert html =~ "List View"
+      assert html =~ "Grid View"
+      assert html =~ "toggle-1-list"
+      assert html =~ "toggle-1-grid"
+    end
+
+    test "highlights the active option and only that one", %{options: options} do
+      assigns = %{id: "toggle-1", active_option: :grid, options: options, phx_click: "switch"}
+      html = render_component(&Toggle.toggle/1, assigns)
+      doc = Floki.parse_fragment!(html)
+
+      # "bg-primary-600 is somewhere in the markup" is satisfied by
+      # highlighting the wrong button, so pin the highlight to the option it
+      # belongs to.
+      assert class_of(doc, "#toggle-1-grid") =~ "bg-primary-600"
+      refute class_of(doc, "#toggle-1-list") =~ "bg-primary-600"
+      assert class_of(doc, "#toggle-1-list") =~ "text-neutral-500"
+    end
+
+    test "renders icons based on option", %{options: options} do
+      assigns = %{id: "toggle-1", active_option: :list, options: options, phx_click: "switch"}
+      html = render_component(&Toggle.toggle/1, assigns)
+
+      # Should contain SVG paths for list and grid
+      # list icon
+      assert html =~ "M4 6h16M4 10h16M4 14h16M4 18h16"
+      # grid icon
+      assert html =~ "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"
+    end
+
+    test "renders with label", %{options: options} do
+      assigns = %{
+        id: "toggle-1",
+        active_option: :list,
+        options: options,
+        phx_click: "switch",
+        label: "View Mode"
+      }
+
+      html = render_component(&Toggle.toggle/1, assigns)
+
+      assert html =~ "View Mode"
+    end
+  end
+
+  describe "Buttons" do
+    test "action_button renders with variant and slots" do
+      assigns = %{}
+
+      inner_block = [
+        %{__slot__: :inner_block, inner_block: fn _assigns, _index -> ~H"Click Me" end}
+      ]
+
+      component_assigns = %{
+        variant: :danger,
+        inner_block: inner_block
+      }
+
+      html = render_component(&Buttons.action_button/1, component_assigns)
+      assert html =~ "action-button--danger"
+      assert html =~ "Click Me"
+    end
+
+    test "loading_button shows spinner when loading" do
+      assigns = %{}
+
+      inner_block = [
+        %{__slot__: :inner_block, inner_block: fn _assigns, _index -> ~H"Submit" end}
+      ]
+
+      component_assigns = %{
+        loading: true,
+        loading_text: "Sending...",
+        inner_block: inner_block
+      }
+
+      html = render_component(&Buttons.loading_button/1, component_assigns)
+      assert html =~ "spinner"
+      assert html =~ "Sending..."
+      refute html =~ "Submit"
+    end
+  end
+end

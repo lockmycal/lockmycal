@@ -1,0 +1,365 @@
+defmodule Tymeslot.Integrations.Video.Providers.GoogleMeetProviderTest do
+  use Tymeslot.DataCase, async: false
+  @moduletag :integrations
+
+  import Mox
+  import Tymeslot.Factory
+
+  alias Tymeslot.GoogleOAuthHelperMock
+  alias Tymeslot.HTTPClientMock
+  alias Tymeslot.Integrations.Video.Providers.GoogleMeetProvider
+  alias Tymeslot.Integrations.Video.VideoIntegrationQueries
+  alias Tymeslot.Integrations.Video.VideoIntegrationSchema
+  alias Tymeslot.Repo
+
+  setup :verify_on_exit!
+
+  describe "provider_type/0" do
+    test "returns :google_meet" do
+      assert GoogleMeetProvider.provider_type() == :google_meet
+    end
+  end
+
+  describe "display_name/0" do
+    test "returns correct display name" do
+      assert GoogleMeetProvider.display_name() == "Google Meet"
+    end
+  end
+
+  describe "config_schema/0" do
+    test "returns schema with required OAuth fields" do
+      schema = GoogleMeetProvider.config_schema()
+
+      assert schema[:access_token][:type] == :string
+      assert schema[:access_token][:required] == true
+      assert schema[:refresh_token][:type] == :string
+      assert schema[:refresh_token][:required] == true
+      assert schema[:token_expires_at][:type] == :datetime
+      assert schema[:token_expires_at][:required] == true
+    end
+  end
+
+  describe "capabilities/0" do
+    test "returns correct capabilities for Google Meet" do
+      capabilities = GoogleMeetProvider.capabilities()
+
+      assert capabilities[:recording] == true
+      assert capabilities[:screen_sharing] == true
+      assert capabilities[:waiting_room] == false
+      assert capabilities[:max_participants] == 250
+      assert capabilities[:dial_in] == true
+      assert capabilities[:chat] == true
+      assert capabilities[:breakout_rooms] == true
+    end
+  end
+
+  describe "validate_config/1" do
+    test "returns error when access_token is missing" do
+      config = %{
+        refresh_token: "refresh_token",
+        token_expires_at: DateTime.utc_now()
+      }
+
+      assert {:error, message} = GoogleMeetProvider.validate_config(config)
+      assert String.contains?(message, "access_token")
+    end
+
+    test "returns error when refresh_token is missing" do
+      config = %{
+        access_token: "access_token",
+        token_expires_at: DateTime.utc_now()
+      }
+
+      assert {:error, message} = GoogleMeetProvider.validate_config(config)
+      assert String.contains?(message, "refresh_token")
+    end
+
+    test "returns error when token_expires_at is missing" do
+      config = %{
+        access_token: "access_token",
+        refresh_token: "refresh_token"
+      }
+
+      assert {:error, message} = GoogleMeetProvider.validate_config(config)
+      assert String.contains?(message, "token_expires_at")
+    end
+
+    test "returns :ok when all required fields present" do
+      config = %{
+        access_token: "access_token",
+        refresh_token: "refresh_token",
+        token_expires_at: DateTime.utc_now()
+      }
+
+      assert :ok = GoogleMeetProvider.validate_config(config)
+    end
+  end
+
+  describe "test_connection/1" do
+    test "returns success when API calls succeed" do
+      config = %{
+        access_token: "valid_token",
+        refresh_token: "refresh_token",
+        token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+      }
+
+      expect(HTTPClientMock, :request, fn :get, _url, _body, _headers, _opts ->
+        {:ok, %Req.Response{status: 200, body: Jason.encode!(%{"items" => []})}}
+      end)
+
+      assert {:ok, message} = GoogleMeetProvider.perform_connection_test(config)
+      assert String.contains?(message, "successful")
+    end
+
+    test "returns error when API call fails" do
+      config = %{
+        access_token: "invalid_token",
+        refresh_token: "refresh_token",
+        token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+      }
+
+      expect(HTTPClientMock, :request, fn :get, _url, _body, _headers, _opts ->
+        {:ok, %Req.Response{status: 401, body: "Unauthorized"}}
+      end)
+
+      assert {:error, message} = GoogleMeetProvider.perform_connection_test(config)
+      assert String.contains?(message, "Connection test failed")
+    end
+
+    test "returns error when API returns malformed JSON in connection test" do
+      config = valid_token_config()
+
+      expect(HTTPClientMock, :request, fn :get, _url, _body, _headers, _opts ->
+        {:ok, %Req.Response{status: 200, body: "not json"}}
+      end)
+
+      assert {:error, message} = GoogleMeetProvider.perform_connection_test(config)
+      assert message =~ "Invalid JSON"
+    end
+
+    test "refreshes token if expired during connection test" do
+      expires_at = DateTime.add(DateTime.utc_now(), -3600, :second)
+      new_expires_at = DateTime.add(DateTime.utc_now(), 3600, :second)
+
+      config = %{
+        access_token: "expired_token",
+        refresh_token: "refresh_token",
+        token_expires_at: expires_at,
+        oauth_scope: "scope"
+      }
+
+      expect(GoogleOAuthHelperMock, :refresh_access_token, fn "refresh_token", "scope", _opts ->
+        {:ok,
+         %{
+           access_token: "new_token",
+           refresh_token: "new_refresh_token",
+           expires_at: new_expires_at,
+           scope: "scope"
+         }}
+      end)
+
+      expect(HTTPClientMock, :request, fn :get, _url, _body, headers, _opts ->
+        assert {"Authorization", "Bearer new_token"} in headers
+        {:ok, %Req.Response{status: 200, body: Jason.encode!(%{"items" => []})}}
+      end)
+
+      assert {:ok, _result} = GoogleMeetProvider.perform_connection_test(config)
+    end
+  end
+
+  describe "create_join_url/5" do
+    # Meet has no per-person join link, and `authuser=<email>` sends anyone not
+    # signed in under that exact address to a Google sign-in page instead of
+    # the room, so both roles must get the untouched meeting URL.
+    for role <- ["organizer", "participant"] do
+      test "returns the plain meeting URL for the #{role} role" do
+        room_data = %{meeting_url: "https://meet.google.com/abc-defg-hij"}
+
+        assert GoogleMeetProvider.create_join_url(
+                 room_data,
+                 "John Doe",
+                 "john@example.com",
+                 unquote(role),
+                 DateTime.utc_now()
+               ) == {:ok, "https://meet.google.com/abc-defg-hij"}
+      end
+    end
+
+    test "returns error when meeting_url is missing" do
+      room_data = %{room_id: "abc-defg-hij", meeting_url: nil}
+      meeting_time = DateTime.utc_now()
+
+      assert {:error, message} =
+               GoogleMeetProvider.create_join_url(
+                 room_data,
+                 "User",
+                 "user@example.com",
+                 "attendee",
+                 meeting_time
+               )
+
+      assert String.contains?(message, "Missing meeting URL")
+    end
+  end
+
+  describe "extract_room_id/1" do
+    test "extracts room ID from valid Google Meet URL" do
+      meeting_url = "https://meet.google.com/abc-defg-hij"
+
+      assert GoogleMeetProvider.extract_room_id(meeting_url) == "abc-defg-hij"
+    end
+
+    test "handles URL with query parameters" do
+      meeting_url = "https://meet.google.com/xyz-abcd-efg?authuser=user@example.com"
+
+      assert GoogleMeetProvider.extract_room_id(meeting_url) == "xyz-abcd-efg"
+    end
+
+    test "returns nil for non-Google Meet URL" do
+      assert GoogleMeetProvider.extract_room_id("https://example.com/meeting/123456") == nil
+    end
+
+    test "returns nil for malformed Google Meet URL" do
+      assert GoogleMeetProvider.extract_room_id("https://meet.google.com/") == nil
+    end
+
+    test "extracts path segment even for non-standard format" do
+      # The function extracts the path segment without validating format
+      assert GoogleMeetProvider.extract_room_id("https://meet.google.com/invalid") == "invalid"
+    end
+
+    test "handles nil input" do
+      assert GoogleMeetProvider.extract_room_id(nil) == nil
+    end
+
+    test "handles empty string" do
+      assert GoogleMeetProvider.extract_room_id("") == nil
+    end
+  end
+
+  describe "valid_meeting_url?/1" do
+    test "accepts valid Google Meet URL" do
+      assert GoogleMeetProvider.valid_meeting_url?("https://meet.google.com/abc-defg-hij")
+    end
+
+    test "accepts Google Meet URL with query parameters" do
+      assert GoogleMeetProvider.valid_meeting_url?(
+               "https://meet.google.com/xyz-abcd-efg?authuser=user@example.com"
+             )
+    end
+
+    test "rejects URL with wrong host" do
+      refute GoogleMeetProvider.valid_meeting_url?("https://example.com/meeting/123456")
+    end
+
+    test "rejects URL with wrong format (not xxx-xxxx-xxx)" do
+      refute GoogleMeetProvider.valid_meeting_url?("https://meet.google.com/invalid-format")
+      refute GoogleMeetProvider.valid_meeting_url?("https://meet.google.com/abc")
+      refute GoogleMeetProvider.valid_meeting_url?("https://meet.google.com/abc-def")
+    end
+
+    test "rejects URL without path" do
+      refute GoogleMeetProvider.valid_meeting_url?("https://meet.google.com")
+      refute GoogleMeetProvider.valid_meeting_url?("https://meet.google.com/")
+    end
+
+    test "rejects nil" do
+      refute GoogleMeetProvider.valid_meeting_url?(nil)
+    end
+
+    test "rejects empty string" do
+      refute GoogleMeetProvider.valid_meeting_url?("")
+    end
+  end
+
+  describe "handle_meeting_event/3" do
+    test "returns :ok for created event" do
+      room_data = %{room_id: "abc-defg-hij"}
+
+      assert GoogleMeetProvider.handle_meeting_event(:created, room_data, %{}) == :ok
+    end
+  end
+
+  describe "generate_meeting_metadata/1" do
+    test "returns metadata with all Google Meet features" do
+      room_data = %{
+        room_id: "abc-defg-hij",
+        meeting_url: "https://meet.google.com/abc-defg-hij"
+      }
+
+      metadata = GoogleMeetProvider.generate_meeting_metadata(room_data)
+
+      assert metadata[:room_id] == "abc-defg-hij"
+      assert metadata[:meeting_url] == "https://meet.google.com/abc-defg-hij"
+      assert metadata[:provider_name] == "Google Meet"
+      assert metadata[:provider_type] == :google_meet
+      assert metadata[:supports_dial_in] == true
+      assert metadata[:supports_recording] == true
+      assert metadata[:max_participants] == 250
+      assert metadata[:meeting_instructions] =~ "join the Google Meet video conference"
+      assert metadata[:technical_requirements] =~ "Modern web browser or Google Meet mobile app"
+
+      assert metadata[:additional_features] == [
+               "Recording available",
+               "Screen sharing",
+               "Live captions",
+               "Breakout rooms",
+               "Phone dial-in available"
+             ]
+    end
+  end
+
+  describe "create_meeting_room/1 reauth flagging" do
+    test "flags the integration as needs_reauth on a 401 from the Meet API" do
+      user = insert(:user)
+
+      {:ok, integration} =
+        VideoIntegrationQueries.create(%{
+          user_id: user.id,
+          name: "Google Meet",
+          provider: "google_meet",
+          access_token: "valid_token",
+          refresh_token: "refresh_token",
+          token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second),
+          oauth_scope: "https://www.googleapis.com/auth/calendar.events"
+        })
+
+      config = %{
+        access_token: "valid_token",
+        refresh_token: "refresh_token",
+        token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second),
+        integration_id: integration.id,
+        user_id: user.id,
+        oauth_scope: "https://www.googleapis.com/auth/calendar.events"
+      }
+
+      expect(HTTPClientMock, :request, fn :post, _url, _body, _headers, _opts ->
+        {:ok, %Req.Response{status: 401, body: "Unauthorized"}}
+      end)
+
+      assert {:error, _message} = GoogleMeetProvider.create_meeting_room(config)
+
+      flagged = Repo.get(VideoIntegrationSchema, integration.id)
+      assert flagged.needs_reauth == true
+      assert flagged.sync_error =~ "reconnect"
+    end
+
+    test "does not crash on a 401 when integration_id/user_id are absent" do
+      config = valid_token_config()
+
+      expect(HTTPClientMock, :request, fn :post, _url, _body, _headers, _opts ->
+        {:ok, %Req.Response{status: 401, body: "Unauthorized"}}
+      end)
+
+      assert {:error, _message} = GoogleMeetProvider.create_meeting_room(config)
+    end
+  end
+
+  defp valid_token_config do
+    %{
+      access_token: "valid_token",
+      refresh_token: "refresh_token",
+      token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+    }
+  end
+end

@@ -1,0 +1,269 @@
+defmodule Tymeslot.Integrations.CalendarManagementTest do
+  use Tymeslot.DataCase, async: false
+  @moduletag :integrations
+
+  use Oban.Testing, repo: Tymeslot.Repo
+
+  import Mox
+  import Tymeslot.Factory
+
+  alias Tymeslot.Integrations.Calendar.Shared.DiscoveryCache
+  alias Tymeslot.Integrations.CalendarManagement
+  alias Tymeslot.Integrations.HealthCheck.IntegrationHealthStateQueries
+  alias Tymeslot.Integrations.HealthCheck.IntegrationHealthStateSchema
+  alias Tymeslot.Repo
+  alias Tymeslot.Workers.EmailWorker
+  alias Tymeslot.Workers.IntegrationHealthWorker
+
+  setup :verify_on_exit!
+
+  describe "flag_for_reconnection/3" do
+    test "flags the integration with the reason and emails its owner" do
+      user = insert(:user)
+      integration = insert(:calendar_integration, user: user, needs_reauth: false)
+
+      assert {:discard, "calendar gone"} =
+               CalendarManagement.flag_for_reconnection(
+                 integration,
+                 "Pick a calendar.",
+                 "calendar gone"
+               )
+
+      reloaded = Repo.reload!(integration)
+      assert reloaded.needs_reauth
+      assert reloaded.sync_error == "Pick a calendar."
+
+      assert_enqueued(
+        worker: EmailWorker,
+        args: %{
+          "action" => "send_integration_reauth_notification",
+          "user_id" => user.id,
+          "integration_id" => integration.id,
+          "integration_type" => "calendar"
+        }
+      )
+    end
+
+    # Only the false → true transition is news; the sync workers can re-flag.
+    test "does not email again for an integration already flagged" do
+      integration = insert(:calendar_integration, needs_reauth: true, sync_error: "Old reason.")
+
+      assert {:discard, _reason} =
+               CalendarManagement.flag_for_reconnection(integration, "New reason.", "still gone")
+
+      assert Repo.reload!(integration).sync_error == "New reason."
+      refute_enqueued(worker: EmailWorker)
+    end
+  end
+
+  describe "handle_reauth_required/2" do
+    test "flags the integration and emails its owner on the false → true transition" do
+      user = insert(:user)
+      integration = insert(:calendar_integration, user: user, needs_reauth: false)
+
+      assert {:discard, _reason} = CalendarManagement.handle_reauth_required(integration)
+
+      reloaded = Repo.reload!(integration)
+      assert reloaded.needs_reauth
+
+      assert_enqueued(
+        worker: EmailWorker,
+        args: %{
+          "action" => "send_integration_reauth_notification",
+          "user_id" => user.id,
+          "integration_id" => integration.id,
+          "integration_type" => "calendar"
+        }
+      )
+    end
+
+    test "does not email again for an integration already flagged" do
+      integration = insert(:calendar_integration, needs_reauth: true, sync_error: "Old reason.")
+
+      assert {:discard, _reason} = CalendarManagement.handle_reauth_required(integration)
+
+      refute_enqueued(worker: EmailWorker)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # toggle_with_primary_rebalance/1 — reactivation health reset and conflicts
+  # ---------------------------------------------------------------------------
+
+  describe "toggle_with_primary_rebalance/1 — health state on toggle" do
+    test "enqueues an IntegrationHealthWorker probe when reactivating (inactive → active)" do
+      user = insert(:user)
+      _profile = insert(:profile, user: user)
+      integration = insert(:calendar_integration, user: user, is_active: false)
+
+      assert {:ok, updated} = CalendarManagement.toggle_with_primary_rebalance(integration)
+      assert updated.is_active
+
+      assert_enqueued(
+        worker: IntegrationHealthWorker,
+        args: %{"type" => "calendar", "integration_id" => integration.id}
+      )
+    end
+
+    test "does NOT enqueue a probe when deactivating (active → inactive)" do
+      user = insert(:user)
+      _profile = insert(:profile, user: user)
+      integration = insert(:calendar_integration, user: user, is_active: true)
+
+      assert {:ok, updated} = CalendarManagement.toggle_with_primary_rebalance(integration)
+      refute updated.is_active
+
+      refute_enqueued(
+        worker: IntegrationHealthWorker,
+        args: %{"type" => "calendar", "integration_id" => integration.id}
+      )
+    end
+
+    test "returns {:error, :duplicate_account} when reactivating would collide with an active integration" do
+      user = insert(:user)
+      _profile = insert(:profile, user: user)
+
+      insert(:calendar_integration,
+        user: user,
+        provider: "caldav",
+        provider_account_id: "acct-1",
+        is_active: true
+      )
+
+      dormant =
+        insert(:calendar_integration,
+          user: user,
+          provider: "caldav",
+          provider_account_id: "acct-1",
+          is_active: false
+        )
+
+      assert {:error, :duplicate_account} =
+               CalendarManagement.toggle_with_primary_rebalance(dormant)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # update_calendar_integration/2
+  # ---------------------------------------------------------------------------
+
+  describe "update_calendar_integration/2" do
+    test "enqueues an IntegrationHealthWorker probe and resets the health row when credential fields are present" do
+      user = insert(:user)
+      integration = insert(:calendar_integration, user: user)
+
+      # Seed an unhealthy row so we can verify the reset fires.
+      %IntegrationHealthStateSchema{}
+      |> IntegrationHealthStateSchema.changeset(%{
+        integration_type: "calendar",
+        integration_id: integration.id,
+        user_id: user.id,
+        status: "unhealthy",
+        failures: 5,
+        consecutive_hard_failures: 5,
+        successes: 0,
+        backoff_ms: :timer.hours(1)
+      })
+      |> Repo.insert!()
+
+      assert {:ok, _updated} =
+               CalendarManagement.update_calendar_integration(integration, %{
+                 password: "new-password"
+               })
+
+      # Health row is reset to a healthy baseline.
+      {:ok, row} = IntegrationHealthStateQueries.get(:calendar, integration.id)
+      assert row.status == "healthy"
+      assert row.failures == 0
+
+      # Immediate verification probe is enqueued.
+      assert_enqueued(
+        worker: IntegrationHealthWorker,
+        args: %{"type" => "calendar", "integration_id" => integration.id}
+      )
+    end
+
+    test "does NOT enqueue a probe when no credential fields are present" do
+      user = insert(:user)
+      integration = insert(:calendar_integration, user: user, name: "Before")
+
+      assert {:ok, _updated} =
+               CalendarManagement.update_calendar_integration(integration, %{name: "After"})
+
+      refute_enqueued(
+        worker: IntegrationHealthWorker,
+        args: %{"type" => "calendar", "integration_id" => integration.id}
+      )
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # create_calendar_integration/1
+  # ---------------------------------------------------------------------------
+
+  @propfind_calendar_response """
+  <D:multistatus xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+    <D:response>
+      <D:href>/calendars/user/personal/</D:href>
+      <D:propstat>
+        <D:prop>
+          <D:displayname>Personal</D:displayname>
+          <D:resourcetype>
+            <D:collection/>
+            <C:calendar/>
+          </D:resourcetype>
+        </D:prop>
+        <D:status>HTTP/1.1 200 OK</D:status>
+      </D:propstat>
+    </D:response>
+  </D:multistatus>
+  """
+
+  describe "create_calendar_integration/1" do
+    # `DiscoveryCache` is a process-wide ETS table keyed on
+    # `{provider, "username@host"}`, and this fixture shares its key with the
+    # discovery tests, so a result they leave behind would stand in for the
+    # stubbed PROPFIND below.
+    setup do
+      DiscoveryCache.clear_all()
+      :ok
+    end
+
+    test "emits [:tymeslot, :calendar, :connected] telemetry with provider on success" do
+      stub(Tymeslot.HTTPClientMock, :request, fn _method, _url, _body, _headers, _opts ->
+        {:ok, %Req.Response{status: 207, body: @propfind_calendar_response}}
+      end)
+
+      user = insert(:user)
+      _profile = insert(:profile, user: user)
+
+      attrs = %{
+        user_id: user.id,
+        name: "My CalDAV",
+        provider: "caldav",
+        base_url: "https://caldav.example.com",
+        username: "user",
+        password: "pass",
+        calendar_paths: [],
+        provider_account_id: "https://caldav.example.com||user",
+        is_active: true
+      }
+
+      test_pid = self()
+
+      :telemetry.attach(
+        "test-calendar-connected",
+        [:tymeslot, :calendar, :connected],
+        fn _event, measurements, metadata, _config ->
+          send(test_pid, {:telemetry, measurements, metadata})
+        end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach("test-calendar-connected") end)
+
+      assert {:ok, _integration} = CalendarManagement.create_calendar_integration(attrs)
+      assert_received {:telemetry, %{count: 1}, %{provider: "caldav"}}
+    end
+  end
+end

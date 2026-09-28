@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang={assigns[:locale] || "en"} class={assigns[:appearance_html_class]}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <meta name="csp-nonce" content={assigns[:csp_nonce]} />
+    <%!-- Every surface rendered through this layout is private (auth, dashboard,
+    onboarding, admin), so none of it belongs in a search index. Stated here
+    rather than in robots.txt because disallowing a path only stops the crawl:
+    a page linked from elsewhere still gets indexed, snippet-less, and the
+    crawler never reads the directive that would have kept it out. --%>
+    <meta name="robots" content="noindex" />
+    <link rel="canonical" href={TymeslotWeb.Layouts.current_url(assigns)} />
+    <%= if assigns[:meta_description] do %>
+      <meta name="description" content={@meta_description} />
+    <% end %>
+    <.live_title suffix={" · #{Config.app_name()}"}>
+      {assigns[:page_title] || dgettext("common", "Schedule a Meeting")}
+    </.live_title>
+    <link rel="icon" type="image/svg+xml" href={~p"/images/brand/favicon.svg"} />
+    <%!-- Appearance = "System" (no explicit Light/Dark choice, e.g. every user
+    before they ever visit the toggle): the server can't know the OS
+    preference on the first byte, so resolve it here, before any paint. Absent
+    entirely for an explicit choice — that case is already decided by the
+    `class` on <html> above, with zero JS cost. --%>
+    <script :if={assigns[:appearance_preference] == "system"} nonce={assigns[:csp_nonce]}>
+      (function () {
+        try {
+          var query = window.matchMedia("(prefers-color-scheme: dark)");
+          var apply = function () {
+            document.documentElement.classList.toggle("dark", query.matches);
+          };
+          apply();
+          // Follow later OS/browser changes too, not just the value at load.
+          query.addEventListener("change", apply);
+        } catch (e) {}
+      })();
+    </script>
+    <.site_banner_dismissal_script banner={root_site_banner(assigns)} nonce={assigns[:csp_nonce]} />
+    <%!-- Default app styles --%>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+    <%!-- Core bundle: always loaded (LiveSocket + utilities) --%>
+    <script phx-track-static type="module" src={~p"/assets/app.js"}>
+    </script>
+    <%!-- Route-specific bundle: loaded conditionally based on assigns[:route_bundle] --%>
+    <%= if assigns[:route_bundle] do %>
+      <script
+        phx-track-static
+        type="module"
+        src={TymeslotWeb.Endpoint.static_path("/assets/bundles/#{@route_bundle}.js")}
+      >
+      </script>
+    <% else %>
+      <%!-- Fallback: connect LiveSocket with core-only hooks for pages without route bundles --%>
+      <script type="module" nonce={assigns[:csp_nonce]}>
+        // Wait for core bundle to load, then connect LiveSocket
+        (async function() {
+          let retries = 0;
+          const maxRetries = 100;
+          const interval = 100;
+
+          while (!window.liveSocket && retries < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, interval));
+            retries++;
+          }
+
+          if (window.liveSocket && !window.liveSocket.isConnected()) {
+            window.liveSocket.connect();
+          }
+        })();
+      </script>
+    <% end %>
+    <.nomodule_fallback nonce={assigns[:csp_nonce]} />
+    <.analytics_scripts nonce={assigns[:csp_nonce]} live_module={assigns[:live_module]} />
+  </head>
+  <body>
+    <.noscript_warning message={
+      dgettext(
+        "common",
+        "This app requires JavaScript to function. Please enable it in your browser settings."
+      )
+    } />
+    <%!-- No flash group here: the `app` layout inside `@inner_content` owns the
+    only one. A root layout is never diffed after the initial response, so a
+    group at this level would render every flash a second time and still miss
+    every flash raised while the page is live. --%>
+    <.site_banner banner={root_site_banner_bar(assigns)} />
+    {@inner_content}
+  </body>
+</html>

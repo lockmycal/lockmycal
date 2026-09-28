@@ -1,0 +1,212 @@
+defmodule Tymeslot.Emails.Templates.EventUpdateNotificationTest do
+  use Tymeslot.DataCase, async: true
+
+  @moduletag :emails
+
+  import Tymeslot.EmailTestHelpers
+
+  alias Tymeslot.Emails.Templates.EventUpdateNotification
+
+  describe "render/2" do
+    test "returns a valid Swoosh email" do
+      details = build_event_update_details()
+      email = EventUpdateNotification.render("attendee@example.com", details)
+
+      assert %Swoosh.Email{} = email
+      assert [{_name, "attendee@example.com"}] = email.to
+      assert email.subject =~ "Updated:"
+      assert email.subject =~ details.event_title
+    end
+
+    test "subject contains event title and formatted date" do
+      details =
+        build_event_update_details(%{event_title: "Planning Session", date: ~D[2026-04-15]})
+
+      email = EventUpdateNotification.render("a@example.com", details)
+
+      assert email.subject =~ "Planning Session"
+      assert email.subject =~ "Apr 15"
+    end
+
+    test "HTML body contains change summary" do
+      details = build_event_update_details(%{changes: [{:location, "Room A", "Room B"}]})
+      email = EventUpdateNotification.render("a@example.com", details)
+
+      assert email.html_body =~ "Room A"
+      assert email.html_body =~ "Room B"
+    end
+
+    test "text body contains change summary" do
+      details = build_event_update_details(%{changes: [{:location, "Old Office", "New Office"}]})
+      email = EventUpdateNotification.render("a@example.com", details)
+
+      assert email.text_body =~ "Old Office"
+      assert email.text_body =~ "New Office"
+    end
+
+    test "includes ICS attachment with SEQUENCE" do
+      details = build_event_update_details()
+      email = EventUpdateNotification.render("a@example.com", details)
+
+      ics_attachments =
+        Enum.filter(email.attachments, &(&1.content_type =~ "text/calendar"))
+
+      assert [attachment] = ics_attachments
+      assert attachment.filename =~ ".ics"
+      assert attachment.content_type =~ "text/calendar"
+      assert attachment.data =~ "SEQUENCE:1"
+    end
+
+    test "handles time change" do
+      details =
+        build_event_update_details(%{
+          changes: [{:time, ~U[2026-04-10 10:00:00Z], ~U[2026-04-10 14:00:00Z]}]
+        })
+
+      email = EventUpdateNotification.render("a@example.com", details)
+      assert email.html_body =~ "10:00"
+      assert email.html_body =~ "14:00"
+    end
+
+    test "description change shows updated without diff" do
+      details = build_event_update_details(%{changes: [{:description, "Old text", "New text"}]})
+      email = EventUpdateNotification.render("a@example.com", details)
+
+      assert email.html_body =~ "(updated)"
+      refute email.html_body =~ "Old text"
+    end
+
+    test "multiple simultaneous changes all appear" do
+      details =
+        build_event_update_details(%{
+          changes: [
+            {:title, "Old Title", "New Title"},
+            {:location, "Room A", "Room B"},
+            {:description, "Old", "New"}
+          ]
+        })
+
+      email = EventUpdateNotification.render("a@example.com", details)
+      assert email.html_body =~ "Old Title"
+      assert email.html_body =~ "New Title"
+      assert email.html_body =~ "Room A"
+      assert email.html_body =~ "(updated)"
+    end
+
+    test "translates the subject, heading and change summary for every supported locale" do
+      for {locale, subject_fragment, heading, changed_heading} <- [
+            {"en", "Updated:", "Event Updated", "What Changed"},
+            {"de", "Aktualisiert:", "Termin aktualisiert", "Was hat sich geändert"},
+            {"uk", "Оновлено:", "Подію оновлено", "Що змінилося"},
+            {"fr", "Mise à jour :", "Événement mis à jour", "Ce qui a changé"},
+            {"it", "Aggiornato:", "Evento aggiornato", "Cosa è cambiato"}
+          ] do
+        details = build_event_update_details(%{attendee_locale: locale})
+        email = EventUpdateNotification.render("a@example.com", details)
+
+        assert email.subject =~ subject_fragment,
+               "Expected #{locale} subject to contain #{inspect(subject_fragment)}, got: #{email.subject}"
+
+        assert email.text_body =~ heading,
+               "Expected #{locale} text body to contain #{inspect(heading)}"
+
+        assert email.text_body =~ changed_heading,
+               "Expected #{locale} text body to contain #{inspect(changed_heading)}"
+
+        if locale != "en" do
+          refute email.subject =~ "Updated:",
+                 "Expected #{locale} subject to drop the English wording"
+
+          refute email.text_body =~ "Event Updated",
+                 "Expected #{locale} text body to drop the English heading"
+        end
+      end
+    end
+
+    test "omits the 'What changed' block when no recognised changes are present" do
+      details = build_event_update_details(%{changes: []})
+      email = EventUpdateNotification.render("a@example.com", details)
+
+      refute email.html_body =~ "What changed"
+    end
+
+    test "omits the 'What changed' block when every change is filtered out" do
+      details = build_event_update_details(%{changes: [{:unknown_field, "a", "b"}]})
+      email = EventUpdateNotification.render("a@example.com", details)
+
+      refute email.html_body =~ "What changed"
+    end
+
+    test "sanitises HTML in organiser name" do
+      details = build_event_update_details(%{organizer_name: "<script>alert('xss')</script>Evil"})
+      email = EventUpdateNotification.render("a@example.com", details)
+
+      refute email.html_body =~ "<script>"
+    end
+
+    test "subject is free of CR/LF when event title contains header-injection payload" do
+      details =
+        build_event_update_details(%{
+          event_title: "Planning Session\r\nBcc: attacker@evil.com"
+        })
+
+      email = EventUpdateNotification.render("a@example.com", details)
+
+      refute email.subject =~ "\r"
+      refute email.subject =~ "\n"
+    end
+
+    test "a first notification states current details with no before column" do
+      details =
+        build_event_update_details(%{
+          first_notification: true,
+          start_time: ~U[2026-11-03 09:30:00Z],
+          changes: [
+            {:time, nil, ~U[2026-11-03 09:30:00Z]},
+            {:title, nil, "Standup"},
+            {:description, nil, "<p>Daily <b>sync</b></p>"}
+          ]
+        })
+
+      email = EventUpdateNotification.render("a@example.com", details)
+
+      assert email.html_body =~ "Current details"
+      assert email.html_body =~ "Daily sync"
+      refute email.html_body =~ "What changed"
+      refute email.html_body =~ "line-through"
+
+      assert email.text_body =~ "Current Details"
+      assert email.text_body =~ "Title: Standup"
+      assert email.text_body =~ "Time: 03 Nov 2026, 09:30 UTC"
+      refute email.text_body =~ "→"
+    end
+
+    test "an all-day event shows its days and gets a date-only ICS" do
+      details =
+        build_event_update_details(%{
+          all_day: true,
+          start_time: nil,
+          end_time: nil,
+          duration: nil,
+          date: ~D[2026-10-12],
+          start_date: ~D[2026-10-12],
+          end_date: ~D[2026-10-13],
+          last_date: ~D[2026-10-12],
+          changes: [
+            {:time, Date.range(~D[2026-10-05], ~D[2026-10-05]),
+             Date.range(~D[2026-10-12], ~D[2026-10-12])}
+          ]
+        })
+
+      email = EventUpdateNotification.render("a@example.com", details)
+
+      assert email.html_body =~ "All day"
+      assert email.html_body =~ "1 day"
+      assert email.text_body =~ "Time: October 05, 2026 → October 12, 2026"
+
+      [ics] = Enum.filter(email.attachments, &(&1.content_type == "text/calendar"))
+      assert ics.data =~ "DTSTART;VALUE=DATE:20261012"
+      assert ics.data =~ "DTEND;VALUE=DATE:20261013"
+    end
+  end
+end

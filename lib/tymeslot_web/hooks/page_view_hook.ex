@@ -1,0 +1,150 @@
+defmodule TymeslotWeb.Hooks.PageViewHook do
+  @moduledoc """
+  LiveView `on_mount` hook that logs a `booking_page_view` event when
+  a connected socket mounts on a public scheduling page.
+
+  No work is scheduled unless booking analytics is enabled
+  (`Tymeslot.Analytics.enabled?/0`); when disabled the hook is a no-op
+  beyond assigning the session referrer.
+
+  The hook only fires on `connected?(socket)` — the initial static
+  HTML render is skipped, which automatically filters out the bulk
+  of crawlers that never establish a WebSocket. Remaining bot user
+  agents are filtered by `Tymeslot.Analytics.log_page_view/1`, which
+  also applies per-visitor rate limiting before persisting.
+
+  The actual write happens inside a supervised Task to avoid adding
+  latency to the LiveView mount path. Any failure inside the Task
+  is swallowed — analytics must never break the booking flow;
+  `Tymeslot.Analytics.log_page_view/1` emits the outcome as telemetry
+  so a drop is still observable.
+
+  `:async_page_view_logging` selects the write mode. It defaults to
+  `true`; setting it `false` runs the write inline on the mount path
+  instead, which trades a little mount latency for a write that
+  completes within the caller's lifetime. The test environment sets
+  it `false` so the write is owned by the test process and cannot
+  outlive it — a fire-and-forget Task racing sandbox teardown dies
+  with a `DBConnection.OwnershipError` that ExUnit does not fail on.
+  It is read via `Application.compile_env/3` rather than `Mix.env()`,
+  which lies when Core is built as a path dependency.
+
+  Only cheap, in-memory data (user agent, IP, socket ID, params,
+  session referrer) is captured before spawning the Task. The signed-in
+  viewer's id arrives in the session as `"viewer_user_id"`, resolved by the
+  router from the request's current user, so an organiser's visit to their
+  own booking page can be skipped without a lookup here. The
+  database lookups for user and meeting-type context run inside the
+  Task, off the mount path.
+  """
+  import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [connected?: 1]
+
+  alias Tymeslot.Analytics
+  alias Tymeslot.Analytics.Fingerprint
+  alias Tymeslot.MeetingTypes
+  alias Tymeslot.Profiles
+  alias TymeslotWeb.Helpers.ClientIP
+
+  @async_page_view_logging Application.compile_env(
+                             :tymeslot,
+                             :async_page_view_logging,
+                             true
+                           )
+
+  @scheduling_referrer_session_key "scheduling_referrer"
+  @viewer_user_id_session_key "viewer_user_id"
+
+  @spec on_mount(:default, map(), map(), Phoenix.LiveView.Socket.t()) ::
+          {:cont, Phoenix.LiveView.Socket.t()}
+  def on_mount(:default, params, session, socket) do
+    referrer = session[@scheduling_referrer_session_key]
+    socket = assign(socket, :scheduling_referrer, referrer)
+
+    if connected?(socket) and Analytics.enabled?() do
+      {:cont, track_connected(socket, params, referrer, session[@viewer_user_id_session_key])}
+    else
+      {:cont, socket}
+    end
+  end
+
+  # Compute the visitor hash exactly once, here, via the canonical ClientIP
+  # module (Cloudflare-aware). The hash is assigned to the socket so a later
+  # booking can persist the *same* value — `assign_tracking/2` folds it into the
+  # `:tracking` map. The async page-view write recomputes the hash from the
+  # identical (ip, user_agent, session_id) inputs, so the event and the booking
+  # always share one join key. Anything else risks two extractors disagreeing
+  # and the conversion join silently matching nothing.
+  defp track_connected(socket, params, referrer, viewer_user_id) do
+    user_agent = ClientIP.get_user_agent_from_mount(socket)
+    ip = ClientIP.get_from_mount(socket)
+    session_id = socket.id
+
+    # Both the assign and the async page-view write feed the *same* raw inputs to
+    # `Fingerprint.hash/3`, which normalises the "unknown"/blank sentinels itself —
+    # so the event and the booking always derive one identical join key.
+    socket = assign(socket, :visitor_hash, Fingerprint.hash(ip, user_agent, session_id))
+
+    log_async(params, referrer, ip, user_agent, session_id, viewer_user_id)
+
+    socket
+  end
+
+  defp log_async(params, referrer, ip, user_agent, session_id, viewer_user_id) do
+    run_page_view_write(fn ->
+      {user_id, meeting_type_id, path} = resolve_target(params)
+
+      Analytics.log_page_view(%{
+        path: path,
+        user_id: user_id,
+        meeting_type_id: meeting_type_id,
+        ip: ip,
+        user_agent: user_agent,
+        session_id: session_id,
+        params: params,
+        referrer: referrer,
+        viewer_user_id: viewer_user_id
+      })
+    end)
+  end
+
+  # Compile-time branch: the mode cannot change at runtime, so neither
+  # arm costs the mount path a check.
+  if @async_page_view_logging do
+    defp run_page_view_write(write) do
+      Task.Supervisor.start_child(Tymeslot.TaskSupervisor, write)
+      :ok
+    end
+  else
+    defp run_page_view_write(write) do
+      write.()
+      :ok
+    end
+  end
+
+  defp resolve_target(%{"username" => username} = params) when is_binary(username) do
+    slug = params["slug"]
+
+    case {Profiles.get_profile_by_username(username), slug} do
+      {%{user_id: user_id}, slug} when is_binary(slug) ->
+        meeting_type_id =
+          case MeetingTypes.find_by_slug(user_id, slug) do
+            %{id: id} -> id
+            _other -> nil
+          end
+
+        {user_id, meeting_type_id, build_path(username, slug)}
+
+      {%{user_id: user_id}, _slug} ->
+        {user_id, nil, build_path(username, nil)}
+
+      {_profile, _slug} ->
+        {nil, nil, build_path(username, slug)}
+    end
+  end
+
+  defp resolve_target(_params), do: {nil, nil, "/"}
+
+  defp build_path(username, nil), do: "/#{username}"
+  defp build_path(username, slug), do: "/#{username}/#{slug}"
+end

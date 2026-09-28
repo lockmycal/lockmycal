@@ -1,0 +1,334 @@
+defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.BookingComponent do
+  @moduledoc """
+  Rhythm theme component for the booking/contact form step.
+  Updated to use form struct and shared patterns.
+  """
+  use TymeslotWeb, :live_component
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Tymeslot.Meetings.Approval
+  alias Tymeslot.Timezones
+  alias TymeslotWeb.Live.Scheduling.OrganizerHelpers
+  alias TymeslotWeb.Live.Shared.FormValidationHelpers
+  alias TymeslotWeb.Themes.Rhythm.Shared.OrganizerHeader
+  alias TymeslotWeb.Themes.Shared.BookingLabels
+  alias TymeslotWeb.Themes.Shared.BookingLocation
+  alias TymeslotWeb.Themes.Shared.Components.ApprovalNotice
+  alias TymeslotWeb.Themes.Shared.Components.GuestField
+  alias TymeslotWeb.Themes.Shared.Components.LocationField
+  alias TymeslotWeb.Themes.Shared.GuestBooking
+  alias TymeslotWeb.Themes.Shared.LocalizationHelpers
+  alias TymeslotWeb.Themes.Shared.SecurityFields
+
+  @impl Phoenix.LiveComponent
+  def update(assigns, socket) do
+    filtered_assigns = Map.drop(assigns, [:flash, :socket])
+    {:ok, assign(socket, filtered_assigns)}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("validate", %{"booking" => booking_params}, socket) do
+    send(self(), {:step_event, :booking, :validate, booking_params})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("field_blur", %{"field" => field_name}, socket) do
+    send(self(), {:step_event, :booking, :field_blur, field_name})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("submit", %{"booking" => booking_params}, socket) do
+    # Set submitting state immediately for instant UI feedback — but only when
+    # the location picker has an answer the LiveView will accept. An
+    # incomplete one is refused without changing any assign this component
+    # renders, so a flag set here would have nothing to clear it again.
+    socket = assign(socket, :submitting, BookingLocation.complete?(socket.assigns))
+    send(self(), {:step_event, :booking, :submit, booking_params})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("prev_slide", _params, socket) do
+    send(self(), {:step_event, :booking, :back_step, nil})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("select_location", %{"id" => id}, socket) do
+    send(self(), {:step_event, :booking, :select_location, id})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("select_video_provider", %{"id" => id}, socket) do
+    send(self(), {:step_event, :booking, :select_video_provider, id})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("location_phone_change", params, socket) do
+    send(self(), {:step_event, :booking, :location_phone, params["location_phone"] || ""})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_guests", _params, socket) do
+    send(self(), {:step_event, :booking, :toggle_guests, nil})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("close_guests", _params, socket) do
+    send(self(), {:step_event, :booking, :close_guests, nil})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("guest_input_change", params, socket) do
+    send(self(), {:step_event, :booking, :guest_input, params["guest_email"] || ""})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("add_guest", params, socket) do
+    send(self(), {:step_event, :booking, :add_guest, params["guest_email"] || ""})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("remove_guest", %{"email" => email}, socket) do
+    send(self(), {:step_event, :booking, :remove_guest, email})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def render(assigns) do
+    ~H"""
+    <div class="scheduling-box" data-locale={@locale}>
+      <div class="slide-container">
+        <div class="slide active">
+          <div class="slide-content booking-slide">
+            <div class="schedule-header">
+              <OrganizerHeader.organizer_header_small
+                organizer_profile={@organizer_profile}
+                meeting_type={@meeting_type}
+                selected_duration={@duration}
+              />
+            </div>
+
+            <div class="meeting-summary compact">
+              <div class="summary-row">
+                <div class="summary-item">
+                  <.icon name="hero-calendar" class="summary-icon hero-icon hero-icon--md" />
+                  <div>
+                    <div class="summary-value">{LocalizationHelpers.format_date(@selected_date)}</div>
+                    <div class="summary-label">
+                      {@selected_time || dgettext("booking", "No time selected")}
+                    </div>
+                  </div>
+                </div>
+                <div class="summary-item">
+                  <.icon name="hero-globe-alt" class="summary-icon hero-icon hero-icon--md" />
+                  <div>
+                    <div class="summary-value">
+                      {Timezones.format(@user_timezone || "America/New_York")}
+                    </div>
+                    <div class="summary-label">
+                      <%= if @meeting_type do %>
+                        {LocalizationHelpers.format_duration(@meeting_type.duration_minutes)} {dgettext(
+                          "booking",
+                          "meeting"
+                        )}
+                      <% else %>
+                        {LocalizationHelpers.format_duration(@selected_duration)} {dgettext(
+                          "booking",
+                          "meeting"
+                        )}
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <LocationField.location_field
+              :if={BookingLocation.choice_required?(assigns)}
+              location_options={@location_options}
+              selected_location_id={@selected_location_id}
+              video_choices={BookingLocation.video_choices(assigns)}
+              selected_video_id={@selected_video_id}
+              location_phone={@location_phone}
+              location_error={@location_error}
+              phone_required={BookingLocation.phone_required?(assigns)}
+              target={@myself}
+            />
+
+            <.form
+              :let={f}
+              for={@form}
+              phx-submit="submit"
+              phx-change="validate"
+              phx-target={@myself}
+              data-testid="booking-form"
+              class="booking-form"
+              as={:booking}
+              id="booking-form"
+              {SecurityFields.recaptcha_form_attrs("booking_form", "booking")}
+            >
+              <SecurityFields.honeypot_field id_prefix="booking" param_root="booking" />
+
+              <.input
+                field={f[:name]}
+                label={dgettext("booking", "Name")}
+                placeholder={dgettext("booking", "Enter your full name")}
+                errors={FormValidationHelpers.field_errors(@validation_errors, :name)}
+                phx-debounce="300"
+                phx-blur="field_blur"
+                phx-value-field="name"
+                phx-target={@myself}
+              />
+
+              <.input
+                field={f[:email]}
+                label={dgettext("booking", "Email")}
+                type="email"
+                placeholder={dgettext("booking", "your.email@example.com")}
+                errors={FormValidationHelpers.field_errors(@validation_errors, :email)}
+                phx-debounce="300"
+                phx-blur="field_blur"
+                phx-value-field="email"
+                phx-target={@myself}
+              />
+
+              <.input
+                field={f[:phone]}
+                label={dgettext("booking", "Phone Number")}
+                type="tel"
+                placeholder={dgettext("booking", "Enter your phone number")}
+                errors={FormValidationHelpers.field_errors(@validation_errors, :phone)}
+                phx-debounce="300"
+                phx-blur="field_blur"
+                phx-value-field="phone"
+                phx-target={@myself}
+              />
+
+              <.input
+                field={f[:company]}
+                label={dgettext("booking", "Company Name")}
+                placeholder={dgettext("booking", "Enter your company name")}
+                errors={FormValidationHelpers.field_errors(@validation_errors, :company)}
+                phx-debounce="300"
+                phx-blur="field_blur"
+                phx-value-field="company"
+                phx-target={@myself}
+              />
+
+              <.input
+                field={f[:message]}
+                type="textarea"
+                label={dgettext("booking", "Meeting Information")}
+                placeholder={dgettext("booking", "Add any details...")}
+                errors={FormValidationHelpers.field_errors(@validation_errors, :message)}
+                rows={4}
+                phx-debounce="300"
+                phx-blur="field_blur"
+                phx-value-field="message"
+                phx-target={@myself}
+              />
+
+              <SecurityFields.recaptcha_token_field id_prefix="booking" param_root="booking" />
+            </.form>
+
+            <GuestField.guest_field
+              :if={guests_allowed?(assigns)}
+              guest_emails={@guest_emails}
+              guest_input={@guest_input}
+              guest_error={@guest_error}
+              guests_open={@guests_open}
+              max_guests={@max_guests}
+              target={@myself}
+            />
+
+            <SecurityFields.recaptcha_notice_block />
+
+            <ApprovalNotice.block
+              :if={Approval.required?(@meeting_type)}
+              organizer_name={organizer_display_name(@organizer_profile, @username_context)}
+              payment_required={@meeting_type.payment_required}
+              stage={:before}
+            />
+
+            <div class="slide-actions horizontal">
+              <button
+                type="button"
+                class="prev-button"
+                phx-click="prev_slide"
+                phx-target={@myself}
+                data-testid="back-step"
+                disabled={@submitting}
+              >
+                ← {dgettext("booking", "Back")}
+              </button>
+              <button
+                type="submit"
+                form="booking-form"
+                class="submit-button"
+                data-testid="submit-booking"
+                disabled={@submitting || !OrganizerHelpers.form_valid?(@form)}
+              >
+                <%= if @submitting do %>
+                  <svg
+                    class="loading-spinner icon-sm"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      class="loading-spinner-track"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    >
+                    </circle>
+                    <path
+                      class="loading-spinner-path"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    >
+                    </path>
+                  </svg>
+                  <span>{dgettext("booking", "Verifying...")}</span>
+                <% else %>
+                  {submit_label(@is_rescheduling, @meeting_type)}
+                <% end %>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  defp guests_allowed?(assigns), do: GuestBooking.guests_allowed?(assigns)
+
+  # "Submit" is vague enough to survive a gated meeting type, but naming the
+  # action makes the difference visible at the moment of committing —
+  # including on a reschedule, which re-enters the approval gate on a gated
+  # type just as a fresh submission does.
+  defp submit_label(is_rescheduling, meeting_type) do
+    BookingLabels.submit_label(
+      is_rescheduling,
+      meeting_type,
+      dgettext("booking", "Submit")
+    )
+  end
+
+  defp organizer_display_name(organizer_profile, username_context) do
+    BookingLabels.organizer_display_name(organizer_profile, username_context)
+  end
+end

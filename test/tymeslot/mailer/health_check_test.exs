@@ -1,0 +1,436 @@
+defmodule Tymeslot.Mailer.HealthCheckTest do
+  use ExUnit.Case, async: true
+  @moduletag :mailer
+
+  import ExUnit.CaptureLog
+
+  alias Tymeslot.Mailer.HealthCheck
+  alias Tymeslot.Mailer.SMTPConfig
+  alias Tymeslot.Test.FakeSmtpRelay
+
+  describe "validate_startup_config/1 for SMTP" do
+    test "validates complete and valid SMTP configuration" do
+      # Use empty list for cacerts in test (since :castore module may not be loaded)
+      config = [
+        adapter: Tymeslot.Mailer.SMTPAdapter,
+        relay: "smtp.example.com",
+        port: 587,
+        username: "user@example.com",
+        password: "secret123",
+        ssl: false,
+        tls: :always,
+        tls_options: [
+          versions: [:"tlsv1.2", :"tlsv1.3"],
+          verify: :verify_peer,
+          cacerts: [],
+          server_name_indication: ~c"smtp.example.com",
+          depth: 5
+        ]
+      ]
+
+      # Structure validation passes, but connection test fails in CI (no real SMTP
+      # server). capture_log prevents the expected error from leaking into concurrent
+      # async tests that assert log == "".
+      capture_log(fn ->
+        assert :ok = HealthCheck.validate_startup_config(config)
+      end)
+    end
+
+    test "accepts a relay that needs no login" do
+      relay = FakeSmtpRelay.start()
+
+      config =
+        [host: "localhost", port: 25]
+        |> SMTPConfig.build()
+        |> Keyword.put(:port, relay.port)
+
+      capture_log(fn -> assert :ok = HealthCheck.validate_startup_config(config) end)
+
+      # Structure validation used to demand credentials and stop before the
+      # probe ever reached the relay.
+      assert_receive {:smtp_relay, :ehlo}
+    end
+
+    test "logs error but returns :ok when SMTP host (relay) is missing" do
+      config = [
+        adapter: Tymeslot.Mailer.SMTPAdapter,
+        relay: nil,
+        port: 587,
+        username: "user",
+        password: "pass"
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "SMTP"
+    end
+
+    test "logs error but returns :ok when SMTP host is empty string" do
+      config = [
+        adapter: Tymeslot.Mailer.SMTPAdapter,
+        relay: "",
+        port: 587,
+        username: "user",
+        password: "pass"
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "SMTP"
+    end
+
+    test "logs error but returns :ok when SMTP username is missing" do
+      config = [
+        adapter: Tymeslot.Mailer.SMTPAdapter,
+        relay: "smtp.example.com",
+        port: 587,
+        username: nil,
+        password: "pass"
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "SMTP"
+    end
+
+    test "logs error but returns :ok when SMTP username is empty string" do
+      config = [
+        adapter: Tymeslot.Mailer.SMTPAdapter,
+        relay: "smtp.example.com",
+        port: 587,
+        username: "",
+        password: "pass"
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "SMTP"
+    end
+
+    test "logs error but returns :ok when SMTP password is missing" do
+      config = [
+        adapter: Tymeslot.Mailer.SMTPAdapter,
+        relay: "smtp.example.com",
+        port: 587,
+        username: "user",
+        password: nil
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "SMTP"
+    end
+
+    test "logs error but returns :ok when SMTP password is empty string" do
+      config = [
+        adapter: Tymeslot.Mailer.SMTPAdapter,
+        relay: "smtp.example.com",
+        port: 587,
+        username: "user",
+        password: ""
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "SMTP"
+    end
+
+    test "logs error but returns :ok when SMTP port is not an integer" do
+      config = [
+        adapter: Tymeslot.Mailer.SMTPAdapter,
+        relay: "smtp.example.com",
+        port: "not_an_int",
+        username: "user",
+        password: "pass"
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "SMTP"
+    end
+
+    test "logs error but returns :ok when SMTP port is out of valid range (too low)" do
+      config = [
+        adapter: Tymeslot.Mailer.SMTPAdapter,
+        relay: "smtp.example.com",
+        port: 0,
+        username: "user",
+        password: "pass"
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "SMTP"
+    end
+
+    test "logs error but returns :ok when SMTP port is out of valid range (too high)" do
+      config = [
+        adapter: Tymeslot.Mailer.SMTPAdapter,
+        relay: "smtp.example.com",
+        port: 99_999,
+        username: "user",
+        password: "pass"
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "SMTP"
+    end
+  end
+
+  describe "validate_startup_config/1 for other adapters" do
+    test "passes validation for Test adapter" do
+      config = [adapter: Swoosh.Adapters.Test]
+
+      assert :ok = HealthCheck.validate_startup_config(config)
+    end
+
+    test "passes validation for Local adapter" do
+      config = [adapter: Swoosh.Adapters.Local]
+
+      assert :ok = HealthCheck.validate_startup_config(config)
+    end
+
+    test "logs error but returns :ok when adapter is not configured" do
+      config = [adapter: nil]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer adapter not configured"
+    end
+
+    test "warns but returns :ok for an adapter outside the registry" do
+      config = [adapter: Swoosh.Adapters.Mandrill, api_key: "key"]
+
+      log =
+        capture_log([level: :warning], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "not in the provider registry"
+    end
+  end
+
+  describe "validate_startup_config/1 for Postmark" do
+    test "logs error but returns :ok when Postmark API key is missing" do
+      config = [
+        adapter: Swoosh.Adapters.Postmark,
+        api_key: nil
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "Postmark"
+    end
+
+    test "logs error but returns :ok when Postmark API key is empty string" do
+      config = [
+        adapter: Swoosh.Adapters.Postmark,
+        api_key: ""
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "Postmark"
+    end
+
+    test "logs error but returns :ok when Postmark API key is whitespace only" do
+      config = [
+        adapter: Swoosh.Adapters.Postmark,
+        api_key: "   "
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "Postmark"
+    end
+
+    test "logs error but returns :ok when Postmark API key is not a string" do
+      config = [
+        adapter: Swoosh.Adapters.Postmark,
+        api_key: :not_a_string
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "Postmark"
+    end
+
+    @tag :external
+    test "validates API key with real Postmark API call" do
+      # This test requires a real Postmark API key and network access
+      # Skip in normal test runs
+      config = [
+        adapter: Swoosh.Adapters.Postmark,
+        api_key: "invalid-test-key"
+      ]
+
+      # Should log error due to invalid API key (401) or timeout, but return :ok
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "Postmark"
+    end
+  end
+
+  describe "validate_startup_config/1 for the other API providers" do
+    test "logs error but returns :ok when the SendGrid key is missing" do
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok =
+                   HealthCheck.validate_startup_config(
+                     adapter: Swoosh.Adapters.Sendgrid,
+                     api_key: nil
+                   )
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "SendGrid"
+      assert log =~ "SENDGRID_API_KEY"
+    end
+
+    test "logs error but returns :ok when the SendGrid key is blank" do
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok =
+                   HealthCheck.validate_startup_config(
+                     adapter: Swoosh.Adapters.Sendgrid,
+                     api_key: "   "
+                   )
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "SendGrid"
+    end
+
+    test "logs error but returns :ok when the Mailgun domain is missing" do
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok =
+                   HealthCheck.validate_startup_config(
+                     adapter: Swoosh.Adapters.Mailgun,
+                     api_key: "key",
+                     domain: nil
+                   )
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "Mailgun"
+      assert log =~ "MAILGUN_DOMAIN"
+    end
+
+    test "logs error but returns :ok when the AhaSend account id is missing" do
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok =
+                   HealthCheck.validate_startup_config(
+                     adapter: Swoosh.Adapters.AhaSend,
+                     api_key: "aha-sk-key",
+                     account_id: nil
+                   )
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "AhaSend"
+      assert log =~ "AHASEND_ACCOUNT_ID"
+    end
+
+    test "logs error but returns :ok when a credential is not a string" do
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok =
+                   HealthCheck.validate_startup_config(
+                     adapter: Swoosh.Adapters.AhaSend,
+                     api_key: :not_a_string,
+                     account_id: "acct-1"
+                   )
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "AhaSend"
+      assert log =~ "must be a string"
+    end
+  end
+
+  describe "connection testing (structure validation only)" do
+    # Note: Full connection tests would require real SMTP server or mocking
+    # These tests only verify that the validation logic correctly identifies structure issues
+
+    test "structure validation catches all required field issues" do
+      # Missing all fields
+      config = [
+        adapter: Tymeslot.Mailer.SMTPAdapter,
+        relay: nil,
+        port: nil,
+        username: nil,
+        password: nil
+      ]
+
+      log =
+        capture_log([level: :error], fn ->
+          assert :ok = HealthCheck.validate_startup_config(config)
+        end)
+
+      assert log =~ "Mailer configuration validation failed"
+      assert log =~ "SMTP"
+    end
+  end
+end

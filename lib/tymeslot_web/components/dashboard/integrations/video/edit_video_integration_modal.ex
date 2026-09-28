@@ -1,0 +1,461 @@
+defmodule TymeslotWeb.Components.Dashboard.Integrations.Video.EditVideoIntegrationModal do
+  @moduledoc """
+  Modal for editing an existing video integration.
+  Manages its own show/hide state, following the DeleteIntegrationModal pattern.
+  """
+
+  use TymeslotWeb, :live_component
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Tymeslot.Integrations.Video
+  alias Tymeslot.Integrations.Video.InputValidation, as: VideoInputValidation
+  alias Tymeslot.Integrations.Video.TemplateSyntax
+  alias Tymeslot.Utils.ChangesetUtils
+  alias TymeslotWeb.Components.CoreComponents.Forms
+  alias TymeslotWeb.Components.Dashboard.Integrations.Video.CustomConfig.TemplatePreviewBox
+  alias TymeslotWeb.Components.Dashboard.Integrations.Video.JitsiConfig
+  alias TymeslotWeb.Components.Dashboard.Integrations.Video.KmeetConfig
+  alias TymeslotWeb.Components.Dashboard.Integrations.Video.NextcloudTalkConfig
+
+  alias TymeslotWeb.Components.Dashboard.Integrations.Video.SharedFormComponents,
+    as: SharedForm
+
+  alias TymeslotWeb.Dashboard.ComponentDispatch
+  alias TymeslotWeb.Dashboard.VideoSettingsComponent
+  alias TymeslotWeb.Helpers.IntegrationProviders
+  alias TymeslotWeb.Live.Dashboard.Shared.DashboardHelpers
+  alias TymeslotWeb.Live.Shared.FormValidationHelpers
+
+  @impl Phoenix.LiveComponent
+  def mount(socket) do
+    {:ok,
+     socket
+     |> assign(:show, false)
+     |> assign(:integration, nil)
+     |> assign(:form_values, %{})
+     |> assign(:form_errors, %{})
+     |> assign(:saving, false)}
+  end
+
+  @impl Phoenix.LiveComponent
+  def update(assigns, socket) do
+    {:ok, assign(socket, assigns)}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("show", %{"id" => id}, socket) do
+    case parse_integration_id(id) do
+      {:ok, integration_id} ->
+        case find_integration(socket.assigns.integrations, integration_id) do
+          nil ->
+            {:noreply, socket}
+
+          integration ->
+            form_values = build_form_values(integration)
+
+            {:noreply,
+             socket
+             |> assign(:show, true)
+             |> assign(:integration, integration)
+             |> assign(:form_values, form_values)
+             |> assign(:form_errors, %{})
+             |> assign(:saving, false)}
+        end
+
+      {:error, _reason} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("hide", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show, false)
+     |> assign(:integration, nil)
+     |> assign(:form_values, %{})
+     |> assign(:form_errors, %{})
+     |> assign(:saving, false)}
+  end
+
+  def handle_event("track_form_change", %{"integration" => params}, socket) do
+    {:noreply, assign(socket, :form_values, params)}
+  end
+
+  def handle_event("validate_field", %{"field" => field, "value" => value}, socket) do
+    field_atom = map_field_to_atom(field)
+
+    if String.trim(to_string(value)) == "" do
+      current_errors = socket.assigns.form_errors
+
+      {:noreply,
+       assign(
+         socket,
+         :form_errors,
+         FormValidationHelpers.delete_field_error(current_errors, field_atom)
+       )}
+    else
+      case VideoInputValidation.validate_single_field(field_atom, value,
+             metadata: DashboardHelpers.get_security_metadata(socket)
+           ) do
+        {:ok, _sanitized} ->
+          {:noreply,
+           assign(
+             socket,
+             :form_errors,
+             FormValidationHelpers.delete_field_error(socket.assigns.form_errors, field_atom)
+           )}
+
+        {:error, error} ->
+          {:noreply,
+           assign(socket, :form_errors, Map.put(socket.assigns.form_errors, field_atom, error))}
+      end
+    end
+  end
+
+  def handle_event("save", %{"integration" => params}, socket) do
+    integration = socket.assigns.integration
+    user_id = socket.assigns.current_user.id
+
+    params_with_provider = Map.put(params, "provider", integration.provider)
+
+    case VideoInputValidation.validate_video_integration_form(params_with_provider,
+           metadata: DashboardHelpers.get_security_metadata(socket)
+         ) do
+      {:ok, sanitized} ->
+        # The validated map is the whole set of fields the provider's form
+        # accepts, so anything else the browser sent never reaches the context.
+        case Video.update_integration(user_id, integration.id, sanitized) do
+          {:ok, _updated} ->
+            send(
+              self(),
+              {:flash, {:info, dgettext("dashboard_video", "Integration updated successfully")}}
+            )
+
+            # Was hardcoded to the stale hub id ("video"), which never matched
+            # `VideoSettingsComponent`'s actual mount id and made this a silent
+            # no-op — the edited row never refreshed until some other event
+            # happened to reload the list.
+            send_update(VideoSettingsComponent,
+              id: ComponentDispatch.component_id(:video_integration)
+            )
+
+            {:noreply,
+             socket
+             |> assign(:show, false)
+             |> assign(:integration, nil)
+             |> assign(:saving, false)}
+
+          {:error, reason} ->
+            {:noreply,
+             socket
+             |> assign(:saving, false)
+             |> show_update_error(reason, integration.provider)}
+        end
+
+      {:error, validation_errors} ->
+        {:noreply,
+         socket
+         |> assign(:form_errors, validation_errors)
+         |> assign(:form_values, params)}
+    end
+  end
+
+  @impl Phoenix.LiveComponent
+  def render(assigns) do
+    ~H"""
+    <div id={@id}>
+      <TymeslotWeb.Components.CoreComponents.modal
+        id={"#{@id}-modal"}
+        show={@show}
+        on_cancel={JS.push("hide", target: @myself)}
+        size={:medium}
+      >
+        <:header>
+          {dgettext("dashboard_video", "Edit Integration")}
+        </:header>
+
+        <%= if @integration do %>
+          <form
+            id="edit-video-integration-form"
+            phx-submit="save"
+            phx-change="track_form_change"
+            phx-target={@myself}
+            class="space-y-5"
+          >
+            <input type="hidden" name="integration[provider]" value={@integration.provider} />
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SharedForm.integration_name_field
+                form_errors={@form_errors}
+                value={Map.get(@form_values, "name", @integration.name || "")}
+                target={@myself}
+              />
+
+              <%= case @integration.provider do %>
+                <% "custom" -> %>
+                  <SharedForm.url_field
+                    id="edit_custom_meeting_url"
+                    name="integration[custom_meeting_url]"
+                    label={dgettext("dashboard_video", "Meeting URL")}
+                    value={
+                      Map.get(
+                        @form_values,
+                        "custom_meeting_url",
+                        @integration.custom_meeting_url || ""
+                      )
+                    }
+                    placeholder={
+                      dgettext("dashboard_video", "https://jitsi.example.org/{{meeting_id}}")
+                    }
+                    form_errors={@form_errors}
+                    error_key={:custom_meeting_url}
+                    target={@myself}
+                    helper_text={
+                      dgettext(
+                        "dashboard_video",
+                        "Enter your video meeting URL. Use {{meeting_id}} for unique rooms per meeting"
+                      )
+                    }
+                  />
+                <% "mirotalk" -> %>
+                  <SharedForm.url_field
+                    id="edit_base_url"
+                    name="integration[base_url]"
+                    label={dgettext("dashboard_video", "Base URL")}
+                    value={Map.get(@form_values, "base_url", @integration.base_url || "")}
+                    placeholder={dgettext("dashboard_video", "https://mirotalk.yourdomain.com")}
+                    form_errors={@form_errors}
+                    error_key={:base_url}
+                    target={@myself}
+                    helper_text={dgettext("dashboard_video", "Your MiroTalk instance base URL")}
+                  />
+
+                  <div class="md:col-span-2">
+                    <SharedForm.api_key_field
+                      id="edit_api_key"
+                      name="integration[api_key]"
+                      form_errors={@form_errors}
+                      value={Map.get(@form_values, "api_key", "")}
+                      placeholder={dgettext("dashboard_video", "Enter new API key")}
+                      target={@myself}
+                    />
+                  </div>
+                <% "kmeet" -> %>
+                  <KmeetConfig.host_field id="edit_kmeet_host" />
+                <% "jitsi" -> %>
+                  <JitsiConfig.server_url_field
+                    id="edit_jitsi_base_url"
+                    value={Map.get(@form_values, "base_url", @integration.base_url || "")}
+                    form_errors={@form_errors}
+                    target={@myself}
+                  />
+
+                  <JitsiConfig.credential_fields
+                    id_prefix="edit_jitsi"
+                    form_values={@form_values}
+                    form_errors={@form_errors}
+                    stored_credentials={stored_credentials?(@integration)}
+                    stored_client_id={@integration.client_id || ""}
+                  />
+                <% "nextcloud_talk" -> %>
+                  <NextcloudTalkConfig.server_url_field
+                    id="edit_nextcloud_talk_base_url"
+                    value={Map.get(@form_values, "base_url", @integration.base_url || "")}
+                    form_errors={@form_errors}
+                    target={@myself}
+                  />
+
+                  <NextcloudTalkConfig.credential_fields
+                    id_prefix="edit_nextcloud_talk"
+                    form_values={@form_values}
+                    form_errors={@form_errors}
+                    stored_credentials={true}
+                  />
+                <% _ -> %>
+              <% end %>
+            </div>
+
+            <%= if error = SharedForm.form_level_error(@form_errors) do %>
+              <SharedForm.error_banner error={error} />
+            <% end %>
+
+            <%= if @integration.provider == "custom" do %>
+              <% url_value =
+                Map.get(@form_values, "custom_meeting_url", @integration.custom_meeting_url || "") %>
+              <%= case TemplateSyntax.analyze(url_value) do %>
+                <% {:ok, :valid_template, preview, _message} -> %>
+                  <TemplatePreviewBox.render
+                    status={:valid}
+                    title={dgettext("dashboard_video", "✓ Valid Template")}
+                    message={
+                      dgettext("dashboard_video", "Template variable detected: {{meeting_id}}")
+                    }
+                    preview={preview}
+                  />
+                <% {:warning, _type, preview, error_message} -> %>
+                  <TemplatePreviewBox.render
+                    status={:warning}
+                    title={dgettext("dashboard_video", "⚠ Invalid Syntax")}
+                    message={error_message}
+                    preview={preview}
+                  />
+                <% {:ok, :static, _url, _message} -> %>
+                  <TemplatePreviewBox.render
+                    status={:static}
+                    title={dgettext("dashboard_video", "Static Meeting Room")}
+                    message={dgettext("dashboard_video", "All meetings will use the same room URL")}
+                  />
+                <% {:ok, :empty, _url, _message} -> %>
+                  <TemplatePreviewBox.render
+                    status={:empty}
+                    title={dgettext("dashboard_video", "No URL Configured")}
+                    message={
+                      dgettext(
+                        "dashboard_video",
+                        "Enter a custom video link to configure meeting rooms"
+                      )
+                    }
+                  />
+              <% end %>
+            <% end %>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-neutral-300 dark:border-twilight-indigo-800">
+              <button
+                type="button"
+                phx-click={JS.push("hide", target: @myself)}
+                class="btn btn-secondary"
+              >
+                {dgettext("dashboard_video", "Cancel")}
+              </button>
+
+              <TymeslotWeb.Components.Dashboard.Integrations.Shared.UIComponents.form_submit_button
+                saving={@saving}
+                text={dgettext("dashboard_video", "Save Changes")}
+                saving_text={dgettext("dashboard_video", "Saving...")}
+              />
+            </div>
+          </form>
+        <% end %>
+      </TymeslotWeb.Components.CoreComponents.modal>
+    </div>
+    """
+  end
+
+  # Private helpers
+
+  # A refusal that concerns one of this dialog's fields, or the form as a
+  # whole, is shown there rather than flashed, so the organiser sees what to
+  # correct without the dialog losing what was typed. A tagged refusal from
+  # the server check (Nextcloud Talk's refused login or throttled address, for
+  # one) and the connection-test limiter's refusals are placed exactly as the
+  # connect form places them, and so is a Nextcloud Talk validation message,
+  # which the connect form shows for the whole form. Anything else is flashed.
+  defp show_update_error(socket, :duplicate_integration, provider),
+    do: assign(socket, :form_errors, %{base: duplicate_message(provider)})
+
+  defp show_update_error(socket, message, "nextcloud_talk") when is_binary(message),
+    do: assign(socket, :form_errors, %{base: message})
+
+  defp show_update_error(socket, {tag, message} = reason, _provider)
+       when is_atom(tag) and is_binary(message),
+       do: assign(socket, :form_errors, IntegrationProviders.reason_to_form_errors(reason))
+
+  defp show_update_error(socket, :unattributable, _provider),
+    do: assign(socket, :form_errors, IntegrationProviders.reason_to_form_errors(:unattributable))
+
+  defp show_update_error(socket, reason, provider) do
+    send(self(), {:flash, {:error, update_error_message(reason, provider)}})
+    assign(socket, :form_errors, %{})
+  end
+
+  # A Nextcloud Talk integration is keyed on its server and login name, so an
+  # edit can move it onto an account that is already connected.
+  defp duplicate_message("nextcloud_talk"),
+    do:
+      dgettext(
+        "dashboard_video",
+        "This Nextcloud account is already connected. Edit or remove the existing integration instead."
+      )
+
+  defp duplicate_message(_provider),
+    do:
+      dgettext(
+        "dashboard_video",
+        "A video integration with this configuration already exists"
+      )
+
+  # A provider's own validation (Jitsi's credential checks, for one) returns
+  # a message written for the organiser; anything else is not fit to show.
+  defp update_error_message(message, _provider) when is_binary(message), do: message
+
+  # The schema calls the server address `base_url`, which reads as "Base url"
+  # in `ChangesetUtils.get_first_error/1`; a URL error is instead named the way
+  # this dialog labels the field. Any other error keeps the generic wording.
+  defp update_error_message(%Ecto.Changeset{errors: errors} = changeset, provider) do
+    case {url_field_label(provider), Keyword.get(errors, :base_url)} do
+      {label, {_message, _opts} = error} when is_binary(label) ->
+        "#{label} #{Forms.translate_error(error)}"
+
+      _other ->
+        ChangesetUtils.get_first_error(changeset) || update_error_message(:unknown, provider)
+    end
+  end
+
+  defp update_error_message(_reason, _provider),
+    do: dgettext("dashboard_video", "Failed to update integration")
+
+  defp url_field_label(provider) when provider in ["jitsi", "nextcloud_talk"],
+    do: dgettext("dashboard_video", "Server URL")
+
+  defp url_field_label("mirotalk"), do: dgettext("dashboard_video", "Base URL")
+  defp url_field_label(_provider), do: nil
+
+  defp stored_credentials?(%{client_id_encrypted: nil, client_secret_encrypted: nil}), do: false
+  defp stored_credentials?(_integration), do: true
+
+  defp find_integration(integrations, id) do
+    Enum.find(integrations, &(&1.id == id))
+  end
+
+  defp build_form_values(integration) do
+    base = %{"name" => integration.name || ""}
+
+    case integration.provider do
+      "custom" ->
+        Map.put(base, "custom_meeting_url", integration.custom_meeting_url || "")
+
+      "mirotalk" ->
+        base
+        |> Map.put("base_url", integration.base_url || "")
+        |> Map.put("api_key", "")
+
+      # The App ID or login name is shown so the organiser can see which
+      # account is in use; the secret never leaves the server.
+      provider when provider in ["jitsi", "nextcloud_talk"] ->
+        Map.merge(base, %{
+          "base_url" => integration.base_url || "",
+          "client_id" => integration.client_id || ""
+        })
+
+      _oauth ->
+        base
+    end
+  end
+
+  defp parse_integration_id(id) when is_integer(id), do: {:ok, id}
+
+  defp parse_integration_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {int, ""} when int > 0 -> {:ok, int}
+      _other -> {:error, :invalid}
+    end
+  end
+
+  defp parse_integration_id(_arg), do: {:error, :invalid_type}
+
+  defp map_field_to_atom("name"), do: :name
+  defp map_field_to_atom("base_url"), do: :base_url
+  defp map_field_to_atom("api_key"), do: :api_key
+  defp map_field_to_atom("custom_meeting_url"), do: :custom_meeting_url
+  defp map_field_to_atom(_other), do: :unknown
+end

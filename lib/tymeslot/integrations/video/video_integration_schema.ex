@@ -1,0 +1,415 @@
+defmodule Tymeslot.Integrations.Video.VideoIntegrationSchema do
+  @moduledoc """
+  Schema for video conferencing integrations (MiroTalk).
+  """
+  use Ecto.Schema
+  use Gettext, backend: TymeslotWeb.Gettext
+  import Ecto.Changeset
+  alias Tymeslot.ChangesetValidators.URL, as: URLValidator
+  alias Tymeslot.Integrations.Video.ProviderConfig
+  alias Tymeslot.Security.Encryption
+  alias Tymeslot.Security.SsrfGuard
+
+  # Why a provider refuses to create rooms for an integration, where its answer
+  # says so. `Tymeslot.Integrations.Video.RoomCreationError` describes each one.
+  @room_creation_errors [
+    :conversation_creation_restricted,
+    :talk_not_allowed,
+    :password_required,
+    :talk_not_found,
+    :redirected,
+    :conversation_refused
+  ]
+
+  # The partial unique index allowing one active integration per user,
+  # provider and account key.
+  @account_index :unique_active_video_account_per_user
+
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          user_id: integer() | nil,
+          name: String.t() | nil,
+          provider: String.t(),
+          base_url: String.t() | nil,
+          api_key_encrypted: binary() | nil,
+          access_token_encrypted: binary() | nil,
+          refresh_token_encrypted: binary() | nil,
+          account_id_encrypted: binary() | nil,
+          client_id_encrypted: binary() | nil,
+          client_secret_encrypted: binary() | nil,
+          tenant_id_encrypted: binary() | nil,
+          teams_user_id_encrypted: binary() | nil,
+          custom_meeting_url: String.t() | nil,
+          token_expires_at: DateTime.t() | nil,
+          oauth_scope: String.t() | nil,
+          provider_account_id: String.t() | nil,
+          provider_account_email: String.t() | nil,
+          is_active: boolean(),
+          needs_reauth: boolean(),
+          sync_error: String.t() | nil,
+          room_creation_error: atom() | nil,
+          room_creation_error_since: DateTime.t() | nil,
+          room_creation_error_notices: %{optional(String.t()) => String.t()},
+          deleted_at: DateTime.t() | nil,
+          settings: map(),
+          user: Tymeslot.Auth.UserSchema.t() | Ecto.Association.NotLoaded.t(),
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
+  schema "video_integrations" do
+    field(:name, :string)
+    field(:provider, :string, default: "mirotalk")
+    field(:base_url, :string)
+    field(:api_key_encrypted, :binary)
+    field(:access_token_encrypted, :binary)
+    field(:refresh_token_encrypted, :binary)
+    field(:account_id_encrypted, :binary)
+    field(:client_id_encrypted, :binary)
+    field(:client_secret_encrypted, :binary)
+    field(:tenant_id_encrypted, :binary)
+    field(:teams_user_id_encrypted, :binary)
+    field(:custom_meeting_url, :string)
+    field(:token_expires_at, :utc_datetime)
+    field(:oauth_scope, :string)
+    field(:provider_account_id, :string)
+    field(:provider_account_email, :string)
+    field(:is_active, :boolean, default: true)
+    field(:needs_reauth, :boolean, default: false)
+    field(:sync_error, :string)
+    # Written only by `VideoIntegrationQueries`' room creation error queries,
+    # never cast from attrs.
+    field(:room_creation_error, Ecto.Enum, values: @room_creation_errors)
+    field(:room_creation_error_since, :utc_datetime)
+    # Code to the time the owner was last emailed about it, as
+    # `Tymeslot.Integrations.Video.RoomCreationError` describes. A map rather
+    # than a list of codes, so an entry can be given back when its email never
+    # went out, and a code nothing reads any more is an entry nothing looks up.
+    field(:room_creation_error_notices, :map, default: %{})
+
+    # Set when the user disconnects and asked for the provider-side rooms to be
+    # deleted: the row survives, hidden, only long enough for the cleanup job to
+    # use its credentials.
+    field(:deleted_at, :utc_datetime)
+    field(:settings, :map, default: %{})
+
+    # Virtual fields for decrypted credentials
+    field(:api_key, :string, virtual: true, redact: true)
+    field(:access_token, :string, virtual: true, redact: true)
+    field(:refresh_token, :string, virtual: true, redact: true)
+    field(:account_id, :string, virtual: true, redact: true)
+    field(:client_id, :string, virtual: true, redact: true)
+    field(:client_secret, :string, virtual: true, redact: true)
+    field(:tenant_id, :string, virtual: true, redact: true)
+    field(:teams_user_id, :string, virtual: true, redact: true)
+
+    belongs_to(:user, Tymeslot.Auth.UserSchema)
+
+    timestamps(type: :utc_datetime)
+  end
+
+  @doc """
+  The name of the unique index on active integrations' account keys, as a
+  refused write reports it.
+  """
+  @spec account_index() :: String.t()
+  def account_index, do: Atom.to_string(@account_index)
+
+  @doc """
+  Answers whether `attrs` would build a valid row, without writing one.
+
+  The creation paths that probe a user-supplied server run this before the
+  probe. That probe is an outbound request to an address someone typed, and is
+  metered as such, so a submission the changeset was always going to reject has
+  to be refused ahead of it rather than after: the alternative charges an
+  organiser's connection budget for a mistake decided entirely in-process.
+
+  The changeset handed back is the one the insert would have returned, so
+  callers render it unchanged.
+  """
+  @spec validate_new(map()) :: :ok | {:error, Ecto.Changeset.t()}
+  def validate_new(attrs) do
+    case %__MODULE__{} |> changeset(attrs) |> apply_action(:insert) do
+      {:ok, _integration} -> :ok
+      {:error, changeset} -> {:error, changeset}
+    end
+  end
+
+  @doc false
+  @spec changeset(t(), map()) :: Ecto.Changeset.t()
+  def changeset(video_integration, attrs) do
+    video_integration
+    |> cast(attrs, [
+      :name,
+      :provider,
+      :base_url,
+      :api_key,
+      :access_token,
+      :refresh_token,
+      :account_id,
+      :client_id,
+      :client_secret,
+      :tenant_id,
+      :teams_user_id,
+      :custom_meeting_url,
+      :token_expires_at,
+      :oauth_scope,
+      :provider_account_id,
+      :provider_account_email,
+      :is_active,
+      :settings,
+      :user_id
+    ])
+    |> validate_required([:name, :provider, :user_id])
+    |> validate_inclusion(
+      :provider,
+      ProviderConfig.provider_constraint_list_all()
+    )
+    |> validate_provider_specific_fields()
+    |> clear_deleted_at_on_reactivation()
+    |> encrypt_credentials()
+    |> foreign_key_constraint(:user_id)
+    |> apply_active_uniqueness_constraints()
+  end
+
+  # `get_for_user/2` and `get/1` deliberately fetch soft-deleted rows (a
+  # reconnect reaches its row by id), so a reconnect that sets `is_active: true`
+  # via this changeset must also clear `deleted_at`. Otherwise the row lands in
+  # an impossible state: active yet marked deleted, which still sits inside the
+  # partial unique indexes below (they are not conditioned on `deleted_at`) and
+  # remains eligible for the disconnect worker's hard-delete sweep despite being
+  # back in use.
+  defp clear_deleted_at_on_reactivation(changeset) do
+    if get_change(changeset, :is_active) == true do
+      put_change(changeset, :deleted_at, nil)
+    else
+      changeset
+    end
+  end
+
+  # Shared by `changeset/2` and `activation_changeset/2`: both partial indexes
+  # are predicated on `is_active = true`, so any write that can set it true has
+  # to declare them or a genuine violation raises `Ecto.ConstraintError`
+  # instead of returning an invalid changeset the caller can render.
+  defp apply_active_uniqueness_constraints(changeset) do
+    changeset
+    |> unique_constraint([:user_id, :provider, :provider_account_id],
+      name: @account_index,
+      # `TymeslotWeb.Components.CoreComponents.Forms.translate_error/1` runs the stored msgid
+      # through the "errors" domain at render time, so the changeset must
+      # carry the untranslated msgid — hence `dgettext_noop/2`, not
+      # `dgettext/2`, which would translate here and miss the lookup there.
+      message: dgettext_noop("errors", "an integration for this account already exists")
+    )
+    |> unique_constraint([:user_id, :provider],
+      name: :unique_active_video_null_account_per_user,
+      error_key: :provider,
+      message: dgettext_noop("errors", "an integration for this provider already exists")
+    )
+  end
+
+  @doc """
+  Changeset for flipping `is_active`.
+
+  Carries the same uniqueness declarations as the main changeset, because both
+  partial indexes are predicated on `is_active = true`: reactivating a row moves
+  it *into* the index and genuinely contends. A bare `Ecto.Changeset.change/2`
+  declares none of them, so a violation raises `Ecto.ConstraintError` instead of
+  returning an invalid changeset the caller can render.
+  """
+  @spec activation_changeset(t(), boolean()) :: Ecto.Changeset.t()
+  def activation_changeset(%__MODULE__{} = integration, is_active) do
+    integration
+    |> change(%{is_active: is_active})
+    |> apply_active_uniqueness_constraints()
+  end
+
+  @doc """
+  Decrypts the credential fields.
+  """
+  @spec decrypt_credentials(t()) :: t()
+  def decrypt_credentials(%__MODULE__{} = integration) do
+    %{
+      integration
+      | api_key: safe_decrypt(integration.api_key_encrypted, "api_key", integration.id),
+        access_token:
+          safe_decrypt(integration.access_token_encrypted, "access_token", integration.id),
+        refresh_token:
+          safe_decrypt(integration.refresh_token_encrypted, "refresh_token", integration.id),
+        account_id: safe_decrypt(integration.account_id_encrypted, "account_id", integration.id),
+        client_id: safe_decrypt(integration.client_id_encrypted, "client_id", integration.id),
+        client_secret:
+          safe_decrypt(integration.client_secret_encrypted, "client_secret", integration.id),
+        tenant_id: safe_decrypt(integration.tenant_id_encrypted, "tenant_id", integration.id),
+        teams_user_id:
+          safe_decrypt(integration.teams_user_id_encrypted, "teams_user_id", integration.id)
+    }
+  end
+
+  defp safe_decrypt(nil, _field, _id), do: nil
+
+  defp safe_decrypt(encrypted, field, id) do
+    Encryption.decrypt(encrypted)
+  rescue
+    _e ->
+      require Logger
+
+      Logger.error("Failed to decrypt video integration field",
+        field: field,
+        integration_id: id
+      )
+
+      nil
+  end
+
+  @encrypted_credential_fields [
+    :api_key_encrypted,
+    :access_token_encrypted,
+    :refresh_token_encrypted,
+    :account_id_encrypted,
+    :client_id_encrypted,
+    :client_secret_encrypted,
+    :tenant_id_encrypted,
+    :teams_user_id_encrypted
+  ]
+
+  # The virtual counterparts callers actually write. Derived from the encrypted
+  # list so the two cannot drift: `attrs` carry `:api_key`, never
+  # `:api_key_encrypted`, which only exists after `encrypt_credentials/1` runs.
+  @credential_fields Enum.map(@encrypted_credential_fields, fn field ->
+                       field
+                       |> Atom.to_string()
+                       |> String.replace_suffix("_encrypted", "")
+                       |> String.to_atom()
+                     end)
+
+  @encrypted_field_by_credential Map.new(
+                                   Enum.zip(@credential_fields, @encrypted_credential_fields)
+                                 )
+
+  @doc """
+  Returns the list of encrypted credential field atoms on this schema. Used by
+  `decryption_status/1` so the authoritative list lives in one place.
+  """
+  @spec encrypted_credential_fields() :: [atom()]
+  def encrypted_credential_fields, do: @encrypted_credential_fields
+
+  @doc """
+  Returns the virtual credential field atoms a caller supplies in `attrs`.
+
+  Use this when deciding whether an update carries credentials the owner just
+  supplied; the encrypted names never appear in caller-supplied attrs.
+  """
+  @spec credential_fields() :: [atom()]
+  def credential_fields, do: @credential_fields
+
+  @doc """
+  Removes stored credentials, named by their virtual fields, as part of
+  `changeset`.
+
+  An empty value in `changeset/2`'s attrs keeps a stored credential, so that
+  a form left blank cannot wipe one; removing a credential is therefore an
+  explicit step. Both the ciphertext and the decrypted virtual field are
+  cleared, so the struct an update returns does not still carry the value.
+  """
+  @spec remove_credentials(Ecto.Changeset.t(), [atom()]) :: Ecto.Changeset.t()
+  def remove_credentials(%Ecto.Changeset{} = changeset, fields) do
+    Enum.reduce(fields, changeset, fn field, acc ->
+      acc
+      |> put_change(field, nil)
+      |> put_change(Map.fetch!(@encrypted_field_by_credential, field), nil)
+    end)
+  end
+
+  @doc """
+  Reports whether any encrypted credential on the integration fails to decrypt
+  under the current keyring. Returns `:ok` when every ciphertext is either
+  absent or decryptable, `:requires_reencryption` otherwise.
+
+  Used by workers to short-circuit jobs when SECRET_KEY_BASE has been
+  rotated without keeping the previous key on the keyring — the worker can
+  then flag `needs_reauth` so the user sees a reconnect prompt.
+  """
+  @spec decryption_status(t()) :: :ok | :requires_reencryption
+  def decryption_status(%__MODULE__{} = integration) do
+    encrypted_values = Enum.map(@encrypted_credential_fields, &Map.get(integration, &1))
+
+    if Enum.any?(
+         encrypted_values,
+         &(Encryption.decrypt_with_status(&1) == {:error, :requires_reencryption})
+       ) do
+      :requires_reencryption
+    else
+      :ok
+    end
+  end
+
+  # Private functions
+
+  defp validate_provider_specific_fields(changeset) do
+    with {:ok, provider_type} <- ProviderConfig.parse_known(get_field(changeset, :provider)),
+         module when module != nil <- ProviderConfig.get_provider_module(provider_type) do
+      apply_credential_spec(changeset, module.credential_spec())
+    else
+      _other -> changeset
+    end
+  end
+
+  defp apply_credential_spec(changeset, spec) do
+    changeset
+    |> validate_required(spec.required)
+    |> apply_credential_pairs(spec.credential_pairs)
+    |> apply_url_validations(spec.url_fields)
+  end
+
+  defp apply_credential_pairs(changeset, pairs) do
+    Enum.reduce(pairs, changeset, fn {virtual, encrypted}, acc ->
+      require_credential_if_absent(acc, virtual, encrypted)
+    end)
+  end
+
+  # Save-time counterpart of the request-time guard: an operator who has opted
+  # into private-address video hosts must also be able to store one, or the
+  # switch permits a URL that can never be entered.
+  defp apply_url_validations(changeset, fields) do
+    block_private_ips = not SsrfGuard.allow_private_for_video?()
+
+    Enum.reduce(fields, changeset, fn field, acc ->
+      URLValidator.validate_url(acc, field, block_private_ips: block_private_ips)
+    end)
+  end
+
+  # Only require a virtual credential field when the persisted encrypted
+  # counterpart is absent — i.e., the credential hasn't been stored yet.
+  defp require_credential_if_absent(changeset, virtual_field, encrypted_field) do
+    if get_field(changeset, encrypted_field) do
+      changeset
+    else
+      validate_required(changeset, [virtual_field])
+    end
+  end
+
+  defp encrypt_credentials(changeset) do
+    changeset
+    |> encrypt_field(:api_key, :api_key_encrypted)
+    |> encrypt_field(:access_token, :access_token_encrypted)
+    |> encrypt_field(:refresh_token, :refresh_token_encrypted)
+    |> encrypt_field(:account_id, :account_id_encrypted)
+    |> encrypt_field(:client_id, :client_id_encrypted)
+    |> encrypt_field(:client_secret, :client_secret_encrypted)
+    |> encrypt_field(:tenant_id, :tenant_id_encrypted)
+    |> encrypt_field(:teams_user_id, :teams_user_id_encrypted)
+  end
+
+  defp encrypt_field(changeset, field, encrypted_field) do
+    case get_change(changeset, field) do
+      nil ->
+        changeset
+
+      value ->
+        changeset
+        |> put_change(encrypted_field, Encryption.encrypt(value))
+        |> delete_change(field)
+    end
+  end
+end

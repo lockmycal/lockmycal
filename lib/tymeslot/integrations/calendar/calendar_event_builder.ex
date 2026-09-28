@@ -1,0 +1,225 @@
+defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
+  @moduledoc """
+  Builds calendar event data structures from meeting records.
+
+  Transforms a meeting schema into the map format expected by calendar
+  providers (CalDAV, Google, Outlook). Handles description assembly
+  including attendee messages, custom question answers, and video meeting
+  links.
+  """
+
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Tymeslot.CustomFields.AnswerRenderer
+  alias Tymeslot.Emails.RecipientLocale
+  alias Tymeslot.Meetings.MeetingState
+  alias Tymeslot.Utils.MapKeys
+  alias Tymeslot.Utils.ReminderUtils
+  alias TymeslotWeb.Endpoint
+
+  # Tymeslot's own reminder pipeline sends the reminder emails, so alarms
+  # written out to a provider are always `:popup`. An EMAIL alarm would make
+  # the calendar server send its own copy on top of the one Tymeslot already
+  # schedules, so the attendee would be reminded twice.
+  @alarm_method :popup
+
+  @doc """
+  Builds a calendar event data map from a meeting record.
+
+  Returns a map with `:uid`, `:summary`, `:description`, `:start_time`,
+  `:end_time`, `:timezone`, `:location`, `:organizer_name`,
+  `:organizer_email`, `:attendee_name`, `:attendee_email`, and `:reminders`
+  keys.
+
+  The organiser fields are emitted so `ICalBuilder` can tag the resulting
+  `ORGANIZER` line with `SCHEDULE-AGENT=CLIENT` (RFC 6638 §7.1) — without
+  them, scheduling-aware CalDAV servers (Zimbra, Nextcloud/Sabre, Apple
+  iCloud) inject their own ORGANIZER and fire the iTIP pipeline, which
+  duplicates the invitation email Tymeslot already sends.
+  """
+  @spec build_event_data(map()) :: map()
+  def build_event_data(meeting) do
+    %{
+      uid: meeting.uid,
+      summary: meeting.title,
+      description: build_event_description(meeting),
+      start_time: meeting.start_time,
+      end_time: meeting.end_time,
+      timezone: meeting.attendee_timezone,
+      location: meeting.meeting_url || meeting.location,
+      conference_url: meeting.meeting_url,
+      transparency: if(Map.get(meeting, :show_as_free), do: :transparent, else: :opaque),
+      status: event_status(meeting),
+      attachments: build_attachments(meeting),
+      organizer_name: meeting.organizer_name,
+      organizer_email: meeting.organizer_email,
+      attendee_name: meeting.attendee_name,
+      attendee_email: meeting.attendee_email,
+      reminders: build_reminders(meeting)
+    }
+  end
+
+  # A booking held for the host's manual approval is written to their calendar
+  # as TENTATIVE: the slot has to be visibly taken, or the availability grid —
+  # which reads provider events, not the meetings table — would keep offering
+  # it to the next visitor. `CalendarEvent.blocking?/1` treats tentative as
+  # blocking for exactly this reason, and `mix calendar_audit`'s tentative
+  # scenario pins that against every live provider. Approval rewrites the
+  # event as CONFIRMED; declining deletes it.
+  #
+  # Note for Outlook: Graph has no event status independent of free/busy, so a
+  # `show_as_free` meeting resolves to "free" there and can never also read as
+  # tentative. That is a provider limit, not something to work around here.
+  defp event_status(meeting) do
+    if MeetingState.awaiting_approval?(meeting), do: :tentative, else: :confirmed
+  end
+
+  # The meeting stores the reminders chosen at booking time as `%{value:,
+  # unit:}` (e.g. 30 "minutes" before). The provider adapters — `ICalBuilder`'s
+  # VALARM writer, Google's `EventMapper`, Outlook's Graph mapping — all
+  # consume `Tymeslot.Integrations.Calendar.Reminder`'s canonical
+  # `%{method:, minutes_before:}` shape instead, so the two are reconciled
+  # here. Reminders round-tripped through a JSONB column come back
+  # string-keyed; `ReminderUtils.normalize_reminder/1` accepts either form and
+  # rejects anything it can't read, which is dropped rather than written out
+  # as a malformed alarm.
+  defp build_reminders(meeting) do
+    meeting
+    |> Map.get(:reminders)
+    |> List.wrap()
+    |> Enum.flat_map(&to_alarm/1)
+  end
+
+  defp to_alarm(reminder) do
+    case ReminderUtils.normalize_reminder(reminder) do
+      {:ok, %{value: value, unit: unit}} ->
+        minutes_before = div(ReminderUtils.reminder_interval_seconds(value, unit), 60)
+        [%{method: @alarm_method, minutes_before: minutes_before}]
+
+      {:error, :invalid_reminder} ->
+        []
+    end
+  end
+
+  @doc """
+  Assembles a calendar event description from a meeting's fields.
+
+  The attendee identity is prepended because no provider renders it the same
+  way: Google and Outlook show a real attendee list, CalDAV usually does too,
+  and Zimbra gets only a `CONTACT` line, which most clients ignore (see
+  `CalDAV.Scheduling`). The description is the one field every client shows,
+  so the organiser can always see who the meeting is with from inside their
+  calendar app.
+
+  Custom question answers are appended directly after the attendee message
+  so the organiser sees what was asked at booking time alongside the rest
+  of the attendee's input, without having to open the email or dashboard.
+  """
+  @spec build_event_description(map()) :: String.t()
+  def build_event_description(meeting) do
+    # Rendered in the organiser's language: this entry goes into their own
+    # calendar. The attendee's copy is a separate document, built by
+    # `ICSGenerator` in the attendee's language. Nothing sets a Gettext locale
+    # on the way here — calendar writes run from an Oban worker — so without
+    # this wrapper every label below falls back to the default locale, which
+    # is how a German host ends up with an "Attendee:" line.
+    RecipientLocale.with_user_id_locale(Map.get(meeting, :organizer_user_id), fn ->
+      parts = [
+        attendee_identity_line(meeting),
+        meeting.description,
+        attendee_message_section(meeting),
+        custom_answers_section(meeting),
+        attachments_section(meeting),
+        video_meeting_section(meeting)
+      ]
+
+      parts
+      |> Enum.filter(& &1)
+      |> Enum.join()
+    end)
+  end
+
+  @doc """
+  Builds the canonical attachment list (`%{filename, url, content_type}`) from a
+  meeting's `attachments_snapshot`. Absolute download URLs are derived from the
+  endpoint host so calendar clients can fetch the files.
+  """
+  @spec build_attachments(map()) :: [map()]
+  def build_attachments(meeting) do
+    meeting
+    |> Map.get(:attachments_snapshot)
+    |> List.wrap()
+    |> Enum.map(fn a ->
+      %{
+        filename: MapKeys.get(a, :filename),
+        url: attachment_url(MapKeys.get(a, :stored_path)),
+        content_type: MapKeys.get(a, :content_type)
+      }
+    end)
+    |> Enum.reject(&is_nil(&1.url))
+  end
+
+  defp attachment_url(nil), do: nil
+  defp attachment_url(path), do: Endpoint.url() <> "/uploads/" <> path
+
+  # A plain-text "Attachments" block of download links. This is the universal
+  # fallback that renders in every calendar client and provider (CalDAV, Google
+  # description, Outlook body); CalDAV additionally gets native ATTACH lines.
+  defp attachments_section(meeting) do
+    case build_attachments(meeting) do
+      [] ->
+        nil
+
+      attachments ->
+        links = Enum.map_join(attachments, "\n", &"#{&1.filename}: #{&1.url}")
+        "\n\n" <> dgettext("emails", "Attachments:") <> "\n#{links}"
+    end
+  end
+
+  defp custom_answers_section(meeting) do
+    snapshot = Map.get(meeting, :custom_fields_snapshot) || []
+    answers = Map.get(meeting, :custom_field_answers) || %{}
+
+    lines =
+      for field <- snapshot,
+          value = AnswerRenderer.render(field, Map.get(answers, field["id"])),
+          value != "" do
+        "#{field["label"]}: #{value}"
+      end
+
+    case lines do
+      [] ->
+        nil
+
+      lines ->
+        "\n\n" <> dgettext("emails", "Additional details:") <> "\n" <> Enum.join(lines, "\n")
+    end
+  end
+
+  defp attendee_identity_line(%{attendee_email: email} = meeting)
+       when is_binary(email) and email != "" do
+    identity =
+      case Map.get(meeting, :attendee_name) do
+        name when is_binary(name) and name != "" -> "#{name} <#{email}>"
+        _missing -> email
+      end
+
+    dgettext("emails", "Attendee: %{attendee}", attendee: identity) <> "\n\n"
+  end
+
+  defp attendee_identity_line(_meeting), do: nil
+
+  defp attendee_message_section(meeting) do
+    case meeting.attendee_message do
+      nil -> nil
+      message -> "\n\n" <> dgettext("emails", "Message from attendee:") <> "\n#{message}"
+    end
+  end
+
+  defp video_meeting_section(meeting) do
+    case meeting.meeting_url do
+      nil -> nil
+      url -> "\n\n" <> dgettext("emails", "Video meeting:") <> " #{url}"
+    end
+  end
+end

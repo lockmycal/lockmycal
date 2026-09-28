@@ -1,0 +1,392 @@
+defmodule Tymeslot.MeetingsTest do
+  @moduledoc """
+  Tests for the Meetings context module.
+  """
+
+  use Tymeslot.DataCase, async: true
+  @moduletag :utils
+  @moduletag :meetings
+
+  import Mox
+
+  alias Ecto.UUID
+  alias Tymeslot.Integrations.Video.VideoIntegrationSchema
+  alias Tymeslot.Meetings
+  alias Tymeslot.Meetings.Listing
+  alias Tymeslot.Meetings.MeetingSchema
+  alias Tymeslot.Repo
+  alias Tymeslot.TestMocks
+  alias Tymeslot.Utils.DateTimeUtils
+  import Tymeslot.MeetingTestHelpers
+
+  setup :verify_on_exit!
+
+  setup do
+    TestMocks.setup_email_mocks()
+    :ok
+  end
+
+  describe "create_datetime_safe/3" do
+    test "creates datetime with valid timezone" do
+      date = ~D[2025-06-15]
+      time = ~T[14:30:00]
+      timezone = "America/New_York"
+
+      result = DateTimeUtils.create_datetime_safe(date, time, timezone)
+
+      assert %DateTime{} = result
+      assert result.year == 2025
+      assert result.month == 6
+      assert result.day == 15
+      assert result.hour == 14
+      assert result.minute == 30
+      assert result.time_zone == "America/New_York"
+    end
+
+    test "falls back to UTC for invalid timezone" do
+      date = ~D[2025-06-15]
+      time = ~T[14:30:00]
+      invalid_timezone = "Invalid/Timezone"
+
+      result = DateTimeUtils.create_datetime_safe(date, time, invalid_timezone)
+
+      assert %DateTime{} = result
+      assert result.time_zone == "Etc/UTC"
+    end
+
+    test "handles UTC timezone" do
+      date = ~D[2025-06-15]
+      time = ~T[14:30:00]
+
+      result = DateTimeUtils.create_datetime_safe(date, time, "Etc/UTC")
+
+      assert %DateTime{} = result
+      assert result.time_zone == "Etc/UTC"
+    end
+  end
+
+  describe "add_video_room_to_meeting/1" do
+    test "successfully adds video room and logs activity" do
+      user = insert(:user)
+      _profile = insert(:profile, user: user)
+
+      # Mock video integration
+      video_integration =
+        insert(:video_integration, user: user, provider: "mirotalk", is_active: true)
+
+      meeting =
+        insert(:meeting,
+          organizer_user_id: user.id,
+          organizer_email: user.email,
+          video_integration_id: video_integration.id
+        )
+
+      # Use setup_all_mocks to configure Mox correctly
+      TestMocks.setup_all_mocks()
+
+      # Stub HTTP client to return Req.Response struct
+      stub(Tymeslot.HTTPClientMock, :post, fn _url, _body, _headers, _opts ->
+        {:ok,
+         %Req.Response{
+           status: 200,
+           body:
+             "{\"room_id\": \"test-room\", \"meeting_url\": \"https://test.mirotalk.com/join/test-room\", \"join\": \"https://test.mirotalk.com/join/test-room\"}"
+         }}
+      end)
+
+      assert {:ok, %MeetingSchema{} = updated_meeting} =
+               Meetings.add_video_room_to_meeting(meeting.id)
+
+      assert updated_meeting.video_room_id == "test-room"
+      assert updated_meeting.meeting_url == "https://test.mirotalk.com/join/test-room"
+      assert updated_meeting.video_room_enabled == true
+      assert updated_meeting.id == meeting.id
+    end
+
+    test "returns :meeting_not_found for non-existent meeting" do
+      assert {:error, :meeting_not_found} = Meetings.add_video_room_to_meeting(UUID.generate())
+    end
+
+    test "successfully adds custom video room" do
+      user = insert(:user)
+      _profile = insert(:profile, user: user)
+
+      video_integration =
+        insert(:video_integration,
+          user: user,
+          provider: "custom",
+          is_active: true,
+          custom_meeting_url: "https://meet.example.com/room/123456789"
+        )
+
+      meeting =
+        insert(:meeting,
+          organizer_user_id: user.id,
+          organizer_email: user.email,
+          video_integration_id: video_integration.id
+        )
+
+      TestMocks.setup_all_mocks()
+
+      assert {:ok, %MeetingSchema{} = updated_meeting} =
+               Meetings.add_video_room_to_meeting(meeting.id)
+
+      assert updated_meeting.meeting_url == "https://meet.example.com/room/123456789"
+      # The custom provider derives a stable 16-hex-char room id from the URL.
+      assert updated_meeting.video_room_id =~ ~r/^[0-9a-f]{16}$/
+      assert updated_meeting.video_room_enabled == true
+    end
+
+    test "returns error for unknown video provider" do
+      user = insert(:user)
+      _profile = insert(:profile, user: user)
+
+      # Insert a video integration with an invalid provider directly into the DB
+      # (bypassing changeset validation)
+      {:ok, video_integration} =
+        Repo.insert(%VideoIntegrationSchema{
+          user_id: user.id,
+          name: "Invalid Provider",
+          provider: "invalid_provider",
+          is_active: true
+        })
+
+      meeting =
+        insert(:meeting,
+          organizer_user_id: user.id,
+          organizer_email: user.email,
+          video_integration_id: video_integration.id
+        )
+
+      TestMocks.setup_all_mocks()
+
+      assert {:error, :unknown_provider} = Meetings.add_video_room_to_meeting(meeting.id)
+    end
+
+    test "returns error when video integration is inactive" do
+      user = insert(:user)
+      _profile = insert(:profile, user: user)
+
+      video_integration =
+        insert(:video_integration, user: user, provider: "mirotalk", is_active: false)
+
+      meeting =
+        insert(:meeting,
+          organizer_user_id: user.id,
+          organizer_email: user.email,
+          video_integration_id: video_integration.id
+        )
+
+      TestMocks.setup_all_mocks()
+
+      assert {:error, :video_integration_inactive} =
+               Meetings.add_video_room_to_meeting(meeting.id)
+    end
+  end
+
+  describe "send_reschedule_request/1" do
+    test "successfully processes reschedule request" do
+      meeting = insert(:meeting, status: "confirmed")
+
+      assert :ok = Meetings.send_reschedule_request(meeting)
+
+      # `status` is left untouched — only `reschedule_requested_at` marks the
+      # meeting as awaiting a new time (see `Bookings.RescheduleRequest`).
+      updated_meeting = Repo.get(MeetingSchema, meeting.id)
+      assert updated_meeting.status == "confirmed"
+      assert %DateTime{} = updated_meeting.reschedule_requested_at
+    end
+
+    test "returns error when policy blocks reschedule" do
+      # Create a meeting in the past which shouldn't be reschedulable by default policy
+      meeting =
+        insert(:meeting,
+          status: "confirmed",
+          start_time: DateTime.add(DateTime.utc_now(), -3600),
+          end_time: DateTime.add(DateTime.utc_now(), -1800)
+        )
+
+      assert {:error, "Cannot reschedule a meeting that has already occurred"} =
+               Meetings.send_reschedule_request(meeting)
+    end
+
+    test "blocks a reschedule request against a held request awaiting approval" do
+      meeting =
+        insert(:meeting,
+          status: "awaiting_approval",
+          approval_requested_at: DateTime.utc_now(:second),
+          approval_deadline_at: DateTime.add(DateTime.utc_now(:second), 12, :hour)
+        )
+
+      assert {:error, "Cannot request a reschedule while the booking awaits approval"} =
+               Meetings.send_reschedule_request(meeting)
+
+      # The slot must stay live: no reschedule_requested_at was stamped, so
+      # the still-outstanding request keeps pointing at a real time.
+      updated_meeting = Repo.get(MeetingSchema, meeting.id)
+      assert is_nil(updated_meeting.reschedule_requested_at)
+    end
+  end
+
+  describe "calendar_export/2" do
+    defp exportable_meeting(attrs) do
+      user = insert(:user)
+      start_time = DateTime.utc_now() |> DateTime.add(3600) |> DateTime.truncate(:second)
+      end_time = DateTime.add(start_time, 3600)
+
+      insert(
+        :meeting,
+        Keyword.merge(
+          [
+            organizer_user: user,
+            organizer_user_id: user.id,
+            start_time: start_time,
+            end_time: end_time
+          ],
+          attrs
+        )
+      )
+    end
+
+    test "exports a confirmed meeting with STATUS:CONFIRMED" do
+      meeting = exportable_meeting(status: "confirmed")
+
+      assert {:ok, ics} = Meetings.calendar_export(meeting.uid, meeting.organizer_user_id)
+      assert ics =~ "STATUS:CONFIRMED"
+      refute ics =~ "STATUS:TENTATIVE"
+    end
+
+    test "exports a held request with STATUS:TENTATIVE, not STATUS:CONFIRMED" do
+      meeting =
+        exportable_meeting(
+          status: "awaiting_approval",
+          approval_requested_at: DateTime.utc_now(:second),
+          approval_deadline_at: DateTime.add(DateTime.utc_now(:second), 12, :hour)
+        )
+
+      assert {:ok, ics} = Meetings.calendar_export(meeting.uid, meeting.organizer_user_id)
+      assert ics =~ "STATUS:TENTATIVE"
+      refute ics =~ "STATUS:CONFIRMED"
+    end
+
+    test "returns not_found for a cancelled meeting" do
+      meeting = exportable_meeting(status: "cancelled")
+
+      assert {:error, :not_found} =
+               Meetings.calendar_export(meeting.uid, meeting.organizer_user_id)
+    end
+  end
+
+  describe "list_user_meetings_by_filter/3" do
+    test "returns upcoming meetings for user" do
+      %{user: user} = create_user_with_profile()
+      insert_meeting_for_user(user)
+
+      assert {:ok, page} = Meetings.list_user_meetings_by_filter(user.id, "upcoming")
+      assert length(page.items) == 1
+    end
+
+    test "returns error for invalid cursor" do
+      %{user: user} = create_user_with_profile()
+
+      assert {:error, :invalid_cursor} =
+               Meetings.list_user_meetings_by_filter(user.id, "upcoming", after: "invalid")
+    end
+  end
+
+  describe "count_meetings_by_filter/2" do
+    test "counts upcoming meetings, excluding cancelled/awaiting_approval/rejected" do
+      %{user: user} = create_user_with_profile()
+      insert_meeting_for_user(user, %{start_offset: 3_600})
+      insert_meeting_for_user(user, %{start_offset: 7_200})
+      insert_meeting_for_user(user, %{start_offset: 3_600, status: "cancelled"})
+
+      assert Meetings.count_meetings_by_filter(user.id, "upcoming") == 2
+    end
+
+    test "counts past meetings" do
+      %{user: user} = create_user_with_profile()
+      insert_meeting_for_user(user, %{start_offset: -7_200, duration: 3_600})
+      insert_meeting_for_user(user, %{start_offset: 3_600})
+
+      assert Meetings.count_meetings_by_filter(user.id, "past") == 1
+    end
+
+    test "counts cancelled meetings" do
+      %{user: user} = create_user_with_profile()
+      insert_meeting_for_user(user, %{status: "cancelled"})
+      insert_meeting_for_user(user, %{status: "cancelled"})
+      insert_meeting_for_user(user)
+
+      assert Meetings.count_meetings_by_filter(user.id, "cancelled") == 2
+    end
+
+    test "returns 0 for a user with no meetings" do
+      %{user: user} = create_user_with_profile()
+
+      assert Meetings.count_meetings_by_filter(user.id, "upcoming") == 0
+    end
+
+    test "returns 0 for an unknown user id" do
+      assert Meetings.count_meetings_by_filter(-1, "upcoming") == 0
+    end
+  end
+
+  describe "list_user_meetings_cursor_page_by_id/2" do
+    test "returns meetings for valid user id" do
+      %{user: user} = create_user_with_profile()
+
+      insert_meeting_for_user(user)
+
+      assert {:ok, page} = Listing.list_user_meetings_cursor_page_by_id(user.id, [])
+
+      assert length(page.items) == 1
+    end
+
+    test "returns empty page for non-existent user" do
+      non_existent_id = 999_999_999
+
+      assert {:ok, page} = Listing.list_user_meetings_cursor_page_by_id(non_existent_id, [])
+
+      assert page.items == []
+      assert page.has_more == false
+    end
+  end
+
+  describe "list_meetings_for_contact/2" do
+    test "returns only this organizer's meetings with the given attendee email" do
+      %{user: user} = create_user_with_profile()
+      %{user: other_user} = create_user_with_profile()
+
+      insert_meeting_for_user(user, %{attendee_email: "jane@example.com"})
+
+      insert_meeting_for_user(user, %{
+        attendee_email: "someone-else@example.com",
+        start_offset: 172_800
+      })
+
+      insert_meeting_for_user(other_user, %{attendee_email: "jane@example.com"})
+
+      meetings = Meetings.list_meetings_for_contact(user.id, "jane@example.com")
+
+      assert [meeting] = meetings
+      assert meeting.organizer_user_id == user.id
+      assert meeting.attendee_email == "jane@example.com"
+    end
+
+    test "returns an empty list when there are no matching meetings" do
+      %{user: user} = create_user_with_profile()
+
+      assert Meetings.list_meetings_for_contact(user.id, "nobody@example.com") == []
+    end
+
+    test "matches regardless of casing — a contact's email is stored lowercase but a meeting's attendee_email keeps the booker's original casing" do
+      %{user: user} = create_user_with_profile()
+
+      insert_meeting_for_user(user, %{attendee_email: "Jane@Test.com"})
+
+      assert [meeting] = Meetings.list_meetings_for_contact(user.id, "jane@test.com")
+      assert meeting.attendee_email == "Jane@Test.com"
+    end
+  end
+end

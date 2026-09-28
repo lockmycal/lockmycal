@@ -1,0 +1,142 @@
+defmodule TymeslotWeb.Dashboard.PaymentsSettings.StatusCard do
+  @moduledoc """
+  Stripe Connect onboarding status banner.
+
+  Stateless function component rendered by `PaymentsSettingsComponent`. Maps a
+  connect account's display state — derived once by
+  `Tymeslot.MeetingPayments.connect_display_state/1` — to a variant, title, and
+  message.
+
+  Two states are distinct on purpose:
+
+    * `:incomplete` — the host started connecting but has not finished Stripe
+      onboarding (`details_submitted: false`). There is nothing for Stripe to
+      review yet, so the banner shows a "Finish connecting Stripe" prompt with
+      a Continue-onboarding button that re-POSTs to `/dashboard/payments/connect`
+      for a fresh Stripe AccountLink.
+    * `:pending_review` — onboarding *is* submitted but charges/payouts are not
+      yet enabled, i.e. Stripe is genuinely reviewing the account.
+    * `:restricted` — Stripe disabled the account after reviewing it
+      (`disabled_reason` set). The banner links out to the host's own Stripe
+      dashboard (`MeetingPayments.stripe_dashboard_url/0`) to resolve it,
+      since a Standard account's owner has full Stripe Dashboard access
+      themselves — mirrors the link already sent in the restriction email
+      (`Tymeslot.Emails.Templates.ConnectAccountRestricted`).
+
+  `needs_onboarding?/1` is exposed so the parent can hide the operational
+  sections (currency, payments, stats, disconnect) until onboarding is
+  submitted, off the same single source of truth as the banner.
+  """
+
+  use TymeslotWeb, :html
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Tymeslot.MeetingPayments
+
+  attr :account, :map, required: true
+
+  @spec status_card(map()) :: Phoenix.LiveView.Rendered.t()
+  def status_card(assigns) do
+    assigns = assign(assigns, :state, MeetingPayments.connect_display_state(assigns.account))
+
+    ~H"""
+    <div class="space-y-4">
+      <.info_box variant={status_variant(@state)}>
+        <span class="block text-token-xl font-black tracking-tight">{state_title(@state)}</span>
+        <span class="block mt-1">{state_message(@account, @state)}</span>
+      </.info_box>
+
+      <%!--
+        `data-submit-loading` shows a spinner and disables the button while the
+        Stripe redirect is being prepared, preventing rage-clicks on a slow open.
+      --%>
+      <form
+        :if={@state == :incomplete}
+        id="stripe-connect-continue-form"
+        action={~p"/dashboard/payments/connect"}
+        method="post"
+        data-submit-loading
+      >
+        <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+        <.action_button type="submit" variant={:primary}>
+          <span data-submit-spinner class="hidden items-center gap-2">
+            <.spinner /> {dgettext("dashboard_payments", "Connecting…")}
+          </span>
+          <span data-submit-label>{dgettext("dashboard_payments", "Continue onboarding")}</span>
+        </.action_button>
+      </form>
+
+      <a
+        :if={@state == :restricted}
+        href={MeetingPayments.stripe_dashboard_url()}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="action-button action-button--primary inline-block"
+      >
+        {dgettext("dashboard_payments", "Open Stripe dashboard")}
+      </a>
+    </div>
+    """
+  end
+
+  @doc """
+  True when the account has not yet completed Stripe onboarding, i.e. the
+  banner shows the `:incomplete` "Finish connecting Stripe" prompt.
+
+  The parent uses this to decide whether to render the operational sections.
+  """
+  @spec needs_onboarding?(map()) :: boolean()
+  def needs_onboarding?(account),
+    do: MeetingPayments.connect_display_state(account) == :incomplete
+
+  # ── Display mapping (state → variant/title/message) ────────────────
+
+  defp status_variant(:ready), do: :success
+  defp status_variant(:pending_review), do: :warning
+  defp status_variant(:restricted), do: :error
+  defp status_variant(_state), do: :info
+
+  defp state_title(:ready), do: dgettext("dashboard_payments", "Connected and ready")
+  defp state_title(:pending_review), do: dgettext("dashboard_payments", "Pending Stripe review")
+  defp state_title(:restricted), do: dgettext("dashboard_payments", "Restricted")
+  defp state_title(:deleted), do: dgettext("dashboard_payments", "Disconnected")
+  defp state_title(:incomplete), do: dgettext("dashboard_payments", "Finish connecting Stripe")
+  defp state_title(:not_connected), do: dgettext("dashboard_payments", "Not connected")
+
+  defp state_message(%{disabled_reason: "requirements.past_due"}, :restricted),
+    do:
+      dgettext(
+        "dashboard_payments",
+        "Stripe needs updated verification details before it can re-enable payments. Open your Stripe dashboard to finish this. (Reason: requirements.past_due)"
+      )
+
+  defp state_message(%{disabled_reason: r}, :restricted),
+    do: dgettext("dashboard_payments", "Reason: %{reason}", reason: r)
+
+  defp state_message(_account, :ready),
+    do: dgettext("dashboard_payments", "Charges and payouts are enabled.")
+
+  defp state_message(_account, :pending_review),
+    do:
+      dgettext(
+        "dashboard_payments",
+        "Stripe is reviewing your account. Charges switch on automatically once approved."
+      )
+
+  defp state_message(_account, :incomplete),
+    do:
+      dgettext(
+        "dashboard_payments",
+        "You started connecting Stripe but haven't finished onboarding yet. Continue to start accepting payments."
+      )
+
+  defp state_message(_account, :deleted),
+    do:
+      dgettext(
+        "dashboard_payments",
+        "Your Stripe account is disconnected. Reconnect to accept payments again."
+      )
+
+  defp state_message(_account, :not_connected),
+    do: dgettext("dashboard_payments", "Connect Stripe to start charging for meetings.")
+end

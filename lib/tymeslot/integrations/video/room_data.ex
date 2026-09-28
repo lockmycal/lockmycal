@@ -1,0 +1,35 @@
+defmodule Tymeslot.Integrations.Video.RoomData do
+  @moduledoc """
+  Structured result of a video provider's `create_meeting_room/1` callback.
+
+  Built once by the provider (always atom-keyed, since it only ever lives in
+  memory — there is no database column or JSON round-trip anywhere in this
+  pipeline) and threaded through join-URL, lifecycle-event, and metadata
+  calls via `MeetingContext`.
+  """
+
+  # `provider_config` carries the decrypted credentials the room was created
+  # with, so it is kept out of every inspected form: a log line, a crash
+  # report or an error tuple that happens to include the struct.
+  @derive {Inspect, except: [:provider_config]}
+  @enforce_keys [:room_id, :meeting_url, :provider_data]
+  defstruct room_id: nil,
+            meeting_url: nil,
+            provider_data: nil,
+            provider_config: nil,
+            adopted: false
+
+  @typedoc """
+  `adopted` says the provider handed back a room it had already made for this
+  booking rather than making one now (Nextcloud Talk does this when an earlier
+  attempt's answer never arrived). Such a call proves nothing about what the
+  server would do with a new room.
+  """
+  @type t :: %__MODULE__{
+          room_id: String.t() | nil,
+          meeting_url: String.t() | nil,
+          provider_data: map(),
+          provider_config: map() | nil,
+          adopted: boolean()
+        }
+end

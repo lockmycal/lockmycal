@@ -1,0 +1,207 @@
+defmodule Tymeslot.Meetings.Listing do
+  @moduledoc """
+  Listing, filtering, and cursor pagination for a user's meetings.
+
+  Owns the read-side presentation concerns of the Meetings context: turning a
+  filter string into query options and paging results with an opaque cursor. The
+  query mechanics live in `MeetingListQueries`; this module orchestrates them into
+  the pages the dashboard consumes.
+  """
+
+  require Logger
+
+  alias Tymeslot.Auth.UserQueries
+  alias Tymeslot.Meetings.MeetingListQueries
+  alias Tymeslot.Pagination.CursorPage
+
+  @doc """
+  Cursor-based pagination for a user's meetings.
+  """
+  @spec list_user_meetings_cursor_page(String.t(), keyword()) ::
+          {:ok, CursorPage.t()} | {:error, :invalid_cursor}
+  def list_user_meetings_cursor_page(user_email, opts) do
+    per_page = Keyword.get(opts, :per_page, 20)
+    cursor = Keyword.get(opts, :after)
+
+    case decode_cursor_opt(cursor) do
+      :no_cursor ->
+        items = list_user_meetings_internal(user_email, opts)
+        {:ok, build_cursor_page(items, per_page)}
+
+      {:ok, %{after_start: after_start, after_id: after_id}} ->
+        items =
+          opts
+          |> Keyword.put(:after_start, after_start)
+          |> Keyword.put(:after_id, after_id)
+          |> then(&list_user_meetings_internal(user_email, &1))
+
+        {:ok, build_cursor_page(items, per_page)}
+
+      {:error, :invalid_cursor} ->
+        {:error, :invalid_cursor}
+    end
+  end
+
+  @doc """
+  Cursor-based pagination by user_id.
+  """
+  @spec list_user_meetings_cursor_page_by_id(integer(), keyword()) ::
+          {:ok, CursorPage.t()} | {:error, :invalid_cursor}
+  def list_user_meetings_cursor_page_by_id(user_id, opts) do
+    case UserQueries.get_user(user_id) do
+      {:ok, user} ->
+        list_user_meetings_cursor_page(user.email, opts)
+
+      {:error, :not_found} ->
+        {:ok,
+         %CursorPage{
+           items: [],
+           next_cursor: nil,
+           prev_cursor: nil,
+           page_size: Keyword.get(opts, :per_page, 20),
+           has_more: false
+         }}
+    end
+  end
+
+  @doc """
+  High-level function to list meetings for a user based on a filter string.
+  """
+  @spec list_user_meetings_by_filter(integer(), String.t(), keyword()) ::
+          {:ok, CursorPage.t()} | {:error, :invalid_cursor}
+  def list_user_meetings_by_filter(user_id, filter, opts) do
+    per_page = Keyword.get(opts, :per_page, 20)
+    after_cursor = Keyword.get(opts, :after)
+
+    query_opts = Keyword.merge(filter_query_opts(filter), per_page: per_page)
+
+    query_opts =
+      if after_cursor, do: Keyword.put(query_opts, :after, after_cursor), else: query_opts
+
+    case list_user_meetings_cursor_page_by_id(user_id, query_opts) do
+      {:ok, page} ->
+        {:ok, page}
+
+      {:error, :invalid_cursor} ->
+        Logger.warning("Invalid pagination cursor provided", user_id: user_id)
+        {:error, :invalid_cursor}
+    end
+  rescue
+    error ->
+      Logger.error("Exception while listing meetings by filter",
+        user_id: user_id,
+        error: inspect(error),
+        stacktrace: __STACKTRACE__
+      )
+
+      {:error, :failed_to_list_meetings}
+  end
+
+  @doc """
+  Counts a user's meetings matching the same filter string accepted by
+  `list_user_meetings_by_filter/3` — badges each dashboard filter tab
+  (Upcoming, Past, Cancelled) with its own count.
+  """
+  @spec count_meetings_by_filter(integer(), String.t()) :: non_neg_integer()
+  def count_meetings_by_filter(user_id, filter) do
+    case UserQueries.get_user(user_id) do
+      {:ok, user} ->
+        MeetingListQueries.count_for_user_email_by_filter(user.email, filter_query_opts(filter))
+
+      {:error, :not_found} ->
+        0
+    end
+  end
+
+  @doc """
+  Meetings awaiting approval for `organizer_user_id` that overlap
+  `[range_start, range_end]`, as plain `%{start_time:, end_time:}` maps.
+
+  A meeting `status: "awaiting_approval"` deliberately has no external
+  calendar event yet (that write happens only on approval), so a caller
+  sourcing blocking events from synced provider data alone would otherwise
+  show its slot as free — e.g. the public calendar page, or the
+  availability engine.
+  """
+  @spec pending_approval_time_ranges(integer(), DateTime.t(), DateTime.t()) :: [
+          %{start_time: DateTime.t(), end_time: DateTime.t()}
+        ]
+  def pending_approval_time_ranges(organizer_user_id, range_start, range_end) do
+    MeetingListQueries.pending_approval_time_ranges(organizer_user_id, range_start, range_end)
+  end
+
+  # Held requests are deliberately kept out of "upcoming": they are not
+  # upcoming meetings, they are decisions the host still owes somebody, and
+  # listing them beside confirmed bookings is what made an unanswered request
+  # look agreed to. A lapsed request is excluded for the same reason:
+  # `expired` is a resolved outcome, not a booking still to happen, even
+  # though its start time (and so `end_time`, the column "past" filters on)
+  # is often still ahead of it. It falls into "past" honestly once `end_time`
+  # catches up, same as any other meeting that has run its course.
+  defp filter_query_opts(filter) do
+    case filter do
+      "upcoming" ->
+        [time_filter: :upcoming, exclude_status: ["cancelled", "awaiting_approval", "expired"]]
+
+      "past" ->
+        [time_filter: :past, exclude_status: "cancelled"]
+
+      "cancelled" ->
+        [status: "cancelled"]
+
+      "awaiting_approval" ->
+        [status: "awaiting_approval"]
+
+      _other ->
+        []
+    end
+  end
+
+  defp list_user_meetings_internal(user_email, opts) do
+    per_page = Keyword.get(opts, :per_page, 20)
+    status = Keyword.get(opts, :status)
+    exclude_status = Keyword.get(opts, :exclude_status)
+    time_filter = Keyword.get(opts, :time_filter)
+    after_start = Keyword.get(opts, :after_start)
+    after_id = Keyword.get(opts, :after_id)
+
+    MeetingListQueries.list_meetings_for_user_paginated_cursor(user_email,
+      per_page: per_page,
+      status: status,
+      exclude_status: exclude_status,
+      time_filter: time_filter,
+      after_start: after_start,
+      after_id: after_id
+    )
+  end
+
+  defp decode_cursor_opt(nil), do: :no_cursor
+  defp decode_cursor_opt(""), do: :no_cursor
+
+  defp decode_cursor_opt(cursor) when is_binary(cursor) do
+    CursorPage.decode_cursor(cursor)
+  end
+
+  defp build_cursor_page(items, per_page) do
+    {items, has_more} =
+      if length(items) > per_page do
+        {Enum.drop(items, -1), true}
+      else
+        {items, false}
+      end
+
+    next_cursor =
+      case List.last(items) do
+        nil -> nil
+        last -> CursorPage.encode_cursor(%{after_start: last.start_time, after_id: last.id})
+      end
+
+    %CursorPage{
+      items: items,
+      next_cursor: next_cursor,
+      prev_cursor: nil,
+      page_size: per_page,
+      has_more: has_more
+    }
+  end
+end

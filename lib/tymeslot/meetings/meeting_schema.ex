@@ -1,0 +1,412 @@
+defmodule Tymeslot.Meetings.MeetingSchema do
+  @moduledoc """
+  Ecto schema for meetings with comprehensive fields for calendar integration,
+  video conferencing, and meeting lifecycle management.
+  """
+
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  alias Tymeslot.ChangesetValidators.Email, as: EmailChangeset
+  alias Tymeslot.ChangesetValidators.TimeOrder
+  alias Tymeslot.ChangesetValidators.TrackingParams
+  alias Tymeslot.Locales
+
+  @type t :: %__MODULE__{
+          id: binary() | nil,
+          uid: String.t() | nil,
+          title: String.t() | nil,
+          summary: String.t() | nil,
+          description: String.t() | nil,
+          start_time: DateTime.t() | nil,
+          end_time: DateTime.t() | nil,
+          duration: integer() | nil,
+          location: String.t() | nil,
+          location_kind: String.t() | nil,
+          location_option_id: String.t() | nil,
+          meeting_type: String.t() | nil,
+          organizer_name: String.t() | nil,
+          organizer_email: String.t() | nil,
+          organizer_title: String.t() | nil,
+          organizer_user_id: integer() | nil,
+          calendar_integration_id: integer() | nil,
+          calendar_path: String.t() | nil,
+          attendee_name: String.t() | nil,
+          attendee_email: String.t() | nil,
+          attendee_message: String.t() | nil,
+          attendee_phone: String.t() | nil,
+          attendee_company: String.t() | nil,
+          attendee_timezone: String.t() | nil,
+          attendee_locale: String.t(),
+          view_url: String.t() | nil,
+          reschedule_url: String.t() | nil,
+          cancel_url: String.t() | nil,
+          meeting_url: String.t() | nil,
+          video_room_id: String.t() | nil,
+          video_provider: String.t() | nil,
+          organizer_video_url: String.t() | nil,
+          attendee_video_url: String.t() | nil,
+          video_room_enabled: boolean(),
+          video_room_created_at: DateTime.t() | nil,
+          video_room_expires_at: DateTime.t() | nil,
+          reminder_time: String.t() | nil,
+          default_reminder_time: String.t() | nil,
+          reminders: [map()] | nil,
+          reminders_sent: [map()] | nil,
+          status: String.t(),
+          cancelled_at: DateTime.t() | nil,
+          cancellation_reason: String.t() | nil,
+          reschedule_requested_at: DateTime.t() | nil,
+          approval_requested_at: DateTime.t() | nil,
+          approval_deadline_at: DateTime.t() | nil,
+          approval_resolved_at: DateTime.t() | nil,
+          approval_declined_at: DateTime.t() | nil,
+          approval_nudge_sent_at: DateTime.t() | nil,
+          decline_reason: String.t() | nil,
+          announced_at: DateTime.t() | nil,
+          first_announced_at: DateTime.t() | nil,
+          organizer_email_sent: boolean(),
+          attendee_email_sent: boolean(),
+          reminder_email_sent: boolean(),
+          calendar_sync_status: String.t() | nil,
+          calendar_sync_status_dismissed_at: DateTime.t() | nil,
+          provider_event_id: String.t() | nil,
+          ical_sequence: integer(),
+          last_notified_state: map(),
+          custom_fields_snapshot: [map()],
+          custom_field_answers: map(),
+          show_as_free: boolean(),
+          attachments_snapshot: [map()],
+          utm_source: String.t() | nil,
+          utm_medium: String.t() | nil,
+          utm_campaign: String.t() | nil,
+          utm_content: String.t() | nil,
+          utm_term: String.t() | nil,
+          referrer_host: String.t() | nil,
+          tracking_params: map(),
+          visitor_hash: String.t() | nil,
+          organizer_user: any() | Ecto.Association.NotLoaded.t() | nil,
+          calendar_integration: any() | Ecto.Association.NotLoaded.t() | nil,
+          video_integration: any() | Ecto.Association.NotLoaded.t() | nil,
+          meeting_type_ref: any() | Ecto.Association.NotLoaded.t() | nil,
+          guests: [Tymeslot.Meetings.GuestSchema.t()] | Ecto.Association.NotLoaded.t(),
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
+  @primary_key {:id, :binary_id, autogenerate: true}
+  @foreign_key_type :binary_id
+
+  schema "meetings" do
+    field(:uid, :string)
+    field(:title, :string)
+    field(:summary, :string)
+    field(:description, :string)
+    field(:start_time, :utc_datetime)
+    field(:end_time, :utc_datetime)
+    field(:duration, :integer)
+    field(:location, :string)
+    # What kind of place `location` names, and which of the meeting type's
+    # location options produced it. Stated rather than inferred from the
+    # string, which stops carrying meaning the moment a host writes their own
+    # label; the option id pins the choice so a later edit to the meeting type
+    # cannot rewrite what this booking agreed to.
+    field(:location_kind, :string)
+    field(:location_option_id, :string)
+    field(:meeting_type, :string)
+
+    # Organizer details
+    field(:organizer_name, :string)
+    field(:organizer_email, :string)
+    field(:organizer_title, :string)
+
+    belongs_to(:organizer_user, Tymeslot.Auth.UserSchema,
+      foreign_key: :organizer_user_id,
+      type: :id
+    )
+
+    # Calendar integration tracking
+    belongs_to(:calendar_integration, Tymeslot.Integrations.Calendar.CalendarIntegrationSchema,
+      type: :id
+    )
+
+    belongs_to(:video_integration, Tymeslot.Integrations.Video.VideoIntegrationSchema, type: :id)
+
+    belongs_to(:meeting_type_ref, Tymeslot.MeetingTypes.MeetingTypeSchema,
+      foreign_key: :meeting_type_id,
+      type: :id
+    )
+
+    field(:calendar_path, :string)
+
+    # Attendee details
+    field(:attendee_name, :string)
+    field(:attendee_email, :string)
+    field(:attendee_message, :string)
+    field(:attendee_phone, :string)
+    field(:attendee_company, :string)
+    field(:attendee_timezone, :string)
+    field(:attendee_locale, :string, default: "en")
+
+    # URLs and links
+    field(:view_url, :string)
+    field(:reschedule_url, :string)
+    field(:cancel_url, :string)
+    field(:meeting_url, :string)
+
+    # Video room integration
+    field(:video_room_id, :string)
+    # Retained independently of `video_integration_id` so a meeting still knows
+    # where its room lives after the integration is deleted and the foreign key
+    # nulls the link.
+    field(:video_provider, :string)
+    field(:organizer_video_url, :string)
+    field(:attendee_video_url, :string)
+    field(:video_room_enabled, :boolean, default: false)
+    field(:video_room_created_at, :utc_datetime)
+    field(:video_room_expires_at, :utc_datetime)
+
+    # Reminder settings
+    field(:reminder_time, :string)
+    field(:default_reminder_time, :string)
+    field(:reminders, {:array, :map}, default: nil)
+    field(:reminders_sent, {:array, :map}, default: nil)
+
+    # Status tracking
+    field(:status, :string, default: "pending")
+    field(:cancelled_at, :utc_datetime)
+    field(:cancellation_reason, :string)
+    # Set while an organizer reschedule request is pending; independent of
+    # `status` (see `Tymeslot.Meetings.MeetingState`). Cleared once the
+    # attendee books a new time.
+    field(:reschedule_requested_at, :utc_datetime)
+
+    # The manual-approval clock, set only while the meeting type requires the
+    # host to confirm each booking. `approval_deadline_at` is denormalised
+    # rather than derived: the meeting type's window can be edited, or the type
+    # archived, while a request is still outstanding, and the deadline the
+    # invitee was promised must not move underneath them.
+    field(:approval_requested_at, :utc_datetime)
+    field(:approval_deadline_at, :utc_datetime)
+    # Stamped by every host answer, an approval included, so it means "the host
+    # decided" and nothing narrower. It is not the field that identifies a
+    # decline; see `approval_declined_at`.
+    field(:approval_resolved_at, :utc_datetime)
+    # Stamped only by `Meetings.Approval.decline/2`, and the single fact that
+    # tells a declined booking apart from every other cancelled one. `status`
+    # cannot: a decline lands on "cancelled" deliberately, so that the whole
+    # cancellation pipeline (calendar deletion, refund resolution, cache
+    # invalidation) applies to it unchanged. Nor can `approval_resolved_at`,
+    # which an approval sets too and which therefore survives on a meeting that
+    # was approved, held, and later cancelled in the ordinary way. Read it
+    # through `Meetings.Approval.declined?/1` rather than matching on it.
+    field(:approval_declined_at, :utc_datetime)
+    field(:approval_nudge_sent_at, :utc_datetime)
+    # The host's optional note when declining. Absent whenever they gave no
+    # reason, so it marks nothing on its own.
+    field(:decline_reason, :string)
+    # Notification tracking
+    # Stamped when `meeting.created` is raised, so the event is claimed once and
+    # cannot fan out twice; see `Tymeslot.Notifications.Events.meeting_created/1`.
+    # This is the live claim, not a history: a reschedule that sends a confirmed
+    # booking back into the approval gate clears it, so the host's second
+    # approval can claim the fan-out for the new time.
+    field(:announced_at, :utc_datetime)
+    # The permanent counterpart, stamped beside the first claim and cleared by
+    # nothing. It answers "was this booking ever a live meeting the attendee
+    # was told about?", which `announced_at` stops being able to answer the
+    # moment a reschedule re-opens the gate, and which decides whether a
+    # released request is refunded automatically or left to the host.
+    field(:first_announced_at, :utc_datetime)
+
+    # Email tracking
+    field(:organizer_email_sent, :boolean, default: false)
+    field(:attendee_email_sent, :boolean, default: false)
+    field(:reminder_email_sent, :boolean, default: false)
+
+    # External calendar sync
+    field(:calendar_sync_status, :string)
+    field(:calendar_sync_status_dismissed_at, :utc_datetime)
+    field(:provider_event_id, :string)
+
+    # Attendee notification tracking
+    field(:ical_sequence, :integer, default: 0)
+    field(:last_notified_state, :map, default: %{})
+
+    # Custom booking fields
+    field(:custom_fields_snapshot, {:array, :map}, default: [])
+    field(:custom_field_answers, :map, default: %{})
+
+    # Snapshot of the meeting type's show_as_free setting at booking time —
+    # drives TRANSP/transparency on the calendar event written to the host.
+    field(:show_as_free, :boolean, default: false)
+
+    # Snapshot of the meeting type's host-uploaded attachments at booking time.
+    field(:attachments_snapshot, {:array, :map}, default: [])
+
+    # Guests added by the attendee at booking time
+    has_many(:guests, Tymeslot.Meetings.GuestSchema,
+      foreign_key: :meeting_id,
+      preload_order: [asc: :inserted_at],
+      on_delete: :delete_all
+    )
+
+    # Source attribution
+    field(:utm_source, :string)
+    field(:utm_medium, :string)
+    field(:utm_campaign, :string)
+    field(:utm_content, :string)
+    field(:utm_term, :string)
+    field(:referrer_host, :string)
+    # Cookieless join key to the booking-page view in analytics_events.
+    field(:visitor_hash, :string)
+    field(:tracking_params, :map, default: %{})
+
+    timestamps(type: :utc_datetime)
+  end
+
+  @required_fields [
+    :uid,
+    :title,
+    :start_time,
+    :end_time,
+    :organizer_name,
+    :organizer_email,
+    :attendee_name,
+    :attendee_email
+  ]
+
+  @optional_fields [
+    :summary,
+    :description,
+    :duration,
+    :location,
+    :location_kind,
+    :location_option_id,
+    :meeting_type,
+    :meeting_type_id,
+    :organizer_title,
+    :organizer_user_id,
+    :calendar_integration_id,
+    :video_integration_id,
+    :calendar_path,
+    :attendee_message,
+    :attendee_phone,
+    :attendee_company,
+    :attendee_timezone,
+    :attendee_locale,
+    :view_url,
+    :reschedule_url,
+    :cancel_url,
+    :meeting_url,
+    :video_room_id,
+    :video_provider,
+    :organizer_video_url,
+    :attendee_video_url,
+    :video_room_enabled,
+    :video_room_created_at,
+    :video_room_expires_at,
+    :reminder_time,
+    :default_reminder_time,
+    :reminders,
+    :reminders_sent,
+    :status,
+    :organizer_email_sent,
+    :attendee_email_sent,
+    :reminder_email_sent,
+    :cancelled_at,
+    :cancellation_reason,
+    :reschedule_requested_at,
+    :approval_requested_at,
+    :approval_deadline_at,
+    :approval_resolved_at,
+    :approval_declined_at,
+    :approval_nudge_sent_at,
+    :decline_reason,
+    :announced_at,
+    :first_announced_at,
+    :calendar_sync_status,
+    :calendar_sync_status_dismissed_at,
+    :provider_event_id,
+    :ical_sequence,
+    :last_notified_state,
+    :custom_fields_snapshot,
+    :custom_field_answers,
+    :show_as_free,
+    :attachments_snapshot,
+    :utm_source,
+    :utm_medium,
+    :utm_campaign,
+    :utm_content,
+    :utm_term,
+    :referrer_host,
+    :tracking_params,
+    :visitor_hash
+  ]
+
+  @valid_statuses [
+    "pending",
+    # Held pending the host's manual approval. Occupies its slot like
+    # "pending" does, but is not a booking anyone has agreed to yet.
+    "awaiting_approval",
+    "confirmed",
+    "cancelled",
+    "completed",
+    "reschedule_requested",
+    "awaiting_payment",
+    "expired"
+  ]
+
+  @doc false
+  @spec changeset(t(), map()) :: Ecto.Changeset.t()
+  def changeset(meeting, attrs) do
+    meeting
+    |> cast(attrs, @required_fields ++ @optional_fields)
+    |> validate_required(@required_fields)
+    |> EmailChangeset.validate_email(:organizer_email)
+    |> EmailChangeset.validate_email(:attendee_email)
+    |> validate_inclusion(:status, @valid_statuses)
+    |> validate_required([:attendee_locale])
+    |> validate_inclusion(:attendee_locale, supported_locale_codes(),
+      message: "is not a supported locale"
+    )
+    |> TimeOrder.validate_time_order(:start_time, :end_time)
+    |> validate_length(:utm_source, max: 255)
+    |> validate_length(:utm_medium, max: 255)
+    |> validate_length(:utm_campaign, max: 255)
+    |> validate_length(:utm_content, max: 255)
+    |> validate_length(:utm_term, max: 255)
+    |> validate_length(:referrer_host, max: 255)
+    |> validate_length(:decline_reason, max: 500)
+    |> validate_length(:visitor_hash, max: 64)
+    # Google Calendar's documented maximum event id length.
+    |> validate_length(:provider_event_id, max: 1024)
+    |> TrackingParams.validate_tracking_params(:tracking_params)
+    |> calculate_duration()
+    |> unique_constraint(:uid)
+    |> unique_constraint([:organizer_user_id, :start_time],
+      name: :unique_confirmed_meeting_per_organizer_at_time,
+      message: "You already have a confirmed meeting at this time."
+    )
+    |> check_constraint(:end_time, name: :meetings_end_after_start)
+  end
+
+  defp calculate_duration(changeset) do
+    # Only calculate duration if not provided
+    if get_change(changeset, :duration) do
+      changeset
+    else
+      start_time = get_field(changeset, :start_time)
+      end_time = get_field(changeset, :end_time)
+
+      if start_time && end_time do
+        duration = DateTime.diff(end_time, start_time, :minute)
+        put_change(changeset, :duration, duration)
+      else
+        changeset
+      end
+    end
+  end
+
+  defp supported_locale_codes, do: Locales.supported_codes()
+end

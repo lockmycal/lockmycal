@@ -1,0 +1,54 @@
+/**
+ * Embed Settings Component Styles
+ * For dashboard embed options cards
+ */
+
+/* Box styling (background, border, radius, shadow, hover) now comes from the
+   shared .card-glass class + the selected-state overlay applied inline in
+   OptionsGrid — kept in sync with the same "selected option card" pattern
+   used by the Theme gallery, so cards look the same across pages. This file
+   only styles the code/copy-button content nested inside. */
+
+/* Code block styling for embed snippets */
+.embed-option-card pre {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+/* Dark text for inline code in footer (general rule first) */
+.embed-option-card code {
+  @apply text-neutral-700 dark:text-neutral-200 bg-neutral-100 px-1 rounded;
+}
+
+/* Light text for code inside dark pre blocks (more specific rule last) */
+.embed-option-card pre code {
+  @apply text-neutral-200 bg-transparent px-0 rounded-none;
+}
+
+/* Animation for copy button. Scoped keyframe name (not the global `fadeIn`)
+   so it can't override the canonical opacity-only fadeIn in the app.css
+   bundle — this slide-fade is local to the embed copy button. */
+.embed-option-card button[phx-click="copy_code"] {
+  animation: embed-fade-in 0.3s var(--transition-glass-smooth);
+}
+
+@keyframes embed-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hover effects for preview cards */
+.embed-option-card .bg-neutral-50 {
+  transition: var(--transition-glass-smooth);
+}
+
+.embed-option-card:hover .bg-neutral-50 {
+  @apply bg-neutral-100;
+}

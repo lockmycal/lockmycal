@@ -1,0 +1,100 @@
+/* ===================================
+   GLASS MORPHISM THEME
+   =================================== */
+
+/* Base Theme Styles were declared here as a second, later `body` rule
+   (font-family/color/margin/padding identical to ./base/base.css's `body`,
+   but a hardcoded `background-color: white`) — removed as a plain
+   duplicate. Being the later `@import`, it silently won the cascade over
+   base.css's token-driven `background-color: var(--color-bg-primary)`,
+   which is why the page background stayed white regardless of the `.dark`
+   class. base.css's rule is now the sole source of truth for `body`. */
+
+/* Main gradient background for glass overlay */
+.main-gradient {
+  background: var(--glass-gradient-overlay);
+  background-size: 400% 400%;
+  animation: gradientShift 20s ease infinite;
+  min-height: 100vh;
+}
+
+/* Footer gradient */
+.footer-gradient {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 20px;
+}
+
+/* Glass morphism cards */
+.glass-card {
+  background: var(--color-glass-bg-card-enhanced);
+  backdrop-filter: var(--glass-blur-strong);
+  -webkit-backdrop-filter: var(--glass-blur-strong);
+  border: 1px solid var(--color-border-glass-light);
+  border-radius: 12px;
+  box-shadow: var(--shadow-glass-card-enhanced);
+  transition: var(--transition-glass-smooth);
+  color: var(--color-text-glass-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(64, 224, 208, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 20px rgba(64, 224, 208, 0.1);
+}
+
+/* Navigation */
+.brand-nav {
+  @apply bg-white dark:bg-prussian-blue-950 shadow-lg shadow-neutral-200/30 dark:shadow-black/20 p-2 px-6;
+  position: relative;
+  z-index: 9990;
+}
+
+/* Mobile Navigation Styles */
+.mobile-menu {
+  z-index: 9999;
+}
+
+.mobile-nav-link {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.mobile-nav-button {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.mobile-menu-toggle.mobile-menu-open svg {
+  transform: rotate(90deg);
+}
+
+/* Mobile responsive navigation improvements */
+@media (max-width: 768px) {
+  .mobile-menu {
+    animation: slideDown 0.3s ease-out;
+  }
+
+  .mobile-nav-link,
+  .mobile-nav-button {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

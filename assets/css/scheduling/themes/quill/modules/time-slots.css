@@ -1,0 +1,190 @@
+/* Time Slots Component
+   Self-contained: base styles + container queries + height queries.
+   Container context: .glass-morphism-card (container-name: scheduling). */
+
+/* ===== Base Styles ===== */
+
+.time-slots-panel {
+  flex: 1;
+  margin-top: var(--space-xs);
+}
+
+.slots-box {
+  overflow-x: hidden;
+  height: 100%;
+}
+
+/* Time Slot Buttons — touch-friendly layout */
+.time-slot-button {
+  width: 100%;
+  padding: var(--time-slot-padding);
+  background: var(--surface-very-light);
+  backdrop-filter: blur(var(--glass-blur-sm));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  border: var(--border-width-thin) solid var(--border-light);
+  border-radius: var(--radius-md);
+  color: var(--theme-text);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--theme-font-size-sm);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  text-align: center;
+  white-space: nowrap;
+  min-height: var(--time-slot-min-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.time-slot-button:focus-visible {
+  outline: var(--border-width-thick) solid var(--theme-primary);
+  outline-offset: var(--space-3xs);
+}
+
+.time-slot-button:hover {
+  background: var(--surface-medium-light);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--inset-highlight-subtle);
+}
+
+.time-slot-button--selected {
+  background: linear-gradient(135deg, var(--theme-primary-solid) 0%, var(--theme-primary-solid-hover) 100%);
+  border-color: var(--theme-primary-solid);
+  color: var(--theme-on-primary);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: var(--inset-highlight-strong);
+}
+
+.time-slot-button--selected:hover {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.time-slot-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Time Period Labels (Morning, Afternoon, Evening) */
+.time-period-label {
+  color: var(--text-opacity-medium-low);
+}
+
+/* Slot grid — fluid columns. auto-FILL (not auto-fit) keeps the empty trailing
+   tracks instead of collapsing them, so every period grid lays out the same
+   number of equal-width columns regardless of how many slots it holds. Without
+   this a sparse period (e.g. a 4-slot Evening) would stretch its buttons across
+   fewer, wider columns than a full Afternoon — giving inconsistent slot sizes.
+   The template uses .time-slots-grid as the per-period wrapper; .time-period-slots
+   is kept as an alias for symmetry with the token system. */
+.time-slots-grid,
+.time-period-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
+  gap: var(--space-xs);
+}
+
+/* ===== Container Queries ===== */
+
+/* Narrow container — compact slots, let page scroll */
+@container scheduling (max-width: 399px) {
+  .time-slot-button {
+    font-size: var(--theme-font-size-xs);
+    padding: var(--time-slot-padding-sm);
+    min-height: var(--time-slot-min-height-sm);
+  }
+
+  .slots-box {
+    overflow-y: visible;
+    height: auto;
+    max-height: none;
+  }
+
+  .action-button,
+  .time-slot-button,
+  .calendar-day {
+    min-height: var(--min-touch-target);
+  }
+}
+
+/* Medium container — scrollable slots */
+@container scheduling (min-width: 600px) {
+  .slots-box {
+    overflow-y: auto;
+    min-height: 150px;
+  }
+}
+
+/* Large container — desktop spacing, internal scroll */
+@container scheduling (min-width: 768px) {
+  .time-slots-panel {
+    margin-top: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .time-slot-button {
+    font-size: var(--theme-font-size-sm);
+    padding: var(--time-slot-padding-lg);
+    min-height: var(--time-slot-min-height-sm);
+  }
+
+  .slots-box {
+    flex: 1;
+    min-height: 150px;
+    overflow-y: auto;
+  }
+}
+
+/* ===== Height & Aspect Queries ===== */
+/* Viewport height has no container-query equivalent, so these stay as @media. */
+
+@media (max-height: 500px) {
+  .slots-box {
+    max-height: 150px;
+    overflow-y: auto;
+  }
+}
+
+@media (max-height: 400px) {
+  .slots-box {
+    max-height: 120px;
+  }
+}
+
+/* ===== Two-Tier Hour Picker ===== */
+/* Only reached when the meeting type offers starts on a grid finer than its
+   own duration. The minute grid deliberately has no max-height: the schedule
+   step is a viewport-locked app shell with exactly one internal scroll region
+   (see base.css), and a second scrollable box nested inside it breaks that
+   contract at short heights. */
+
+.time-slot-button--hour {
+  gap: var(--space-2xs);
+}
+
+/* The open hour has to be unmistakable. The minute drawer renders beneath the
+   whole row rather than beneath the button that opened it, so its position
+   says nothing about which hour it belongs to; the button's own state is the
+   only thing that does. Kept distinct from --selected (a filled primary
+   gradient) because both can be on screen at once, on different hours. */
+.time-slot-button--expanded {
+  background: var(--surface-medium-light);
+  border-color: var(--theme-primary);
+  color: var(--theme-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* A contained drawer rather than a left rule. The rule sat at the row's left
+   edge, which is the first hour in the row and not the open one, so it
+   pointed at the wrong button whenever the open hour was not first. */
+.time-slots-grid--minutes {
+  margin-top: var(--space-xs);
+  padding: var(--space-xs);
+  background: var(--surface-very-light);
+  border: var(--border-width-thin) solid var(--border-light);
+  border-radius: var(--radius-md);
+}

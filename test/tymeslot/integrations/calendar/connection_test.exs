@@ -1,0 +1,225 @@
+defmodule Tymeslot.Integrations.Calendar.ConnectionTest do
+  use Tymeslot.DataCase, async: true
+  @moduletag :integrations
+
+  import Tymeslot.Factory
+  import Mox
+  alias Tymeslot.Integrations.Calendar.Connection
+  alias Tymeslot.Security.Encryption
+
+  setup :verify_on_exit!
+
+  describe "validate_connection/2" do
+    setup do
+      user = insert(:user)
+      %{user: user}
+    end
+
+    test "validates CalDAV provider connection", %{user: user} do
+      integration = %{
+        provider: "caldav",
+        base_url: "http://localhost:1",
+        username: "user",
+        password: "pass"
+      }
+
+      result = Connection.validate_connection(integration, user.id)
+
+      # Will fail without real server
+      assert {:error, :network_error} = result
+    end
+
+    test "validates Nextcloud provider connection", %{user: user} do
+      integration = %{
+        provider: "nextcloud",
+        base_url: "https://cloud.example.com/remote.php/dav",
+        username: "user",
+        password: "pass"
+      }
+
+      result = Connection.validate_connection(integration, user.id)
+
+      assert {:error, :network_error} = result
+    end
+
+    test "validates Radicale provider connection", %{user: user} do
+      integration = %{
+        provider: "radicale",
+        base_url: "http://localhost:1",
+        username: "user",
+        password: "pass"
+      }
+
+      result = Connection.validate_connection(integration, user.id)
+
+      assert {:error, :network_error} = result
+    end
+
+    test "returns error for unsupported provider", %{user: user} do
+      integration = %{
+        provider: "unknown"
+      }
+
+      result = Connection.validate_connection(integration, user.id)
+
+      assert {:error, :unsupported_provider} = result
+    end
+
+    test "handles OAuth providers with token validation", %{user: user} do
+      integration =
+        insert(:calendar_integration,
+          user: user,
+          provider: "google",
+          access_token_encrypted: Encryption.encrypt("access_token"),
+          refresh_token_encrypted: Encryption.encrypt("refresh_token"),
+          token_expires_at: DateTime.add(DateTime.utc_now(), -3600, :second),
+          oauth_scope: "https://www.googleapis.com/auth/calendar.events"
+        )
+
+      integration_map = %{
+        id: integration.id,
+        provider: "google",
+        access_token: "access_token",
+        refresh_token: "refresh_token",
+        token_expires_at: integration.token_expires_at
+      }
+
+      # Mock token refresh
+      expect(GoogleCalendarAPIMock, :refresh_token, fn _int ->
+        {:ok,
+         {"new_access_token", "new_refresh_token",
+          DateTime.add(DateTime.utc_now(), 3600, :second)}}
+      end)
+
+      # Mock connection test
+      expect(GoogleCalendarAPIMock, :list_primary_events, fn _int, _start, _end ->
+        {:ok, []}
+      end)
+
+      result = Connection.validate_connection(integration_map, user.id)
+
+      assert {:ok, updated} = result
+      assert updated.access_token == "new_access_token"
+    end
+
+    test "handles network errors gracefully", %{user: user} do
+      integration = %{
+        provider: "caldav",
+        base_url: "http://localhost:1",
+        username: "user",
+        password: "pass"
+      }
+
+      result = Connection.validate_connection(integration, user.id)
+
+      assert {:error, :network_error} = result
+    end
+  end
+
+  describe "test_connection/1" do
+    test "tests CalDAV provider connection" do
+      integration = %{
+        provider: "caldav",
+        base_url: "http://localhost:1",
+        username: "user",
+        password: "pass",
+        calendar_paths: []
+      }
+
+      result = Connection.test_connection(integration)
+
+      # Will fail without real server
+      assert {:error, _reason} = result
+    end
+
+    test "tests Google Calendar provider connection" do
+      user = insert(:user)
+
+      integration = %{
+        provider: "google",
+        access_token: "test_token",
+        refresh_token: "refresh_token",
+        user_id: user.id
+      }
+
+      # Mock connection test
+      expect(GoogleCalendarAPIMock, :list_primary_events, fn _int, _start, _end ->
+        {:ok, []}
+      end)
+
+      result = Connection.test_connection(integration)
+
+      assert {:ok, "Google Calendar connection successful"} = result
+    end
+
+    test "tests Nextcloud provider connection" do
+      integration = %{
+        provider: "nextcloud",
+        base_url: "http://localhost:1",
+        username: "user",
+        password: "pass",
+        calendar_paths: []
+      }
+
+      result = Connection.test_connection(integration)
+
+      assert match?({:error, _reason}, result)
+    end
+
+    test "gives an interactive caller copy for refused credentials" do
+      user = insert(:user)
+
+      stub(Tymeslot.HTTPClientMock, :request, fn :propfind, _url, _body, _headers, _opts ->
+        {:ok, %Req.Response{status: 401, body: ""}}
+      end)
+
+      assert {:error, message} = Connection.test_connection(apple_integration(user))
+      assert message =~ "app-specific password"
+    end
+
+    test "gives a background probe the reason the health check classifies" do
+      user = insert(:user)
+
+      stub(Tymeslot.HTTPClientMock, :request, fn :propfind, _url, _body, _headers, _opts ->
+        {:ok, %Req.Response{status: 401, body: ""}}
+      end)
+
+      # Prose reaches `ErrorAnalysis.classify_error/1` as an unfamiliar string
+      # and is recorded as transient, so a scheduled probe must be handed the
+      # reason itself.
+      assert {:error, :unauthorized} =
+               Connection.test_connection(apple_integration(user), scope: :background)
+    end
+
+    test "returns error for provider with invalid atom" do
+      integration = %{
+        provider: "nonexistent_provider"
+      }
+
+      result = Connection.test_connection(integration)
+
+      assert {:error, :unsupported_provider} = result
+    end
+
+    test "returns error for unknown provider type" do
+      integration = %{
+        provider: "unknown"
+      }
+
+      result = Connection.test_connection(integration)
+
+      assert {:error, :unsupported_provider} = result
+    end
+  end
+
+  defp apple_integration(user) do
+    %{
+      provider: "apple",
+      base_url: "https://caldav.icloud.com",
+      username: "alice",
+      password: "wrong",
+      calendar_paths: [],
+      user_id: user.id
+    }
+  end
+end

@@ -1,0 +1,574 @@
+defmodule Tymeslot.Mailer.SMTPConfigTest do
+  # async: false is required by the logging test below: it lowers the primary
+  # Logger level for the duration, which is global, so no other test may run
+  # alongside it. See `Tymeslot.Test.LogCapture`.
+  use ExUnit.Case, async: false
+  @moduletag :mailer
+
+  alias Tymeslot.Mailer.SMTPConfig
+  alias Tymeslot.Test.LogCapture
+
+  describe "build/1" do
+    test "creates valid SMTP configuration for port 587 (STARTTLS)" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          port: 587,
+          username: "user@example.com",
+          password: "secret123"
+        )
+
+      assert config[:adapter] == Tymeslot.Mailer.SMTPAdapter
+      assert config[:relay] == "smtp.example.com"
+      assert config[:port] == 587
+      assert config[:username] == "user@example.com"
+      assert config[:password] == "secret123"
+      assert config[:ssl] == false
+      assert config[:tls] == :always
+      assert config[:auth] == :always
+      assert config[:retries] == 0
+      assert config[:timeout] == 10_000
+      assert config[:no_mx_lookups] == true
+      assert config[:tls_options][:verify] == :verify_peer
+    end
+
+    test "creates valid SMTP configuration for port 465 (direct SSL)" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          port: 465,
+          username: "user@example.com",
+          password: "secret123"
+        )
+
+      assert config[:ssl] == true
+      assert config[:tls] == :never
+      assert config[:port] == 465
+    end
+
+    test "ssl: true speaks implicit TLS on a port other than 465" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          port: 2465,
+          username: "user@example.com",
+          password: "secret123",
+          ssl: true
+        )
+
+      assert config[:ssl] == true
+      assert config[:tls] == :never
+      assert config[:sockopts] == config[:tls_options]
+    end
+
+    test "ssl: false on port 465 still requires STARTTLS" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          port: 465,
+          username: "user@example.com",
+          password: "secret123",
+          ssl: false
+        )
+
+      assert config[:ssl] == false
+      assert config[:tls] == :always
+      refute Keyword.has_key?(config, :sockopts)
+    end
+
+    test "creates valid SMTP configuration for non-standard port (opportunistic TLS)" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          port: 2525,
+          username: "user@example.com",
+          password: "secret123"
+        )
+
+      assert config[:ssl] == false
+      assert config[:tls] == :if_available
+      assert config[:port] == 2525
+    end
+
+    test "uses default port 587 when not specified" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user@example.com",
+          password: "secret123"
+        )
+
+      assert config[:port] == 587
+    end
+
+    test "TLS options include all required fields" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          port: 587,
+          username: "user",
+          password: "pass"
+        )
+
+      tls_opts = config[:tls_options]
+      assert Keyword.has_key?(tls_opts, :versions)
+      assert Keyword.has_key?(tls_opts, :verify)
+      assert Keyword.has_key?(tls_opts, :cacerts)
+      assert Keyword.has_key?(tls_opts, :server_name_indication)
+      assert Keyword.has_key?(tls_opts, :customize_hostname_check)
+      assert Keyword.has_key?(tls_opts, :depth)
+    end
+
+    test "hostname check uses the RFC 6125 matcher so wildcard certs are accepted" do
+      # Regression: connecting to smtp.mailbox.org (cert: *.mailbox.org) failed with
+      # {:bad_cert, {:hostname_check_failed, ...}} because OTP's default matcher does
+      # not handle wildcard certificates. The :https match_fun does.
+      config =
+        SMTPConfig.build(
+          host: "smtp.mailbox.org",
+          port: 587,
+          username: "user",
+          password: "pass"
+        )
+
+      assert [match_fun: match_fun] = config[:tls_options][:customize_hostname_check]
+      assert is_function(match_fun, 2)
+    end
+
+    test "TLS versions include only modern protocols" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: "pass"
+        )
+
+      versions = config[:tls_options][:versions]
+      assert :"tlsv1.2" in versions
+      assert :"tlsv1.3" in versions
+      refute :"tlsv1.1" in versions
+      refute :tlsv1 in versions
+    end
+
+    test "TLS 1.3 middlebox compatibility mode is off by default" do
+      # OTP's client defaults to middlebox_comp_mode: true and then requires the
+      # server to send a ChangeCipherSpec record that RFC 8446 appendix D.4 makes
+      # optional. Servers that skip it abort the handshake and every email fails
+      # with :tls_failed.
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: "pass"
+        )
+
+      assert config[:tls_options][:middlebox_comp_mode] == false
+    end
+
+    test "middlebox_compat: true restores the mode on both TLS paths" do
+      # Port 465 so that `:sockopts` is built too: gen_smtp reads the implicit-TLS
+      # options from there and ignores `:tls_options` entirely, so a flag that
+      # reached only one of them would be silently inert on half the relays.
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          port: 465,
+          username: "user",
+          password: "pass",
+          middlebox_compat: true
+        )
+
+      assert config[:tls_options][:middlebox_comp_mode] == true
+      assert config[:sockopts][:middlebox_comp_mode] == true
+    end
+
+    test "rejects a middlebox_compat that is not a boolean" do
+      assert_raise ArgumentError, ~r/middlebox_compat must be true, false or nil/, fn ->
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: "pass",
+          middlebox_compat: "yes"
+        )
+      end
+    end
+
+    test "TLS options use verify_peer for security" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: "pass"
+        )
+
+      assert config[:tls_options][:verify] == :verify_peer
+    end
+
+    test "certificate chain depth is set to 5" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: "pass"
+        )
+
+      assert config[:tls_options][:depth] == 5
+    end
+
+    test "SNI is properly formatted as charlist" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: "pass"
+        )
+
+      assert config[:tls_options][:server_name_indication] == ~c"smtp.example.com"
+    end
+
+    test "port 465 repeats the TLS options as sockopts" do
+      # gen_smtp reads :tls_options only when upgrading with STARTTLS. On the
+      # implicit-TLS path it passes :sockopts straight to :ssl.connect/4, so
+      # without this every port-465 send fails with
+      # {:options, :incompatible, [verify: :verify_peer, cacerts: :undefined]}.
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          port: 465,
+          username: "user",
+          password: "pass"
+        )
+
+      assert config[:sockopts] == config[:tls_options]
+    end
+
+    test "ports that negotiate over plain TCP carry no sockopts" do
+      # TLS options are not valid :gen_tcp options: passing them on the STARTTLS
+      # and opportunistic paths would fail the connection before the upgrade.
+      for port <- [587, 25, 2525] do
+        config =
+          SMTPConfig.build(
+            host: "smtp.example.com",
+            port: port,
+            username: "user",
+            password: "pass"
+          )
+
+        refute Keyword.has_key?(config, :sockopts)
+      end
+    end
+
+    test "a CA bundle replaces the public trust store" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: "pass",
+          cacertfile: cacertfile_fixture()
+        )
+
+      assert config[:tls_options][:cacertfile] == cacertfile_fixture()
+      refute Keyword.has_key?(config[:tls_options], :cacerts)
+      assert config[:tls_options][:verify] == :verify_peer
+    end
+
+    test "tls_verify: :none disables verification and needs no trust store" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: "pass",
+          tls_verify: :none
+        )
+
+      tls_opts = config[:tls_options]
+      assert tls_opts[:verify] == :verify_none
+      refute Keyword.has_key?(tls_opts, :cacerts)
+      refute Keyword.has_key?(tls_opts, :cacertfile)
+      # Hostname matching is meaningless once the certificate is not checked.
+      refute Keyword.has_key?(tls_opts, :customize_hostname_check)
+    end
+
+    test "CA certificates are loaded from system or castore" do
+      config =
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: "pass"
+        )
+
+      # OTP hands back a non-empty list of {:cert, der, otp_cert} entries from
+      # the system trust store (or castore as a fallback).
+      assert [{:cert, der, _otp_cert} | _rest] = config[:tls_options][:cacerts]
+      assert byte_size(der) > 0
+    end
+  end
+
+  describe "build/1 validation" do
+    test "raises when host is nil" do
+      assert_raise ArgumentError, ~r/SMTP host is required/, fn ->
+        SMTPConfig.build(
+          host: nil,
+          username: "user",
+          password: "pass"
+        )
+      end
+    end
+
+    test "raises when host is empty string" do
+      assert_raise ArgumentError, ~r/SMTP host cannot be empty/, fn ->
+        SMTPConfig.build(
+          host: "",
+          username: "user",
+          password: "pass"
+        )
+      end
+    end
+
+    test "trims whitespace from host" do
+      config =
+        SMTPConfig.build(
+          host: "  smtp.example.com  ",
+          username: "user",
+          password: "pass"
+        )
+
+      assert config[:relay] == "smtp.example.com"
+    end
+
+    test "raises when host is whitespace-only" do
+      assert_raise ArgumentError, ~r/SMTP host cannot be empty or whitespace-only/, fn ->
+        SMTPConfig.build(
+          host: "   ",
+          username: "user",
+          password: "pass"
+        )
+      end
+    end
+
+    test "raises when host is not a string" do
+      assert_raise ArgumentError, ~r/SMTP host must be a string/, fn ->
+        SMTPConfig.build(
+          host: :not_a_string,
+          username: "user",
+          password: "pass"
+        )
+      end
+    end
+
+    test "configures an unauthenticated session when no credentials are given" do
+      config = SMTPConfig.build(host: "relay.internal", port: 25)
+
+      assert config[:auth] == :never
+      refute Keyword.has_key?(config, :username)
+      refute Keyword.has_key?(config, :password)
+    end
+
+    test "raises when a password is given without a username" do
+      assert_raise ArgumentError, ~r/SMTP username is required when a password is set/, fn ->
+        SMTPConfig.build(host: "smtp.example.com", username: nil, password: "pass")
+      end
+    end
+
+    test "raises when username is empty string" do
+      assert_raise ArgumentError, ~r/SMTP username cannot be empty/, fn ->
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "",
+          password: "pass"
+        )
+      end
+    end
+
+    test "raises when a username is given without a password" do
+      assert_raise ArgumentError, ~r/SMTP password is required when a username is set/, fn ->
+        SMTPConfig.build(host: "smtp.example.com", username: "user", password: nil)
+      end
+    end
+
+    test "raises when password is empty string" do
+      assert_raise ArgumentError, ~r/SMTP password cannot be empty/, fn ->
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: ""
+        )
+      end
+    end
+
+    test "raises when port is negative" do
+      assert_raise ArgumentError, ~r/SMTP port must be between 1-65535/, fn ->
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          port: -1,
+          username: "user",
+          password: "pass"
+        )
+      end
+    end
+
+    test "raises when port is zero" do
+      assert_raise ArgumentError, ~r/SMTP port must be between 1-65535/, fn ->
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          port: 0,
+          username: "user",
+          password: "pass"
+        )
+      end
+    end
+
+    test "raises when port is above 65535" do
+      assert_raise ArgumentError, ~r/SMTP port must be between 1-65535/, fn ->
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          port: 99_999,
+          username: "user",
+          password: "pass"
+        )
+      end
+    end
+
+    test "raises when port is not an integer" do
+      assert_raise ArgumentError, ~r/SMTP port must be an integer/, fn ->
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          port: "not_an_int",
+          username: "user",
+          password: "pass"
+        )
+      end
+    end
+  end
+
+  describe "build/1 TLS validation" do
+    test "raises on an unrecognised verification mode" do
+      assert_raise ArgumentError, ~r/SMTP TLS verify must be :peer or :none/, fn ->
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: "pass",
+          tls_verify: :maybe
+        )
+      end
+    end
+
+    test "raises when the CA bundle exists but cannot be read" do
+      # A bundle mounted with the wrong ownership passes an existence check and
+      # then fails at connect time with an opaque :ssl option error, long after
+      # the operator has stopped looking at the boot log.
+      path =
+        Path.join(
+          System.tmp_dir!(),
+          "smtp-ca-unreadable-#{System.unique_integer([:positive])}.pem"
+        )
+
+      File.write!(path, "-----BEGIN CERTIFICATE-----\n")
+      File.chmod!(path, 0o000)
+      on_exit(fn -> File.rm(path) end)
+
+      assert_raise ArgumentError, ~r/SMTP CA certificate file not found or not readable/, fn ->
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: "pass",
+          cacertfile: path
+        )
+      end
+    end
+
+    test "raises when the CA bundle does not exist" do
+      # Failing at boot beats failing on the first email of the day: a typo in
+      # the mounted path is otherwise invisible until a user waits for mail.
+      assert_raise ArgumentError, ~r/SMTP CA certificate file not found/, fn ->
+        SMTPConfig.build(
+          host: "smtp.example.com",
+          username: "user",
+          password: "pass",
+          cacertfile: "/nonexistent/ca-bundle.pem"
+        )
+      end
+    end
+  end
+
+  describe "logging" do
+    test "logs SMTP configuration at startup, password in neither message nor metadata" do
+      LogCapture.attach(level: :info, logger_level: :info)
+
+      SMTPConfig.build(
+        host: "smtp.example.com",
+        port: 587,
+        username: "user@example.com",
+        password: "secret123"
+      )
+
+      %{msg: msg, meta: meta} = LogCapture.await_log("SMTP mailer configured")
+
+      # Anchor the metadata assertions: if the handler ever stopped delivering
+      # metadata, these fail rather than letting the refutes below pass vacuously.
+      assert meta.host == "smtp.example.com"
+      assert meta.username == "user@example.com"
+      assert meta.port == 587
+
+      # The password must appear neither in the rendered message nor anywhere
+      # in the structured metadata the formatter would omit.
+      refute LogCapture.message_text(msg) =~ "secret123"
+      refute inspect(meta, limit: :infinity, printable_limit: :infinity) =~ "secret123"
+    end
+
+    test "one warning names both the disabled verification and the CA bundle it ignores" do
+      # A CA bundle configured alongside SMTP_TLS_VERIFY=none is never read.
+      # Split across two log lines an operator can act on one and miss the
+      # other, so the pair has to arrive as a single warning.
+      LogCapture.attach(level: :warning)
+
+      SMTPConfig.build(
+        host: "smtp.example.com",
+        username: "user",
+        password: "pass",
+        tls_verify: :none,
+        cacertfile: cacertfile_fixture()
+      )
+
+      assert [event] = verification_disabled_warnings()
+
+      message = LogCapture.message_text(event.msg)
+      assert message =~ "SMTP certificate verification is DISABLED (SMTP_TLS_VERIFY=none)"
+      assert message =~ "The configured SMTP_CACERTFILE is ignored while verification is off"
+      assert LogCapture.user_metadata(event).cacertfile == cacertfile_fixture()
+    end
+
+    test "the warning claims nothing is ignored when no CA bundle is configured" do
+      LogCapture.attach(level: :warning)
+
+      SMTPConfig.build(
+        host: "smtp.example.com",
+        username: "user",
+        password: "pass",
+        tls_verify: :none
+      )
+
+      assert [event] = verification_disabled_warnings()
+
+      assert LogCapture.message_text(event.msg) =~
+               "SMTP certificate verification is DISABLED (SMTP_TLS_VERIFY=none)"
+
+      refute LogCapture.message_text(event.msg) =~ "SMTP_CACERTFILE is ignored"
+      refute Map.has_key?(LogCapture.user_metadata(event), :cacertfile)
+    end
+  end
+
+  # Every captured warning about verification being off, so a test can assert
+  # there is exactly one of them.
+  defp verification_disabled_warnings do
+    Enum.filter(LogCapture.drain(), fn event ->
+      LogCapture.message_text(event.msg) =~ "SMTP certificate verification is DISABLED"
+    end)
+  end
+
+  # A real, readable PEM file: `build/1` rejects a path that is not one, so a
+  # made-up string would exercise the validation rather than the option.
+  defp cacertfile_fixture do
+    CAStore.file_path()
+  end
+end

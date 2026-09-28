@@ -1,0 +1,223 @@
+defmodule Tymeslot.Security.RateLimiterThemeCustomizationTest do
+  use ExUnit.Case, async: false
+  @moduletag :security
+
+  import Tymeslot.RateLimiterTestHelpers
+
+  alias Tymeslot.Security.RateLimiter
+
+  setup do
+    # Clear all rate limit data before each test
+    RateLimiter.clear_all()
+    :ok
+  end
+
+  describe "check_theme_customization_rate_limit/1" do
+    test "allows requests within rate limit" do
+      user_id = 12_345
+
+      # Should allow 150 requests within the window
+      for i <- 1..150 do
+        assert :ok = RateLimiter.check_theme_customization_rate_limit(user_id),
+               "Request #{i} should be allowed"
+      end
+    end
+
+    test "blocks requests exceeding rate limit" do
+      user_id = 12_346
+
+      # Use up the limit
+      for _i <- 1..150 do
+        assert :ok = RateLimiter.check_theme_customization_rate_limit(user_id)
+      end
+
+      # 151st request should be blocked
+      assert {:error, :rate_limited, message} =
+               RateLimiter.check_theme_customization_rate_limit(user_id)
+
+      assert message =~ "150"
+      assert message =~ "5 minutes"
+    end
+
+    test "rate limit is per-user" do
+      user_id_1 = 1001
+      user_id_2 = 1002
+
+      # User 1 exhausts their limit
+      for _i <- 1..150 do
+        assert :ok = RateLimiter.check_theme_customization_rate_limit(user_id_1)
+      end
+
+      # User 1 should be rate limited
+      assert {:error, :rate_limited, _message} =
+               RateLimiter.check_theme_customization_rate_limit(user_id_1)
+
+      # User 2 should still be allowed (different bucket)
+      assert :ok = RateLimiter.check_theme_customization_rate_limit(user_id_2)
+    end
+
+    test "rate limit resets after clearing bucket" do
+      user_id = 12_347
+
+      # Exhaust the limit
+      for _i <- 1..150 do
+        RateLimiter.check_theme_customization_rate_limit(user_id)
+      end
+
+      assert {:error, :rate_limited, _message} =
+               RateLimiter.check_theme_customization_rate_limit(user_id)
+
+      # Clear the bucket (simulating window expiry)
+      RateLimiter.clear_bucket("theme_customization:#{user_id}")
+
+      # Should work again
+      assert :ok = RateLimiter.check_theme_customization_rate_limit(user_id)
+    end
+
+    test "rejects nil user_id" do
+      assert {:error, :invalid_user_id} =
+               RateLimiter.check_theme_customization_rate_limit(nil)
+    end
+
+    test "rejects zero user_id" do
+      assert {:error, :invalid_user_id} =
+               RateLimiter.check_theme_customization_rate_limit(0)
+    end
+
+    test "rejects negative user_id" do
+      assert {:error, :invalid_user_id} =
+               RateLimiter.check_theme_customization_rate_limit(-1)
+
+      assert {:error, :invalid_user_id} =
+               RateLimiter.check_theme_customization_rate_limit(-999)
+    end
+
+    test "rejects non-integer user_id" do
+      assert {:error, :invalid_user_id} =
+               RateLimiter.check_theme_customization_rate_limit("123")
+
+      assert {:error, :invalid_user_id} =
+               RateLimiter.check_theme_customization_rate_limit(123.45)
+
+      assert {:error, :invalid_user_id} =
+               RateLimiter.check_theme_customization_rate_limit(%{id: 123})
+
+      assert {:error, :invalid_user_id} =
+               RateLimiter.check_theme_customization_rate_limit([123])
+    end
+
+    test "accepts valid positive integer user_ids" do
+      assert :ok = RateLimiter.check_theme_customization_rate_limit(1)
+      assert :ok = RateLimiter.check_theme_customization_rate_limit(999_999_999)
+      assert :ok = RateLimiter.check_theme_customization_rate_limit(9_999_999_999)
+    end
+
+    test "logs error for invalid user_id" do
+      import ExUnit.CaptureLog
+
+      log =
+        capture_log(fn ->
+          RateLimiter.check_theme_customization_rate_limit(nil)
+        end)
+
+      assert log =~ "Invalid user_id for rate limit"
+    end
+
+    test "logs warning when rate limit exceeded" do
+      import ExUnit.CaptureLog
+
+      user_id = 12_349
+
+      # Exhaust the limit
+      for _i <- 1..150 do
+        RateLimiter.check_theme_customization_rate_limit(user_id)
+      end
+
+      # Capture log when rate limit is exceeded
+      log =
+        capture_log(fn ->
+          RateLimiter.check_theme_customization_rate_limit(user_id)
+        end)
+
+      assert log =~ "Rate limit exceeded"
+    end
+  end
+
+  describe "concurrent access" do
+    test "denies every concurrent hit once the window is already full" do
+      user_id = 99_999
+
+      # Fill the window sequentially first. Hammer's lock-free ETS sliding
+      # window inserts a hit before it counts the window, so how many of a
+      # concurrent burst slip past the limit depends on how the inserts and
+      # reads interleave: asserting on that split asserts on the scheduler,
+      # and it does not hold on a CI runner. Past the limit there is no race
+      # left to lose, because every further hit is denied whichever order
+      # they land in.
+      for _i <- 1..150 do
+        assert :ok = RateLimiter.check_theme_customization_rate_limit(user_id)
+      end
+
+      results =
+        1..200
+        |> Enum.map(fn _i ->
+          Task.async(fn -> RateLimiter.check_theme_customization_rate_limit(user_id) end)
+        end)
+        |> Task.await_many(10_000)
+
+      # Every hit is accounted for, and none of them was let through.
+      assert length(results) == 200
+      assert Enum.reject(results, &match?({:error, :rate_limited, _message}, &1)) == []
+    end
+
+    test "multiple users can operate concurrently without interference" do
+      user_ids = [1000, 2000, 3000, 4000, 5000]
+
+      test_multiple_users_operate_independently(
+        user_ids,
+        100,
+        &RateLimiter.check_theme_customization_rate_limit/1
+      )
+
+      # Each user spent 100 of their own 150, so nobody was pushed over by the
+      # others' concurrent traffic and every bucket still has headroom.
+      for user_id <- user_ids do
+        assert :ok = RateLimiter.check_theme_customization_rate_limit(user_id)
+      end
+    end
+  end
+
+  describe "integration with check_with_logging helper" do
+    test "produces consistent error messages across different operations" do
+      user_id = 88_888
+
+      # Exhaust theme customization limit
+      for _i <- 1..150 do
+        RateLimiter.check_theme_customization_rate_limit(user_id)
+      end
+
+      {:error, :rate_limited, theme_message} =
+        RateLimiter.check_theme_customization_rate_limit(user_id)
+
+      # Exhaust meeting filter limit (different operation, same user)
+      for _i <- 1..100 do
+        RateLimiter.check_meeting_filter_rate_limit(user_id)
+      end
+
+      {:error, :rate_limited, filter_message} =
+        RateLimiter.check_meeting_filter_rate_limit(user_id)
+
+      # Both messages should follow the same format
+      assert theme_message =~ ~r/limit of \d+ .+ actions per \d+ minutes/
+      assert filter_message =~ ~r/limit of \d+ .+ actions per \d+ minutes/
+
+      # But should have different operation names
+      assert theme_message =~ "theme customization"
+      assert filter_message =~ "meeting filter"
+
+      # Both should say how long to wait, rather than only that one should
+      assert theme_message =~ ~r/Please try again in (a moment|1 minute|\d+ minutes)\./
+      assert filter_message =~ ~r/Please try again in (a moment|1 minute|\d+ minutes)\./
+    end
+  end
+end

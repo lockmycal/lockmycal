@@ -1,0 +1,348 @@
+// Every string this hook shows comes from a `data-*` attribute on the
+// container, translated server-side by `EmbedSettings.LivePreview`: the snippet
+// labels (`popupLabel`, `linkLabel`) in the embed's chosen language, the rest in
+// the dashboard's. Nothing user-facing is written here.
+export const EmbedPreview = {
+  mounted() {
+    this._cachedDataset = {};
+    this.ensureEmbedScript();
+    this.initEmbed();
+  },
+  updated() {
+    const { username, baseUrl, embedType, isReady, layout, locale, initialHeight, maxWidth } = this.el.dataset;
+    const prev = this._cachedDataset;
+
+    if (
+      username === prev.username &&
+      baseUrl === prev.baseUrl &&
+      embedType === prev.embedType &&
+      isReady === prev.isReady &&
+      layout === prev.layout &&
+      locale === prev.locale &&
+      initialHeight === prev.initialHeight &&
+      maxWidth === prev.maxWidth
+    ) {
+      return;
+    }
+
+    if (this._modalRetryInterval) {
+      clearInterval(this._modalRetryInterval);
+      this._modalRetryInterval = null;
+    }
+
+    this.initEmbed();
+  },
+  destroyed() {
+    if (this._modalRetryInterval) {
+      clearInterval(this._modalRetryInterval);
+    }
+  },
+  ensureEmbedScript() {
+    if (!window.TymeslotBooking && !document.getElementById('tymeslot-embed-script')) {
+      const { embedScriptUrl } = this.el.dataset;
+      if (!embedScriptUrl) return;
+
+      const script = document.createElement('script');
+      script.id = 'tymeslot-embed-script';
+      script.src = embedScriptUrl;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+  },
+  initEmbed() {
+    const { username, baseUrl, previewToken, embedType, isReady, layout, locale, initialHeight, maxWidth } = this.el.dataset;
+    this._cachedDataset = { username, baseUrl, embedType, isReady, layout, locale, initialHeight, maxWidth };
+    const effectiveBaseUrl = baseUrl || window.location.origin;
+    const ready = isReady === 'true';
+
+    const options = { layout, locale, initialHeight, maxWidth, previewToken };
+
+    // Clear container
+    this.el.innerHTML = '';
+
+    if (!ready) {
+      this.renderDeactivatedFallback();
+      return;
+    }
+
+    switch (embedType) {
+      case 'popup':
+        this.renderPopupPreview(username, effectiveBaseUrl, options);
+        break;
+      case 'link':
+        this.renderLinkPreview(username, effectiveBaseUrl, options);
+        break;
+      case 'floating':
+        this.renderFloatingPreview(username, effectiveBaseUrl, options);
+        break;
+      case 'inline':
+      default:
+        this.renderInlinePreview(username, effectiveBaseUrl, options);
+    }
+  },
+
+  renderDeactivatedFallback() {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'text-center p-8 w-full max-w-md mx-auto';
+    
+    wrapper.innerHTML = `
+      <div class="mb-4 bg-slate-200 rounded-lg p-6 opacity-60 grayscale">
+        <div class="h-4 bg-slate-300 rounded w-3/4 mx-auto mb-4"></div>
+        <div class="h-4 bg-slate-300 rounded w-1/2 mx-auto"></div>
+        <div class="mt-8 py-3 bg-slate-300 rounded-xl w-3/4 mx-auto"></div>
+      </div>
+      <p class="text-slate-500 text-sm font-medium italic"></p>
+    `;
+    wrapper.querySelector('p').textContent = this.el.dataset.deactivatedMessage || '';
+
+    this.el.appendChild(wrapper);
+  },
+
+  renderInlinePreview(username, baseUrl, options = {}) {
+    const iframe = this.createIframe(username, baseUrl, options);
+    this.el.appendChild(iframe);
+  },
+
+  renderPopupPreview(username, baseUrl, options = {}) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'text-center p-8 w-full';
+
+    const button = document.createElement('button');
+    button.textContent = this.el.dataset.popupLabel || '';
+    
+    const primaryColor = '#14b8a6';
+    // Determine text color based on background brightness
+    const textColor = this.getContrastColor(primaryColor);
+    
+    // Use inline styles to ensure visibility and override any dashboard leaks
+    button.style.cssText = `
+      display: inline-block;
+      padding: 12px 24px;
+      color: ${textColor} !important;
+      background-color: ${primaryColor};
+      font-weight: bold;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s ease;
+    `;
+    
+    button.onmouseover = () => { button.style.transform = 'scale(1.05)'; };
+    button.onmouseout = () => { button.style.transform = 'scale(1)'; };
+    
+    button.onclick = () => {
+      this.openModal(username, options);
+    };
+
+    const hint = document.createElement('p');
+    hint.textContent = this.el.dataset.popupHint || '';
+    hint.className = 'text-xs text-slate-400 mt-4';
+
+    wrapper.appendChild(button);
+    wrapper.appendChild(hint);
+    this.el.appendChild(wrapper);
+  },
+
+  openModal(username, options = {}) {
+    const modalOptions = this.buildOptionsForJs(options);
+    if (window.TymeslotBooking) {
+      window.TymeslotBooking.open(username, modalOptions);
+    } else {
+      // Retry for a moment if script is still loading
+      let retries = 0;
+      if (this._modalRetryInterval) clearInterval(this._modalRetryInterval);
+      this._modalRetryInterval = setInterval(() => {
+        if (window.TymeslotBooking) {
+          window.TymeslotBooking.open(username, modalOptions);
+          clearInterval(this._modalRetryInterval);
+          this._modalRetryInterval = null;
+        } else if (retries > 10) {
+          alert(this.el.dataset.loadingMessage || '');
+          clearInterval(this._modalRetryInterval);
+          this._modalRetryInterval = null;
+        }
+        retries++;
+      }, 200);
+    }
+  },
+
+  renderLinkPreview(username, baseUrl, options = {}) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'text-center p-8 w-full';
+
+    // A real <a href> here is a real, copyable URL: right-click "Copy link
+    // address" (or copying it back out of the new tab's address bar) hands a
+    // visitor a token-bearing preview link that silently simulates their
+    // booking for up to an hour, then fails closed; see the module-level
+    // note above renderLinkPreview's caller in initEmbed. Building the token
+    // URL only inside the click handler, on a <button> with no href, means
+    // there is nothing to copy short of reading the JS. The token-free URL an
+    // organiser is meant to hand out is built separately, by
+    // `Helpers.embed_code("link", …)`.
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = this.el.dataset.linkLabel || '';
+    button.className = 'text-primary-600 underline font-medium hover:text-primary-700 transition-colors cursor-pointer bg-transparent border-0 p-0';
+    button.onclick = () => {
+      const linkUrl = new URL(`/${encodeURIComponent(username)}`, baseUrl);
+      linkUrl.searchParams.set('preview', 'true');
+      if (options.previewToken) {
+        linkUrl.searchParams.set('preview_token', options.previewToken);
+      }
+      if (options.layout && options.layout !== 'default') {
+        linkUrl.searchParams.set('layout', options.layout);
+      }
+      if (options.locale) {
+        linkUrl.searchParams.set('locale', options.locale);
+      }
+      window.open(linkUrl.toString(), '_blank', 'noopener,noreferrer');
+    };
+
+    const hint = document.createElement('p');
+    hint.textContent = this.el.dataset.linkHint || '';
+    hint.className = 'text-xs text-slate-400 mt-4';
+
+    wrapper.appendChild(button);
+    wrapper.appendChild(hint);
+    this.el.appendChild(wrapper);
+  },
+
+  renderFloatingPreview(username, baseUrl, options = {}) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'relative w-full h-[400px] bg-white rounded-lg overflow-hidden border-2 border-slate-200';
+    
+    const primaryColor = '#14b8a6';
+    // Determine icon color based on background brightness
+    const iconColor = this.getContrastColor(primaryColor);
+    
+    // Mock website content
+    wrapper.innerHTML = `
+      <div class="p-6 space-y-4">
+        <div class="flex items-center space-x-2 mb-8">
+          <div class="w-8 h-8 bg-slate-200 rounded-full"></div>
+          <div class="h-4 bg-slate-200 rounded w-32"></div>
+        </div>
+        <div class="h-8 bg-slate-100 rounded w-3/4"></div>
+        <div class="h-4 bg-slate-50 rounded w-1/2"></div>
+        <div class="grid grid-cols-2 gap-4 mt-8">
+          <div class="h-32 bg-slate-50 rounded-xl"></div>
+          <div class="h-32 bg-slate-50 rounded-xl"></div>
+        </div>
+      </div>
+      <div class="absolute bottom-6 right-6">
+        <div class="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center cursor-pointer hover:scale-110 transition-transform active:scale-90" 
+             style="background-color: ${primaryColor}; color: ${iconColor}">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+        </div>
+      </div>
+    `;
+    
+    const button = wrapper.querySelector('div.absolute div');
+    button.onclick = () => {
+      this.openModal(username, options);
+    };
+
+    this.el.appendChild(wrapper);
+  },
+
+  createIframe(username, baseUrl, options = {}) {
+    const iframe = document.createElement('iframe');
+    const url = new URL(`/${encodeURIComponent(username)}`, baseUrl);
+    url.searchParams.set('preview', 'true');
+    // `?preview=true` is only the display claim; on its own it fails a
+    // submission closed as "Preview session expired". The signed, owner-bound
+    // token is the other half of the contract (see PreviewMode) and is what
+    // makes "Book Meeting" simulate rather than refuse.
+    if (options.previewToken) {
+      url.searchParams.set('preview_token', options.previewToken);
+    }
+    // Cache buster to force reload when settings change
+    url.searchParams.set('v', String(Date.now()));
+    // Mirror embed.js — the server defaults to :column whenever ?embed=1
+    // is present, so the preview matches what a real embed will render.
+    url.searchParams.set('embed', '1');
+
+    // When the picker says "default" we still emit ?layout=default so the
+    // server overrides its embed-mode column default with the centred view.
+    // Skip the param when no layout option is set at all.
+    if (options.layout) {
+      url.searchParams.set('layout', options.layout);
+    }
+    // Forced language for the preview; omitted for "Auto" so the booking page
+    // falls back to the visitor's browser preference.
+    if (options.locale) {
+      url.searchParams.set('locale', options.locale);
+    }
+
+    iframe.src = url.toString();
+    iframe.setAttribute('title', this.el.dataset.iframeTitle || '');
+    iframe.style.width = '100%';
+    iframe.style.height = (options.initialHeight ? options.initialHeight + 'px' : '100%');
+    iframe.style.minHeight = '400px';
+    iframe.style.maxWidth = options.maxWidth ? options.maxWidth + 'px' : '';
+    iframe.style.margin = '0 auto';
+    iframe.style.display = 'block';
+    iframe.style.border = 'none';
+    iframe.style.borderRadius = '8px';
+    return iframe;
+  },
+
+  // Maps the dataset values (strings) into the shape TymeslotBooking expects.
+  // Only includes layout if non-default and only includes maxWidth as a number.
+  //
+  // `previewToken` is what stops the Popup and Floating previews from booking
+  // for real. Unlike the Inline mode, they do not build their own iframe URL;
+  // embed.js does, and it drops anything it was not handed. Without the token
+  // the server sees an ordinary public booking page and persists the meeting,
+  // sends the confirmation email and creates the calendar event — a silent
+  // failure, because a simulated booking ends on the same confirmation screen.
+  buildOptionsForJs(options) {
+    const out = {};
+    if (options.layout && options.layout !== 'default') {
+      out.layout = options.layout;
+    }
+    if (options.locale) {
+      out.locale = options.locale;
+    }
+    if (options.maxWidth) {
+      const n = parseInt(options.maxWidth, 10);
+      if (Number.isFinite(n) && n > 0) out.maxWidth = n;
+    }
+    if (options.previewToken) {
+      out.previewToken = options.previewToken;
+      // A preview iframe never posts its height: iframe_embed.js bails out of
+      // embedded mode on `?preview=true` so the page renders standalone, the
+      // same way the Inline preview shows it. embed.js sizes its modal from
+      // those posted heights and otherwise leaves the wrapper at its 400px
+      // placeholder, which would crop the page to a letterbox. Open at the
+      // modal's own height cap instead, so the standalone render gets the whole
+      // box.
+      out.initialHeight = Math.max(window.innerHeight - 100, 200);
+    }
+    return out;
+  },
+
+  getContrastColor(hexcolor) {
+    // If no color provided, default to white text for the turquoise default
+    if (!hexcolor) return 'white';
+    
+    // Remove the # if present
+    const hex = hexcolor.replace('#', '');
+    
+    // Convert to RGB
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // Calculate brightness (YIQ formula)
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    
+    // Return black for light backgrounds, white for dark backgrounds
+    return (yiq >= 128) ? 'black' : 'white';
+  }
+};
+
+export default EmbedPreview;

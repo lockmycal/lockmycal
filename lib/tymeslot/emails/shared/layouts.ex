@@ -1,0 +1,117 @@
+defmodule Tymeslot.Emails.Shared.Layouts do
+  @moduledoc """
+  High-level MJML layouts for Tymeslot emails — 2026 redesign.
+
+  Two layouts:
+
+  - `transactional_layout/2` wraps content in the signature `MjmlEmail` frame,
+    which opens with an intent stage band and an organiser strip. Used by
+    meeting emails.
+  - `system_layout/2` wraps content in a system frame — a stage band with the
+    Tymeslot wordmark, a warm surface, and a hairline footer. Used by account
+    emails (verification, password reset, subscription, etc).
+
+  Both layouts require the caller to declare `:intent` and `:eyebrow`. There
+  is no inference and no default — the template knows what it is.
+  """
+
+  alias Tymeslot.Emails.Branding
+  alias Tymeslot.Emails.Shared.{Frame, MjmlEmail, Sanitise, Stage, Styles, Urls}
+  alias Tymeslot.Infrastructure.Config
+
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  @doc """
+  The transactional layout. `opts` is either a keyword list or a map of
+  organiser details (name, avatar_url, title, intent, eyebrow, stage_title,
+  stage_subtitle). `:intent` and `:eyebrow` are required.
+  """
+  @spec transactional_layout(String.t(), MjmlEmail.organizer_details() | keyword()) ::
+          String.t()
+  def transactional_layout(content, opts) do
+    organizer_details =
+      case opts do
+        list when is_list(list) -> Map.new(list)
+        map when is_map(map) -> map
+      end
+
+    MjmlEmail.base_mjml_template(content, organizer_details)
+  end
+
+  @doc """
+  The system layout — used for account emails with no per-organiser identity.
+
+  Required opts:
+  - `:intent` — the email's intent atom (`:confirmed`, `:alert`, `:cancelled`)
+  - `:eyebrow` — the short label shown above the stage title
+
+  Optional opts:
+  - `:title` — the HTML `<title>` (default: the configured brand name)
+  - `:preview` — the inbox preview text
+  - `:stage_title` — headline in the stage band (default: the `:title`)
+  - `:stage_subtitle` — optional supporting line
+  """
+  @spec system_layout(String.t(), keyword()) :: String.t()
+  def system_layout(content, opts) do
+    intent = fetch_required!(opts, :intent)
+    eyebrow = fetch_required!(opts, :eyebrow)
+    raw_title = Keyword.get(opts, :title, Branding.brand_name())
+    title = Sanitise.sanitize_for_email(raw_title)
+
+    preview =
+      opts
+      |> Keyword.get_lazy(:preview, fn ->
+        dgettext("emails", "Important notification from %{brand}", brand: Branding.brand_name())
+      end)
+      |> Sanitise.sanitize_for_email()
+
+    stage_title = Keyword.get(opts, :stage_title, raw_title)
+    stage_subtitle = Keyword.get(opts, :stage_subtitle)
+
+    Frame.wrap(%{
+      title: title,
+      preview: preview,
+      pre_card: MjmlEmail.logo_header(),
+      stage: Stage.stage_band(intent, eyebrow, stage_title, stage_subtitle),
+      header: "",
+      body: content,
+      footer: system_footer()
+    })
+  end
+
+  @spec fetch_required!(keyword(), atom()) :: term()
+  defp fetch_required!(opts, key) do
+    case Keyword.fetch(opts, key) do
+      {:ok, value} ->
+        value
+
+      :error ->
+        raise ArgumentError,
+              "Tymeslot.Emails.Shared.Layouts: missing required option `#{inspect(key)}`. " <>
+                "Email layouts do not infer intent — the template must declare it."
+    end
+  end
+
+  @spec system_footer() :: String.t()
+  defp system_footer do
+    """
+    <mj-section
+      background-color="#{Styles.canvas_soft()}"
+      border-radius="0 0 20px 20px"
+      padding="20px 28px"
+    >
+      <mj-column>
+        <mj-text
+          color="#{Styles.ink_muted()}"
+          font-size="12px"
+          align="center"
+          line-height="1.7"
+          letter-spacing="0.02em"
+        >
+          © #{Date.utc_today().year} <a href="#{Urls.get_app_url()}" class="wordmark" style="color: #{Styles.ink()}; text-decoration: none; font-weight: 800;">#{Config.app_name()}</a> · #{dgettext("emails", "scheduling that respects your time")}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    """
+  end
+end

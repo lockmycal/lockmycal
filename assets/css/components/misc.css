@@ -1,0 +1,26 @@
+/* ===================================
+   MISCELLANEOUS COMPONENTS
+   =================================== */
+
+/* Dashboard onboarding checklist — slow exit.
+   Applied by `phx-remove` (JS.transition) whenever LiveView removes the widget,
+   covering both manual dismissal (the × button) and auto-hide once every step is
+   done. The base transition drives the fade so the widget eases out before it is
+   removed from the DOM, matching the `time:` passed to JS.transition. */
+.onboarding-checklist {
+  transition:
+    opacity var(--duration-500) ease,
+    transform var(--duration-500) ease;
+}
+
+.onboarding-checklist.onboarding-checklist--leaving {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
+}
+
+/* Loading Spinner — backs the <.spinner> component. Sizing comes from the
+   component's `class` attr (default h-5 w-5); keeping it out of this
+   selector lets call sites override it with utility classes. */
+.spinner {
+  @apply animate-spin;
+}

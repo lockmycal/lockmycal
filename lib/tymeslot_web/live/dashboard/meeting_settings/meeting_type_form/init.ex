@@ -1,0 +1,377 @@
+defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.Init do
+  @moduledoc "Initialisation and form data building for MeetingTypeForm."
+
+  use Gettext, backend: TymeslotWeb.Gettext
+
+  alias Ecto.UUID
+  alias Phoenix.Component
+  alias Tymeslot.Availability.Schedules
+  alias Tymeslot.Features
+  alias Tymeslot.Integrations.Calendar
+  alias Tymeslot.MeetingPayments
+  alias Tymeslot.MeetingTypes
+  alias Tymeslot.MeetingTypes.LocationOption
+  alias Tymeslot.Profiles
+  alias Tymeslot.Utils.ReminderUtils
+  alias TymeslotWeb.CustomInputModeHelper
+
+  @doc """
+  Initialises the socket from the assigned meeting type on first render.
+
+  A no-op when the socket is already initialised (guarded by `:__initialized__`).
+  """
+  @spec maybe_initialize(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  def maybe_initialize(%{assigns: %{__initialized__: true}} = socket), do: socket
+
+  def maybe_initialize(%{assigns: assigns} = socket) do
+    type = Map.get(assigns, :type)
+
+    socket
+    |> Component.assign(:selected_icon, get_selected_icon(type))
+    |> Component.assign(:locations, get_locations(type))
+    |> Component.assign(
+      :selected_calendar_integration_id,
+      get_calendar_integration_id(type)
+    )
+    |> Component.assign(:selected_target_calendar_id, get_target_calendar_id(type))
+    |> Component.assign(:reminders, get_reminders(type))
+    |> assign_content_embeds(type)
+    |> Component.assign(:allow_guests, get_allow_guests(type))
+    |> Component.assign(:requires_approval, get_requires_approval(type))
+    |> Component.assign(:approval_window_hours, get_approval_window_hours(type))
+    |> Component.assign(:show_as_free, get_show_as_free(type))
+    |> Component.assign(:booking_limits, get_booking_limits(type))
+    |> Component.assign(
+      :selected_availability_schedule_id,
+      get_availability_schedule_id(type)
+    )
+    |> assign_availability_schedules(Map.get(assigns, :current_user))
+    |> assign_payment_state(type, Map.get(assigns, :current_user))
+    |> assign_calendar_state()
+    |> Component.assign(:form_data, build_form_data(type))
+    |> Component.assign(:custom_input_mode, initial_custom_input_mode(type))
+    |> Component.assign(:__initialized__, true)
+  end
+
+  # The meeting type's two `embeds_many` list assigns, grouped together since
+  # both feed the same "seed the socket from an existing record" step.
+  @spec assign_content_embeds(Phoenix.LiveView.Socket.t(), Ecto.Schema.t() | nil) ::
+          Phoenix.LiveView.Socket.t()
+  defp assign_content_embeds(socket, type) do
+    socket
+    |> Component.assign(:custom_fields, get_custom_fields(type))
+    |> Component.assign(:translations, get_translations(type))
+  end
+
+  # Everything the booking-destination picker needs about the integration the
+  # meeting type already points at: which calendars it may offer, whether it
+  # has none to offer, and whether the target already stored has since stopped
+  # accepting bookings. All three are left at their mount defaults while no
+  # integration is selected.
+  @spec assign_calendar_state(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  defp assign_calendar_state(%{assigns: %{selected_calendar_integration_id: nil}} = socket),
+    do: socket
+
+  defp assign_calendar_state(%{assigns: assigns} = socket) do
+    id = assigns.selected_calendar_integration_id
+    integrations = assigns.calendar_integrations
+
+    socket
+    |> Component.assign(:available_calendars, fetch_available_calendars(id, integrations))
+    |> Component.assign(:no_writable_calendars, all_selected_read_only?(id, integrations))
+    |> Component.assign(
+      :target_calendar_status,
+      target_calendar_status(id, assigns.selected_target_calendar_id, integrations)
+    )
+  end
+
+  @spec assign_availability_schedules(Phoenix.LiveView.Socket.t(), map() | nil) ::
+          Phoenix.LiveView.Socket.t()
+  defp assign_availability_schedules(socket, current_user) do
+    schedules = list_schedules(current_user)
+
+    socket
+    |> Component.assign(:schedules, schedules)
+    |> Component.assign(:default_schedule_name, default_schedule_name(schedules))
+  end
+
+  defp list_schedules(%{id: user_id}) do
+    case Profiles.get_profile(user_id) do
+      %{id: profile_id} -> Schedules.list_for_profile(profile_id)
+      _no_profile -> []
+    end
+  end
+
+  defp list_schedules(_current_user), do: []
+
+  defp default_schedule_name(schedules) do
+    case Enum.find(schedules, & &1.is_default) do
+      %{name: name} -> name
+      _no_default -> Schedules.default_schedule_name()
+    end
+  end
+
+  @spec assign_payment_state(
+          Phoenix.LiveView.Socket.t(),
+          Ecto.Schema.t() | nil,
+          map() | nil
+        ) :: Phoenix.LiveView.Socket.t()
+  defp assign_payment_state(socket, type, current_user) do
+    feature_enabled? = payments_feature_enabled?(current_user)
+    charges_enabled? = feature_enabled? and charges_enabled?(current_user)
+    currency = current_user |> user_id() |> MeetingPayments.host_currency()
+
+    socket
+    |> Component.assign(:payments_feature_enabled, feature_enabled?)
+    |> Component.assign(:payments_charges_enabled, charges_enabled?)
+    |> Component.assign(:payment_currency, currency)
+    |> Component.assign(
+      :payment_currency_minimum_cents,
+      MeetingPayments.currency_minimum_cents(currency)
+    )
+    |> Component.assign(:payment_required, get_payment_required(type))
+    |> Component.assign(:payment_price, get_payment_price(type))
+  end
+
+  defp payments_feature_enabled?(%{id: user_id}),
+    do: Features.meeting_payments_allowed?(user_id)
+
+  defp payments_feature_enabled?(_user), do: false
+
+  defp charges_enabled?(%{id: user_id}), do: MeetingPayments.charges_enabled_for_user?(user_id)
+  defp charges_enabled?(_user), do: false
+
+  defp user_id(%{id: user_id}), do: user_id
+  defp user_id(_user), do: nil
+
+  @spec get_payment_required(Ecto.Schema.t() | nil) :: boolean()
+  defp get_payment_required(%{payment_required: true}), do: true
+  defp get_payment_required(_type), do: false
+
+  @spec get_payment_price(Ecto.Schema.t() | nil) :: String.t()
+  defp get_payment_price(%{price_cents: cents}) when is_integer(cents) do
+    :erlang.float_to_binary(cents / 100, decimals: 2)
+  end
+
+  defp get_payment_price(_type), do: ""
+
+  @doc "Builds the initial form data map from an existing meeting type or nil."
+  @spec build_form_data(Ecto.Schema.t() | nil) :: map()
+  def build_form_data(nil) do
+    %{
+      "name" => "",
+      "duration" => "30",
+      "slot_interval" => "",
+      "description" => "",
+      "icon" => "none"
+    }
+  end
+
+  def build_form_data(type) do
+    %{
+      "name" => type.name || "",
+      "duration" => to_string(type.duration_minutes || 30),
+      "slot_interval" => slot_interval_form_value(type.slot_interval_minutes),
+      "description" => type.description || "",
+      "icon" => type.icon || "none"
+    }
+  end
+
+  @spec get_requires_approval(Ecto.Schema.t() | nil) :: boolean()
+  defp get_requires_approval(%{requires_approval: true}), do: true
+  defp get_requires_approval(_type), do: false
+
+  # Nil is meaningful and is not replaced with the default here: the form shows
+  # the default as a placeholder so a host can see what blank means without the
+  # value being written into their meeting type.
+  @spec get_approval_window_hours(Ecto.Schema.t() | nil) :: pos_integer() | nil
+  defp get_approval_window_hours(%{approval_window_hours: hours}) when is_integer(hours),
+    do: hours
+
+  defp get_approval_window_hours(_type), do: nil
+
+  # nil means "use the meeting type's own duration"; represented as a blank
+  # string so the form's "same as meeting length" option is selected.
+  defp slot_interval_form_value(nil), do: ""
+  defp slot_interval_form_value(minutes), do: to_string(minutes)
+
+  # An interval the dropdown does not offer — written by a seed, an import or a
+  # support fix — opens the custom input straight away, so the organiser can
+  # see and edit the value that is actually in force rather than a nearest
+  # offered approximation of it.
+  defp initial_custom_input_mode(%{slot_interval_minutes: minutes}) when is_integer(minutes) do
+    Map.put(
+      CustomInputModeHelper.default_custom_mode(),
+      :slot_interval_minutes,
+      not CustomInputModeHelper.preset_value?(:slot_interval_minutes, minutes)
+    )
+  end
+
+  defp initial_custom_input_mode(_type), do: CustomInputModeHelper.default_custom_mode()
+
+  @doc "Returns whether guests are allowed for an existing meeting type."
+  @spec get_allow_guests(Ecto.Schema.t() | nil) :: boolean()
+  def get_allow_guests(%{allow_guests: true}), do: true
+  def get_allow_guests(_type), do: false
+
+  @spec get_show_as_free(Ecto.Schema.t() | nil) :: boolean()
+  defp get_show_as_free(%{show_as_free: true}), do: true
+  defp get_show_as_free(_type), do: false
+
+  @doc """
+  Returns the booking-limit values for an existing meeting type, keyed by
+  their form param names. `nil` values mean no limit.
+  """
+  @spec get_booking_limits(Ecto.Schema.t() | nil) :: map()
+  def get_booking_limits(nil) do
+    %{
+      "max_bookings_per_day" => nil,
+      "max_bookings_per_week" => nil,
+      "max_bookings_per_month" => nil
+    }
+  end
+
+  def get_booking_limits(type) do
+    %{
+      "max_bookings_per_day" => type.max_bookings_per_day,
+      "max_bookings_per_week" => type.max_bookings_per_week,
+      "max_bookings_per_month" => type.max_bookings_per_month
+    }
+  end
+
+  @doc "Returns the selected icon for a meeting type, or `\"none\"` when absent."
+  @spec get_selected_icon(Ecto.Schema.t() | nil) :: String.t()
+  def get_selected_icon(nil), do: "none"
+  def get_selected_icon(%{icon: icon}) when is_binary(icon) and icon != "", do: icon
+  def get_selected_icon(_arg), do: "none"
+
+  @doc """
+  Returns the meeting type's locations, in the host's order.
+
+  A new meeting type opens on one in-person location rather than an empty
+  list: the schema requires at least one, so an empty editor would be a form
+  the host cannot submit until they notice why.
+  """
+  @spec get_locations(Ecto.Schema.t() | nil) :: [LocationOption.t()]
+  def get_locations(nil), do: [default_location()]
+
+  def get_locations(type) do
+    case MeetingTypes.location_options(type) do
+      [] -> [default_location()]
+      locations -> locations
+    end
+  end
+
+  defp default_location do
+    %LocationOption{
+      id: UUID.generate(),
+      kind: "in_person",
+      label: dgettext("dashboard_meeting_form", "In person"),
+      position: 0
+    }
+  end
+
+  @doc "Returns the calendar integration id for a meeting type, or nil."
+  @spec get_calendar_integration_id(Ecto.Schema.t() | nil) :: integer() | nil
+  def get_calendar_integration_id(nil), do: nil
+  def get_calendar_integration_id(%{calendar_integration_id: nil}), do: nil
+  def get_calendar_integration_id(%{calendar_integration_id: id}), do: id
+
+  # nil means the meeting type follows the profile's default schedule.
+  @spec get_availability_schedule_id(Ecto.Schema.t() | nil) :: integer() | nil
+  defp get_availability_schedule_id(nil), do: nil
+  defp get_availability_schedule_id(%{availability_schedule_id: nil}), do: nil
+  defp get_availability_schedule_id(%{availability_schedule_id: id}), do: id
+
+  @doc "Returns the target calendar id for a meeting type, or nil."
+  @spec get_target_calendar_id(Ecto.Schema.t() | nil) :: String.t() | nil
+  def get_target_calendar_id(nil), do: nil
+  def get_target_calendar_id(%{target_calendar_id: nil}), do: nil
+  def get_target_calendar_id(%{target_calendar_id: id}), do: id
+
+  @doc """
+  Fetches the calendars the user may pick as the meeting type's target.
+
+  Only calendars the user has marked `selected: true` **and** that are
+  writable are returned (see `Tymeslot.Integrations.Calendar.writable_calendars/1`):
+  deselected calendars must not appear here, since the integration-level
+  toggle is the single source of truth for which calendars the app may
+  write to or read from, and read-only calendars can never accept a new
+  booking regardless of selection state.
+  """
+  @spec fetch_available_calendars(integer(), list()) :: list()
+  def fetch_available_calendars(integration_id, integrations) do
+    case find_integration(integrations, integration_id) do
+      nil -> []
+      integration -> Calendar.writable_calendars(integration.calendar_list)
+    end
+  end
+
+  @doc """
+  Returns whether the integration has calendars selected but none of them
+  writable, so the picker built from `fetch_available_calendars/2` renders
+  empty even though the user has calendars enabled for this account. See
+  `Tymeslot.Integrations.Calendar.all_selected_read_only?/1`.
+  """
+  @spec all_selected_read_only?(integer(), list()) :: boolean()
+  def all_selected_read_only?(integration_id, integrations) do
+    case find_integration(integrations, integration_id) do
+      nil -> false
+      integration -> Calendar.all_selected_read_only?(integration.calendar_list)
+    end
+  end
+
+  @doc """
+  Reports whether the target calendar already on the meeting type can still
+  take a booking, so the editor can say so above a picker that would
+  otherwise just show nothing selected. See
+  `Tymeslot.MeetingTypes.target_calendar_status/2`.
+  """
+  @spec target_calendar_status(integer(), String.t() | nil, list()) ::
+          MeetingTypes.target_calendar_status()
+  def target_calendar_status(integration_id, target_calendar_id, integrations) do
+    case find_integration(integrations, integration_id) do
+      nil ->
+        :ok
+
+      integration ->
+        MeetingTypes.target_calendar_status(integration.calendar_list, target_calendar_id)
+    end
+  end
+
+  defp find_integration(integrations, integration_id) do
+    Enum.find(integrations, &(&1.id == integration_id))
+  end
+
+  @doc "Returns the normalised reminders list for a meeting type."
+  @spec get_reminders(Ecto.Schema.t() | nil) :: list()
+  def get_reminders(nil), do: [%{value: 30, unit: "minutes"}]
+
+  def get_reminders(%{reminder_config: reminders}) when is_list(reminders) do
+    Enum.flat_map(reminders, fn r ->
+      case ReminderUtils.normalize_reminder(r) do
+        {:ok, reminder} -> [reminder]
+        _other -> []
+      end
+    end)
+  end
+
+  def get_reminders(_arg), do: [%{value: 30, unit: "minutes"}]
+
+  @spec get_custom_fields(Ecto.Schema.t() | nil) :: list()
+  defp get_custom_fields(nil), do: []
+
+  defp get_custom_fields(%{custom_fields: fields}) when is_list(fields) do
+    Enum.sort_by(fields, & &1.position)
+  end
+
+  defp get_custom_fields(_arg), do: []
+
+  @spec get_translations(Ecto.Schema.t() | nil) :: list()
+  defp get_translations(nil), do: []
+
+  defp get_translations(%{translations: translations}) when is_list(translations),
+    do: translations
+
+  defp get_translations(_arg), do: []
+end

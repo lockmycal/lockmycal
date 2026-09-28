@@ -1,0 +1,26 @@
+/* Schedule Card Header — the header row of the schedule step (title area plus
+   the timezone slot and the month navigation buttons). The timezone selector
+   lives in timezone.css; the .calendar-nav-button styling lives in calendar.css.
+   Container context: .glass-morphism-card (container-name: scheduling). */
+
+/* ===== Base Styles ===== */
+
+.schedule-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.schedule-timezone-area {
+  flex-shrink: 0;
+}
+
+/* ===== Embedded ===== */
+
+/* Stacking context for the timezone dropdown's z-index in iframes. */
+html.quill-theme[data-embedded] .schedule-card-header {
+  position: relative;
+  z-index: 10;
+}

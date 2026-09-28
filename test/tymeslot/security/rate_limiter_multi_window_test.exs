@@ -1,0 +1,115 @@
+defmodule Tymeslot.Security.RateLimiterMultiWindowTest do
+  use Tymeslot.DataCase, async: false
+  @moduletag :security
+
+  alias Tymeslot.Security.AccountLockout
+  alias Tymeslot.Security.RateLimiter
+
+  describe "signup multi-window limits (email + IP)" do
+    test "blocks after 5 attempts in 10 minutes and IP bucket applies across emails" do
+      ip = "203.0.113.10"
+      email1 = "user1@example.com"
+      email2 = "user2@example.com"
+
+      # 5 attempts allowed
+      assert :ok = RateLimiter.check_signup_rate_limit(email1, ip)
+      assert :ok = RateLimiter.check_signup_rate_limit(email1, ip)
+      assert :ok = RateLimiter.check_signup_rate_limit(email1, ip)
+      assert :ok = RateLimiter.check_signup_rate_limit(email1, ip)
+      assert :ok = RateLimiter.check_signup_rate_limit(email1, ip)
+
+      # 6th attempt with same email/ip hits 10m limit
+      assert {:error, :rate_limited, _msg} = RateLimiter.check_signup_rate_limit(email1, ip)
+
+      # Different email but same IP should still be blocked by IP bucket
+      assert {:error, :rate_limited, _msg} = RateLimiter.check_signup_rate_limit(email2, ip)
+    end
+  end
+
+  describe "verification resend multi-window limits (user + IP)" do
+    test "blocks after 5 attempts in 1 hour" do
+      user_id = "user-123"
+      ip = "198.51.100.7"
+
+      Enum.each(1..5, fn _i ->
+        assert :ok = RateLimiter.check_verification_rate_limit(user_id, ip)
+      end)
+
+      assert {:error, :rate_limited, _msg} =
+               RateLimiter.check_verification_rate_limit(user_id, ip)
+    end
+  end
+
+  describe "password reset multi-window limits (email + IP)" do
+    test "blocks after 5 attempts in 1 hour" do
+      email = "reset@example.com"
+      ip = "192.0.2.44"
+
+      Enum.each(1..5, fn _i ->
+        assert :ok = RateLimiter.check_password_reset_rate_limit(email, ip)
+      end)
+
+      assert {:error, :rate_limited, _msg} =
+               RateLimiter.check_password_reset_rate_limit(email, ip)
+    end
+
+    test "normalizes nil IPs for password reset buckets" do
+      email = "reset-nil@example.com"
+
+      Enum.each(1..5, fn _i ->
+        assert :ok = RateLimiter.check_password_reset_rate_limit(email, nil)
+      end)
+
+      assert {:error, :rate_limited, _msg} =
+               RateLimiter.check_password_reset_rate_limit(email, nil)
+    end
+  end
+
+  describe "AccountLockout — concurrent write safety" do
+    test "all concurrent failed attempts are counted (no lost updates)" do
+      email = "concurrent-lockout@example.com"
+      n = 20
+
+      tasks =
+        for _i <- 1..n do
+          Task.async(fn -> AccountLockout.check_and_record_attempt(email, false) end)
+        end
+
+      Task.await_many(tasks, 10_000)
+
+      assert AccountLockout.get_failed_attempt_count(email) == n
+    end
+  end
+
+  describe "booking recipient multi-window limits (per attendee email)" do
+    test "blocks after 5 bookings to one mailbox within the hour" do
+      email = "victim@example.com"
+
+      Enum.each(1..5, fn _i ->
+        assert :ok = RateLimiter.check_booking_recipient_limit(email)
+      end)
+
+      assert {:error, :rate_limited, _msg} = RateLimiter.check_booking_recipient_limit(email)
+    end
+
+    test "the bucket is per-recipient — a different mailbox is unaffected" do
+      bombed = "bombed@example.com"
+      other = "other-recipient@example.com"
+
+      Enum.each(1..6, fn _i -> RateLimiter.check_booking_recipient_limit(bombed) end)
+
+      assert {:error, :rate_limited, _msg} = RateLimiter.check_booking_recipient_limit(bombed)
+      assert :ok = RateLimiter.check_booking_recipient_limit(other)
+    end
+
+    test "case and whitespace variants of an address share one bucket" do
+      Enum.each(1..5, fn _i ->
+        assert :ok = RateLimiter.check_booking_recipient_limit("Mixed.Case@Example.com")
+      end)
+
+      # A padded, lower-cased variant must not get a fresh allowance.
+      assert {:error, :rate_limited, _msg} =
+               RateLimiter.check_booking_recipient_limit("  mixed.case@example.com  ")
+    end
+  end
+end

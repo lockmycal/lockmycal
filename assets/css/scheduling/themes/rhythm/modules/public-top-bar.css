@@ -1,0 +1,104 @@
+/* Public top bar — shared between the Rhythm booking flow
+   (Rhythm.Scheduling.Wrapper) and any other public-facing Rhythm page that
+   renders TymeslotWeb.Components.PublicTopBar: the Tymeslot brand mark on the
+   left, the language switcher on the right. Same markup/class names as the
+   Quill theme's modules/public-top-bar.css (both come from the one shared
+   component), but skinned with Rhythm's own dark-surface tokens — a solid
+   rgba(0, 0, 0, …) surface, no backdrop blur — to match the rest of this
+   theme's chrome (see .language-switcher-button-rhythm /
+   .language-dropdown-rhythm in language-switcher.css) rather than Quill's
+   glass-blur gradient, which Rhythm doesn't use elsewhere. */
+
+.public-top-bar-wrapper {
+  /* Elevate above the page's cards below it (booking-form-card etc.) so an
+     open language dropdown never gets painted over by later, equally
+     unelevated content — see the matching comment in Quill's
+     modules/public-top-bar.css, which this mirrors. */
+  position: relative;
+  z-index: var(--z-dropdown);
+  /* .content-area (base.css) centers its other flex child, .scheduling-box,
+     via align-items: safe center — opt this one out so it stretches to the
+     full (now-unpadded) width of .content-area instead, giving the edge-to-edge
+     bar Quill's .content-area gets for free from its default align-items: stretch. */
+  align-self: stretch;
+}
+
+/* Flat, full-width bar — matches the dashboard's `.brand-nav` shape (no
+   rounded corners, a themed bottom border instead of one running all the
+   way round, a light shadow) instead of the glass "floating card" look used
+   elsewhere in this theme. Colour still comes from the theme's own tokens
+   (`--theme-primary`, customizable per organizer via `@custom_css` in
+   rhythm/scheduling/wrapper.ex), not the dashboard's fixed palette. */
+.public-top-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-lg);
+  background: rgba(0, 0, 0, 0.6);
+  border-bottom: var(--border-width-thin) solid var(--theme-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.public-top-bar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+/* Unlike Quill's language-switcher.css, Rhythm's never gives the bare
+   `.language-switcher` element its own `position: fixed`/`absolute` rule —
+   it was always positioned by the now-removed `.language-switcher-container`
+   wrapper instead — so there's no fixed-positioning override to neutralise
+   here; `.language-switcher` stays a normal flex child at every width. */
+
+.public-top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* Links and the language switcher trigger share one height so the row
+   lines up; the switcher is a touch taller than its standalone default. */
+.public-top-bar-link,
+.public-top-bar [class*="language-switcher-button-"] {
+  min-height: 2.75rem;
+  box-sizing: border-box;
+}
+
+.public-top-bar-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-md);
+  border: var(--border-width-thin) solid transparent;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.public-top-bar-link:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Reverse (outlined) style: transparent fill, visible border. */
+.public-top-bar-link-outline {
+  border-color: var(--border-medium);
+}
+
+.public-top-bar-link-primary {
+  background: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+@media (max-width: 640px) {
+  .public-top-bar-link {
+    padding: 0 var(--space-sm);
+    font-size: 0.8125rem;
+  }
+}

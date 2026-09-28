@@ -1,0 +1,98 @@
+defmodule TymeslotWeb.Helpers.OAuthStateGuard do
+  @moduledoc """
+  Enforces that the user embedded in a signed OAuth `state` parameter matches
+  the currently authenticated session user.
+
+  Without this guard an attacker could initiate an OAuth flow on their own
+  account (producing a signed state carrying the attacker's `user_id`), then
+  trick an authenticated victim into completing the callback with a `code`
+  issued for the victim's Google/Microsoft account — binding the victim's
+  calendar/video account to the attacker's Tymeslot user.
+  """
+
+  require Logger
+
+  alias Tymeslot.Integrations.Common.OAuth.State
+  alias Tymeslot.Integrations.Google.GoogleOAuthHelper
+  alias Tymeslot.Integrations.Shared.{MicrosoftConfig, ZoomConfig}
+
+  @type provider :: :google | :outlook | :zoom
+  @type failure_reason :: :invalid_state | :unauthenticated | :state_user_mismatch
+
+  @sensitive_callback_keys ~w(code state id_token)
+
+  # The domain modules that own each provider's state secret; the guard must
+  # verify against exactly the secret the provider's helper signed with.
+  @secret_sources %{google: GoogleOAuthHelper, outlook: MicrosoftConfig, zoom: ZoomConfig}
+
+  @doc """
+  Drops sensitive OAuth callback parameters from a map before logging.
+
+  This is the canonical sensitive-params filter for OAuth callback logs. Both
+  the calendar and video OAuth controllers use this function when logging
+  unexpected or malformed callback parameter maps.
+  """
+  @spec redact_callback_params(map() | any()) :: map() | any()
+  def redact_callback_params(params) when is_map(params),
+    do: Map.drop(params, @sensitive_callback_keys)
+
+  def redact_callback_params(other), do: other
+
+  @doc """
+  Validates `state` and checks it was issued to the signed-in user.
+
+  Returns the validated state, so callers read anything embedded in it (such as
+  `return_to`) only once it is known to be authentic.
+  """
+  @spec enforce_user_match(Plug.Conn.t(), any(), provider()) ::
+          {:ok, State.validated()} | {:error, failure_reason()}
+  def enforce_user_match(conn, state, provider)
+      when is_binary(state) and provider in [:google, :outlook, :zoom] do
+    case State.validate(state, provider_secret(provider)) do
+      {:ok, %{user_id: state_user_id} = validated} ->
+        with :ok <- check_current_user(conn, state_user_id, provider), do: {:ok, validated}
+
+      {:error, reason} ->
+        Logger.warning("OAuth callback rejected: invalid or tampered state",
+          provider: provider,
+          reason: inspect(reason)
+        )
+
+        {:error, :invalid_state}
+    end
+  end
+
+  def enforce_user_match(_conn, _state, provider) when provider in [:google, :outlook, :zoom] do
+    Logger.warning("OAuth callback rejected: state parameter missing or non-binary",
+      provider: provider
+    )
+
+    {:error, :invalid_state}
+  end
+
+  defp check_current_user(conn, state_user_id, provider) do
+    case conn.assigns[:current_user] do
+      %{id: ^state_user_id} ->
+        :ok
+
+      %{id: current_id} ->
+        Logger.warning("OAuth callback rejected: state/session user mismatch",
+          provider: provider,
+          state_user_id: state_user_id,
+          current_user_id: current_id
+        )
+
+        {:error, :state_user_mismatch}
+
+      _unauthenticated ->
+        Logger.warning("OAuth callback rejected: no authenticated session",
+          provider: provider,
+          state_user_id: state_user_id
+        )
+
+        {:error, :unauthenticated}
+    end
+  end
+
+  defp provider_secret(provider), do: Map.fetch!(@secret_sources, provider).state_secret()
+end

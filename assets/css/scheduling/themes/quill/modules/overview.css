@@ -1,0 +1,333 @@
+/* Overview - Organizer profile, duration cards, and overview layout */
+
+/* Overview Component Styles */
+.overview-success-badge {
+  background: linear-gradient(135deg, var(--theme-primary-solid) 0%, var(--theme-primary-solid-hover) 100%);
+  color: var(--theme-on-primary);
+}
+
+/* ===== Base Styles ===== */
+/* Semantic classes that replace the responsive Tailwind prefixes the
+   overview_component used to carry; width adaptations are @container queries below. */
+
+/* overview-content-area: replaces px-4 py-2 md:py-4 */
+.overview-content-area {
+  padding: var(--space-xs) var(--space-md);
+}
+
+/* The overview box sizes to the number of meeting types rather than always
+   sprawling full-width. With one or two it matches the schedule/booking box
+   width (--container-lg, the same cap the calendar card uses on ultra-wide — see
+   glass-card.css) and the meeting types read as a single stacked column, so
+   slide 1 has the same footprint as the calendar slide instead of a shrunken
+   one. As more meeting types are added the box grows in tiers (the :has quantity
+   queries below), giving the grid room to tile several across. Scoped to the
+   overview via :has so other steps (which the same .container wraps) keep their
+   own width caps.
+
+   At this width the container query that drives tiling (640px) is already met,
+   so the single-vs-multi-column switch is gated on card count instead: the grid
+   only tiles once a third card appears (see the @container rule below). */
+.container:has(.overview-content-area) {
+  max-width: var(--container-lg);
+}
+
+/* Three or four meeting types: widen enough for the grid to tile a couple of
+   columns across. */
+.container:has(.overview-duration-list .duration-card:nth-child(3)) {
+  max-width: var(--container-xl);
+}
+
+/* Five or more: grow to full width, tiling as many cards across as fit. Bounded
+   at 1536px so it never sprawls edge-to-edge on ultra-wide monitors. */
+.container:has(.overview-duration-list .duration-card:nth-child(5)) {
+  max-width: 1536px;
+}
+
+/* The glass card fills whatever width the container caps above allow — it would
+   otherwise be centred at --container-lg on ultra-wide screens (see
+   glass-card.css), too narrow once the overview widens to tile. The more
+   specific selector wins over that min-width:1440px cap, leaving the container
+   caps as the single source of the overview's width. */
+.overview-content-area .glass-morphism-card {
+  max-width: 100%;
+}
+
+/* overview-card-body: replaces p-3 sm:p-6 md:p-8 lg:p-10 */
+.overview-card-body {
+  padding: var(--space-sm);
+}
+
+/* overview-layout: compact default — avatar floated left with text wrapping
+   beside it.  Upgrades to a 2-col grid at 768px via container query below. */
+.overview-layout {
+  display: block;
+}
+
+.overview-layout::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* overview-avatar-section: float left at small sizes */
+.overview-avatar-section {
+  float: left;
+  margin: 0 var(--space-md) var(--space-xs) 0;
+  text-align: left;
+}
+
+/* overview-avatar-wrapper: replaces inline-block mx-auto md:mx-0 */
+.overview-avatar-wrapper {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* overview-avatar: a compact header element at every size. Uses the fluid
+   --avatar-size-lg token (clamp 96–128px, scaling with container width) so the
+   photo never grows to dominate the content box. */
+.overview-avatar {
+  width: var(--avatar-size-lg);
+  height: var(--avatar-size-lg);
+}
+
+/* overview-success-badge positioning: compact default */
+.overview-success-badge {
+  bottom: calc(-1 * var(--space-3xs));
+  right: calc(-1 * var(--space-3xs));
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+/* overview-success-badge-emoji: compact default */
+.overview-success-badge-emoji {
+  font-size: 14px;
+}
+
+/* overview-title: left-aligned at compact size, centered at 768px+ */
+.overview-title {
+  font-size: var(--theme-font-size-xl);
+  text-align: left;
+}
+
+/* overview-description: left-aligned at compact size */
+.overview-description {
+  font-size: var(--theme-font-size-sm);
+  margin-bottom: var(--space-sm);
+  text-align: left;
+}
+
+/* overview-full-calendar-link: secondary link to the public read-only month
+   view (see TymeslotWeb.Public.CalendarLive), so a visitor can browse the
+   organiser's availability before committing to a duration. Reuses the same
+   .action-button secondary skin and .calendar-download-icon sizing as the
+   confirmation step's "Add to calendar" link. */
+.overview-full-calendar-link {
+  gap: var(--space-2xs);
+  margin-bottom: var(--space-md);
+}
+
+/* overview-duration-list: a single full-width column by default (narrow/mobile).
+   It becomes a multi-column card grid once the card is wide enough to tile — see
+   the @container rule below. Descriptions show in both layouts; they collapse
+   only when vertical space is tight (short-viewport rule at the bottom of this
+   file). The clear drops the list below the floated avatar header. */
+.overview-duration-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xs);
+  align-content: start;
+  clear: both;
+}
+
+/* overview-next-action: replaces mt-4 md:mt-8 */
+.overview-next-action {
+  margin-top: var(--space-md);
+}
+
+/* duration-card: replaces p-2.5 sm:p-3 md:p-5 */
+.duration-card {
+  padding: var(--space-sm);
+}
+
+/* Duration card states */
+.duration-card--selected {
+  background: linear-gradient(135deg, var(--theme-primary-solid) 0%, var(--theme-primary-solid-hover) 100%);
+  color: var(--theme-on-primary);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--theme-primary) 40%, transparent);
+  border: var(--border-width-medium) solid var(--theme-primary);
+}
+
+.duration-card--unselected {
+  background: var(--surface-medium);
+  border: var(--border-width-medium) solid var(--border-medium);
+}
+
+.duration-card--unselected:hover {
+  background: var(--surface-strong);
+  border-color: var(--border-strong);
+}
+
+.duration-card--selected .duration-card-description {
+  color: var(--text-opacity-medium-high);
+}
+
+.duration-card-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-opacity-high);
+  backdrop-filter: blur(10px);
+}
+
+/* duration-card-title: replaces text-base sm:text-lg md:text-xl */
+.duration-card-title {
+  font-size: var(--theme-font-size-base);
+  color: var(--text-opacity-high);
+}
+
+/* duration-card-description: replaces text-xs sm:text-sm md:text-base */
+.duration-card-description {
+  font-size: var(--theme-font-size-xs);
+  color: var(--text-opacity-medium-low);
+}
+
+/* duration-card-icon: replaces w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 */
+.duration-card-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* duration-card-emoji: replaces text-xl sm:text-2xl md:text-3xl */
+.duration-card-emoji {
+  font-size: var(--theme-font-size-xl);
+}
+
+@container scheduling (min-width: 640px) {
+  .overview-card-body {
+    padding: var(--space-lg);
+  }
+
+  /* Three or more meeting types: lay them across in as many columns as fit
+     (auto-fill). With only one or two the list stays a single stacked column
+     even though the box is wide — gating on the third card keeps the default
+     two-type slide reading as a calendar-width column rather than splitting.
+     Descriptions stay visible here — a laptop has the vertical room for them, and
+     grid rows align to the tallest card so uneven text lengths don't break the
+     layout. They're only collapsed when vertical space is tight (see the
+     short-viewport rule at the bottom of this file). */
+  .overview-duration-list:has(.duration-card:nth-child(3)) {
+    grid-template-columns: repeat(auto-fill, minmax(var(--container-xs), 1fr));
+  }
+
+  .overview-title {
+    font-size: var(--theme-font-size-2xl);
+  }
+
+  .overview-description {
+    font-size: var(--theme-font-size-base);
+    margin-bottom: var(--space-md);
+  }
+
+  .duration-card {
+    padding: var(--space-sm);
+  }
+
+  .duration-card-title {
+    font-size: var(--theme-font-size-lg);
+  }
+
+  .duration-card-description {
+    font-size: var(--theme-font-size-sm);
+  }
+
+  .duration-card-icon {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .duration-card-emoji {
+    font-size: var(--theme-font-size-2xl);
+  }
+}
+
+@container scheduling (min-width: 768px) {
+  .overview-content-area {
+    padding: var(--space-md) var(--space-md);
+  }
+
+  .overview-card-body {
+    padding: var(--space-2xl);
+  }
+
+  /* The avatar stays a compact floated header at every size (see base rules);
+     wide containers only grow the typography and card padding, never switch to
+     a photo-dominated 2-column split. */
+  .overview-title {
+    font-size: var(--theme-font-size-3xl);
+    text-align: left;
+  }
+
+  .overview-description {
+    font-size: var(--theme-font-size-lg);
+    margin-bottom: var(--space-lg);
+    text-align: left;
+  }
+
+  .overview-duration-list {
+    gap: var(--space-md);
+  }
+
+  .overview-next-action {
+    margin-top: var(--space-2xl);
+  }
+
+  .duration-card {
+    padding: var(--space-lg);
+  }
+
+  .duration-card-title {
+    font-size: var(--theme-font-size-xl);
+  }
+
+  .duration-card-description {
+    font-size: var(--theme-font-size-base);
+  }
+
+  .duration-card-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .duration-card-emoji {
+    font-size: var(--theme-font-size-3xl);
+  }
+}
+
+@container scheduling (min-width: 1024px) {
+  .overview-card-body {
+    padding: var(--space-3xl);
+  }
+
+  .overview-title {
+    font-size: var(--theme-font-size-4xl);
+  }
+
+  .overview-description {
+    font-size: var(--theme-font-size-xl);
+  }
+}
+
+/* ===== Short-viewport fitting ===== */
+/* When vertical space is tight (short windows, embedded iframes), collapse the
+   meeting-type descriptions so the compact card grid fits more rows without
+   scrolling. The text is kept in the DOM and the accessibility tree — only
+   visually collapsed — so the name + duration carry the choice while screen
+   readers still reach the full description. Tall viewports keep descriptions.
+   (The card grid and the wider box apply at every height — see the base rules.) */
+@media (max-height: 600px) {
+  .duration-card-description {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+  }
+}
+

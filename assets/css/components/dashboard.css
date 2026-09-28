@@ -1,0 +1,607 @@
+/* ===================================
+   DASHBOARD COMPONENTS
+   =================================== */
+
+/* Section Header */
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.section-icon {
+  width: 2rem;
+  height: 2rem;
+  margin-right: 0.75rem;
+  color: var(--color-text-glass-secondary);
+}
+
+.page-title {
+  @apply text-4xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight;
+}
+
+/* Integration Card Components */
+.integration-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.integration-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.integration-details {
+  flex: 1;
+}
+
+.integration-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.integration-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-glass-primary);
+}
+
+.status-badge {
+  @apply px-3 py-1 text-xs font-black rounded-full uppercase tracking-wider;
+}
+
+.status-badge--active {
+  @apply bg-emerald-100 text-emerald-700 border border-emerald-200;
+}
+
+.status-badge--inactive {
+  @apply bg-neutral-100 text-neutral-500 border border-neutral-300;
+}
+
+.integration-provider {
+  font-size: 0.875rem;
+  color: var(--color-text-glass-secondary);
+}
+
+/* Status Toggle */
+.status-toggle {
+  position: relative;
+  display: inline-flex;
+  height: 1.5rem;
+  width: 2.75rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 9999px;
+  border: 2px solid;
+  transition: all 0.2s ease-in-out;
+  outline: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Higher specificity than the base rule's `cursor: pointer` (the
+   `disabled_class/1` "cursor-not-allowed" utility class alone loses that
+   cascade fight, since both are single-class selectors and this component
+   rule is emitted later in the stylesheet). */
+.status-toggle:disabled {
+  cursor: not-allowed;
+}
+
+.status-toggle:focus {
+  ring: 2px solid var(--color-primary-500);
+  ring-offset: 2px;
+  box-shadow: 0 0 0 2px var(--color-primary-500), 0 0 0 4px rgba(250, 140, 5, 0.1);
+}
+
+.status-toggle:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.status-toggle--active {
+  /* Same base shade as .btn-primary's gradient start, so an "on" toggle
+     reads as the same weight of colour as a primary button. */
+  background: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+  box-shadow: 0 2px 8px rgba(200, 112, 4, 0.3);
+}
+
+.status-toggle--active:hover:not(:disabled) {
+  background: var(--color-primary-700);
+  border-color: var(--color-primary-700);
+  box-shadow: 0 4px 12px rgba(200, 112, 4, 0.4);
+}
+
+.status-toggle--inactive {
+  background: var(--color-neutral-200);
+  border-color: var(--color-neutral-300);
+}
+
+html.dark .status-toggle--inactive {
+  background: var(--color-twilight-indigo-800);
+  border-color: var(--color-twilight-indigo-700);
+}
+
+.status-toggle--inactive:hover:not(:disabled) {
+  border-color: var(--color-primary-300);
+  background: rgba(250, 140, 5, 0.05);
+}
+
+.status-toggle-slider {
+  pointer-events: none;
+  position: relative;
+  display: inline-block;
+  height: 1.25rem;
+  width: 1.25rem;
+  transform: translateX(0);
+  border-radius: 9999px;
+  background: white;
+  box-shadow: var(--shadow-glass-sm);
+  transition: transform 0.2s ease-in-out;
+}
+
+.status-toggle-slider--active {
+  transform: translateX(1.25rem);
+}
+
+.status-toggle-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.status-toggle-icon--visible {
+  opacity: 1;
+}
+
+.status-toggle-icon--hidden {
+  opacity: 0;
+}
+
+.status-icon {
+  height: 0.75rem;
+  width: 0.75rem;
+  color: var(--color-text-glass-secondary);
+}
+
+.status-icon--white {
+  color: white;
+}
+
+/* Integration Content */
+.integration-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+}
+
+.calendar-details {
+  margin-bottom: 1rem;
+}
+
+.calendar-details-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-glass-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.calendar-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.calendar-badge {
+  padding: 0.25rem 0.5rem;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--color-primary-600);
+  font-size: 0.75rem;
+  border-radius: 9999px;
+}
+
+.calendar-details-empty,
+.integration-disabled-note {
+  font-size: 0.875rem;
+  color: var(--color-text-glass-light);
+  font-style: italic;
+}
+
+.integration-disabled-note {
+  margin-top: 0.5rem;
+}
+
+/* Integration Actions */
+.integration-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.action-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-right: 0.25rem;
+}
+
+
+.action-icon--spinning {
+  animation: spin 1s linear infinite;
+}
+
+.spinner-circle {
+  opacity: 0.25;
+}
+
+.spinner-path {
+  opacity: 0.75;
+}
+
+/* Dashboard Sidebar */
+.dashboard-sidebar {
+  @apply bg-white dark:bg-prussian-blue-950 border-r-2 border-neutral-300 dark:border-white/10 transition-glass;
+  position: relative;
+}
+
+.dashboard-nav-section-title {
+  @apply px-4 text-token-xs font-black text-neutral-400 dark:text-twilight-indigo-400 uppercase tracking-widest mb-1 flex items-center;
+}
+
+.dashboard-nav-section-title::after {
+  content: '';
+  @apply flex-1 h-[1px] bg-neutral-100 dark:bg-white/10 ml-3 opacity-50;
+}
+
+/* Dashboard Navigation Links */
+.dashboard-nav-link {
+  @apply text-neutral-600 dark:text-twilight-indigo-200 font-bold transition-glass flex items-center space-x-3 px-4 py-2 text-sm rounded-token-xl;
+  @apply hover:text-primary-600 hover:bg-primary-50/50 dark:hover:bg-primary-950/30 hover:translate-x-1;
+}
+
+.dashboard-nav-link--active {
+  @apply text-white bg-linear-to-r from-primary-600 to-secondary-600 shadow-lg shadow-primary-500/20 font-black;
+  @apply hover:text-white hover:from-primary-700 hover:to-secondary-700 hover:translate-x-0;
+}
+
+.dashboard-nav-link--active svg {
+  @apply text-white/90;
+}
+
+.dashboard-nav-link svg {
+  @apply w-5 h-5 transition-transform duration-300;
+}
+
+.dashboard-nav-link:hover svg {
+  @apply scale-110;
+}
+
+/* Subtle shimmer effect for active links */
+.dashboard-nav-link--active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.1), 
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.dashboard-nav-link--active:hover::before {
+  left: 100%;
+}
+
+/* Nav row that still needs a setup action — gentle full-row highlight.
+   Never applied to the active row (see sidebar component), so the solid
+   active gradient always wins and the two tiers stay visually distinct. */
+.dashboard-nav-link--needs-setup {
+  @apply bg-primary-50/70 dark:bg-primary-950/40 text-primary-700 dark:text-primary-300;
+}
+
+/* Short, vertically-centred accent pill — reads as an indicator,
+   not a full-height frame edge. */
+.dashboard-nav-link--needs-setup::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 55%;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-500);
+}
+
+.dashboard-nav-link--needs-setup:hover::before {
+  background: var(--color-primary-600);
+}
+
+.dashboard-nav-link--needs-setup svg {
+  color: var(--color-primary-600);
+}
+
+html.dark .dashboard-nav-link--needs-setup svg {
+  color: var(--color-primary-400);
+}
+
+/* Icon enhancements within nav links */
+.dashboard-nav-link svg {
+  transition: var(--transition-glass-fast);
+  flex-shrink: 0;
+}
+
+.dashboard-nav-link:hover svg {
+  transform: scale(1.05);
+  color: var(--color-primary-600);
+}
+
+.dashboard-nav-link--active svg {
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus states for accessibility */
+.dashboard-nav-link:focus {
+  outline: none;
+  box-shadow: 
+    0 0 0 2px var(--color-primary-500),
+    0 0 0 4px var(--color-primary-100);
+}
+
+/* Sortable drag state */
+.dragging {
+  @apply ring-2 ring-primary-500 shadow-xl scale-[1.02] rotate-1;
+  z-index: 50;
+}
+
+/* Mobile/Tablet optimization - Sidebar as overlay */
+@media (max-width: 1024px) {
+  .dashboard-sidebar {
+    backdrop-filter: var(--glass-blur-light);
+    -webkit-backdrop-filter: var(--glass-blur-light);
+    height: 100vh;
+    height: 100dvh;
+    /* Ensure sidebar doesn't take up layout space */
+    position: fixed !important;
+    width: 320px;
+    max-width: 85vw;
+  }
+  
+  .dashboard-sidebar.dashboard-sidebar-open {
+    translate: 0 0;
+  }
+  
+  /* The nudge being cancelled here is `hover:translate-x-1`, which Tailwind v4
+     emits through the standalone `translate` property; resetting `transform`
+     leaves it untouched. */
+  .dashboard-nav-link:hover {
+    backdrop-filter: var(--glass-blur-light);
+    -webkit-backdrop-filter: var(--glass-blur-light);
+    translate: none;
+  }
+  
+  .dashboard-nav-link--active {
+    backdrop-filter: var(--glass-blur-medium);
+    -webkit-backdrop-filter: var(--glass-blur-medium);
+  }
+  
+  /* Ensure sidebar overlay is properly positioned */
+  .dashboard-sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  .dashboard-sidebar {
+    z-index: 70;
+  }
+  
+  /* Touch-optimized navigation links */
+  .dashboard-nav-link {
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: 16px;
+  }
+  
+  /* Improved mobile menu buttons */
+  .dashboard-mobile-menu-toggle,
+  .dashboard-sidebar-close {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Mobile phone specific adjustments */
+@media (max-width: 768px) {
+  .dashboard-sidebar {
+    width: 280px;
+    max-width: 80vw;
+  }
+  
+  .dashboard-nav-link {
+    padding: 14px 20px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-nav-link,
+  .dashboard-nav-link::before,
+  .dashboard-nav-link svg {
+    transition: none;
+  }
+  
+  .dashboard-nav-link:hover {
+    translate: none;
+  }
+
+  .dashboard-nav-link--active::before {
+    display: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .dashboard-nav-link {
+    border: 2px solid transparent;
+  }
+  
+  .dashboard-nav-link:hover {
+    border-color: var(--color-primary-500);
+  }
+  
+  .dashboard-nav-link--active {
+    border-color: var(--color-primary-700);
+    border-width: 2px;
+  }
+}
+
+/* Dashboard Navigation Notification Badge */
+.dashboard-nav-notification {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: var(--gradient-blue);
+  color: white;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 
+    0 1px 4px rgba(59, 130, 246, 0.2),
+    0 0 0 1px rgba(37, 99, 235, 0.1);
+  z-index: 10;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.dashboard-nav-notification--warning {
+  background: var(--gradient-amber);
+  box-shadow: 
+    0 1px 4px rgba(245, 158, 11, 0.2),
+    0 0 0 1px rgba(217, 119, 6, 0.1);
+}
+
+.dashboard-nav-notification--info {
+  background: var(--gradient-primary);
+  box-shadow:
+    0 1px 4px rgba(250, 140, 5, 0.25),
+    0 0 0 1px rgba(200, 112, 4, 0.15);
+  opacity: 1;
+}
+
+/* Selector Buttons - Used for mode selection in forms */
+.glass-selector {
+  @apply flex-1 p-4 rounded-token-2xl border-2 transition-glass box-border h-16
+         hover:scale-[1.02] hover:shadow-md flex items-center justify-center cursor-pointer;
+  @apply bg-neutral-50 dark:bg-twilight-indigo-900/60 border-neutral-300 dark:border-twilight-indigo-700 text-neutral-600 dark:text-twilight-indigo-200;
+}
+
+.glass-selector:hover {
+  @apply border-primary-200 dark:border-primary-700 bg-primary-50/30 dark:bg-primary-950/30;
+  color: var(--color-primary-700);
+}
+
+html.dark .glass-selector:hover {
+  color: var(--color-primary-300);
+}
+
+.glass-selector--active {
+  background: var(--glass-gradient-primary) !important;
+  border-color: var(--color-primary-400) !important;
+  color: var(--color-text-on-glass) !important;
+  @apply shadow-lg shadow-primary-500/20;
+}
+
+.glass-selector--active .selector-icon {
+  color: white !important;
+}
+
+.selector-icon {
+  @apply w-5 h-5 mr-2 transition-colors duration-300;
+  @apply text-neutral-500 dark:text-twilight-indigo-300;
+}
+
+/* Subtle hover effect for badges */
+.dashboard-nav-link:hover .dashboard-nav-notification {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.05);
+}
+
+
+/* Ensure parent nav link has position relative for badge positioning */
+.dashboard-nav-link {
+  position: relative;
+}
+
+/* Reduced motion support for notifications */
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-nav-notification {
+    animation: none;
+  }
+}
+
+/* ===================================
+   CALENDAR GRID RESPONSIVE
+   =================================== */
+
+/* Responsive time-axis width for the calendar grid */
+#calendar-grid {
+  --time-axis: 4rem;
+}
+
+@media (max-width: 640px) {
+  #calendar-grid {
+    --time-axis: 3rem;
+  }
+}
+
+/* ===================================
+   AVAILABILITY WEEKDAY ROWS
+   =================================== */
+
+/* Seven weekdays share one panel, so each is a single row. The hour selects
+   drop to a compact height there: at their default size they, not the content,
+   would set the row height. Scoped to the row rather than added as a modifier
+   on .input, so the shared component keeps one shape everywhere else. */
+.day-hours-inline .input {
+  @apply w-auto rounded-xl py-1 text-sm;
+  /* The shared select style reserves pr-10 for the chevron it paints as a
+     background image. Tightening the padding here has to move the chevron with
+     it, or the time runs underneath the arrow. */
+  padding-left: 0.5rem;
+  padding-right: 1.625rem;
+  background-position: right 0.5rem center;
+  background-size: 1rem;
+}
+

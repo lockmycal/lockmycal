@@ -1,0 +1,271 @@
+defmodule Tymeslot.Auth.OAuth.TransactionalUserCreationTest do
+  use Tymeslot.DataCase, async: true
+
+  @moduletag :auth
+
+  import Tymeslot.Test.AdminBootstrapHelpers, only: [reopen_admin_bootstrap: 1]
+
+  use ExUnitProperties
+
+  alias Tymeslot.Auth.OAuth.TransactionalUserCreation
+  alias Tymeslot.Auth.UserSchema
+  alias Tymeslot.Availability.AvailabilityScheduleSchema
+  alias Tymeslot.Availability.Schedules
+  alias Tymeslot.Availability.WeeklyAvailabilityQueries
+  alias Tymeslot.Availability.WeeklyAvailabilitySchema
+  alias Tymeslot.Profiles.{ProfileQueries, ProfileSchema}
+  alias Tymeslot.Repo
+  import Tymeslot.Factory
+
+  describe "find_or_create_oauth_user/4" do
+    test "creates new user if not found by provider id" do
+      auth_params = %{
+        "email" => "fresh@example.com",
+        "github_user_id" => "111",
+        "provider" => "github",
+        "is_verified" => true
+      }
+
+      assert {:ok, %{user: user, created: true}} =
+               TransactionalUserCreation.find_or_create_oauth_user(:github, auth_params)
+
+      assert user.email == "fresh@example.com"
+      assert user.github_user_id == "111"
+    end
+
+    test "finds existing user by provider id" do
+      existing_user = insert(:user, github_user_id: "222", provider: "github")
+
+      auth_params = %{
+        "email" => "different@example.com",
+        "github_user_id" => "222",
+        "provider" => "github"
+      }
+
+      assert {:ok, %{user: user, created: false}} =
+               TransactionalUserCreation.find_or_create_oauth_user(:github, auth_params)
+
+      assert user.id == existing_user.id
+    end
+
+    test "never links a login to an existing account by email, even a verified one" do
+      existing_user = insert(:user, email: "link@example.com", provider: "local")
+
+      auth_params = %{
+        "email" => "link@example.com",
+        "google_user_id" => "333",
+        "provider" => "google",
+        "is_verified" => true
+      }
+
+      assert {:error, %Ecto.Changeset{}} =
+               TransactionalUserCreation.find_or_create_oauth_user(:google, auth_params)
+
+      assert Repo.get!(UserSchema, existing_user.id).google_user_id == nil
+    end
+  end
+
+  describe "admin bootstrap" do
+    setup :reopen_admin_bootstrap
+
+    test "the first user created via OAuth is promoted to admin" do
+      auth_params = %{
+        "email" => "first-oauth@example.com",
+        "github_user_id" => "bootstrap-uid-1",
+        "provider" => "github",
+        "is_verified" => true
+      }
+
+      assert {:ok, %{user: user}} =
+               TransactionalUserCreation.find_or_create_oauth_user(:github, auth_params)
+
+      assert user.is_admin,
+             "Expected the first OAuth user to be promoted to admin via AdminBootstrap"
+    end
+
+    test "a second user created via OAuth is not promoted to admin" do
+      first_auth_params = %{
+        "email" => "first-oauth-second-test@example.com",
+        "github_user_id" => "bootstrap-uid-first",
+        "provider" => "github",
+        "is_verified" => true
+      }
+
+      {:ok, %{user: _first}} =
+        TransactionalUserCreation.find_or_create_oauth_user(:github, first_auth_params)
+
+      second_auth_params = %{
+        "email" => "second-oauth@example.com",
+        "google_user_id" => "bootstrap-uid-second",
+        "provider" => "google",
+        "is_verified" => true
+      }
+
+      assert {:ok, %{user: second}} =
+               TransactionalUserCreation.find_or_create_oauth_user(:google, second_auth_params)
+
+      refute second.is_admin,
+             "Expected the second OAuth user not to be promoted to admin"
+    end
+  end
+
+  describe "find_or_create_oauth_user/4 weekly schedule" do
+    test "creates default weekly schedule for new OAuth user" do
+      auth_params = %{
+        "email" => "new-oauth@example.com",
+        "google_user_id" => "google-uid-schedule-test",
+        "provider" => "google",
+        "is_verified" => true
+      }
+
+      assert {:ok, %{user: user}} =
+               TransactionalUserCreation.find_or_create_oauth_user(:google, auth_params)
+
+      assert {:ok, profile} = ProfileQueries.get_by_user_id(user.id)
+
+      assert %{is_default: true} = schedule = Schedules.get_default(profile.id)
+
+      days = WeeklyAvailabilityQueries.get_weekly_schedule_with_breaks(schedule.id)
+
+      assert length(days) == 7,
+             "Expected 7 days of weekly availability for OAuth user, got #{length(days)}"
+    end
+
+    test "creates profile and default schedule for existing user without a profile" do
+      existing_user =
+        insert(:user,
+          email: "no-profile@example.com",
+          provider: "google",
+          google_user_id: "google-uid-no-profile"
+        )
+
+      auth_params = %{
+        "email" => "no-profile@example.com",
+        "google_user_id" => "google-uid-no-profile",
+        "provider" => "google",
+        "is_verified" => true
+      }
+
+      assert {:ok, %{user: user, created: false}} =
+               TransactionalUserCreation.find_or_create_oauth_user(:google, auth_params)
+
+      assert user.id == existing_user.id
+
+      assert {:ok, profile} = ProfileQueries.get_by_user_id(user.id)
+
+      assert %{is_default: true} = schedule = Schedules.get_default(profile.id)
+
+      days = WeeklyAvailabilityQueries.get_weekly_schedule_with_breaks(schedule.id)
+
+      assert length(days) == 7,
+             "Expected 7 days of weekly availability for existing user without profile, got #{length(days)}"
+    end
+
+    test "rolls back weekly schedule rows when user creation fails" do
+      # Pre-insert a user with a known email so a second creation attempt with the
+      # same address triggers a DB unique-constraint violation and rolls the
+      # whole transaction back.
+      existing_user = insert(:user, email: "rollback-test@example.com")
+
+      user_count_before =
+        Repo.aggregate(from(u in UserSchema, where: u.id != ^existing_user.id), :count)
+
+      # Count schedule rows scoped to profiles owned by the target email's user.
+      # The pre-existing user has no profile, so this is 0 before and must remain
+      # 0 after a rolled-back attempt — directly tied to the data under test.
+      rollback_email = "rollback-test@example.com"
+
+      scoped_schedule_count = fn ->
+        Repo.aggregate(
+          from(wa in WeeklyAvailabilitySchema,
+            join: s in AvailabilityScheduleSchema,
+            on: wa.schedule_id == s.id,
+            join: p in ProfileSchema,
+            on: s.profile_id == p.id,
+            join: u in UserSchema,
+            on: p.user_id == u.id,
+            where: u.email == ^rollback_email
+          ),
+          :count
+        )
+      end
+
+      schedule_count_before = scoped_schedule_count.()
+
+      auth_params = %{
+        "email" => rollback_email,
+        "github_user_id" => "github-uid-rollback-test",
+        "provider" => "github",
+        "is_verified" => true
+      }
+
+      assert {:error, _reason} =
+               TransactionalUserCreation.find_or_create_oauth_user(:github, auth_params)
+
+      user_count_after =
+        Repo.aggregate(from(u in UserSchema, where: u.id != ^existing_user.id), :count)
+
+      schedule_count_after = scoped_schedule_count.()
+
+      assert user_count_after == user_count_before,
+             "Expected no new users after rollback"
+
+      assert schedule_count_after == schedule_count_before,
+             "Expected no orphaned weekly schedule rows after rollback"
+    end
+  end
+
+  describe "find_or_create_oauth_user/4 property tests" do
+    property "never creates duplicate users with same email or provider_id" do
+      check all(
+              email <- StreamData.string(:alphanumeric, min_length: 5),
+              provider_id <- StreamData.string(:alphanumeric, min_length: 5),
+              unique_prefix <- StreamData.positive_integer(),
+              provider <- StreamData.member_of([:github, :google])
+            ) do
+        email = String.downcase("#{unique_prefix}_#{email}@test.com")
+
+        auth_params = %{
+          "email" => email,
+          "provider" => to_string(provider),
+          "#{provider}_user_id" => provider_id,
+          "is_verified" => true
+        }
+
+        # First call creates the user
+        assert {:ok, %{user: user1, created: true}} =
+                 TransactionalUserCreation.find_or_create_oauth_user(provider, auth_params)
+
+        # Second call with identical params returns same user, not created
+        assert {:ok, %{user: user2, created: false}} =
+                 TransactionalUserCreation.find_or_create_oauth_user(provider, auth_params)
+
+        assert user1.id == user2.id
+
+        # Third call with same email but a different provider is refused,
+        # never linked onto the first account
+        other_provider = if provider == :github, do: :google, else: :github
+        other_provider_id = "#{provider_id}_other"
+
+        other_auth_params = %{
+          "email" => email,
+          "provider" => to_string(other_provider),
+          "#{other_provider}_user_id" => other_provider_id,
+          "is_verified" => true
+        }
+
+        assert {:error, %Ecto.Changeset{}} =
+                 TransactionalUserCreation.find_or_create_oauth_user(
+                   other_provider,
+                   other_auth_params
+                 )
+
+        # Count users in DB for this email - should be exactly 1
+        assert Repo.aggregate(
+                 from(u in UserSchema, where: u.email == ^email),
+                 :count
+               ) == 1
+      end
+    end
+  end
+end

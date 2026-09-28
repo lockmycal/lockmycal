@@ -1,0 +1,246 @@
+defmodule TymeslotWeb.Live.Scheduling.PageViewTrackingTest do
+  @moduledoc """
+  Integration tests for the `TymeslotWeb.Hooks.PageViewHook` on_mount hook.
+
+  These tests exercise the full path: visiting a public scheduling URL
+  triggers the LiveView mount, the hook spawns a supervised Task, and
+  the Task calls `Tymeslot.Analytics.log_page_view/1` which writes to
+  the database. We rely on shared sandbox ownership (async: false) so
+  the spawned Task can see the test's DB connection.
+  """
+  use TymeslotWeb.LiveCase, async: false
+
+  import Mox
+  import Tymeslot.Factory
+
+  alias Tymeslot.Analytics.EventSchema
+  alias Tymeslot.Infrastructure.AvailabilityCache
+  alias Tymeslot.MeetingTypes.Slugs
+  alias Tymeslot.Repo
+  alias Tymeslot.Security.RateLimiter
+  alias Tymeslot.TestMocks
+  alias TymeslotWeb.Hooks.PageViewHook
+  alias TymeslotWeb.UserAuth
+
+  @moduletag :scheduling
+  @moduletag :live
+
+  setup :verify_on_exit!
+
+  setup tags do
+    Mox.set_mox_from_context(tags)
+    AvailabilityCache.clear_all()
+    TestMocks.setup_all_mocks()
+    RateLimiter.clear_all()
+    Repo.delete_all(EventSchema)
+
+    ctx = setup_public_meeting_type()
+    %{ctx: ctx}
+  end
+
+  describe "page view logging on public scheduling pages" do
+    test "logs a page view when the public scheduling page is mounted", %{conn: conn, ctx: ctx} do
+      conn = put_req_header(conn, "user-agent", "Mozilla/5.0 (Macintosh) Chrome/126.0.0.0")
+
+      {:ok, _view, _html} =
+        live(conn, ~p"/#{ctx.username}/#{ctx.slug}?utm_source=linkedin&utm_medium=social")
+
+      event = wait_for_event!()
+
+      assert event.event_type == "booking_page_view"
+      assert event.utm_source == "linkedin"
+      assert event.utm_medium == "social"
+      assert event.user_id == ctx.user.id
+      assert event.meeting_type_id == ctx.meeting_type.id
+      assert event.user_agent_family == "chrome"
+      assert event.path == "/#{ctx.username}/#{ctx.slug}"
+    end
+
+    test "does not log a page view from a known bot user agent", %{conn: conn, ctx: ctx} do
+      conn = put_req_header(conn, "user-agent", "Googlebot/2.1 (+http://www.google.com/bot.html)")
+
+      {:ok, _view, _html} = live(conn, ~p"/#{ctx.username}/#{ctx.slug}")
+
+      assert_only_control_event_logged!(ctx)
+    end
+
+    test "does not log on the static (non-connected) render", %{conn: conn, ctx: ctx} do
+      conn = put_req_header(conn, "user-agent", "Mozilla/5.0 (Macintosh) Chrome/126.0.0.0")
+
+      _resp = get(conn, ~p"/#{ctx.username}/#{ctx.slug}")
+
+      assert_only_control_event_logged!(ctx)
+    end
+  end
+
+  describe "signed-in visitors" do
+    test "the organiser's own visit is not logged and their session token stays out of the page",
+         %{conn: conn, ctx: ctx} do
+      {:ok, conn, token} =
+        conn
+        |> init_test_session(%{})
+        |> UserAuth.create_session(ctx.user)
+
+      conn = put_req_header(conn, "user-agent", "Mozilla/5.0 (Macintosh) Chrome/126.0.0.0")
+
+      html = conn |> get(~p"/#{ctx.username}/#{ctx.slug}") |> html_response(200)
+      payloads = signed_session_payloads(html)
+
+      assert payloads != []
+      refute html =~ token
+      refute html =~ Base.url_encode64(token)
+      refute html =~ Base.encode64(token)
+      assert Enum.reject(payloads, &(:binary.match(&1, token) == :nomatch)) == []
+
+      # The organiser's id travels instead, for the self-visit check.
+      assert Enum.any?(payloads, &(&1 =~ "viewer_user_id"))
+
+      {:ok, _view, _html} = live(conn, ~p"/#{ctx.username}/#{ctx.slug}")
+
+      assert_only_control_event_logged!(ctx)
+    end
+
+    test "a different signed-in user's visit is logged", %{conn: conn, ctx: ctx} do
+      visitor = insert(:user)
+
+      {:ok, conn, _token} =
+        conn
+        |> init_test_session(%{})
+        |> UserAuth.create_session(visitor)
+
+      {:ok, _view, _html} =
+        conn
+        |> put_req_header("user-agent", "Mozilla/5.0 (Macintosh) Chrome/126.0.0.0")
+        |> live(~p"/#{ctx.username}/#{ctx.slug}")
+
+      assert wait_for_event!().user_id == ctx.user.id
+    end
+  end
+
+  describe "resilient connect_info handling" do
+    # Regression: under the deployed endpoint config, `connect_info`'s
+    # `:x_headers` arrives as bare header-name strings rather than
+    # `{name, value}` tuples. The hook used to pattern-match `{k, v}` and crash
+    # the mount of every public scheduling page once analytics was enabled.
+    test "mounts without crashing when x_headers are bare strings", %{ctx: ctx} do
+      connect_info = %{
+        x_headers: ["x-forwarded-for", "x-real-ip", "cf-connecting-ip", "origin"],
+        peer_data: %{address: {127, 0, 0, 1}, port: 0, ssl_cert: nil},
+        user_agent: "Mozilla/5.0 (X11; Linux x86_64) Chrome/126.0.0.0 Safari/537.36"
+      }
+
+      base = %Phoenix.LiveView.Socket{transport_pid: self()}
+      socket = Map.update!(base, :private, &Map.put(&1, :connect_info, connect_info))
+
+      params = %{"username" => ctx.username, "slug" => ctx.slug}
+
+      assert {:cont, %Phoenix.LiveView.Socket{} = result} =
+               PageViewHook.on_mount(:default, params, %{}, socket)
+
+      # The hash was still computed (from peer_data, since the string headers
+      # yield no forwarded IP) and assigned for the booking flow to reuse.
+      assert result.assigns.visitor_hash =~ ~r/^[0-9a-f]{64}$/
+    end
+  end
+
+  defp setup_public_meeting_type do
+    user = insert(:user)
+    unique = System.unique_integer([:positive])
+
+    profile =
+      insert(:profile,
+        user: user,
+        username: "alice-#{unique}",
+        timezone: "Europe/Berlin"
+      )
+
+    schedule =
+      insert(:availability_schedule,
+        profile: profile,
+        is_default: true,
+        advance_booking_days: 30,
+        min_advance_hours: 0,
+        buffer_minutes: 0
+      )
+
+    meeting_type =
+      insert(:meeting_type,
+        user: user,
+        name: "Intro Call",
+        duration_minutes: 30,
+        is_active: true
+      )
+
+    Enum.each(1..7, fn day_of_week ->
+      insert(:weekly_availability,
+        schedule: schedule,
+        day_of_week: day_of_week,
+        is_available: true,
+        start_time: ~T[09:00:00],
+        end_time: ~T[17:00:00]
+      )
+    end)
+
+    insert(:calendar_integration, user: user, is_active: true)
+
+    slug = Slugs.to_slug(meeting_type)
+
+    %{
+      user: user,
+      profile: profile,
+      username: profile.username,
+      meeting_type: meeting_type,
+      slug: slug
+    }
+  end
+
+  # Polls the events table until an event is inserted by the supervised Task,
+  # or fails the test after the timeout. Returns the inserted event.
+  defp wait_for_event! do
+    eventually(
+      fn ->
+        case Repo.all(EventSchema) do
+          [event] -> event
+          _other -> raise "expected exactly one event"
+        end
+      end,
+      timeout: 2_000,
+      interval: 50
+    )
+  end
+
+  # The decoded payload of every `data-phx-session` in the page. LiveView signs
+  # (does not encrypt) this attribute, so its payload is readable by anyone
+  # holding the HTML: `<protected>.<base64url term>.<signature>`.
+  defp signed_session_payloads(html) do
+    ~r/data-phx-session="([^"]+)"/
+    |> Regex.scan(html, capture: :all_but_first)
+    |> Enum.map(fn [signed] ->
+      [_protected, payload, _signature] = String.split(signed, ".")
+      Base.url_decode64!(payload, padding: false)
+    end)
+  end
+
+  # Asserts that the preceding page visit logged nothing.
+  #
+  # A bare count check would pass instantly against the table cleared in setup,
+  # even against a regression that does spawn the logging Task — the Task simply
+  # would not have written yet. So issue a control visit that IS logged and wait
+  # for it to land: once the control event is in the table, any Task the guarded
+  # visit spawned has had its chance to write too. The table must then hold the
+  # control event and nothing else.
+  defp assert_only_control_event_logged!(ctx) do
+    {:ok, _view, _html} =
+      build_conn()
+      |> put_req_header("user-agent", "Mozilla/5.0 (Macintosh) Chrome/126.0.0.0")
+      |> live(~p"/#{ctx.username}/#{ctx.slug}?utm_source=control")
+
+    eventually(
+      fn -> Enum.any?(Repo.all(EventSchema), &(&1.utm_source == "control")) end,
+      timeout: 2_000,
+      interval: 50
+    )
+
+    assert Enum.map(Repo.all(EventSchema), & &1.utm_source) == ["control"]
+  end
+end

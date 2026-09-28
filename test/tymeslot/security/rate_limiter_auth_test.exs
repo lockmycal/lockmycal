@@ -1,0 +1,306 @@
+defmodule Tymeslot.Security.RateLimiterAuthTest do
+  use Tymeslot.DataCase, async: false
+  @moduletag :security
+
+  alias Tymeslot.Security.RateLimiter
+  alias Tymeslot.Test.LogCapture
+
+  describe "check_auth_rate_limit/2 — per-email bucket" do
+    test "allows up to 10 attempts then blocks the 11th" do
+      email = "brute@example.com"
+
+      for _i <- 1..10 do
+        assert :ok = RateLimiter.check_auth_rate_limit(email, nil)
+      end
+
+      assert {:error, :rate_limited, _msg} = RateLimiter.check_auth_rate_limit(email, nil)
+    end
+
+    test "different emails have independent buckets" do
+      email_a = "user-a@example.com"
+      email_b = "user-b@example.com"
+
+      for _i <- 1..10 do
+        RateLimiter.check_auth_rate_limit(email_a, nil)
+      end
+
+      assert {:error, :rate_limited, _msg} = RateLimiter.check_auth_rate_limit(email_a, nil)
+      assert :ok = RateLimiter.check_auth_rate_limit(email_b, nil)
+    end
+
+    test "case variants of the same email share one bucket" do
+      base = "case-bucket-#{System.unique_integer([:positive])}@example.com"
+      upper = String.upcase(base)
+      mixed = String.capitalize(base)
+
+      # 10 allowed attempts split across three case variants should hit the
+      # limit on the 11th, proving they all share one bucket.
+      for email <- [base, upper, mixed, base, upper, mixed, base, upper, mixed, base] do
+        assert :ok = RateLimiter.check_auth_rate_limit(email, nil)
+      end
+
+      assert {:error, :rate_limited, _msg} = RateLimiter.check_auth_rate_limit(upper, nil)
+    end
+
+    test "whitespace-padded variants share one bucket with the canonical form" do
+      base = "ws-bucket-#{System.unique_integer([:positive])}@example.com"
+      leading = " #{base}"
+      trailing = "#{base} "
+      padded_upper = "  #{String.upcase(base)}  "
+
+      # 10 attempts spread across padded variants should exhaust the budget.
+      for email <- [
+            base,
+            leading,
+            trailing,
+            padded_upper,
+            base,
+            leading,
+            trailing,
+            padded_upper,
+            base,
+            leading
+          ] do
+        assert :ok = RateLimiter.check_auth_rate_limit(email, nil)
+      end
+
+      assert {:error, :rate_limited, _msg} =
+               RateLimiter.check_auth_rate_limit(trailing, nil)
+    end
+  end
+
+  describe "check_auth_rate_limit/2 — IP bucket" do
+    test "blocks after 50 attempts from the same IP across different emails" do
+      ip = "10.0.0.1"
+
+      for i <- 1..50 do
+        email = "victim#{i}@example.com"
+        assert :ok = RateLimiter.check_auth_rate_limit(email, ip)
+      end
+
+      assert {:error, :rate_limited, _msg} =
+               RateLimiter.check_auth_rate_limit("overflow@example.com", ip)
+    end
+
+    test "nil IP is ignored — does not contribute to or block on the IP bucket" do
+      for i <- 1..10 do
+        assert :ok = RateLimiter.check_auth_rate_limit("nil-ip#{i}@example.com", nil)
+      end
+
+      assert :ok = RateLimiter.check_auth_rate_limit("new@example.com", nil)
+    end
+
+    test "empty string IP is ignored" do
+      for i <- 1..10 do
+        assert :ok = RateLimiter.check_auth_rate_limit("empty-ip#{i}@example.com", "")
+      end
+
+      assert :ok = RateLimiter.check_auth_rate_limit("also-new@example.com", "")
+    end
+  end
+
+  describe "check_auth_rate_limit/2 — per-account buckets are keyed on email and IP" do
+    test "exhausting the account budget from one address leaves another usable" do
+      email = "targeted-#{System.unique_integer([:positive])}@example.com"
+
+      for _i <- 1..10, do: assert(:ok = RateLimiter.check_auth_rate_limit(email, "198.51.100.1"))
+
+      assert {:error, :rate_limited, _msg} =
+               RateLimiter.check_auth_rate_limit(email, "198.51.100.1")
+
+      assert :ok = RateLimiter.check_auth_rate_limit(email, "198.51.100.2")
+    end
+
+    test "failures recorded from one address throttle only that address" do
+      email = "lockout-pair-#{System.unique_integer([:positive])}@example.com"
+
+      for _i <- 1..10, do: RateLimiter.record_auth_attempt(email, "198.51.100.3", false)
+
+      assert {:error, :rate_limited, message} =
+               RateLimiter.check_auth_rate_limit(email, "198.51.100.3")
+
+      assert message =~ "Too many failed attempts"
+      assert :ok = RateLimiter.check_auth_rate_limit(email, "198.51.100.4")
+    end
+
+    test "a success from one address clears only that address's failures" do
+      email = "lockout-clear-#{System.unique_integer([:positive])}@example.com"
+
+      for ip <- ["198.51.100.5", "198.51.100.6"], _i <- 1..10 do
+        RateLimiter.record_auth_attempt(email, ip, false)
+      end
+
+      RateLimiter.record_auth_attempt(email, "198.51.100.5", true)
+
+      assert :ok = RateLimiter.check_auth_rate_limit(email, "198.51.100.5")
+
+      assert {:error, :rate_limited, _msg} =
+               RateLimiter.check_auth_rate_limit(email, "198.51.100.6")
+    end
+
+    test "a distributed run against one account trips the per-email ceiling at 50" do
+      email = "distributed-#{System.unique_integer([:positive])}@example.com"
+
+      for i <- 1..50 do
+        assert :ok = RateLimiter.check_auth_rate_limit(email, "198.51.101.#{i}")
+      end
+
+      assert {:error, :rate_limited, message} =
+               RateLimiter.check_auth_rate_limit(email, "198.51.102.1")
+
+      assert message =~ "50"
+    end
+  end
+
+  describe "IPv6 clients are keyed on their /64" do
+    test "failures from one address throttle the rest of its /64" do
+      email = "v6-lockout-#{System.unique_integer([:positive])}@example.com"
+
+      for _i <- 1..10, do: RateLimiter.record_auth_attempt(email, "2001:db8:1:2::1", false)
+
+      assert {:error, :rate_limited, _msg} =
+               RateLimiter.check_auth_rate_limit(email, "2001:db8:1:2:ffff::9")
+
+      assert :ok = RateLimiter.check_auth_rate_limit(email, "2001:db8:1:3::1")
+    end
+
+    test "rotating addresses inside one /64 shares the per-address budget" do
+      for i <- 1..50 do
+        assert :ok =
+                 RateLimiter.check_auth_rate_limit(
+                   "v6-ip-#{i}@example.com",
+                   "2001:db8:9:9::#{Integer.to_string(i, 16)}"
+                 )
+      end
+
+      assert {:error, :rate_limited, _msg} =
+               RateLimiter.check_auth_rate_limit(
+                 "v6-ip-overflow@example.com",
+                 "2001:db8:9:9::ffff"
+               )
+    end
+
+    test "IPv4 addresses stay keyed individually" do
+      email = "v4-#{System.unique_integer([:positive])}@example.com"
+
+      for _i <- 1..10, do: RateLimiter.record_auth_attempt(email, "198.51.100.90", false)
+
+      assert :ok = RateLimiter.check_auth_rate_limit(email, "198.51.100.91")
+    end
+  end
+
+  describe "AccountLockout integration with check_auth_rate_limit/2" do
+    # Isolated AccountLockout behaviour (thresholds, durations, counts) is tested in
+    # account_lockout_test.exs. This block covers only the integration point where
+    # check_auth_rate_limit/2 delegates to AccountLockout before the Hammer buckets.
+    test "throttled account is blocked by check_auth_rate_limit" do
+      email = "lockout-hammer-#{System.unique_integer([:positive])}@example.com"
+
+      for _i <- 1..10 do
+        RateLimiter.record_auth_attempt(email, nil, false)
+      end
+
+      assert {:error, :rate_limited, message} = RateLimiter.check_auth_rate_limit(email, nil)
+      assert message =~ "Too many failed attempts"
+    end
+
+    # Throttling is the only tier AccountLockout has; piling on failures never
+    # escalates the account to a different, harder rejection.
+    test "far more failures than the threshold still surface as the throttle" do
+      email = "lockout-escalation-#{System.unique_integer([:positive])}@example.com"
+
+      for _i <- 1..40 do
+        RateLimiter.record_auth_attempt(email, nil, false)
+      end
+
+      assert {:error, :rate_limited, message} = RateLimiter.check_auth_rate_limit(email, nil)
+      assert message =~ "Too many failed attempts"
+    end
+  end
+
+  describe "rate-limit rejection logging" do
+    test "the rejection line masks the email and drops the bucket key that embeds it" do
+      email = "log-mask-#{System.unique_integer([:positive])}@example.com"
+
+      for _i <- 1..10 do
+        assert :ok = RateLimiter.check_auth_rate_limit(email, nil)
+      end
+
+      LogCapture.with_capture([], fn ->
+        assert {:error, :rate_limited, _msg} = RateLimiter.check_auth_rate_limit(email, nil)
+      end)
+
+      event = LogCapture.await_log("Rate limit exceeded")
+      meta = LogCapture.user_metadata(event)
+
+      assert meta.identifier_masked == "l***@example.com"
+      assert meta.operation == "authentication"
+      refute Map.has_key?(meta, :bucket)
+      refute LogCapture.dump(event) =~ email
+    end
+
+    test "an IP-bucket rejection keeps the address readable" do
+      ip = "203.0.113.#{Enum.random(1..250)}"
+      run = System.unique_integer([:positive])
+
+      # A fresh email each time, so the 10-per-email bucket never trips first
+      # and the rejection under test is the IP one.
+      for i <- 1..50 do
+        assert :ok = RateLimiter.check_auth_rate_limit("ip-bucket-#{run}-#{i}@example.com", ip)
+      end
+
+      LogCapture.with_capture([], fn ->
+        assert {:error, :rate_limited, _msg} =
+                 RateLimiter.check_auth_rate_limit("ip-bucket-#{run}-last@example.com", ip)
+      end)
+
+      meta = "Rate limit exceeded" |> LogCapture.await_log() |> LogCapture.user_metadata()
+
+      assert meta.operation == "authentication (ip)"
+      assert meta.identifier_masked == ip
+    end
+  end
+
+  describe "record_auth_attempt/3" do
+    test "success clears the failures recorded for that email and address" do
+      email = "clear-on-success-#{System.unique_integer([:positive])}@example.com"
+      ip = "198.51.100.20"
+
+      for _i <- 1..10, do: RateLimiter.record_auth_attempt(email, ip, false)
+      assert {:error, :rate_limited, _msg} = RateLimiter.check_auth_rate_limit(email, ip)
+
+      RateLimiter.record_auth_attempt(email, ip, true)
+
+      assert :ok = RateLimiter.check_auth_rate_limit(email, ip)
+    end
+
+    test "the tenth failure is the one that throttles" do
+      email = "increment-#{System.unique_integer([:positive])}@example.com"
+      ip = "198.51.100.21"
+
+      for _i <- 1..9, do: RateLimiter.record_auth_attempt(email, ip, false)
+      assert :ok = RateLimiter.check_auth_rate_limit(email, ip)
+
+      assert {:error, :account_throttled, _msg} =
+               RateLimiter.record_auth_attempt(email, ip, false)
+    end
+  end
+
+  describe "case-normalisation across record/check boundary" do
+    # Attempts are recorded via Authentication using the DB-lowercased email, but
+    # check_auth receives the raw user-submitted value. Verify that a mixed-case
+    # submission is still blocked when enough failures were recorded under the
+    # lowercase form.
+    test "mixed-case check_auth is blocked when failures were recorded lowercase" do
+      base = "lockout-case-#{System.unique_integer([:positive])}@example.com"
+      mixed_case = String.upcase(base)
+
+      # Simulate the server-side recording path (uses the DB-normalised email).
+      for _i <- 1..10, do: RateLimiter.record_auth_attempt(base, nil, false)
+
+      # The attacker now tries with the original mixed-case value.
+      assert {:error, :rate_limited, message} = RateLimiter.check_auth_rate_limit(mixed_case, nil)
+      assert message =~ "Too many failed attempts"
+    end
+  end
+end

@@ -1,0 +1,696 @@
+defmodule Tymeslot.Integrations.Calendar.CalDAV.OfflineQueueTest do
+  @moduledoc """
+  Covers the offline write queue that replays locally-modified cache
+  rows against the remote CalDAV server at the start of every sync
+  cycle.
+  """
+
+  use Tymeslot.DataCase, async: false
+
+  import Tymeslot.ConfigTestHelpers
+
+  @moduletag :integrations
+  @moduletag :unit
+
+  alias Ecto.Adapters.SQL
+  alias Plug.Conn
+  alias Req.Test, as: ReqTest
+  alias Tymeslot.Infrastructure.Config
+  alias Tymeslot.Integrations.Calendar.CalDAV.OfflineQueue
+  alias Tymeslot.Integrations.Calendar.CalDAV.QueueQueries
+  alias Tymeslot.Integrations.Calendar.ProviderCalendarEventSchema
+  alias Tymeslot.Repo
+
+  @client %{
+    base_url: "https://caldav.example.com",
+    username: "user",
+    password: "pass",
+    calendar_paths: ["/cal/"],
+    verify_ssl: true,
+    provider: :caldav
+  }
+
+  defp insert_pending_row(integration, attrs) do
+    defaults = %{
+      calendar_integration: integration,
+      uid: "queue-event-uid",
+      provider: "caldav",
+      provider_calendar_id: "/cal/",
+      provider_event_id: "/cal/queue-event-uid.ics",
+      summary: "Queued",
+      start_at: ~U[2026-04-15 14:00:00.000000Z],
+      end_at: ~U[2026-04-15 15:00:00.000000Z],
+      all_day: false,
+      timezone: "UTC",
+      synced_at: ~U[2026-04-15 00:00:00.000000Z],
+      etag: "\"cached-etag\""
+    }
+
+    insert(:provider_calendar_event, Map.merge(defaults, Map.new(attrs)))
+  end
+
+  setup do
+    with_config(:tymeslot, :http_client_module, Tymeslot.Infrastructure.HTTPClient)
+
+    integration =
+      insert(:calendar_integration,
+        provider: "caldav",
+        calendar_paths: ["/cal/"]
+      )
+
+    {:ok, integration: integration}
+  end
+
+  describe "flush/2 — locally_modified rows" do
+    test "PUTs with the cached ETag and marks the row synced on 204",
+         %{integration: integration} do
+      row = insert_pending_row(integration, sync_state: "locally_modified")
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        assert conn.method == "PUT"
+        [if_match | _rest] = Conn.get_req_header(conn, "if-match")
+        assert if_match == "\"cached-etag\""
+        Conn.send_resp(conn, 204, "")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      reloaded = Repo.reload!(row)
+      assert reloaded.sync_state == "synced"
+      assert reloaded.sync_attempts == 0
+      assert is_nil(reloaded.sync_last_error)
+    end
+
+    test "increments sync_attempts and stays queued on 502",
+         %{integration: integration} do
+      row = insert_pending_row(integration, sync_state: "locally_modified")
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        Conn.send_resp(conn, 502, "Bad Gateway")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      reloaded = Repo.reload!(row)
+      assert reloaded.sync_state == "locally_modified"
+      assert reloaded.sync_attempts == 1
+
+      # `sync_last_error` is a human-readable field, not a dump of the internal
+      # error term: an inspected atom such as `":server_error"` must never
+      # reach it.
+      assert reloaded.sync_last_error ==
+               "The calendar server reported an error. LockMyCal will retry automatically."
+
+      refute reloaded.sync_last_error =~ ":server_error"
+    end
+
+    test "records a human-readable message when the server rejects the credentials",
+         %{integration: integration} do
+      row = insert_pending_row(integration, sync_state: "locally_modified")
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        Conn.send_resp(conn, 401, "Unauthorized")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      reloaded = Repo.reload!(row)
+
+      assert reloaded.sync_last_error ==
+               "The calendar server rejected the stored credentials. Please reconnect the calendar."
+
+      refute reloaded.sync_last_error =~ ":unauthorized"
+    end
+
+    test "force-overwrites on 412 for a Tymeslot-owned event (keep_local)",
+         %{integration: integration} do
+      row =
+        insert_pending_row(integration,
+          sync_state: "locally_modified",
+          created_by_tymeslot: true
+        )
+
+      counter = :counters.new(1, [])
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        :counters.add(counter, 1, 1)
+        attempt = :counters.get(counter, 1)
+        if_match = Conn.get_req_header(conn, "if-match")
+
+        case attempt do
+          1 ->
+            assert if_match == ["\"cached-etag\""]
+            Conn.send_resp(conn, 412, "Precondition Failed")
+
+          2 ->
+            # A forced overwrite carries no condition at all.
+            assert if_match == []
+            Conn.send_resp(conn, 204, "")
+        end
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      reloaded = Repo.reload!(row)
+      assert reloaded.sync_state == "synced"
+      assert :counters.get(counter, 1) == 2
+    end
+  end
+
+  describe "flush/2 — locally_modified rows whose event is gone" do
+    # `QueueWiring.tag/3` writes neither `etag` nor `provider_event_id`, and
+    # both are in the replaced-column set, so a real queue row carries neither.
+    # These tests reproduce that shape: with no cached ETag the update HEAD-probes,
+    # gets a 404, falls back to `If-Match: *`, and reads the resulting 412 as
+    # absence rather than conflict.
+    #
+    # `QueueWiring.tag/3` also stamps `created_by_tymeslot: true` on every row
+    # it queues, so the flag is set throughout: what decides a recreate is the
+    # meeting behind the row, never the flag.
+    @future_start DateTime.utc_now() |> DateTime.add(2, :day) |> DateTime.truncate(:second)
+    @future_end DateTime.add(@future_start, 1, :hour)
+
+    defp insert_missing_row(integration, attrs) do
+      insert_pending_row(
+        integration,
+        Keyword.merge(
+          [
+            sync_state: "locally_modified",
+            created_by_tymeslot: true,
+            etag: nil,
+            provider_event_id: nil,
+            start_at: @future_start,
+            end_at: @future_end
+          ],
+          attrs
+        )
+      )
+    end
+
+    defp insert_claiming_meeting(integration, row, attrs) do
+      insert(
+        :meeting,
+        Keyword.merge(
+          [
+            calendar_integration_id: integration.id,
+            uid: row.uid,
+            start_time: @future_start,
+            end_time: @future_end
+          ],
+          attrs
+        )
+      )
+    end
+
+    # Counts requests and answers the HEAD probe and the `If-Match: *` update
+    # as absence; anything after that is handed to `on_recreate`.
+    defp stub_missing_event(counter, on_recreate) do
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        :counters.add(counter, 1, 1)
+
+        case :counters.get(counter, 1) do
+          1 ->
+            assert conn.method == "HEAD"
+            Conn.send_resp(conn, 404, "")
+
+          2 ->
+            assert conn.method == "PUT"
+            assert Conn.get_req_header(conn, "if-match") == ["*"]
+            Conn.send_resp(conn, 412, "Precondition Failed")
+
+          _further ->
+            on_recreate.(conn)
+        end
+      end)
+    end
+
+    test "creates the event from the local copy when a live meeting claims the row",
+         %{integration: integration} do
+      row = insert_missing_row(integration, [])
+      insert_claiming_meeting(integration, row, status: "confirmed")
+
+      counter = :counters.new(1, [])
+
+      stub_missing_event(counter, fn conn ->
+        # The recreate: an If-None-Match: * create, not another conditional
+        # update, and carrying the queued event's own summary.
+        assert conn.method == "PUT"
+        assert Conn.get_req_header(conn, "if-none-match") == ["*"]
+        assert Conn.get_req_header(conn, "if-match") == []
+
+        {:ok, body, conn} = Conn.read_body(conn)
+        assert body =~ "SUMMARY:Queued"
+
+        Conn.send_resp(conn, 201, "")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      reloaded = Repo.reload!(row)
+      assert reloaded.sync_state == "synced"
+      assert reloaded.sync_attempts == 0
+      assert is_nil(reloaded.sync_last_error)
+      assert :counters.get(counter, 1) == 3
+    end
+
+    test "never recreates an event no meeting claims, whatever the ownership flag says",
+         %{integration: integration} do
+      row = insert_missing_row(integration, created_by_tymeslot: true)
+
+      counter = :counters.new(1, [])
+
+      stub_missing_event(counter, fn _conn ->
+        flunk("an event no meeting claims must never be recreated")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      reloaded = Repo.reload!(row)
+      assert reloaded.sync_state == "locally_modified"
+      assert reloaded.sync_attempts == 1
+      assert :counters.get(counter, 1) == 2
+    end
+
+    test "never recreates the event of a cancelled meeting",
+         %{integration: integration} do
+      row = insert_missing_row(integration, [])
+      insert_claiming_meeting(integration, row, status: "cancelled")
+
+      counter = :counters.new(1, [])
+
+      stub_missing_event(counter, fn _conn ->
+        flunk("a cancelled meeting's event must never be recreated")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      reloaded = Repo.reload!(row)
+      assert reloaded.sync_state == "locally_modified"
+      assert reloaded.sync_attempts == 1
+      assert :counters.get(counter, 1) == 2
+    end
+
+    test "drops an elapsed row instead of planting a stale event",
+         %{integration: integration} do
+      past_start = DateTime.utc_now() |> DateTime.add(-2, :day) |> DateTime.truncate(:second)
+      past_end = DateTime.add(past_start, 1, :hour)
+
+      row = insert_missing_row(integration, start_at: past_start, end_at: past_end)
+
+      insert_claiming_meeting(integration, row,
+        status: "confirmed",
+        start_time: past_start,
+        end_time: past_end
+      )
+
+      counter = :counters.new(1, [])
+
+      stub_missing_event(counter, fn _conn ->
+        flunk("an elapsed event must never be recreated")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      assert is_nil(Repo.reload(row))
+      assert QueueQueries.list_pending(integration.id) == []
+      assert :counters.get(counter, 1) == 2
+    end
+
+    test "keeps the row queued when the recreate itself fails",
+         %{integration: integration} do
+      row = insert_missing_row(integration, [])
+      insert_claiming_meeting(integration, row, status: "confirmed")
+
+      counter = :counters.new(1, [])
+
+      stub_missing_event(counter, fn conn -> Conn.send_resp(conn, 502, "Bad Gateway") end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      reloaded = Repo.reload!(row)
+      assert reloaded.sync_state == "locally_modified"
+      assert reloaded.sync_attempts == 1
+
+      assert reloaded.sync_last_error ==
+               "The calendar server reported an error. #{Config.app_name()} will retry automatically."
+    end
+  end
+
+  describe "flush/2 — locally_deleted rows" do
+    test "issues DELETE and drops the cache row on success",
+         %{integration: integration} do
+      row = insert_pending_row(integration, sync_state: "locally_deleted")
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        assert conn.method == "DELETE"
+        Conn.send_resp(conn, 204, "")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      refute Repo.get(ProviderCalendarEventSchema, row.id)
+    end
+
+    test "addresses the event's own href rather than rebuilding the URL from the uid",
+         %{integration: integration} do
+      insert_pending_row(integration,
+        sync_state: "locally_deleted",
+        provider_event_id: "/cal/other-collection/queue-event-uid.ics"
+      )
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        assert conn.request_path == "/cal/other-collection/queue-event-uid.ics"
+        Conn.send_resp(conn, 204, "")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+    end
+
+    test "treats 404 as already-deleted and drops the cache row",
+         %{integration: integration} do
+      row = insert_pending_row(integration, sync_state: "locally_deleted")
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        Conn.send_resp(conn, 404, "")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      refute Repo.get(ProviderCalendarEventSchema, row.id)
+    end
+
+    # Without an href the URL is built from the uid against a collection, and
+    # taking the integration's first configured path guesses wrong whenever the
+    # event lives anywhere else. A CalDAV DELETE counts 404 as success, so that
+    # guess reported the event deleted while it stayed on the server.
+    test "builds the URL against the collection the row is filed under",
+         %{integration: integration} do
+      insert_pending_row(integration,
+        sync_state: "locally_deleted",
+        provider_calendar_id: "/work/",
+        provider_event_id: nil
+      )
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        assert conn.request_path == "/work/queue-event-uid.ics"
+        Conn.send_resp(conn, 204, "")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+    end
+  end
+
+  describe "flush/2 — how much of the event the replay sends" do
+    # The rebuilt payload used to carry a narrow subset of the row, so a
+    # replayed write of a recurring event replaced the whole series on the
+    # server with one non-recurring VEVENT carrying no attendees and no alarms.
+    # A create is the replay that still sends a series; an update of one is
+    # refused, see `OfflineQueueSeriesTest`.
+    test "a replayed create still carries the RRULE, attendees and alarms",
+         %{integration: integration} do
+      insert_pending_row(integration,
+        sync_state: "locally_created",
+        raw_ical: nil,
+        recurrence_rule: "FREQ=WEEKLY;BYDAY=MO",
+        attendees: [%{"email" => "sam@example.com", "display_name" => "Sam"}],
+        reminders: [%{"method" => "popup", "minutes_before" => 15}]
+      )
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        {:ok, body, conn} = Conn.read_body(conn)
+
+        assert body =~ "RRULE:FREQ=WEEKLY;BYDAY=MO"
+        assert body =~ "sam@example.com"
+        assert body =~ "BEGIN:VALARM"
+
+        Conn.send_resp(conn, 201, "")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+    end
+  end
+
+  describe "flush/2 — all-day rows" do
+    test "replays an all-day row using its dates, not its null timestamps",
+         %{integration: integration} do
+      row =
+        insert_pending_row(integration,
+          sync_state: "locally_created",
+          all_day: true,
+          start_at: nil,
+          end_at: nil,
+          start_date: ~D[2026-04-15],
+          end_date: ~D[2026-04-16]
+        )
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        {:ok, body, conn} = Conn.read_body(conn)
+
+        assert body =~ "DTSTART;VALUE=DATE:20260415"
+        assert body =~ "DTEND;VALUE=DATE:20260416"
+
+        Conn.send_resp(conn, 201, "")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      assert Repo.reload!(row).sync_state == "synced"
+    end
+  end
+
+  describe "flush/2 — rows that can never be sent" do
+    test "skips a row with no usable start or end time", %{integration: integration} do
+      row =
+        insert_pending_row(integration,
+          sync_state: "locally_created",
+          all_day: false,
+          start_at: nil,
+          end_at: nil
+        )
+
+      ReqTest.stub(:tymeslot_http, fn _conn ->
+        flunk("a row with no start time must never reach the calendar server")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      reloaded = Repo.reload!(row)
+
+      assert reloaded.sync_last_error ==
+               "This change is missing the event's start or end time, so it could not be sent to the calendar server."
+    end
+
+    # `flush/2` runs before the remote fetch, so a row that raises here used to
+    # take down the whole sync job — blocking every other queued change and the
+    # integration's own remote sync behind it, on every cycle.
+    test "does not stop the rest of the queue from replaying", %{integration: integration} do
+      insert_pending_row(integration,
+        uid: "unsendable-uid",
+        provider_event_id: "/cal/unsendable-uid.ics",
+        sync_state: "locally_created",
+        start_at: nil,
+        end_at: nil
+      )
+
+      sendable =
+        insert_pending_row(integration,
+          uid: "sendable-uid",
+          provider_event_id: "/cal/sendable-uid.ics",
+          sync_state: "locally_created"
+        )
+
+      ReqTest.stub(:tymeslot_http, fn conn -> Conn.send_resp(conn, 201, "") end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      assert Repo.reload!(sendable).sync_state == "synced"
+    end
+  end
+
+  describe "flush/2 — multi-calendar connections" do
+    test "replays a row against the calendar it was tagged for, not the connection's first path",
+         %{integration: integration} do
+      row =
+        insert_pending_row(integration,
+          sync_state: "locally_created",
+          provider_calendar_id: "/cal/tymeslot/",
+          provider_event_id: "/cal/tymeslot/queue-event-uid.ics"
+        )
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        assert conn.request_path =~ "/cal/tymeslot/"
+        refute conn.request_path =~ "/cal/personal/"
+        Conn.send_resp(conn, 201, "")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+
+      assert Repo.reload!(row).sync_state == "synced"
+    end
+
+    test "falls back to the connection's first path for a legacy row with no provider_calendar_id" do
+      # The fallback reads `integration.calendar_paths`, so this integration
+      # (not the client) needs the multi-calendar list.
+      multi_integration =
+        insert(:calendar_integration,
+          provider: "caldav",
+          calendar_paths: ["/cal/personal/", "/cal/tymeslot/"]
+        )
+
+      # provider_calendar_id is NOT NULL at the DB level, so a row that
+      # predates per-row tagging is represented by an empty string rather
+      # than nil.
+      row =
+        insert_pending_row(multi_integration,
+          sync_state: "locally_created",
+          provider_calendar_id: ""
+        )
+
+      ReqTest.stub(:tymeslot_http, fn conn ->
+        assert conn.request_path =~ "/cal/personal/"
+        Conn.send_resp(conn, 201, "")
+      end)
+
+      assert :ok = OfflineQueue.flush(multi_integration, @client)
+
+      assert Repo.reload!(row).sync_state == "synced"
+    end
+  end
+
+  describe "flush/2 — empty queue" do
+    test "is a no-op when no rows are pending", %{integration: integration} do
+      # All rows are synced — no HTTP traffic should happen.
+      _row = insert_pending_row(integration, sync_state: "synced")
+
+      ReqTest.stub(:tymeslot_http, fn _conn ->
+        flunk("OfflineQueue.flush must not touch the network when queue is empty")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+    end
+
+    test "ignores rows belonging to other integrations", %{integration: integration} do
+      # A row on another integration must not be flushed.
+      other = insert(:calendar_integration, provider: "caldav", calendar_paths: ["/cal/"])
+      _row = insert_pending_row(other, sync_state: "locally_modified")
+
+      ReqTest.stub(:tymeslot_http, fn _conn ->
+        flunk("OfflineQueue.flush touched network for rows belonging to another integration")
+      end)
+
+      assert :ok = OfflineQueue.flush(integration, @client)
+    end
+  end
+
+  describe "query helpers" do
+    test "list_pending returns non-synced rows in updated_at order",
+         %{integration: integration} do
+      older = insert_pending_row(integration, uid: "older", sync_state: "locally_modified")
+      _synced = insert_pending_row(integration, uid: "synced-1", sync_state: "synced")
+      newer = insert_pending_row(integration, uid: "newer", sync_state: "locally_created")
+
+      # Force an ordering difference independent of insert order
+      SQL.query!(
+        Repo,
+        "UPDATE provider_calendar_events SET updated_at = $1 WHERE id = $2",
+        [~U[2026-04-14 00:00:00.000000Z], older.id]
+      )
+
+      SQL.query!(
+        Repo,
+        "UPDATE provider_calendar_events SET updated_at = $1 WHERE id = $2",
+        [~U[2026-04-15 00:00:00.000000Z], newer.id]
+      )
+
+      uids =
+        integration.id
+        |> QueueQueries.list_pending()
+        |> Enum.map(& &1.uid)
+
+      assert uids == ["older", "newer"]
+    end
+
+    test "mark_synced clears queue fields and updates etag",
+         %{integration: integration} do
+      row = insert_pending_row(integration, sync_state: "locally_modified", etag: "\"stale\"")
+
+      assert {:ok, :updated} =
+               QueueQueries.mark_synced(integration.id, row.uid, "\"fresh\"")
+
+      reloaded = Repo.reload!(row)
+      assert reloaded.sync_state == "synced"
+      assert reloaded.sync_attempts == 0
+      assert reloaded.sync_last_error == nil
+      assert reloaded.etag == "\"fresh\""
+    end
+
+    test "mark_sync_failed increments sync_attempts and sets sync_last_error without changing sync_state",
+         %{integration: integration} do
+      row = insert_pending_row(integration, sync_state: "locally_modified")
+
+      assert :ok =
+               QueueQueries.mark_sync_failed(
+                 integration.id,
+                 row.uid,
+                 "502 Bad Gateway"
+               )
+
+      after_first = Repo.reload!(row)
+      assert after_first.sync_state == "locally_modified"
+      assert after_first.sync_attempts == 1
+      assert after_first.sync_last_error == "502 Bad Gateway"
+
+      assert :ok =
+               QueueQueries.mark_sync_failed(
+                 integration.id,
+                 row.uid,
+                 "503 Service Unavailable"
+               )
+
+      after_second = Repo.reload!(row)
+      assert after_second.sync_state == "locally_modified"
+      assert after_second.sync_attempts == 2
+      assert after_second.sync_last_error == "503 Service Unavailable"
+    end
+
+    test "upsert_queue_entry applies on-conflict update — second call's sync_state wins",
+         %{integration: integration} do
+      base_attrs = %{
+        calendar_integration_id: integration.id,
+        uid: "upsert-test-uid",
+        provider: "caldav",
+        provider_calendar_id: "/cal/",
+        provider_event_id: "/cal/upsert-test-uid.ics",
+        summary: "Upsert Test",
+        start_at: ~U[2026-04-15 14:00:00.000000Z],
+        end_at: ~U[2026-04-15 15:00:00.000000Z],
+        all_day: false,
+        timezone: "UTC",
+        synced_at: ~U[2026-04-15 00:00:00.000000Z],
+        etag: "\"etag-v1\"",
+        sync_state: "locally_created"
+      }
+
+      assert {:ok, 1} = QueueQueries.upsert_queue_entry(base_attrs)
+
+      first =
+        Repo.get_by!(ProviderCalendarEventSchema,
+          uid: "upsert-test-uid",
+          calendar_integration_id: integration.id
+        )
+
+      assert first.sync_state == "locally_created"
+
+      updated_attrs = Map.put(base_attrs, :sync_state, "locally_modified")
+      assert {:ok, 1} = QueueQueries.upsert_queue_entry(updated_attrs)
+
+      second =
+        Repo.get_by!(ProviderCalendarEventSchema,
+          uid: "upsert-test-uid",
+          calendar_integration_id: integration.id
+        )
+
+      assert second.sync_state == "locally_modified"
+    end
+  end
+end

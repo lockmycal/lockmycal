@@ -1,0 +1,648 @@
+defmodule Tymeslot.Integrations.Calendar.CalendarIntegrationQueries do
+  @moduledoc """
+  Database queries for calendar integrations.
+  """
+
+  import Ecto.Query
+
+  alias Ecto.Changeset
+  alias Tymeslot.Clock
+  alias Tymeslot.Integrations.Calendar.CalendarIntegrationSchema
+  alias Tymeslot.Repo
+
+  # Postgres advisory-lock class id for the first-integration primary-election
+  # race (see `acquire_primary_lock/1`). Advisory-lock class ids share a single
+  # namespace across the whole database connection; other allocations are
+  # `MeetingConflictQueries.@booking_limits_lock_class` (715_001) and the bare
+  # `2` in `ProviderCalendarEventQueries`.
+  @primary_lock_class 1
+
+  @doc """
+  Gets all active calendar integrations for a user.
+  """
+  @spec list_active_for_user(integer()) :: [CalendarIntegrationSchema.t()]
+  def list_active_for_user(user_id) do
+    CalendarIntegrationSchema
+    |> where([c], c.user_id == ^user_id and c.is_active == true)
+    |> order_by([c], asc: c.name)
+    |> Repo.all()
+    |> Enum.map(&CalendarIntegrationSchema.decrypt_credentials/1)
+  end
+
+  @doc """
+  Gets all active calendar integrations across all users.
+  Used for health checks and monitoring.
+  """
+  @spec list_all_active() :: list(CalendarIntegrationSchema.t())
+  def list_all_active do
+    CalendarIntegrationSchema
+    |> where([c], c.is_active == true)
+    |> order_by([c], asc: c.name)
+    |> Repo.all()
+    |> Enum.map(&CalendarIntegrationSchema.decrypt_credentials/1)
+  end
+
+  @doc """
+  Streams all active calendar integrations in batches, reducing over them with
+  the given accumulator. Uses `Repo.stream/2` inside a transaction to avoid
+  loading all rows into memory at once.
+
+  `fun` receives each decrypted integration and the current accumulator.
+  Returns the final accumulator value.
+  """
+  @spec stream_all_active(pos_integer(), acc, (CalendarIntegrationSchema.t(), acc -> acc)) :: acc
+        when acc: term()
+  def stream_all_active(max_rows, initial_acc, fun) when is_function(fun, 2) do
+    {:ok, result} =
+      Repo.transaction(
+        fn ->
+          CalendarIntegrationSchema
+          |> where([c], c.is_active == true and c.needs_reauth == false)
+          |> order_by([c], asc: c.id)
+          |> Repo.stream(max_rows: max_rows)
+          |> Enum.reduce(initial_acc, fn row, acc ->
+            fun.(CalendarIntegrationSchema.decrypt_credentials(row), acc)
+          end)
+        end,
+        timeout: :infinity
+      )
+
+    result
+  end
+
+  @doc """
+  Gets all calendar integrations for a user (including inactive).
+  """
+  @spec list_all_for_user(integer()) :: [CalendarIntegrationSchema.t()]
+  def list_all_for_user(user_id) do
+    CalendarIntegrationSchema
+    |> where([c], c.user_id == ^user_id)
+    |> order_by([c], desc: c.is_active, asc: c.name)
+    |> Repo.all()
+    |> Enum.map(&CalendarIntegrationSchema.decrypt_credentials/1)
+  end
+
+  @doc """
+  Whether a user other than `user_id` has an integration on the same provider
+  account (`provider_account_id`) under any of `providers`.
+
+  Revoking OAuth access at Google or Zoom ends the grant for the whole
+  provider account, so account deletion checks this before revoking and
+  leaves the grant alone while someone else still depends on it.
+  """
+  @spec account_used_by_other_user?([String.t()], String.t(), integer()) :: boolean()
+  def account_used_by_other_user?(providers, provider_account_id, user_id)
+      when is_binary(provider_account_id) do
+    CalendarIntegrationSchema
+    |> where([c], c.provider in ^providers)
+    |> where([c], c.provider_account_id == ^provider_account_id)
+    |> where([c], c.user_id != ^user_id)
+    |> Repo.exists?()
+  end
+
+  @doc """
+  Gets a single calendar integration by ID.
+  WARNING: This function does not check user authorization.
+  Use get_for_user/2 instead for secure access.
+
+  Returns:
+
+    * `{:ok, integration}` — found and credentials readable
+    * `{:error, :not_found}` — no row with that ID
+    * `{:error, :requires_reencryption, integration}` — found but one or more
+      encrypted credentials cannot be decrypted with the current keyring (e.g.
+      after SECRET_KEY_BASE rotation). The raw integration (without decrypted
+      virtual fields) is included so callers can flag `needs_reauth` without
+      needing to re-query.
+
+  Callers that previously only handled `{:ok, _}` and `{:error, :not_found}`
+  must add a `{:error, :requires_reencryption, integration}` clause and route
+  to `CalendarManagement.handle_reauth_required/1` (for background workers) or
+  surface a reconnect prompt (for the web layer).
+  """
+  @spec get(integer()) ::
+          {:ok, CalendarIntegrationSchema.t()}
+          | {:error, :not_found}
+          | {:error, :requires_reencryption, CalendarIntegrationSchema.t()}
+  def get(id) do
+    case Repo.get(CalendarIntegrationSchema, id) do
+      nil ->
+        {:error, :not_found}
+
+      integration ->
+        case CalendarIntegrationSchema.decryption_status(integration) do
+          :ok -> {:ok, CalendarIntegrationSchema.decrypt_credentials(integration)}
+          :requires_reencryption -> {:error, :requires_reencryption, integration}
+        end
+    end
+  end
+
+  @doc """
+  Gets a calendar integration by ID for a specific user.
+  This is the secure version that checks user authorization.
+
+  Returns:
+
+    * `{:ok, integration}` — found and credentials readable
+    * `{:error, :not_found}` — no row with that ID for this user
+    * `{:error, :requires_reencryption, integration}` — found but one or more
+      encrypted credentials cannot be decrypted with the current keyring (e.g.
+      after SECRET_KEY_BASE rotation). The raw integration (without decrypted
+      virtual fields) is included so callers can flag `needs_reauth` without
+      needing to re-query.
+
+  Callers that only need a two-outcome shape should use
+  `CalendarManagement.fetch_integration_for_user/2`, which silently flags the
+  integration on `:requires_reencryption` and collapses it to
+  `{:error, :not_found}`.
+  """
+  @spec get_for_user(integer(), integer()) ::
+          {:ok, CalendarIntegrationSchema.t()}
+          | {:error, :not_found}
+          | {:error, :requires_reencryption, CalendarIntegrationSchema.t()}
+  def get_for_user(id, user_id) do
+    result =
+      CalendarIntegrationSchema
+      |> where([c], c.id == ^id and c.user_id == ^user_id)
+      |> Repo.one()
+
+    case result do
+      nil ->
+        {:error, :not_found}
+
+      integration ->
+        case CalendarIntegrationSchema.decryption_status(integration) do
+          :ok -> {:ok, CalendarIntegrationSchema.decrypt_credentials(integration)}
+          :requires_reencryption -> {:error, :requires_reencryption, integration}
+        end
+    end
+  end
+
+  @doc """
+  Gets a calendar integration by user ID and provider.
+  Returns {:ok, integration} if found, {:error, :not_found} otherwise.
+  """
+  @spec get_by_user_and_provider(integer(), String.t()) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, :not_found}
+  def get_by_user_and_provider(user_id, provider) do
+    result =
+      CalendarIntegrationSchema
+      |> where([c], c.user_id == ^user_id and c.provider == ^provider)
+      |> limit(1)
+      |> Repo.one()
+
+    case result do
+      nil -> {:error, :not_found}
+      integration -> {:ok, CalendarIntegrationSchema.decrypt_credentials(integration)}
+    end
+  end
+
+  @doc """
+  Finds an active calendar integration by provider and account ID for a user.
+  """
+  @spec get_by_account_for_user(integer(), String.t(), String.t()) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, :not_found}
+  def get_by_account_for_user(user_id, provider, provider_account_id)
+      when is_integer(user_id) and is_binary(provider) and is_binary(provider_account_id) do
+    result =
+      CalendarIntegrationSchema
+      |> where(
+        [c],
+        c.user_id == ^user_id and
+          c.provider == ^provider and
+          c.provider_account_id == ^provider_account_id and
+          c.is_active == true
+      )
+      |> limit(1)
+      |> Repo.one()
+
+    case result do
+      nil -> {:error, :not_found}
+      integration -> {:ok, CalendarIntegrationSchema.decrypt_credentials(integration)}
+    end
+  end
+
+  @doc """
+  Finds any calendar integration (active or inactive) by provider and account ID for a user.
+  Used to detect inactive duplicates before creating a new row.
+  """
+  @spec get_any_by_account_for_user(integer(), String.t(), String.t()) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, :not_found}
+  def get_any_by_account_for_user(user_id, provider, provider_account_id)
+      when is_integer(user_id) and is_binary(provider) and is_binary(provider_account_id) do
+    result =
+      CalendarIntegrationSchema
+      |> where(
+        [c],
+        c.user_id == ^user_id and
+          c.provider == ^provider and
+          c.provider_account_id == ^provider_account_id
+      )
+      |> order_by([c], desc: c.is_active)
+      |> limit(1)
+      |> Repo.one()
+
+    case result do
+      nil -> {:error, :not_found}
+      integration -> {:ok, CalendarIntegrationSchema.decrypt_credentials(integration)}
+    end
+  end
+
+  @doc """
+  Creates a new calendar integration.
+  """
+  @spec create(map()) :: {:ok, CalendarIntegrationSchema.t()} | {:error, Ecto.Changeset.t()}
+  def create(attrs) do
+    %CalendarIntegrationSchema{}
+    |> CalendarIntegrationSchema.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a calendar integration, leaving any outstanding `needs_reauth` flag
+  in place.
+
+  Background writers (token refresh, sync bookkeeping) must use this. To clear
+  the flag, the caller must say so explicitly via `update_credentials/2`.
+  """
+  @spec update(CalendarIntegrationSchema.t(), map()) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, Ecto.Changeset.t()}
+  def update(%CalendarIntegrationSchema{} = integration, attrs) do
+    integration
+    |> CalendarIntegrationSchema.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Updates a calendar integration with credentials its owner has just supplied,
+  clearing `needs_reauth`.
+
+  Only reconnect paths may use this: an OAuth callback, or a CalDAV credential
+  form. It cannot be inferred from the changeset instead, because credentials
+  are encrypted with a fresh nonce per write (`Tymeslot.Security.Encryption`),
+  so the ciphertext differs on every update whether or not the credential
+  itself changed — "an encrypted field changed" carries no information about
+  who supplied it. Inferring it meant the hourly background token refresh
+  cleared reauth flags raised by unrelated failures, putting broken
+  integrations back into the sync sweep every hour.
+  """
+  @spec update_credentials(CalendarIntegrationSchema.t(), map()) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, Ecto.Changeset.t()}
+  def update_credentials(%CalendarIntegrationSchema{} = integration, attrs) do
+    integration
+    |> CalendarIntegrationSchema.changeset(attrs)
+    |> Changeset.put_change(:needs_reauth, false)
+    |> Repo.update()
+  end
+
+  @doc """
+  Marks the given calendars as unselected within an integration's `calendar_list`.
+
+  Used when a previously-selected secondary calendar no longer exists on the
+  provider (HTTP 404), so the sync worker stops attempting to fetch it on every
+  run. Entries are matched on the provider calendar id; `calendar_list` is loaded
+  from JSONB so entries carry string keys, with an atom-key fallback for any
+  in-memory callers. A no-op (returns `{:ok, integration}`) when nothing matches.
+  """
+  @spec deselect_calendars(CalendarIntegrationSchema.t(), [String.t()]) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, Ecto.Changeset.t()}
+  def deselect_calendars(%CalendarIntegrationSchema{} = integration, calendar_ids) do
+    ids = MapSet.new(calendar_ids)
+
+    updated_list =
+      Enum.map(integration.calendar_list, fn cal ->
+        if MapSet.member?(ids, cal.id) do
+          %{cal | selected: false}
+        else
+          cal
+        end
+      end)
+
+    integration
+    |> CalendarIntegrationSchema.changeset(%{calendar_list: updated_list})
+    |> Repo.update()
+  end
+
+  @doc """
+  Removes the given paths from an integration's `calendar_paths`.
+
+  Used when a CalDAV calendar collection no longer exists on the server
+  (HTTP 404), so the sync worker stops fetching it on every run — the CalDAV
+  counterpart to `deselect_calendars/2`. A no-op (returns `{:ok, integration}`)
+  when nothing matches.
+  """
+  @spec remove_calendar_paths(CalendarIntegrationSchema.t(), [String.t()]) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, Ecto.Changeset.t()}
+  def remove_calendar_paths(%CalendarIntegrationSchema{} = integration, paths) do
+    remaining = Enum.reject(integration.calendar_paths, &(&1 in paths))
+
+    integration
+    |> CalendarIntegrationSchema.changeset(%{calendar_paths: remaining})
+    |> Repo.update()
+  end
+
+  @doc """
+  Forgets every calendar path's CalDAV sync token, so the next sync of each
+  starts from a full fetch.
+  """
+  @spec clear_caldav_sync_tokens(CalendarIntegrationSchema.t()) :: :ok
+  def clear_caldav_sync_tokens(%CalendarIntegrationSchema{id: id}) do
+    query =
+      from(ci in CalendarIntegrationSchema,
+        where: ci.id == ^id,
+        update: [set: [caldav_sync_tokens: fragment("'{}'::jsonb")]]
+      )
+
+    Repo.update_all(query, [])
+
+    :ok
+  end
+
+  @doc """
+  Records one calendar path's CalDAV sync token, or forgets it when `token` is
+  `nil`.
+
+  A single atomic jsonb edit rather than a changeset over the whole map: a sync
+  run writes a token per path from the integration struct it loaded at the
+  start, so replacing the map would drop every token another path wrote
+  earlier in the same run.
+  """
+  @spec put_caldav_sync_token(CalendarIntegrationSchema.t(), String.t(), String.t() | nil) ::
+          :ok
+  def put_caldav_sync_token(%CalendarIntegrationSchema{id: id}, path, nil) do
+    query =
+      from(ci in CalendarIntegrationSchema,
+        where: ci.id == ^id,
+        update: [set: [caldav_sync_tokens: fragment("? - ?::text", ci.caldav_sync_tokens, ^path)]]
+      )
+
+    Repo.update_all(query, [])
+
+    :ok
+  end
+
+  def put_caldav_sync_token(%CalendarIntegrationSchema{id: id}, path, token)
+      when is_binary(token) do
+    query =
+      from(ci in CalendarIntegrationSchema,
+        where: ci.id == ^id,
+        update: [
+          set: [
+            caldav_sync_tokens:
+              fragment(
+                "COALESCE(?, '{}'::jsonb) || jsonb_build_object(?::text, ?::text)",
+                ci.caldav_sync_tokens,
+                ^path,
+                ^token
+              )
+          ]
+        ]
+      )
+
+    Repo.update_all(query, [])
+
+    :ok
+  end
+
+  @doc """
+  Deletes a calendar integration.
+  """
+  @spec delete(CalendarIntegrationSchema.t()) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, Ecto.Changeset.t()}
+  def delete(%CalendarIntegrationSchema{} = integration) do
+    Repo.delete(integration)
+  end
+
+  @doc """
+  Clears the reconnection flag and the error that accompanied it, for a sync
+  cycle that read from the provider.
+
+  A cycle that completed disproves every condition that sets the flag: rejected
+  credentials, a booking calendar deleted at the provider, a CalDAV integration
+  with no calendar selected. Left set, the flag keeps the integration out of
+  booking indefinitely (`BookingIntegrationResolver.booking_target?/1` requires
+  `needs_reauth: false`) however well it is syncing, and nothing but the owner
+  reconnecting by hand ever clears it.
+
+  This is deliberately narrower than it looks: a *successful token refresh*
+  must not clear it, because a fresh token says nothing about a deleted
+  calendar — see `Calendar.Auth.Tokens.maybe_clear_sync_error/2`. Only a sync
+  that actually read the calendar carries the proof.
+
+  Ecto skips the statement entirely when neither field has changed, so the
+  overwhelming majority of cycles cost nothing here.
+  """
+  @spec clear_reauth_flag(CalendarIntegrationSchema.t()) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, Ecto.Changeset.t()}
+  def clear_reauth_flag(%CalendarIntegrationSchema{} = integration) do
+    integration
+    |> Changeset.change(%{sync_error: nil, needs_reauth: false})
+    |> Repo.update()
+  end
+
+  @doc """
+  Updates the sync error message.
+  """
+  @spec mark_sync_error(CalendarIntegrationSchema.t(), String.t()) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, Ecto.Changeset.t()}
+  def mark_sync_error(%CalendarIntegrationSchema{} = integration, error_message) do
+    integration
+    |> Changeset.change(%{
+      sync_error: error_message
+    })
+    |> Repo.update()
+  end
+
+  @doc """
+  Flags an integration as needing reauthentication — used when the stored
+  credentials can no longer be decrypted. Also records a sync error so the
+  dashboard banner and the sync log stay consistent.
+
+  Stamps `reauth_flagged_at` only when the flag was not already set, so
+  re-flagging an integration already awaiting reconnection is not counted as a
+  new flag by `count_reauth_flagged_by_provider/2`.
+  """
+  @spec mark_needs_reauth(CalendarIntegrationSchema.t(), String.t()) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, Ecto.Changeset.t()}
+  def mark_needs_reauth(%CalendarIntegrationSchema{} = integration, error_message) do
+    integration
+    |> Changeset.change(%{needs_reauth: true, sync_error: error_message})
+    |> stamp_reauth_flagged_at(integration)
+    |> Repo.update()
+  end
+
+  defp stamp_reauth_flagged_at(changeset, %{needs_reauth: true}), do: changeset
+
+  defp stamp_reauth_flagged_at(changeset, _integration) do
+    Changeset.put_change(
+      changeset,
+      :reauth_flagged_at,
+      DateTime.truncate(Clock.utc_now(), :second)
+    )
+  end
+
+  @doc """
+  Counts the integrations newly flagged `needs_reauth` within `[from, to)`,
+  per provider, whether or not the flag has since been cleared.
+  """
+  @spec count_reauth_flagged_by_provider(DateTime.t(), DateTime.t()) ::
+          %{String.t() => pos_integer()}
+  def count_reauth_flagged_by_provider(%DateTime{} = from, %DateTime{} = to) do
+    CalendarIntegrationSchema
+    |> where([c], c.reauth_flagged_at >= ^from and c.reauth_flagged_at < ^to)
+    |> group_by([c], c.provider)
+    |> select([c], {c.provider, count(c.id)})
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  @doc """
+  Toggles the active status of an integration.
+
+  When reactivating, checks that no other active integration exists for the same
+  `(user_id, provider, provider_account_id)` to prevent a unique-constraint violation.
+  """
+  @spec toggle_active(CalendarIntegrationSchema.t()) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, Ecto.Changeset.t() | :duplicate_account}
+  def toggle_active(%CalendarIntegrationSchema{} = integration) do
+    if integration.is_active do
+      integration
+      |> CalendarIntegrationSchema.activation_changeset(false)
+      |> Repo.update()
+    else
+      case check_reactivation_conflict(integration) do
+        :ok ->
+          integration
+          |> CalendarIntegrationSchema.activation_changeset(true)
+          |> Repo.update()
+
+        {:error, :duplicate_account} = err ->
+          err
+      end
+    end
+  end
+
+  # Every uniqueness index here is predicated on `is_active = true`, so
+  # reactivating a row moves it *into* the index. A row whose account id is
+  # NULL falls under the legacy-row index on `(user_id, provider)`, and one
+  # whose account id is the empty string falls under the account index, because
+  # `''` is not NULL. Waving both through returned `:ok` for exactly the rows
+  # that contend, with no concurrency involved at all.
+  defp check_reactivation_conflict(%{provider_account_id: nil} = integration) do
+    if active_null_account_exists?(integration.user_id, integration.provider) do
+      {:error, :duplicate_account}
+    else
+      :ok
+    end
+  end
+
+  defp check_reactivation_conflict(integration) do
+    if active_account_exists?(
+         integration.user_id,
+         integration.provider,
+         integration.provider_account_id
+       ) do
+      {:error, :duplicate_account}
+    else
+      :ok
+    end
+  end
+
+  # Existence-only checks: the reactivation conflict check never needs the
+  # conflicting row's credentials, and decrypting them (as the equivalent
+  # `get_*` lookups do) can raise on a row whose ciphertext no longer decrypts
+  # under the current keyring — turning a refusal into a crash.
+  defp active_null_account_exists?(user_id, provider) do
+    CalendarIntegrationSchema
+    |> where(
+      [c],
+      c.user_id == ^user_id and c.provider == ^provider and
+        is_nil(c.provider_account_id) and c.is_active == true
+    )
+    |> Repo.exists?()
+  end
+
+  defp active_account_exists?(user_id, provider, provider_account_id) do
+    CalendarIntegrationSchema
+    |> where(
+      [c],
+      c.user_id == ^user_id and
+        c.provider == ^provider and
+        c.provider_account_id == ^provider_account_id and
+        c.is_active == true
+    )
+    |> Repo.exists?()
+  end
+
+  @doc """
+  Whether this integration belongs to this user.
+
+  An ownership check and nothing more, for callers that act on an integration
+  without needing to read it. `get_for_user/2` decrypts credentials and can
+  answer `{:error, :requires_reencryption}`, neither of which a display-only
+  change such as recolouring should have to care about or be blocked by.
+  """
+  @spec owned_by?(integer() | any(), integer() | any()) :: boolean()
+  def owned_by?(id, user_id) when is_integer(id) and is_integer(user_id) do
+    CalendarIntegrationSchema
+    |> where([c], c.id == ^id and c.user_id == ^user_id)
+    |> Repo.exists?()
+  end
+
+  def owned_by?(_id, _user_id), do: false
+
+  @doc """
+  Counts a user's active calendar integrations.
+  """
+  @spec count_active_for_user(integer()) :: non_neg_integer()
+  def count_active_for_user(user_id) do
+    CalendarIntegrationSchema
+    |> where([c], c.user_id == ^user_id and c.is_active == true)
+    |> select([c], count(c.id))
+    |> Repo.one() || 0
+  end
+
+  @doc """
+  Counts calendar integrations for a user.
+  """
+  @spec count_for_user(integer()) :: non_neg_integer()
+  def count_for_user(user_id) do
+    CalendarIntegrationSchema
+    |> where([c], c.user_id == ^user_id)
+    |> select([c], count(c.id))
+    |> Repo.one() || 0
+  end
+
+  @doc """
+  Acquires a transaction-scoped Postgres advisory lock keyed on the given
+  user, so two concurrent first-integration inserts can't both observe
+  `count_for_user/1 == 1`. Must be called from inside a `Repo.transaction/1`;
+  the lock releases automatically at commit or rollback.
+  """
+  @spec acquire_primary_lock(integer()) :: :ok
+  def acquire_primary_lock(user_id) do
+    Repo.query!("SELECT pg_advisory_xact_lock($1, $2)", [@primary_lock_class, user_id])
+    :ok
+  end
+
+  @doc """
+  Checks whether the user already has a default booking calendar set.
+  """
+  @spec user_has_default_booking_calendar?(integer()) :: boolean()
+  def user_has_default_booking_calendar?(user_id) do
+    Repo.exists?(
+      from(ci in CalendarIntegrationSchema,
+        where: ci.user_id == ^user_id and not is_nil(ci.default_booking_calendar_id)
+      )
+    )
+  end
+
+  @doc "Updates the sync state fields for an integration."
+  @spec update_sync_state(CalendarIntegrationSchema.t(), map()) ::
+          {:ok, CalendarIntegrationSchema.t()} | {:error, Ecto.Changeset.t()}
+  def update_sync_state(integration, attrs) when is_map(attrs) do
+    integration
+    |> Changeset.change(attrs)
+    |> Repo.update()
+  end
+end

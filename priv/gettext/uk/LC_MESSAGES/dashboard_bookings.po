@@ -1,0 +1,593 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: uk\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100 != 11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10||n%100>=20) ? 1 : 2);\n"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "%{going} of %{total} going"
+msgstr "Прийдуть: %{going} з %{total}"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Custom answers"
+msgstr "Власні відповіді"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Declined"
+msgstr "Відхилено"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Going"
+msgstr "Прийде"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Guests"
+msgstr "Гості"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Pending"
+msgstr "В очікуванні"
+
+#: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "%{attendee_name} will receive an email explaining you need to reschedule"
+msgstr "%{attendee_name} отримає електронний лист із поясненням, що вам потрібно перенести зустріч"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Attendee Email"
+msgstr "Електронна пошта учасника"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Auto-notifications"
+msgstr "Автоматичні сповіщення"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr "Скасувати"
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel Meeting"
+msgstr "Скасувати зустріч"
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel without refund."
+msgstr "Скасувати без повернення коштів."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_status_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled"
+msgstr "Скасовано"
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelling..."
+msgstr "Скасування..."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Change meeting times"
+msgstr "Змінити час зустрічі"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_status_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Completed"
+msgstr "Завершено"
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Confirm cancellation"
+msgstr "Підтвердити скасування"
+
+#: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Current Meeting"
+msgstr "Поточна зустріч"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Date & Time"
+msgstr "Дата й час"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Dismiss"
+msgstr "Закрити"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/cancellation.ex
+#, elixir-autogen, elixir-format
+msgid "Enter a valid partial refund amount."
+msgstr "Вкажіть коректну суму часткового повернення."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to cancel meeting. Please try again."
+msgstr "Не вдалося скасувати зустріч. Спробуйте ще раз."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to load meetings"
+msgstr "Не вдалося завантажити зустрічі"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to load more meetings"
+msgstr "Не вдалося завантажити більше зустрічей"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to send reschedule request. Please try again."
+msgstr "Не вдалося надіслати запит на перенесення. Спробуйте ще раз."
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Full refund."
+msgstr "Повне повернення коштів."
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "I understand the attendee will not receive a refund."
+msgstr "Я розумію, що учаснику не повернуть кошти."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Join Meeting"
+msgstr "Приєднатися до зустрічі"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Join Video"
+msgstr "Приєднатися до відеодзвінка"
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Keep Meeting"
+msgstr "Не скасовувати зустріч"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Load more meetings"
+msgstr "Завантажити більше зустрічей"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Loading..."
+msgstr "Завантаження..."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Manage all your scheduled meetings in one place. Filter by status and take quick actions on your appointments."
+msgstr "Керуйте всіма запланованими зустрічами в одному місці. Фільтруйте їх за статусом і швидко виконуйте потрібні дії."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Management"
+msgstr "Керування зустрічами"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Notes"
+msgstr "Нотатки до зустрічі"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/cancellation.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting cancelled and refund issued."
+msgstr "Зустріч скасовано, а кошти повернено."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting cancelled but refund could not be issued. Please issue the refund manually from your Stripe dashboard."
+msgstr "Зустріч скасовано, але не вдалося повернути кошти. Будь ласка, зробіть це вручну на панелі керування Stripe."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/cancellation.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting cancelled successfully"
+msgstr "Зустріч успішно скасовано"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Meetings"
+msgstr "Зустрічі"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "No cancelled meetings"
+msgstr "Немає скасованих зустрічей"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "No past meetings"
+msgstr "Немає минулих зустрічей"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "No upcoming meetings"
+msgstr "Немає майбутніх зустрічей"
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Partial amount"
+msgstr "Часткова сума"
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Partial refund."
+msgstr "Часткове повернення коштів."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Processing..."
+msgstr "Обробка..."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Quick meeting access"
+msgstr "Швидкий доступ до зустрічей"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Real-time updates"
+msgstr "Оновлення в реальному часі"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/cancellation.ex
+#, elixir-autogen, elixir-format
+msgid "Refund amount exceeds the remaining refundable balance."
+msgstr "Сума повернення перевищує залишок, доступний для повернення."
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Refund only part of the booking amount."
+msgstr "Повернути лише частину вартості бронювання."
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Refunds the remaining balance (%{amount})."
+msgstr "Повертає залишок коштів (%{amount})."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Reschedule"
+msgstr "Перенести"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_status_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Reschedule Requested"
+msgstr "Запит на перенесення"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management_component.ex
+#, elixir-autogen, elixir-format
+msgid "Reschedule request sent to %{attendee_name}"
+msgstr "Запит на перенесення надіслано учаснику %{attendee_name}"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_status_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Scheduled"
+msgstr "Заплановано"
+
+#: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Send Request"
+msgstr "Надіслати запит"
+
+#: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Send Reschedule Request"
+msgstr "Надіслати запит на перенесення"
+
+#: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Sending..."
+msgstr "Надсилання..."
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "The attendee keeps no money. Use only if the attendee already agreed."
+msgstr "Кошти не повертаються. Використовуйте, лише якщо учасник уже погодився."
+
+#: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "The current meeting will be cancelled immediately"
+msgstr "Поточну зустріч буде негайно скасовано"
+
+#: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "They can choose a new time from your availability"
+msgstr "Учасник зможе вибрати новий час із доступних варіантів"
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "This action cannot be undone. The attendee will be notified of the cancellation."
+msgstr "Цю дію неможливо скасувати. Учасник отримає сповіщення про скасування."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "This meeting's event was deleted from your external calendar."
+msgstr "Цю подію було видалено з вашого зовнішнього календаря."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "This meeting's event was rescheduled in your external calendar."
+msgstr "Цю подію було перенесено у вашому зовнішньому календарі."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/cancellation.ex
+#, elixir-autogen, elixir-format
+msgid "Tick the acknowledgement to cancel without refunding the attendee."
+msgstr "Поставте прапорець для підтвердження, щоб скасувати зустріч без повернення коштів учаснику."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Video Call"
+msgstr "Відеодзвінок"
+
+#: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "What happens next:"
+msgstr "Що буде далі:"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "With auto notifications"
+msgstr "З автоматичними сповіщеннями"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "You don't have any cancelled appointments to show."
+msgstr "У вас немає скасованих зустрічей для відображення."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "You haven't had any meetings in this period yet."
+msgstr "За цей період у вас ще не було зустрічей."
+
+#: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "You'll both receive confirmation once they select a new time"
+msgstr "Ви обидва отримаєте підтвердження, щойно учасник вибере новий час"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Your upcoming appointments will appear here automatically."
+msgstr "Ваші майбутні зустрічі з’являтимуться тут автоматично."
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Are you sure you want to cancel the meeting with %{name} scheduled for %{when}?"
+msgstr "Ви впевнені, що хочете скасувати зустріч із %{name}, заплановану на %{when}?"
+
+#: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Send a reschedule request to %{name}?"
+msgstr "Надіслати запит на перенесення учаснику %{name}?"
+
+#: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "%{duration} minute"
+msgid_plural "%{duration} minutes"
+msgstr[0] "%{duration} хвилина"
+msgstr[1] "%{duration} хвилини"
+msgstr[2] "%{duration} хвилин"
+
+#: lib/tymeslot_web/components/dashboard/meetings/cancel_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "This booking was paid. Choose how to handle the refund - the attendee always receives the full amount you refund."
+msgstr "Це бронювання було оплачено. Виберіть спосіб повернення коштів - учасник завжди отримує повну суму, яку ви повертаєте."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Approve"
+msgstr "Прийняти"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_status_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Awaiting your approval"
+msgstr "Очікує вашого підтвердження"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management_component.ex
+#, elixir-autogen, elixir-format
+msgid "Booking confirmed. The invitee has been told."
+msgstr "Бронювання підтверджено. Гостя повідомлено."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Booking requests you haven't answered yet will appear here."
+msgstr "Тут з'являтимуться запити на бронювання, на які ви ще не відповіли."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Decline"
+msgstr "Відхилити"
+
+#: lib/tymeslot_web/components/dashboard/meetings/decline_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Decline request"
+msgstr "Відхилити запит"
+
+#: lib/tymeslot_web/components/dashboard/meetings/decline_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Decline the request from %{name} for %{when}?"
+msgstr "Відхилити запит від %{name} на %{when}?"
+
+#: lib/tymeslot_web/components/dashboard/meetings/decline_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Declining..."
+msgstr "Відхиляємо…"
+
+#: lib/tymeslot_web/components/dashboard/meetings/decline_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Keep it open"
+msgstr "Залишити відкритим"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Nothing waiting on you"
+msgstr "Нічого не очікує"
+
+#: lib/tymeslot_web/components/dashboard/meetings/decline_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Reason (optional)"
+msgstr "Причина (необов'язково)"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management_component.ex
+#, elixir-autogen, elixir-format
+msgid "Request declined. The slot is free again."
+msgstr "Запит відхилено. Час знову вільний."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Requests"
+msgstr "Запити"
+
+#: lib/tymeslot_web/components/dashboard/meetings/decline_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Shared with %{name} in the email they receive."
+msgstr "Буде надіслано %{name} в листі."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/request_actions.ex
+#, elixir-autogen, elixir-format
+msgid "That meeting's start time has already passed."
+msgstr "Час початку цієї зустрічі вже минув."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management_component.ex
+#, elixir-autogen, elixir-format
+msgid "That request could not be approved."
+msgstr "Не вдалося прийняти цей запит."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management_component.ex
+#, elixir-autogen, elixir-format
+msgid "That request could not be declined."
+msgstr "Не вдалося відхилити цей запит."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/request_actions.ex
+#, elixir-autogen, elixir-format
+msgid "That request could not be found."
+msgstr "Цей запит не знайдено."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/request_actions.ex
+#, elixir-autogen, elixir-format
+msgid "That request had already been answered."
+msgstr "На цей запит уже відповіли."
+
+#: lib/tymeslot_web/components/dashboard/meetings/decline_request_modal.ex
+#, elixir-autogen, elixir-format
+msgid "The slot is released immediately and %{name} is told it wasn't confirmed."
+msgstr "Час буде звільнено одразу, і %{name} дізнається, що бронювання не підтверджено."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_status_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Expired"
+msgstr "Протерміновано"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_status_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Awaiting payment"
+msgstr "Очікує оплати"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/request_actions.ex
+#, elixir-autogen, elixir-format
+msgid "That request could not be answered."
+msgstr "Не вдалося відповісти на цей запит."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/request_actions.ex
+#, elixir-autogen, elixir-format
+msgid "That time has since been booked, so the request can no longer be approved."
+msgstr "Тим часом цей час забронювали, тому запит більше не можна підтвердити."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Meetings List"
+msgstr "Список зустрічей"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "View and manage your scheduled meetings. It only shows meetings that are scheduled with your %{app_name} account. All meetings are shown in calendar."
+msgstr "Переглядайте та керуйте своїми запланованими зустрічами. Тут показані лише зустрічі, заплановані через ваш обліковий запис %{app_name}. Усі зустрічі відображаються в календарі."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled (%{count})"
+msgstr "Скасовано (%{count})"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Past (%{count})"
+msgstr "Минулі (%{count})"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_list_components.ex
+#, elixir-autogen, elixir-format
+msgid "Upcoming (%{count})"
+msgstr "Майбутні (%{count})"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "This meeting's event could not be added to your external calendar."
+msgstr "Подію цієї зустрічі не вдалося додати до вашого зовнішнього календаря."
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled On"
+msgstr "Скасовано"
+
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Delete"
+msgstr "Видалити"
+
+#: lib/tymeslot_web/components/dashboard/meetings/delete_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Delete Meeting"
+msgstr "Видалити зустріч"
+
+#: lib/tymeslot_web/components/dashboard/meetings/delete_meeting_modal.ex
+#: lib/tymeslot_web/components/dashboard/meetings/meeting_card_components.ex
+#, elixir-autogen, elixir-format
+msgid "Deleting..."
+msgstr "Видалення..."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/delete_meeting_action.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to delete meeting. Please try again."
+msgstr "Не вдалося видалити зустріч. Спробуйте ще раз."
+
+#: lib/tymeslot_web/components/dashboard/meetings/delete_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Keep"
+msgstr "Залишити"
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/delete_meeting_action.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting deleted"
+msgstr "Зустріч видалено"
+
+#: lib/tymeslot_web/components/dashboard/meetings/delete_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Permanently delete the cancelled meeting with %{name} scheduled for %{when}?"
+msgstr "Остаточно видалити скасовану зустріч з %{name}, заплановану на %{when}?"
+
+#: lib/tymeslot_web/components/dashboard/meetings/delete_meeting_modal.ex
+#, elixir-autogen, elixir-format
+msgid "This action cannot be undone."
+msgstr "Цю дію не можна скасувати."
+
+#: lib/tymeslot_web/live/dashboard/bookings_management/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Add meeting"
+msgstr "Додати зустріч"

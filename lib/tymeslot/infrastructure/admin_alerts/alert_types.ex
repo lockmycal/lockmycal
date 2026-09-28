@@ -1,0 +1,359 @@
+defmodule Tymeslot.Infrastructure.AdminAlerts.AlertTypes do
+  @moduledoc """
+  Central registry of all admin alert types.
+
+  Each alert type is defined once in `@registry` with its category and severity.
+  The `format_message/2` function provides human-readable messages for each type.
+
+  To add a new alert type:
+  1. Add an entry to `@registry`
+  2. Add a `format_message/2` clause
+
+  This module lives in Core so that both standalone (Core) and SaaS deployments
+  can use the same registry. Some registered types (e.g. `:reconciliation_discrepancies`)
+  are only raised by SaaS call sites, but the definitions live here so Core can
+  format any incoming alert uniformly.
+  """
+
+  alias Tymeslot.Infrastructure.AdminAlerts.PIIScrubber
+
+  @registry %{
+    unhandled_webhook: %{category: "Webhook", severity: :warning},
+    refund_processed: %{category: "Payment", severity: :info},
+    unlinked_refund: %{category: "Payment", severity: :error},
+    dispute_created: %{category: "Dispute", severity: :error},
+    dispute_lost: %{category: "Dispute", severity: :error},
+    calendar_sync_error: %{category: "Calendar", severity: :error},
+    invalid_calendar_event: %{category: "Calendar", severity: :warning},
+    dead_webhook_channel: %{category: "Calendar", severity: :warning},
+    video_room_failed: %{category: "Meetings", severity: :error},
+    pubsub_broadcast_failed: %{category: "System", severity: :error},
+    integration_health_failure: %{category: "System", severity: :error},
+    integration_health_recovery: %{category: "System", severity: :info},
+    oban_queue_stuck: %{category: "Queue", severity: :error},
+    oban_jobs_accumulating: %{category: "Queue", severity: :warning},
+    oban_job_failure: %{category: "Queue", severity: :error},
+    unhandled_crash: %{category: "System", severity: :error},
+    reconciliation_discrepancies: %{category: "Payment", severity: :warning},
+    subscription_not_in_database: %{category: "Payment", severity: :warning},
+    payment_event_enqueue_failed: %{category: "Payment", severity: :error},
+    dunning_stalled: %{category: "Payment", severity: :error},
+    analytics_tracking_anomaly: %{category: "Analytics", severity: :warning},
+    recipient_email_rejected: %{category: "Email", severity: :warning}
+  }
+
+  @doc "Returns the full registry map for enumeration and lookup."
+  @spec registered_types() :: %{
+          atom() => %{category: String.t(), severity: :info | :warning | :error}
+        }
+  def registered_types, do: @registry
+
+  @doc "Looks up category and severity for the given alert type. Returns nil for unknown types."
+  @spec get(atom()) :: %{category: String.t(), severity: :info | :warning | :error} | nil
+  def get(type), do: Map.get(@registry, type)
+
+  @doc """
+  Returns a stable identity string used to deduplicate repeat alerts.
+
+  Defaults to the formatted message. Add a clause when the message embeds
+  per-occurrence detail (ids, error text) that would defeat deduplication —
+  a burst of permanently failed jobs from one broken worker should collapse
+  into a single alert per dedup window, not one email per job.
+  """
+  @spec dedup_key(atom(), map()) :: String.t()
+  def dedup_key(:oban_job_failure, metadata) do
+    worker = Map.get(metadata, :worker, "unknown")
+    queue = Map.get(metadata, :queue, "unknown")
+    "oban_job_failure:#{worker}:#{queue}"
+  end
+
+  # Crash alerts carry stable crash-identity fields (reason_code + the top
+  # stacktrace frame). Dedup on those rather than the rendered message so a
+  # crash storm with per-occurrence detail (e.g. a user id in the message)
+  # collapses into a single alert per 24h window instead of one email each.
+  # The stacktrace is a multi-line string; only the first line is used so
+  # frame counts that drift over time don't fragment the key.
+  def dedup_key(:unhandled_crash, metadata) do
+    reason_code = Map.get(metadata, :reason_code)
+    stacktrace = Map.get(metadata, :stacktrace)
+
+    if reason_code && stacktrace do
+      top_frame =
+        stacktrace |> to_string() |> String.split("\n") |> List.first("") |> String.trim()
+
+      "unhandled_crash:#{reason_code}:#{top_frame}"
+    else
+      format_message(:unhandled_crash, metadata)
+    end
+  end
+
+  # Enqueue failures embed per-occurrence detail (attempt count, error text),
+  # so dedup on the event family instead — a burst of drops from the same
+  # broken event type collapses into a single alert per 24h window, while a
+  # distinct event family still raises its own alert.
+  def dedup_key(:payment_event_enqueue_failed, metadata) do
+    "payment_event_enqueue_failed:#{Map.get(metadata, :event, "unknown")}"
+  end
+
+  # Anomaly messages embed per-run counts, so dedup on the anomaly kind instead.
+  # A recurring daily anomaly of the same kind collapses to one alert per window.
+  def dedup_key(:analytics_tracking_anomaly, metadata) do
+    "analytics_tracking_anomaly:#{Map.get(metadata, :kind, "unknown")}"
+  end
+
+  # The message embeds the offending event's id, so a feed carrying many events
+  # that are all malformed the same way would raise one alert per event. Dedup
+  # on the integration and reason instead: the operator needs to know that one
+  # integration is producing unusable events, not which ones. Matched on the
+  # shape the provider normalisers send, so other callers of this type keep the
+  # default message-based key.
+  def dedup_key(:invalid_calendar_event, %{calendar_integration_id: integration_id} = metadata) do
+    provider = Map.get(metadata, :provider, "unknown")
+    reason = Map.get(metadata, :reason, "unknown")
+
+    "invalid_calendar_event:#{provider}:#{integration_id}:#{reason}"
+  end
+
+  # Call sites identify the affected recipient through whichever id they have
+  # to hand (a Connect account, a booking payment, a meeting). The raw reason
+  # is not a safe dedup key on its own: Postmark's rejection payload often
+  # does carry the address (masked before it reaches `format_message/2`), so
+  # two different hosts' bounces in the same window raise two alerts, not
+  # one; falls back to the full (masked) message when no id is available.
+  def dedup_key(:recipient_email_rejected, metadata) do
+    case recipient_email_rejected_identifier(metadata) do
+      nil -> format_message(:recipient_email_rejected, metadata)
+      identifier -> "recipient_email_rejected:#{identifier}"
+    end
+  end
+
+  # The 6-hourly `DeadChannelAlertWorker` cron would otherwise re-alert on every
+  # run for as long as the same channel stays silent. Dedup on the integration
+  # alone (not the message, which embeds `last_notification_at`) so a still-dead
+  # channel collapses to one alert per 24h window instead of one every 6h.
+  def dedup_key(:dead_webhook_channel, %{calendar_integration_id: integration_id} = metadata) do
+    provider = Map.get(metadata, :provider, "unknown")
+    "dead_webhook_channel:#{provider}:#{integration_id}"
+  end
+
+  # The message embeds `days_past_due`, which the daily dunning run increments
+  # on every pass over the same stuck row, so the default message-based key
+  # changes daily and the admin is emailed again about a condition nobody has
+  # resolved yet. Dedup on the subscription instead: one alert per stuck row
+  # per window, while a second stalled subscription still raises its own.
+  def dedup_key(:dunning_stalled, metadata) do
+    "dunning_stalled:#{Map.get(metadata, :stripe_subscription_id, "unknown")}"
+  end
+
+  # Aggregate integration health alerts (`HealthCheck.Alerting`) embed a live
+  # count in the message, which would change the key on every hourly run and
+  # email the admin every hour for one incident. Key on the signal and its
+  # threshold band instead, so a steady incident alerts once per window and a
+  # worsening one (band "elevated" to "severe") alerts again. An auto-pause
+  # alert also carries its run's date: each daily run reports different
+  # integrations, and the next run lands just inside the 24-hour window.
+  # The hourly signals carry the hour their incident began, and their recovery
+  # the same hour, so a second incident on the same day alerts again instead
+  # of colliding with the first. Matched on the signal shape only, so the
+  # shared Telegram token alert keeps its message-based key.
+  def dedup_key(:integration_health_failure, %{signal: signal, band: band} = metadata) do
+    health_key([
+      "integration_health_failure",
+      signal,
+      Map.get(metadata, :run_date),
+      Map.get(metadata, :incident_started_at),
+      band
+    ])
+  end
+
+  def dedup_key(:integration_health_recovery, %{signal: signal} = metadata) do
+    health_key([
+      "integration_health_recovery",
+      signal,
+      Map.get(metadata, :incident_started_at)
+    ])
+  end
+
+  def dedup_key(type, metadata), do: format_message(type, metadata)
+
+  defp health_key(parts), do: parts |> Enum.reject(&is_nil/1) |> Enum.join(":")
+
+  @doc "Formats a human-readable message for the given alert type and metadata."
+  @spec format_message(atom(), map()) :: String.t()
+  def format_message(:unhandled_webhook, metadata) do
+    type = Map.get(metadata, :event_type, "unknown")
+    id = Map.get(metadata, :event_id, "unknown")
+    "Unhandled Stripe webhook event: #{type} (ID: #{id})"
+  end
+
+  # Call sites pass :total_refunded; :amount is accepted as a fallback for
+  # any callers that haven't been migrated yet.
+  def format_message(:refund_processed, metadata) do
+    user_id = Map.get(metadata, :user_id, "unknown")
+    amount = Map.get(metadata, :total_refunded, Map.get(metadata, :amount, "unknown"))
+    "Refund of #{amount} processed for user #{user_id}"
+  end
+
+  def format_message(:unlinked_refund, metadata) do
+    charge_id = Map.get(metadata, :charge_id, "unknown")
+    amount = Map.get(metadata, :total_refunded, Map.get(metadata, :amount, "unknown"))
+    "Unlinked refund of #{amount} received for charge #{charge_id}"
+  end
+
+  def format_message(:dispute_created, metadata) do
+    id = Map.get(metadata, :dispute_id, "unknown")
+    reason = Map.get(metadata, :reason, "unknown")
+    "New dispute created: #{id} (Reason: #{reason}) — Manual review required"
+  end
+
+  def format_message(:dispute_lost, metadata) do
+    id = Map.get(metadata, :dispute_id, "unknown")
+    user_id = Map.get(metadata, :user_id, "unknown")
+    "Dispute lost: #{id} for user #{user_id} — Consider manual access revocation"
+  end
+
+  def format_message(:calendar_sync_error, metadata) do
+    email = Map.get(metadata, :owner_email, "unknown")
+    reason = Map.get(metadata, :reason, "unknown")
+    "Calendar sync error for #{email}: #{format_reason(reason)}"
+  end
+
+  def format_message(:pubsub_broadcast_failed, metadata) do
+    event = Map.get(metadata, :event, "unknown")
+    "PubSub broadcast failed for #{event}"
+  end
+
+  # Aggregate signals (`HealthCheck.Alerting`) describe many integrations, so
+  # the summary is the whole message rather than one integration's.
+  def format_message(:integration_health_failure, %{signal: _signal, summary: summary}),
+    do: summary
+
+  def format_message(:integration_health_failure, metadata) do
+    integration_id = Map.get(metadata, :integration_id, "unknown")
+
+    case Map.get(metadata, :summary) do
+      nil -> "Integration health check failed for integration #{integration_id}"
+      summary -> "#{summary} (integration #{integration_id})"
+    end
+  end
+
+  def format_message(:integration_health_recovery, metadata) do
+    Map.get(metadata, :summary, "Integration health recovered")
+  end
+
+  def format_message(:oban_queue_stuck, metadata) do
+    queues = Map.get(metadata, :affected_queues, [])
+    state = Map.get(metadata, :job_state, "unknown")
+    "Oban queues stuck with #{state} jobs: #{inspect(queues)}"
+  end
+
+  def format_message(:oban_jobs_accumulating, metadata) do
+    queues = Map.get(metadata, :affected_queues, [])
+    threshold = Map.get(metadata, :threshold, "unknown")
+    "Oban job accumulation detected (threshold: #{threshold}): #{inspect(queues)}"
+  end
+
+  def format_message(:oban_job_failure, metadata) do
+    worker = Map.get(metadata, :worker, "unknown")
+    queue = Map.get(metadata, :queue, "unknown")
+    reason = Map.get(metadata, :reason_message) || Map.get(metadata, :reason_code, "unknown")
+    "Oban job #{worker} (queue: #{queue}) failed permanently: #{reason}"
+  end
+
+  def format_message(:reconciliation_discrepancies, metadata) do
+    count = Map.get(metadata, :discrepancies_count, "unknown")
+    "Payment reconciliation found #{count} discrepancies"
+  end
+
+  def format_message(:subscription_not_in_database, metadata) do
+    stripe_id = Map.get(metadata, :stripe_subscription_id, "unknown")
+    "Active Stripe subscription #{stripe_id} has no matching database record"
+  end
+
+  def format_message(:payment_event_enqueue_failed, metadata) do
+    event = Map.get(metadata, :event, "unknown")
+    detail = Map.get(metadata, :summary) || Map.get(metadata, :reason_message, "unknown")
+    "Payment event enqueue failed for #{event}: #{detail}"
+  end
+
+  # The day count is deliberately in the message: the admin needs to see how
+  # long the row has been stalled. It is what makes the message unusable as a
+  # dedup key, which is why this type has its own `dedup_key/2` clause.
+  def format_message(:dunning_stalled, metadata) do
+    stripe_id = Map.get(metadata, :stripe_subscription_id, "unknown")
+    days = Map.get(metadata, :days_past_due, "unknown")
+
+    "Dunning stalled for subscription #{stripe_id}: #{days} days past due is beyond the " <>
+      "auto-cancel guard, so it is never cancelled and still grants Pro; manual review required"
+  end
+
+  def format_message(:invalid_calendar_event, metadata) do
+    provider = Map.get(metadata, :provider, "unknown")
+    reason = Map.get(metadata, :reason, "unknown")
+    event_id = Map.get(metadata, :event_id) || Map.get(metadata, :event_uid, "unknown")
+    "Invalid #{provider} calendar event (event_id: #{event_id}): #{reason}"
+  end
+
+  def format_message(:dead_webhook_channel, metadata) do
+    provider = Map.get(metadata, :provider, "unknown")
+    integration_id = Map.get(metadata, :calendar_integration_id, "unknown")
+    last_notification_at = Map.get(metadata, :last_notification_at, "never")
+
+    "#{provider} calendar webhook channel silent for integration #{integration_id} (last notification: #{last_notification_at})"
+  end
+
+  def format_message(:video_room_failed, metadata) do
+    meeting_id = Map.get(metadata, :meeting_id, "unknown")
+    organizer_email = Map.get(metadata, :organizer_email, "unknown")
+    "Video room creation failed for meeting #{meeting_id} (organizer: #{organizer_email})"
+  end
+
+  def format_message(:analytics_tracking_anomaly, metadata) do
+    kind = Map.get(metadata, :kind, "unknown")
+    "Booking analytics tracking anomaly: #{kind}"
+  end
+
+  def format_message(:unhandled_crash, metadata) do
+    kind = Map.get(metadata, :kind, "error")
+    detail = Map.get(metadata, :reason_message) || Map.get(metadata, :summary, "unknown")
+    "Unhandled #{kind} crash: #{detail}"
+  end
+
+  def format_message(:recipient_email_rejected, metadata) do
+    summary = Map.get(metadata, :summary, "Recipient permanently undeliverable")
+    reason = metadata |> Map.get(:reason_message, "unknown") |> mask_reason()
+
+    case recipient_email_rejected_identifier(metadata) do
+      nil -> "#{summary}: #{reason}"
+      identifier -> "#{summary} (#{identifier}): #{reason}"
+    end
+  end
+
+  def format_message(type, _metadata) do
+    "Alert: #{type}"
+  end
+
+  defp recipient_email_rejected_identifier(metadata) do
+    cond do
+      id = Map.get(metadata, :connect_account_id) -> "connect account #{id}"
+      id = Map.get(metadata, :booking_payment_id) -> "booking payment #{id}"
+      id = Map.get(metadata, :meeting_id) -> "meeting #{id}"
+      true -> nil
+    end
+  end
+
+  # The provider's raw rejection text can embed the recipient's own address
+  # (e.g. Postmark's inactive-address message), and this message is what
+  # reaches Logger and the persisted Oban job args (see `EmailNotifier`) — so
+  # it must be masked here, at render time, rather than relying on the
+  # caller to have scrubbed it first.
+  defp mask_reason(reason) when is_binary(reason) do
+    %{reason: reason} |> PIIScrubber.scrub() |> Map.fetch!(:reason)
+  end
+
+  defp mask_reason(reason), do: reason
+
+  defp format_reason(reason) when is_exception(reason), do: Exception.message(reason)
+  defp format_reason(reason) when is_binary(reason) or is_atom(reason), do: to_string(reason)
+  defp format_reason(reason), do: inspect(reason)
+end

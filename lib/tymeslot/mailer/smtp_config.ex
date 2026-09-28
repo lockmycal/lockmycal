@@ -1,0 +1,476 @@
+defmodule Tymeslot.Mailer.SMTPConfig do
+  @compile {:no_warn_undefined, CAStore}
+
+  @moduledoc """
+  Builds SMTP configuration with proper SSL/TLS/STARTTLS settings for OTP 26+.
+
+  This module centralizes SMTP configuration logic to ensure consistency across
+  production, development, and testing environments.
+
+  ## SSL/TLS Modes
+
+  - **Port 465**: Direct SSL (implicit TLS) - `ssl: true, tls: :never`
+  - **Port 587**: STARTTLS (explicit TLS) - `ssl: false, tls: :always`
+  - **Other ports**: Opportunistic TLS - `ssl: false, tls: :if_available`
+
+  The port is only a convention: some providers serve implicit TLS on 2465 or
+  8465. `:ssl` overrides the port rule, so `ssl: true` speaks TLS from the
+  first byte on any port. Without it a plain-TCP client waits for a greeting
+  the relay never sends, because the relay is itself waiting for a TLS
+  handshake.
+
+  ## Authentication
+
+  Credentials are optional, for a relay that authorises by network (a local
+  Postfix, a company relay). Supplied credentials are always used
+  (`auth: :always`): with `:if_available`, gen_smtp treats a rejected login as
+  "no login" and carries on unauthenticated, so a wrong password surfaced as
+  a misleading "530 Authentication required" on MAIL FROM rather than as an
+  authentication failure. A relay that offers no AUTH at all is still sent to,
+  without a login and with a warning, by `Tymeslot.Mailer.SMTPAdapter`.
+  Without credentials no login is attempted (`auth: :never`).
+
+  On port 465 the TLS options are additionally passed as `:sockopts`. gen_smtp
+  reads `:tls_options` only when upgrading an existing connection with
+  STARTTLS; on the implicit-TLS path it forwards `:sockopts` into
+  `:ssl.connect/4` and ignores `:tls_options` entirely. Without this every
+  port-465 send fails before the certificate is even examined, with
+  `{:options, :incompatible, [verify: :verify_peer, cacerts: :undefined]}`.
+
+  ## TLS 1.3 Middlebox Compatibility
+
+  Off by default, which is what a relay that does not send the optional dummy
+  ChangeCipherSpec of RFC 8446 appendix D.4 needs: OTP's client demands that
+  record whenever the mode is on, and aborts the handshake without it.
+  `:middlebox_compat` puts the mode back on for the rarer relay whose path
+  runs through a middlebox that drops a handshake not shaped like TLS 1.2.
+  Neither setting suits both, and only the operator can tell which applies.
+
+  ## Certificate Verification
+
+  Uses OTP 26+ `:public_key.cacerts_get()` to read OS certificate store,
+  with automatic fallback to bundled `:castore` certificates for minimal
+  Docker containers where the OS cert store may be empty.
+
+  Two options cover servers a public trust store cannot validate, which is
+  the common case for a self-hosted relay:
+
+    * `:cacertfile` — a PEM bundle to trust instead of the public store, for
+      a relay whose certificate is issued by a private CA.
+    * `:tls_verify` — `:none` disables certificate verification entirely.
+      This removes the protection against an intercepted connection, so it
+      is a last resort for a self-signed relay; prefer `:cacertfile`. It also
+      makes `:cacertfile` inert: no trust store is consulted at all.
+
+  ## Example
+
+      config = Tymeslot.Mailer.SMTPConfig.build(
+        host: "smtp.gmail.com",
+        port: 587,
+        username: "user@gmail.com",
+        password: "app_password"
+      )
+
+      # Returns keyword list suitable for Tymeslot.Mailer.SMTPAdapter
+  """
+
+  require Logger
+
+  @verify_disabled_warning "SMTP certificate verification is DISABLED (SMTP_TLS_VERIFY=none). " <>
+                             "The connection is encrypted but the relay's identity is not " <>
+                             "checked, so an intercepted connection cannot be detected. " <>
+                             "Prefer SMTP_CACERTFILE with your relay's CA."
+
+  @cacertfile_ignored_warning " The configured SMTP_CACERTFILE is ignored while verification " <>
+                                "is off: unset SMTP_TLS_VERIFY to verify against that bundle."
+
+  @typedoc """
+  How far to trust the relay's certificate: `:peer` verifies it against the
+  trust store (the default), `:none` accepts any certificate.
+  """
+  @type tls_verify :: :peer | :none
+
+  @type smtp_opts :: [
+          host: String.t(),
+          port: pos_integer(),
+          username: String.t() | nil,
+          password: String.t() | nil,
+          ssl: boolean() | nil,
+          tls_verify: tls_verify(),
+          cacertfile: String.t() | nil,
+          middlebox_compat: boolean() | nil
+        ]
+
+  @type smtp_config :: keyword()
+
+  @doc """
+  Builds SMTP adapter configuration from provided options.
+
+  ## Options
+
+  - `:host` (required) - SMTP server hostname
+  - `:port` (optional) - SMTP port (default: 587)
+  - `:username` (optional) - SMTP username; given together with `:password`
+  - `:password` (optional) - SMTP password; given together with `:username`
+  - `:ssl` (optional) - `true` forces implicit TLS, `false` forbids it;
+    `nil` (default) decides by port
+  - `:tls_verify` (optional) - `:peer` (default) or `:none`
+  - `:cacertfile` (optional) - path to a PEM bundle to trust instead of the
+    public certificate store
+  - `:middlebox_compat` (optional) - `true` restores OTP's TLS 1.3 middlebox
+    compatibility mode; `false` (default) leaves it off
+
+  ## Raises
+
+  - `ArgumentError` if required options are missing or invalid
+  """
+  @spec build(smtp_opts()) :: smtp_config()
+  def build(opts) do
+    smtp_host = validate_host!(opts[:host])
+    smtp_port = validate_port!(opts[:port] || 587)
+    credentials = validate_credentials!(opts[:username], opts[:password])
+
+    {use_ssl, tls_mode} = determine_tls_mode(smtp_port, validate_ssl!(opts[:ssl]))
+    tls_options = build_tls_options(smtp_host, opts)
+
+    config =
+      [
+        adapter: Tymeslot.Mailer.SMTPAdapter,
+        relay: smtp_host,
+        port: smtp_port,
+        ssl: use_ssl,
+        tls: tls_mode,
+        tls_options: tls_options,
+        # gen_smtp retries only the session opening (connect, EHLO, TLS,
+        # AUTH), never the message itself, but each retry spends another
+        # connection timeout. Oban is the retry authority for mail: three
+        # 10-second attempts here filled the email worker's 30-second budget
+        # exactly, so an unreachable relay was killed by the worker and
+        # discarded instead of coming back as a retryable error.
+        retries: 0,
+        # Connection timeout in milliseconds. gen_smtp waits a fixed 20
+        # minutes for each reply once connected; `Tymeslot.Emails.Delivery`
+        # bounds that.
+        timeout: 10_000,
+        # Direct relay to configured host, skip DNS MX lookup overhead
+        no_mx_lookups: true
+      ] ++ credentials ++ implicit_tls_sockopts(use_ssl, tls_options)
+
+    log_config(config)
+    config
+  end
+
+  # Validates SMTP host is present and non-empty
+  defp validate_host!(nil) do
+    raise ArgumentError, "SMTP host is required (set SMTP_HOST environment variable)"
+  end
+
+  defp validate_host!("") do
+    raise ArgumentError, "SMTP host cannot be empty"
+  end
+
+  defp validate_host!(host) when is_binary(host) do
+    # Trim whitespace to handle common configuration errors
+    trimmed = String.trim(host)
+
+    if trimmed == "" do
+      raise ArgumentError, "SMTP host cannot be empty or whitespace-only"
+    end
+
+    trimmed
+  end
+
+  defp validate_host!(host) do
+    raise ArgumentError, "SMTP host must be a string, got: #{inspect(host)}"
+  end
+
+  # Validates SMTP port is a valid integer in range 1-65535
+  defp validate_port!(port) when is_integer(port) and port >= 1 and port <= 65_535 do
+    port
+  end
+
+  defp validate_port!(port) when is_integer(port) do
+    raise ArgumentError, "SMTP port must be between 1-65535, got: #{port}"
+  end
+
+  defp validate_port!(port) do
+    raise ArgumentError, "SMTP port must be an integer, got: #{inspect(port)}"
+  end
+
+  # A relay that authorises by network takes no credentials; one that takes
+  # credentials needs both. Half a pair is a configuration mistake either way.
+  defp validate_credentials!(nil, nil), do: [auth: :never]
+
+  defp validate_credentials!(nil, _password) do
+    raise ArgumentError,
+          "SMTP username is required when a password is set (set SMTP_USERNAME environment variable)"
+  end
+
+  defp validate_credentials!(_username, nil) do
+    raise ArgumentError,
+          "SMTP password is required when a username is set (set SMTP_PASSWORD environment variable)"
+  end
+
+  defp validate_credentials!(username, password) do
+    [
+      auth: :always,
+      username: validate_username!(username),
+      password: validate_password!(password)
+    ]
+  end
+
+  defp validate_username!("") do
+    raise ArgumentError, "SMTP username cannot be empty"
+  end
+
+  defp validate_username!(username) when is_binary(username), do: username
+
+  defp validate_username!(username) do
+    raise ArgumentError, "SMTP username must be a string, got: #{inspect(username)}"
+  end
+
+  defp validate_password!("") do
+    raise ArgumentError, "SMTP password cannot be empty"
+  end
+
+  defp validate_password!(password) when is_binary(password) do
+    # Warn about potentially problematic characters in passwords
+    if String.contains?(password, ["\"", "\\", "\r", "\n", "\t"]) do
+      Logger.warning(
+        "SMTP password contains special characters (quotes, backslashes, or newlines) " <>
+          "that may cause authentication issues with some SMTP servers"
+      )
+    end
+
+    password
+  end
+
+  defp validate_password!(password) do
+    raise ArgumentError, "SMTP password must be a string, got: #{inspect(password)}"
+  end
+
+  defp validate_ssl!(ssl) when ssl in [nil, true, false], do: ssl
+
+  defp validate_ssl!(ssl) do
+    raise ArgumentError, "SMTP ssl must be true, false or nil, got: #{inspect(ssl)}"
+  end
+
+  defp validate_middlebox_compat!(nil), do: false
+  defp validate_middlebox_compat!(compat) when is_boolean(compat), do: compat
+
+  defp validate_middlebox_compat!(compat) do
+    raise ArgumentError,
+          "SMTP middlebox_compat must be true, false or nil, got: #{inspect(compat)}"
+  end
+
+  # Determines SSL/TLS mode from an explicit `:ssl` choice, else the port.
+  # Implicit TLS turned off on 465 still demands STARTTLS rather than
+  # dropping to opportunistic TLS.
+  defp determine_tls_mode(_port, true), do: {true, :never}
+  defp determine_tls_mode(465, false), do: {false, :always}
+  defp determine_tls_mode(465, nil), do: {true, :never}
+  defp determine_tls_mode(587, _ssl), do: {false, :always}
+  defp determine_tls_mode(_port, _ssl), do: {false, :if_available}
+
+  # gen_smtp reads `:tls_options` only in its STARTTLS upgrade path. On the
+  # implicit-TLS path (`ssl: true`) it builds the socket options from
+  # `:sockopts` alone and hands them straight to `:ssl.connect/4`, so without
+  # this every port-465 send fails on OTP's default `verify: :verify_peer`
+  # with no CA certificates. The plain-TCP path must not receive them: they
+  # are not valid `:gen_tcp` options.
+  defp implicit_tls_sockopts(true, tls_options), do: [sockopts: tls_options]
+  defp implicit_tls_sockopts(false, _tls_options), do: []
+
+  # Loads CA certificates with fallback to castore
+  defp load_cacerts do
+    certs =
+      case :public_key.cacerts_get() do
+        [] ->
+          # Fallback to castore bundled certificates for minimal containers
+          Logger.debug("Using castore bundled CA certificates (OS cert store empty)")
+          load_castore_certs()
+
+        [_first_cert | _rest] = certs ->
+          Logger.debug("Using OS certificate store", cert_count: length(certs))
+          certs
+      end
+
+    # Validate we have certificates and they're in correct format
+    validate_cacerts!(certs)
+  end
+
+  # Loads castore certificates with safety check
+  defp load_castore_certs do
+    if Code.ensure_loaded?(CAStore) do
+      # Get path to castore's CA bundle (PEM format)
+      ca_bundle_path = CAStore.file_path()
+
+      # Read and parse PEM file to extract DER-encoded certificates
+      ca_bundle_path
+      |> File.read!()
+      |> :public_key.pem_decode()
+      |> Enum.map(fn {:Certificate, der, _encoding} -> der end)
+    else
+      raise """
+      No CA certificates available:
+      - OS certificate store is empty
+      - CAStore module is not loaded (dependency missing?)
+
+      Cannot verify SMTP SSL/TLS connections without CA certificates.
+      """
+    end
+  end
+
+  # Validates loaded certificates are valid
+  defp validate_cacerts!(certs) do
+    cond do
+      not is_list(certs) ->
+        raise "CA certificates must be a list, got: #{inspect(certs)}"
+
+      Enum.empty?(certs) ->
+        raise """
+        No CA certificates available for SMTP SSL/TLS verification.
+
+        This should not happen - both OS cert store and castore returned empty.
+        Check that:
+        1. castore dependency is properly installed
+        2. OS certificate store is not corrupted
+        """
+
+      # OTP's :public_key.cacerts_get() returns DER-encoded certs which can be
+      # either binary or tuples depending on OTP version. We just need to ensure
+      # we have something that looks like certificate data.
+      true ->
+        certs
+    end
+  end
+
+  # Builds TLS options for OTP 26+ certificate verification
+  defp build_tls_options(smtp_host, opts) do
+    base = [
+      # Modern TLS versions only (TLS 1.2 and 1.3)
+      versions: [:"tlsv1.2", :"tlsv1.3"],
+      # Two populations of relay disagree about the TLS 1.3 middlebox
+      # compatibility mode, and nothing on the wire says which one is in
+      # front of us. OTP's client defaults the mode on: it dresses the
+      # handshake up as TLS 1.2 so a middlebox on the path does not drop it,
+      # and then *demands* the relay answer with a dummy ChangeCipherSpec
+      # record. RFC 8446 appendix D.4 leaves that record optional and other
+      # TLS clients tolerate its absence, so a relay that omits it works
+      # everywhere except against OTP, where the handshake aborts with
+      # `Failed to assert middlebox server message` and every email fails
+      # with `:tls_failed`. That population is the one we have actually seen,
+      # so the mode is off by default and `:middlebox_compat` turns it back
+      # on for the rarer path that needs the TLS 1.2 shape to get through.
+      middlebox_comp_mode: validate_middlebox_compat!(opts[:middlebox_compat]),
+      # Server Name Indication for hostname verification (prevents MITM)
+      server_name_indication: String.to_charlist(smtp_host),
+      # Maximum certificate chain depth: root CA + up to 3 intermediates + server cert
+      # Industry standard allows 3-5 levels; 5 provides good compatibility
+      depth: 5
+    ]
+
+    base ++
+      verify_options(
+        validate_tls_verify!(opts[:tls_verify]),
+        validate_cacertfile!(opts[:cacertfile])
+      )
+  end
+
+  # Verification disabled: no trust store is consulted, and none is required.
+  # Demanding one here would defeat the point for the operator who turned
+  # verification off precisely because they have no usable CA bundle.
+  defp verify_options(:none, cacertfile) do
+    warn_verification_disabled(cacertfile)
+
+    [verify: :verify_none]
+  end
+
+  defp verify_options(:peer, cacertfile) do
+    [verify: :verify_peer] ++
+      trust_store(cacertfile) ++ [customize_hostname_check: hostname_check()]
+  end
+
+  # A configured CA bundle is dead weight once verification is off: nothing
+  # reads it, so an operator who left an old SMTP_TLS_VERIFY=none in place
+  # would otherwise see a valid bundle and assume the relay is verified. One
+  # warning covers both, so the two facts cannot be read apart.
+  defp warn_verification_disabled(nil), do: Logger.warning(@verify_disabled_warning)
+
+  defp warn_verification_disabled(cacertfile) do
+    Logger.warning(@verify_disabled_warning <> @cacertfile_ignored_warning,
+      cacertfile: cacertfile
+    )
+  end
+
+  # A private CA replaces the public store rather than extending it: a relay
+  # whose certificate chains to an internal CA has no reason to also be
+  # accepted under a public root.
+  defp trust_store(nil), do: [cacerts: load_cacerts()]
+  defp trust_store(cacertfile), do: [cacertfile: cacertfile]
+
+  # RFC 6125 hostname matching, including wildcard certificates. Without this,
+  # OTP's default matcher rejects a wildcard cert (e.g. `*.mailbox.org`) when
+  # connecting to a subdomain host (e.g. `smtp.mailbox.org`) with a fatal
+  # `{:bad_cert, {:hostname_check_failed, ...}}` alert. This is the same
+  # matcher Mint/Finch/Req use for HTTPS.
+  defp hostname_check do
+    [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)]
+  end
+
+  defp validate_tls_verify!(nil), do: :peer
+  defp validate_tls_verify!(mode) when mode in [:peer, :none], do: mode
+
+  defp validate_tls_verify!(mode) do
+    raise ArgumentError, "SMTP TLS verify must be :peer or :none, got: #{inspect(mode)}"
+  end
+
+  defp validate_cacertfile!(nil), do: nil
+
+  # Opened rather than stat'ed: a bundle mounted with the wrong ownership is
+  # present but unreadable, and passing it to :ssl then fails at connect time
+  # with an opaque option error rather than at boot with this message.
+  defp validate_cacertfile!(path) when is_binary(path) do
+    trimmed = String.trim(path)
+
+    case File.open(trimmed, [:read]) do
+      {:ok, file} ->
+        File.close(file)
+        trimmed
+
+      {:error, reason} ->
+        raise ArgumentError,
+              "SMTP CA certificate file not found or not readable: #{inspect(trimmed)} " <>
+                "(#{:file.format_error(reason)}). SMTP_CACERTFILE must point at a PEM " <>
+                "bundle readable inside the container"
+    end
+  end
+
+  defp validate_cacertfile!(path) do
+    raise ArgumentError, "SMTP CA certificate file must be a string, got: #{inspect(path)}"
+  end
+
+  # Logs SMTP configuration at startup (without password)
+  defp log_config(config) do
+    {ssl_mode, tls_mode} =
+      case {config[:ssl], config[:tls]} do
+        {true, :never} -> {"SSL (implicit TLS)", "disabled"}
+        {false, :always} -> {"no", "STARTTLS (required)"}
+        {false, :if_available} -> {"no", "opportunistic"}
+        _config_values -> {"unknown", "unknown"}
+      end
+
+    # Log at info level so operators can see SMTP configuration in production
+    Logger.info("SMTP mailer configured",
+      host: config[:relay],
+      port: config[:port],
+      username: config[:username],
+      auth: config[:auth],
+      ssl: ssl_mode,
+      tls: tls_mode,
+      verify: config[:tls_options][:verify],
+      timeout: config[:timeout],
+      retries: config[:retries]
+    )
+  end
+end

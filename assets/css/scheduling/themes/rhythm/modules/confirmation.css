@@ -1,0 +1,559 @@
+/* Confirmation Components */
+
+/* On the confirmation step the scheduling box must grow to fit its content
+   instead of being capped at the viewport.  The parent .content-area already
+   has overflow-y:auto + align-items:safe center, so it scrolls when the box
+   exceeds the available space (e.g. with the branding footer on short screens).
+
+   Three overrides work together:
+   1. max-height:none  – removes the 100% cap from the base .scheduling-box
+   2. flex-basis:auto on .slide-content – the base rule uses flex:1 (basis 0%),
+      which resolves to 0px in an auto-height flex parent and clips content
+   3. No min-height / justify-content on .confirmation-container – vertical
+      centering is handled by the content-area; inner centering would push
+      content out of the clipped area on short viewports */
+
+.scheduling-box:has(.confirmation-slide) {
+  width: min(600px, 100%);
+  max-height: none;
+}
+
+.slide-content.confirmation-slide {
+  flex-basis: auto;
+}
+
+.confirmation-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-xl) var(--space-lg);
+  width: 100%;
+}
+
+.confirmation-header-section {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.success-badge {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: success-bounce 0.6s ease-out;
+}
+
+.success-badge--transparent {
+  background: transparent;
+}
+
+.success-badge-inner {
+  width: 100%;
+  height: 100%;
+  background: var(--theme-accent-solid);
+  color: var(--theme-on-accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-success-lg);
+}
+
+.success-badge-inner--info {
+  background: linear-gradient(135deg, var(--theme-info) 0%, var(--theme-info-dark) 100%);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+}
+
+.success-badge-inner--success {
+  background: var(--theme-accent-solid);
+  color: var(--theme-on-accent);
+  box-shadow: var(--shadow-success-lg);
+}
+
+.success-badge-inner--danger {
+  background: linear-gradient(135deg, var(--theme-danger) 0%, var(--theme-danger-dark) 100%);
+  box-shadow: var(--shadow-danger-md);
+}
+
+.success-icon {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+  color: white;
+  stroke-width: 3;
+}
+
+@keyframes success-bounce {
+  0% { transform: scale(0) rotate(-180deg); }
+  50% { transform: scale(1.1) rotate(10deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.confirmation-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.confirmation-title-row .success-badge {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.confirmation-headline {
+  color: var(--theme-text);
+  margin: 0;
+}
+
+.confirmation-message {
+  color: var(--theme-text-secondary);
+  margin: 0;
+}
+
+/* Meeting Ticket Card */
+.meeting-ticket {
+  width: 100%;
+  max-width: 100%;
+  background: linear-gradient(135deg, var(--surface-light) 0%, var(--surface-subtle) 100%);
+  border: var(--border-width-thin) solid var(--border-medium);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.ticket-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--surface-subtle);
+  border-bottom: var(--border-width-thin) solid var(--border-subtle);
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+}
+
+.ticket-label {
+  color: var(--theme-text);
+}
+
+.ticket-badge {
+  padding: var(--space-2xs) var(--space-md);
+  background: var(--theme-primary-solid);
+  color: var(--theme-on-primary);
+  border-radius: 20px;
+}
+
+.ticket-body {
+  padding: var(--space-md) var(--space-lg);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+.ticket-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.ticket-icon {
+  width: var(--icon-xl);
+  height: var(--icon-xl);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.ticket-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+
+.ticket-value {
+  color: var(--theme-text);
+}
+
+.ticket-sublabel {
+  color: var(--theme-text-secondary);
+}
+
+/* Shared meeting-detail-* classes — styled to match ticket-* appearance */
+.meeting-detail-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.meeting-detail-icon-wrapper {
+  display: none;
+}
+
+.meeting-detail-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+
+.meeting-detail-value {
+  color: var(--theme-text);
+}
+
+.meeting-detail-label {
+  color: var(--theme-text-secondary);
+}
+
+.ticket-footer {
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(255, 255, 255, 0.03);
+  border-top: var(--border-width-thin) solid var(--border-subtle);
+  border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
+}
+
+.ticket-footer-message {
+  text-align: center;
+  color: var(--theme-text-secondary);
+  margin: 0;
+}
+
+.email-confirmation {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--theme-text-secondary);
+}
+
+.email-icon {
+  width: var(--icon-xs);
+  height: var(--icon-xs);
+  color: var(--theme-primary);
+  flex-shrink: 0;
+}
+
+.email-icon--success {
+  color: var(--theme-accent);
+}
+
+.email-confirmation strong {
+  color: var(--theme-primary);
+}
+
+.confirmation-actions-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  text-align: center;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+  margin-top: var(--space-2xl);
+}
+
+.confirmation-actions.centered {
+  justify-content: center;
+}
+
+.help-text {
+  color: var(--theme-text-secondary);
+  margin: 0;
+}
+
+/* Add-to-calendar download link — reuses the secondary action-button styling
+   on an <a>, with a leading calendar icon. */
+.calendar-download-button {
+  color: var(--theme-text);
+  text-decoration: none;
+}
+
+.calendar-download-button .calendar-download-icon {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  flex-shrink: 0;
+}
+
+/* Booking Detail Styling */
+.booking-detail-label {
+  color: var(--theme-text-secondary, #94a3b8);
+  margin: 0;
+  margin-bottom: var(--space-3xs);
+}
+
+.booking-detail-value {
+  color: var(--theme-text, #e2e8f0);
+  margin: 0;
+}
+
+.booking-detail-value a {
+  color: var(--theme-primary);
+  text-decoration: none;
+}
+
+.booking-detail-value a:hover {
+  color: var(--theme-primary-hover);
+  text-decoration: underline;
+}
+
+/* ============================================================================
+   RESPONSIVE — CONTAINER QUERIES
+   ============================================================================ */
+
+/* Narrow container (≤ 479px) — compact confirmation layout */
+@container scheduling (max-width: 479px) {
+  .confirmation-container {
+    padding: var(--space-md) var(--space-sm);
+    gap: var(--space-md);
+  }
+
+  .confirmation-header-section {
+    gap: var(--space-sm);
+  }
+
+  .meeting-ticket {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .ticket-body {
+    padding: var(--space-sm);
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
+  }
+
+  .ticket-header {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .ticket-footer {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .ticket-row {
+    gap: var(--space-sm);
+  }
+
+  .ticket-icon {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+  }
+
+  .meeting-detail-row {
+    gap: var(--space-sm);
+  }
+
+  .meeting-detail-icon-wrapper {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+  }
+
+  .success-badge {
+    width: 56px;
+    height: 56px;
+  }
+
+  .success-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .confirmation-actions-section {
+    gap: var(--space-sm);
+  }
+
+  .action-button-primary {
+    padding: var(--space-sm) var(--space-lg);
+    min-height: var(--min-touch-target);
+  }
+}
+
+/* ============================================================================
+   SHORT VIEWPORTS — height media queries (kept as @media)
+   ============================================================================ */
+
+@media (max-height: 600px) {
+  .success-badge {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-height: 400px) {
+  .confirmation-container {
+    padding: var(--space-xs);
+    gap: var(--space-xs);
+  }
+
+  .success-badge {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* ============================================================================
+   EMBEDDED MODE — container queries at narrow thresholds
+   ============================================================================ */
+
+/* Container — less padding, smaller gaps */
+html.rhythm-theme[data-embedded] .confirmation-container {
+  padding: clamp(var(--space-xs), 2cqi, var(--space-md)) clamp(var(--space-2xs), 1.5cqi, var(--space-sm));
+  gap: var(--space-sm);
+}
+
+/* Header — tighter gap */
+html.rhythm-theme[data-embedded] .confirmation-header-section {
+  gap: var(--space-xs);
+}
+
+/* Smaller success badge */
+html.rhythm-theme[data-embedded] .confirmation-title-row .success-badge {
+  width: 32px;
+  height: 32px;
+}
+
+html.rhythm-theme[data-embedded] .confirmation-title-row {
+  gap: var(--space-sm);
+}
+
+/* Meeting ticket — compact card */
+html.rhythm-theme[data-embedded] .ticket-header {
+  padding: var(--space-xs) var(--space-sm);
+}
+
+/* Ticket body — horizontal row instead of vertical stack */
+html.rhythm-theme[data-embedded] .ticket-body {
+  display: flex;
+  padding: var(--space-sm);
+  flex-direction: row;
+  gap: var(--space-sm);
+}
+
+/* Hide icon circles to save space */
+html.rhythm-theme[data-embedded] .ticket-icon {
+  display: none;
+}
+
+/* Ticket info — inline value + sublabel */
+html.rhythm-theme[data-embedded] .ticket-info {
+  flex-direction: row;
+  gap: var(--space-3xs);
+  align-items: baseline;
+}
+
+html.rhythm-theme[data-embedded] .ticket-sublabel::before {
+  content: "· ";
+}
+
+/* Dividers between horizontal ticket items */
+html.rhythm-theme[data-embedded] .ticket-row + .ticket-row {
+  padding-left: var(--space-sm);
+  border-left: var(--border-width-thin) solid var(--border-subtle);
+}
+
+/* Shared meeting-detail-* — embedded overrides (mirror ticket-* behavior) */
+html.rhythm-theme[data-embedded] .meeting-detail-icon-wrapper {
+  display: none;
+}
+
+html.rhythm-theme[data-embedded] .meeting-detail-info {
+  flex-direction: row;
+  gap: var(--space-3xs);
+  align-items: baseline;
+}
+
+html.rhythm-theme[data-embedded] .meeting-detail-label::before {
+  content: "· ";
+}
+
+html.rhythm-theme[data-embedded] .meeting-detail-row + .meeting-detail-row {
+  padding-left: var(--space-sm);
+  border-left: var(--border-width-thin) solid var(--border-subtle);
+}
+
+/* Ticket footer — tighter */
+html.rhythm-theme[data-embedded] .ticket-footer {
+  padding: var(--space-xs) var(--space-sm);
+}
+
+/* Actions — tighter gap */
+html.rhythm-theme[data-embedded] .confirmation-actions-section {
+  gap: var(--space-xs);
+}
+
+/* ============================================================================
+   CUSTOM FIELD ANSWERS — "Your answers" section on the confirmation step
+   ============================================================================ */
+
+.custom-answers-section {
+  width: 100%;
+  background: var(--surface-subtle);
+  border: var(--border-width-thin) solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.custom-answers-heading {
+  font-size: var(--theme-font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--theme-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  margin: 0 0 var(--space-sm);
+}
+
+.custom-answers-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+}
+
+.custom-answer-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--space-sm);
+}
+
+.custom-answer-label {
+  font-size: var(--theme-font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--theme-text-secondary);
+}
+
+.custom-answer-value {
+  font-size: var(--theme-font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--theme-text);
+  margin: 0;
+}
+
+/* Narrow container — stack label above value */
+@container scheduling (max-width: 479px) {
+  .custom-answers-section {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .custom-answer-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-3xs);
+  }
+}
+
+/* Embedded — compact variant */
+html.rhythm-theme[data-embedded] .custom-answers-section {
+  padding: var(--space-xs) var(--space-sm);
+}
+
+html.rhythm-theme[data-embedded] .custom-answer-row {
+  grid-template-columns: 1fr;
+  gap: var(--space-3xs);
+}

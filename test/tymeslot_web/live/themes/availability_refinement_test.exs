@@ -1,0 +1,192 @@
+defmodule TymeslotWeb.Live.Themes.AvailabilityRefinementTest do
+  use TymeslotWeb.LiveCase, async: false
+  @moduletag :utils
+
+  import Mox
+  import Phoenix.LiveViewTest
+  import Tymeslot.Factory
+
+  alias Ecto.Adapters.SQL.Sandbox
+  alias Tymeslot.BookingTestHelpers
+  alias Tymeslot.Infrastructure.AvailabilityCache
+  alias Tymeslot.Integrations.Calendar.CalendarEvent
+  alias Tymeslot.Repo
+  alias Tymeslot.TestMocks
+
+  setup :verify_on_exit!
+
+  setup tags do
+    Mox.set_mox_from_context(tags)
+    Sandbox.mode(Repo, {:shared, self()})
+    AvailabilityCache.clear_all()
+
+    TestMocks.setup_email_mocks()
+    TestMocks.setup_calendar_mocks()
+
+    :ok
+  end
+
+  describe "Quill theme availability refinement" do
+    test "refines availability based on calendar conflicts", %{conn: conn} do
+      timezone = "America/New_York"
+      user = insert(:user)
+
+      profile =
+        insert(:profile,
+          user: user,
+          username: "refinement-test-#{System.unique_integer([:positive])}",
+          booking_theme: "1",
+          timezone: timezone
+        )
+
+      schedule =
+        insert(:availability_schedule,
+          profile: profile,
+          is_default: true,
+          advance_booking_days: 30,
+          min_advance_hours: 0,
+          buffer_minutes: 0
+        )
+
+      _meeting_type =
+        insert(:meeting_type,
+          user: user,
+          duration_minutes: 30,
+          name: "Refinement Chat",
+          is_active: true
+        )
+
+      Enum.each(1..7, fn day_of_week ->
+        insert(:weekly_availability,
+          schedule: schedule,
+          day_of_week: day_of_week,
+          is_available: true,
+          start_time: ~T[09:00:00],
+          end_time: ~T[17:00:00]
+        )
+      end)
+
+      insert(:calendar_integration, user: user, is_active: true)
+
+      today = Date.utc_today()
+      # Pick a date 5 days from today to be safe and avoid navigation issues
+      target_date = Date.add(today, 5)
+      date_str = Date.to_string(target_date)
+
+      # Use a unique duration to ensure cache isolation
+      _unique_duration = 30
+      slug = "refinement-chat"
+
+      stub(Tymeslot.CalendarMock, :get_events_for_range_fresh, fn _user_id, _start, _end ->
+        start_utc =
+          DateTime.shift_zone!(DateTime.new!(target_date, ~T[00:00:00], timezone), "Etc/UTC")
+
+        end_utc =
+          DateTime.shift_zone!(DateTime.new!(target_date, ~T[23:59:59], timezone), "Etc/UTC")
+
+        {:ok,
+         [
+           CalendarEvent.new!(%{
+             uid: "busy-day-#{System.unique_integer()}",
+             calendar_integration_id: 1,
+             provider: :google,
+             provider_event_id: "busy-day-#{System.unique_integer()}",
+             provider_calendar_id: "primary",
+             all_day: false,
+             start_at: start_utc,
+             end_at: end_utc,
+             synced_at: DateTime.utc_now()
+           })
+         ]}
+      end)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/#{profile.username}/#{slug}?timezone=#{timezone}")
+
+      BookingTestHelpers.show_month(view, target_date)
+
+      wait_until(fn ->
+        html = render(view)
+
+        # Check for both the date string and the disabled attribute on that specific date button
+        (html =~ "data-date=\"#{date_str}\"" or html =~ "phx-value-date=\"#{date_str}\"") and
+          has_element?(
+            view,
+            "button[data-testid='calendar-day'][phx-value-date='#{date_str}'][disabled]"
+          )
+      end)
+    end
+
+    test "greys out today if business hours have passed", %{conn: conn} do
+      # Use a valid IANA timezone that's far ahead of UTC (UTC+13)
+      # Must have a curated entry in the app's timezone list (Timezones.Data)
+      timezone = "Pacific/Tongatapu"
+      user = insert(:user)
+      username = "today-grey-test-#{System.unique_integer([:positive])}"
+
+      profile =
+        insert(:profile,
+          user: user,
+          booking_theme: "1",
+          timezone: timezone,
+          username: username
+        )
+
+      # Policy fields are left at their defaults on purpose; the assertion below
+      # relies on min_advance_hours defaulting to 3.
+      schedule = insert(:availability_schedule, profile: profile, is_default: true)
+
+      # Set business hours that have definitely passed for today in this timezone
+      # by picking a very early window (00:00 - 01:00)
+      Enum.each(1..7, fn day_of_week ->
+        insert(:weekly_availability,
+          schedule: schedule,
+          day_of_week: day_of_week,
+          is_available: true,
+          start_time: ~T[00:00:00],
+          end_time: ~T[01:00:00]
+        )
+      end)
+
+      _meeting_type =
+        insert(:meeting_type,
+          user: user,
+          name: "30 Minutes",
+          duration_minutes: 30,
+          is_active: true
+        )
+
+      insert(:calendar_integration, user: user, is_active: true)
+
+      now_in_tz = DateTime.shift_zone!(DateTime.utc_now(), timezone)
+      today_in_tz = DateTime.to_date(now_in_tz)
+      today_str = Date.to_string(today_in_tz)
+
+      # The timezone must be set via connect_params (simulating browser detection),
+      # because LiveView mount/3 only receives path params — query params are not
+      # available until handle_params/3, which is too late for the initial timezone
+      # assignment in assign_user_timezone/2.
+      {:ok, view, _html} =
+        conn
+        |> put_connect_params(%{"timezone" => timezone})
+        |> live(~p"/#{profile.username}/30-minutes?timezone=#{timezone}")
+
+      # Today is unbookable by construction here, so the step lands the booker
+      # on the first day that is not: on the last day of a month that is in the
+      # next one, and a month grid anchored on Sunday then drops today's cell
+      # altogether rather than drawing it as leading padding. Step back to the
+      # month that contains today before asking anything about its cell.
+      BookingTestHelpers.show_month(view, today_in_tz, :prev)
+
+      # Business hours are 00:00-01:00 and min_advance_hours defaults to 3,
+      # so the earliest bookable time is now+3h which always exceeds the 01:00
+      # business end. Today should ALWAYS be disabled in this setup.
+      wait_until(fn ->
+        has_element?(
+          view,
+          "button[data-testid='calendar-day'][phx-value-date='#{today_str}'][disabled]"
+        )
+      end)
+    end
+  end
+end

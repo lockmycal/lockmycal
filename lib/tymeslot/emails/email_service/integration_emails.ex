@@ -1,0 +1,184 @@
+defmodule Tymeslot.Emails.EmailService.IntegrationEmails do
+  @moduledoc "Integration-related emails: unhealthy integration notifications and admin alerts."
+
+  require Logger
+
+  alias Swoosh.Email
+  alias Tymeslot.Emails.Delivery
+  alias Tymeslot.Emails.RecipientLocale
+  alias Tymeslot.Emails.Shared.MjmlEmail
+
+  alias Tymeslot.Emails.Templates.{
+    AdminAlert,
+    IntegrationPaused,
+    IntegrationReauthRequired,
+    IntegrationUnhealthy,
+    VideoRoomCreationError
+  }
+
+  alias Tymeslot.Infrastructure.Config
+
+  @doc """
+  Sends an integration unhealthy notification to the integration owner.
+  Called when an integration has been failing health checks for over 48 hours.
+  """
+  @spec send_integration_unhealthy_notification(
+          Tymeslot.Emails.EmailService.user_map(),
+          %{required(:provider) => atom(), optional(atom()) => term()},
+          atom() | String.t()
+        ) ::
+          {:ok, any()} | {:error, any()}
+  def send_integration_unhealthy_notification(user, integration, type) do
+    Logger.info("Sending integration unhealthy notification",
+      user_id: user.id,
+      integration_id: integration.id,
+      type: type
+    )
+
+    html_body = IntegrationUnhealthy.render(user, integration, type)
+    text_body = IntegrationUnhealthy.render_text(user, integration, type)
+    type_label = if type == :video, do: "video", else: "calendar"
+
+    display_name = Map.get(user, :name) || user.email
+
+    email =
+      MjmlEmail.base_email()
+      |> Email.to({display_name, user.email})
+      |> Email.subject("Your #{type_label} integration may need attention")
+      |> Email.html_body(html_body)
+      |> Email.text_body(text_body)
+
+    Delivery.deliver(email)
+  end
+
+  @doc """
+  Sends a "reconnect required" notification to the integration owner.
+
+  Called when an integration is flagged `needs_reauth` — a revoked grant, or
+  one whose scopes no longer cover what Tymeslot must do. Unlike the unhealthy
+  notification, this one describes a state that cannot resolve itself.
+  """
+  @spec send_integration_reauth_notification(
+          Tymeslot.Emails.EmailService.user_map(),
+          %{required(:provider) => atom(), optional(atom()) => term()},
+          atom() | String.t()
+        ) ::
+          {:ok, any()} | {:error, any()}
+  def send_integration_reauth_notification(user, integration, type) do
+    Logger.info("Sending integration reauth notification",
+      user_id: user.id,
+      integration_id: integration.id,
+      type: type
+    )
+
+    html_body = IntegrationReauthRequired.render(user, integration, type)
+    text_body = IntegrationReauthRequired.render_text(user, integration, type)
+
+    provider_label = IntegrationReauthRequired.provider_label(integration, type)
+
+    display_name = Map.get(user, :name) || user.email
+
+    email =
+      MjmlEmail.base_email()
+      |> Email.to({display_name, user.email})
+      |> Email.subject("Reconnect your #{provider_label} integration")
+      |> Email.html_body(html_body)
+      |> Email.text_body(text_body)
+
+    Delivery.deliver(email)
+  end
+
+  @doc """
+  Sends an integration paused notification to the integration owner.
+  Called by the auto-pause worker after the configured cutoff period of sustained
+  unhealthy status. `cutoff_days` is passed through to the template so it can
+  render the actual configured threshold rather than a hard-coded number.
+  """
+  @spec send_integration_paused_notification(
+          Tymeslot.Emails.EmailService.user_map(),
+          %{required(:provider) => atom(), optional(atom()) => term()},
+          atom() | String.t(),
+          pos_integer()
+        ) ::
+          {:ok, any()} | {:error, any()}
+  def send_integration_paused_notification(user, integration, type, cutoff_days) do
+    Logger.info("Sending integration paused notification",
+      user_id: user.id,
+      integration_id: integration.id,
+      type: type
+    )
+
+    html_body = IntegrationPaused.render(user, integration, type, cutoff_days)
+    text_body = IntegrationPaused.render_text(user, integration, type, cutoff_days)
+    type_label = if type == :video, do: "video", else: "calendar"
+
+    display_name = Map.get(user, :name) || user.email
+
+    email =
+      MjmlEmail.base_email()
+      |> Email.to({display_name, user.email})
+      |> Email.subject("Your #{type_label} integration has been paused")
+      |> Email.html_body(html_body)
+      |> Email.text_body(text_body)
+
+    Delivery.deliver(email)
+  end
+
+  @doc """
+  Tells the owner of a video integration that its provider refuses to create
+  rooms for it, why, and how to fix it, from the refusal recorded on
+  `integration`.
+
+  Rendered in the owner's locale, since it asks them to change a setting.
+  """
+  @spec send_video_room_creation_error_notification(
+          Tymeslot.Emails.EmailService.user_map(),
+          map()
+        ) :: {:ok, any()} | {:error, any()}
+  def send_video_room_creation_error_notification(user, integration) do
+    Logger.info("Sending video room creation error notification",
+      user_id: user.id,
+      integration_id: integration.id,
+      code: integration.room_creation_error
+    )
+
+    RecipientLocale.with_user_locale(user, fn ->
+      {html_body, text_body} = VideoRoomCreationError.render_both(integration)
+
+      MjmlEmail.base_email()
+      |> Email.to({Map.get(user, :name) || user.email, user.email})
+      |> Email.subject(VideoRoomCreationError.subject(integration))
+      |> Email.html_body(html_body)
+      |> Email.text_body(text_body)
+      |> Delivery.deliver()
+    end)
+  end
+
+  @doc """
+  Delivers an administrative alert email to the configured admin recipient.
+
+  Used by `Tymeslot.Infrastructure.AdminAlerts.EmailNotifier` to send alerts
+  generated by `Tymeslot.Infrastructure.AdminAlerts.send_alert/2`.
+  """
+  @spec send_admin_alert(String.t(), String.t(), :info | :warning | :error, String.t(), map()) ::
+          {:ok, any()} | {:error, any()}
+  def send_admin_alert(recipient, category, severity, message, metadata) do
+    Logger.info("Sending admin alert email",
+      category: category,
+      severity: severity,
+      recipient: recipient
+    )
+
+    html_body = AdminAlert.render(category, severity, message, metadata)
+    text_body = AdminAlert.render_text(category, severity, message, metadata)
+
+    email =
+      MjmlEmail.base_email()
+      |> Email.to({"#{Config.app_name()} Operator", recipient})
+      |> Email.subject("⚠️ #{Config.app_name()} Admin Alert: #{category}")
+      |> Email.html_body(html_body)
+      |> Email.text_body(text_body)
+
+    Delivery.deliver(email)
+  end
+end

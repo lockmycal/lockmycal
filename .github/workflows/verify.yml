@@ -1,0 +1,103 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    # Only run on GitHub, not Gitea
+    if: github.server_url == 'https://github.com'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      MIX_ENV: test
+      TEST_DB_POOL_SIZE: "10"
+      ELIXIR_VERSION: "1.20.3"
+      OTP_VERSION: "28.5.0.5"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+      # priv/plts is where mix.exs points plt_core_path/plt_local_path; without
+      # it cached, every run rebuilds the Dialyzer PLT from scratch. The
+      # Elixir/OTP versions are part of the key because both _build and the PLT
+      # are toolchain-specific and must not survive a version bump.
+      #
+      # The commit SHA is in the key so that the cache is re-saved on every run:
+      # actions/cache writes only on a key miss, so a key that moved only with
+      # mix.lock would freeze the incremental PLT at whatever state it held when
+      # the lockfile last changed, leaving each run to re-analyse a delta that
+      # grows until the next dependency bump. restore-keys drops the SHA, so a
+      # run still starts from the newest cache for this lockfile and pays only
+      # the delta since it, which is the whole point of an incremental PLT.
+      - uses: actions/cache@v5
+        with:
+          path: |
+            deps
+            _build
+            priv/plts
+          key: ${{ runner.os }}-elixir-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-mix-${{ hashFiles('mix.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-elixir-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-mix-${{ hashFiles('mix.lock') }}-
+      - run: mix deps.get
+      - run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      - run: mix credo --strict
+      - run: mix sobelow
+      - run: mix deps.audit
+      # mix_audit ships a snapshot of the advisory database baked in at package
+      # build time, so it goes stale between releases: it stayed silent on the
+      # mint 1.9.3 DoS advisories (CVE-2026-82728/82729) that hex.audit caught.
+      # hex.audit queries the live Hex registry instead, so the two are
+      # complementary rather than redundant. Both exit non-zero on a finding.
+      - run: mix hex.audit
+      - run: mix excellent_migrations.check_safety
+      # test/release/changelog_configs_test.exs renders the real git-cliff
+      # templates, and Tymeslot.Test.SuiteConfig excludes those tests wherever
+      # the binary is missing — so without this step they would silently never
+      # run here, which is the one place a broken template could still be
+      # caught before a release. Keep the pin in step with release.yml, which
+      # generates the release notes with the same binary.
+      - name: Install git-cliff
+        run: |
+          CLIFF_VERSION="2.12.0"
+          curl -sSfLo /tmp/git-cliff.tar.gz \
+            "https://github.com/orhun/git-cliff/releases/download/v${CLIFF_VERSION}/git-cliff-${CLIFF_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          sudo tar -xzf /tmp/git-cliff.tar.gz -C /usr/local/bin --strip-components=1 "git-cliff-${CLIFF_VERSION}/git-cliff"
+          git-cliff --version
+      - run: mix test
+      # Catalogue references drift whenever a translatable string is added,
+      # removed, or moved between files, and nothing else in this workflow
+      # notices. Run it locally the same way, from the repository root:
+      #
+      #     mix gettext.extract --check-up-to-date
+      #
+      # It reports staleness without writing, so it never mutates the tree it
+      # inspects. Extraction force-recompiles and needs the dev build, for the
+      # same reason as dialyzer below.
+      - run: mix gettext.extract --check-up-to-date
+        env:
+          MIX_ENV: dev
+      # dialyxir is only: [:dev], so this step needs its own environment. The
+      # job-wide MIX_ENV=test above would make the task unresolvable, and the
+      # step has been silently failing that way. Dev also matches where
+      # `mix precommit` runs dialyzer locally, so both analyse the same build.
+      #
+      # Incremental, matching the gate: the PLT restored above is re-analysed
+      # per changed module rather than in full. `mix dialyzer` remains the
+      # cross-check; the two were adopted on identical output.
+      - run: mix dialyzer.incremental --list-unused-filters
+        env:
+          MIX_ENV: dev

@@ -1,0 +1,279 @@
+defmodule Tymeslot.Notifications.ContentBuilder do
+  @moduledoc """
+  Builds notification content and email data structures.
+  Pure functions for converting meeting data into notification-ready formats.
+  """
+
+  alias Tymeslot.Auth.UserQueries
+  alias Tymeslot.Emails.AppointmentBuilder
+  alias Tymeslot.Notifications.Recipients
+  alias Tymeslot.Profiles
+  alias Tymeslot.Profiles.ProfileQueries
+  alias Tymeslot.Utils.DateTimeUtils
+
+  @doc """
+  Builds appointment details for email notifications.
+  """
+  @spec build_appointment_details(%{atom() => term()}) :: %{atom() => term()}
+  def build_appointment_details(meeting) do
+    organizer_timezone = Recipients.get_organizer_timezone(meeting)
+    # Get attendee timezone - should always be present
+    attendee_timezone = Recipients.get_attendee_timezone(meeting)
+
+    %{
+      # Meeting identification
+      uid: meeting.uid,
+      title: meeting.title,
+
+      # Attendee information
+      attendee_name: meeting.attendee_name,
+      attendee_email: meeting.attendee_email,
+      attendee_locale: meeting.attendee_locale || "en",
+      attendee_message: meeting.attendee_message || "",
+      attendee_timezone: attendee_timezone,
+
+      # Organizer information
+      organizer_name: meeting.organizer_name,
+      organizer_email: meeting.organizer_email,
+      organizer_title: meeting.organizer_title,
+      organizer_timezone: organizer_timezone,
+      organizer_avatar_url: get_organizer_avatar_url(meeting),
+
+      # Meeting timing
+      date: meeting.start_time,
+      start_time: meeting.start_time,
+      end_time: meeting.end_time,
+      duration: meeting.duration,
+
+      # Timezone-specific times
+      start_time_owner_tz: convert_to_timezone(meeting.start_time, organizer_timezone),
+      start_time_attendee_tz: convert_to_timezone(meeting.start_time, attendee_timezone),
+
+      # Meeting details
+      location: determine_location(meeting),
+      meeting_type: meeting.meeting_type,
+
+      # URLs and links
+      view_url: meeting.view_url,
+      reschedule_url: meeting.reschedule_url,
+      cancel_url: meeting.cancel_url,
+
+      # Video room information
+      meeting_url: meeting.meeting_url,
+      organizer_video_url: meeting.organizer_video_url,
+      attendee_video_url: meeting.attendee_video_url,
+      video_room_enabled: meeting.video_room_enabled || false,
+
+      # Additional context
+      created_at: meeting.inserted_at,
+      updated_at: meeting.updated_at,
+
+      # Default reminder time for email templates
+      default_reminder_time: meeting.default_reminder_time || "30 minutes",
+      reminder_time: meeting.reminder_time || meeting.default_reminder_time || "30 minutes",
+
+      # Organizer contact info for email templates
+      organizer_contact_info: build_organizer_contact_info(meeting)
+    }
+  end
+
+  @doc """
+  Builds cancellation details for email notifications.
+  """
+  @spec build_cancellation_details(%{atom() => term()}) :: %{atom() => term()}
+  def build_cancellation_details(meeting) do
+    organizer_timezone = Recipients.get_organizer_timezone(meeting)
+    attendee_timezone = Recipients.get_attendee_timezone(meeting)
+
+    %{
+      # Meeting identification
+      uid: meeting.uid,
+      title: meeting.title,
+
+      # Participant information
+      attendee_name: meeting.attendee_name,
+      attendee_email: meeting.attendee_email,
+      attendee_locale: meeting.attendee_locale || "en",
+      attendee_timezone: attendee_timezone,
+      organizer_name: meeting.organizer_name,
+      organizer_email: meeting.organizer_email,
+      organizer_title: meeting.organizer_title,
+
+      # Meeting timing
+      date: meeting.start_time,
+      start_time: meeting.start_time,
+      end_time: meeting.end_time,
+      start_time_owner_tz: convert_to_timezone(meeting.start_time, organizer_timezone),
+      start_time_attendee_tz: convert_to_timezone(meeting.start_time, attendee_timezone),
+      duration: meeting.duration,
+
+      # Meeting details
+      location: meeting.location,
+      meeting_type: meeting.meeting_type,
+
+      # iCal sequence for cancellation attachments (bumped at render time)
+      ical_sequence: Map.get(meeting, :ical_sequence) || 0,
+
+      # Cancellation context
+      cancelled_at: meeting.cancelled_at || DateTime.utc_now(),
+      cancellation_reason: meeting.cancellation_reason
+    }
+  end
+
+  @doc """
+  Builds reschedule details for email notifications.
+
+  Unlike the other builders here, this payload is rendered by an email template
+  rather than handed to a worker that rebuilds it, so the base comes from
+  `Emails.AppointmentBuilder` — the shape every template is written against.
+  Building it from `build_appointment_details/1` instead omits keys the
+  templates read (`:reminders_summary`, `:location_type`, `:booking_payment`,
+  and a `:date` that is a `Date` rather than a `DateTime`), which crashes the
+  render mid-reschedule and takes the webhook dispatch down with it.
+  """
+  @spec build_reschedule_details(%{atom() => term()}, %{atom() => term()}) :: %{atom() => term()}
+  def build_reschedule_details(updated_meeting, original_meeting) do
+    organizer_timezone = Recipients.get_organizer_timezone(updated_meeting)
+
+    base_details = AppointmentBuilder.from_meeting(updated_meeting)
+    attendee_timezone = base_details.attendee_timezone
+
+    Map.merge(base_details, %{
+      # Original meeting details for comparison
+      original_date: DateTime.to_date(original_meeting.start_time),
+      original_start_time: original_meeting.start_time,
+      original_start_time_owner_tz:
+        convert_to_timezone(original_meeting.start_time, organizer_timezone),
+      original_start_time_attendee_tz:
+        convert_to_timezone(original_meeting.start_time, attendee_timezone),
+      original_end_time: original_meeting.end_time,
+      original_attendee_video_url: Map.get(original_meeting, :attendee_video_url),
+
+      # Reschedule context
+      is_rescheduled: true,
+      rescheduled_at: DateTime.utc_now()
+    })
+  end
+
+  @doc """
+  Builds reschedule details for a booking whose new time was approved after a
+  reschedule sent it back into the approval gate.
+
+  Unlike `build_reschedule_details/2` there is no original meeting to compare
+  with, so the templates leave out their "previously scheduled" line.
+  """
+  @spec build_reapproval_details(%{atom() => term()}) :: %{atom() => term()}
+  def build_reapproval_details(meeting) do
+    meeting
+    |> AppointmentBuilder.from_meeting()
+    |> Map.merge(%{is_rescheduled: true, rescheduled_at: DateTime.utc_now()})
+  end
+
+  @doc """
+  Builds reminder notification details.
+  """
+  @spec build_reminder_details(%{atom() => term()}) :: %{atom() => term()}
+  def build_reminder_details(meeting) do
+    base_details = build_appointment_details(meeting)
+
+    reminder_time =
+      Keyword.get(Application.get_env(:tymeslot, :notifications, []), :reminder_minutes, 30)
+
+    Map.merge(base_details, %{
+      is_reminder: true,
+      reminder_time: "#{reminder_time} minutes"
+    })
+  end
+
+  @doc """
+  Builds video room notification details.
+  """
+  @spec build_video_room_details(%{atom() => term()}, atom()) :: %{atom() => term()}
+  def build_video_room_details(meeting, video_room_status) do
+    base_details = build_appointment_details(meeting)
+
+    Map.merge(base_details, %{
+      video_room_status: video_room_status,
+      video_room_created_at: meeting.video_room_created_at,
+      video_room_expires_at: meeting.video_room_expires_at
+    })
+  end
+
+  @doc """
+  Validates that notification content is complete.
+  """
+  @spec validate_content(%{atom() => term()}) :: :ok | {:error, String.t()}
+  def validate_content(content) do
+    required_fields = [
+      :uid,
+      :attendee_name,
+      :attendee_email,
+      :organizer_name,
+      :organizer_email,
+      :start_time
+    ]
+
+    missing_fields =
+      Enum.reject(required_fields, fn field -> Map.has_key?(content, field) and content[field] end)
+
+    case missing_fields do
+      [] -> :ok
+      fields -> {:error, "Missing content fields: #{Enum.join(fields, ", ")}"}
+    end
+  end
+
+  # Private functions
+
+  defp determine_location(meeting) do
+    cond do
+      meeting.meeting_url -> "Video Call"
+      meeting.location -> meeting.location
+      true -> "TBD"
+    end
+  end
+
+  defp convert_to_timezone(datetime, timezone) do
+    DateTimeUtils.convert_to_timezone(datetime, timezone)
+  end
+
+  defp build_organizer_contact_info(meeting) do
+    if meeting.organizer_title do
+      "#{meeting.organizer_name}, #{meeting.organizer_title}"
+    else
+      meeting.organizer_name
+    end
+  end
+
+  # Never the initials data URI `Profiles.avatar_url/2` falls back to: Gmail
+  # refuses to render data URI images in email.
+  defp get_organizer_avatar_url(meeting) do
+    meeting |> get_organizer_profile() |> Profiles.uploaded_avatar_url()
+  end
+
+  defp get_organizer_profile(meeting) do
+    cond do
+      Map.has_key?(meeting, :organizer_user_id) && meeting.organizer_user_id ->
+        get_profile_by_user_id(meeting.organizer_user_id)
+
+      meeting.organizer_email ->
+        get_profile_by_email(meeting.organizer_email)
+
+      true ->
+        nil
+    end
+  end
+
+  defp get_profile_by_user_id(user_id) do
+    case ProfileQueries.get_by_user_id(user_id) do
+      {:ok, profile} -> profile
+      {:error, :not_found} -> nil
+    end
+  end
+
+  defp get_profile_by_email(email) do
+    case UserQueries.get_user_by_email(email) do
+      {:error, :not_found} -> nil
+      {:ok, user} -> get_profile_by_user_id(user.id)
+    end
+  end
+end

@@ -1,0 +1,326 @@
+defmodule Tymeslot.Profiles.ProfileSchema do
+  @moduledoc """
+  Schema for user profiles containing calendar and appointment settings.
+  """
+  use Ecto.Schema
+  import Ecto.Changeset
+  import Tymeslot.ChangesetValidators.BookingLimits, only: [validate_booking_limits: 2]
+  import Tymeslot.ChangesetValidators.TimeOrder, only: [validate_time_order: 4]
+  import Tymeslot.ChangesetValidators.Translations, only: [validate_unique_locales: 2]
+
+  alias Tymeslot.Profiles
+  alias Tymeslot.Profiles.ProfileBookingTextTranslation
+  alias Tymeslot.Security.FieldValidators.UsernameValidator
+  alias Tymeslot.Security.Security
+  alias Tymeslot.ThemeCustomizations.ThemeCustomizationSchema
+  alias Tymeslot.Themes.Catalog
+  alias Tymeslot.Timezones
+  alias Tymeslot.Validation.Constraints
+
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          user_id: integer() | nil,
+          username: String.t() | nil,
+          full_name: String.t() | nil,
+          phone: String.t() | nil,
+          company: String.t() | nil,
+          timezone: String.t() | nil,
+          max_bookings_per_day: pos_integer() | nil,
+          max_bookings_per_week: pos_integer() | nil,
+          max_bookings_per_month: pos_integer() | nil,
+          avatar: String.t() | nil,
+          booking_theme: String.t() | nil,
+          has_custom_theme: boolean(),
+          allowed_embed_domains: [String.t()] | nil,
+          booking_page_published_at: DateTime.t() | nil,
+          booking_text_enabled: boolean(),
+          booking_heading: String.t() | nil,
+          booking_greeting: String.t() | nil,
+          booking_instruction: String.t() | nil,
+          booking_text_translations: [ProfileBookingTextTranslation.t()],
+          freebusy_token: String.t() | nil,
+          public_calendar_enabled: boolean(),
+          public_calendar_colors: boolean(),
+          public_calendar_visible_from: Time.t() | nil,
+          public_calendar_visible_to: Time.t() | nil,
+          public_calendar_show_historical_events: boolean(),
+          contacts_enabled: boolean(),
+          auto_delete_cancelled_meetings_enabled: boolean(),
+          auto_delete_cancelled_meetings_after_days: integer(),
+          primary_calendar_integration_id: integer() | nil,
+          user: Tymeslot.Auth.UserSchema.t() | Ecto.Association.NotLoaded.t(),
+          primary_calendar_integration:
+            Tymeslot.Integrations.Calendar.CalendarIntegrationSchema.t()
+            | Ecto.Association.NotLoaded.t()
+            | nil,
+          theme_customization:
+            ThemeCustomizationSchema.t() | Ecto.Association.NotLoaded.t() | nil,
+          meeting_types: [Tymeslot.MeetingTypes.MeetingTypeSchema.t()] | nil,
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
+  schema "profiles" do
+    field(:username, :string)
+    field(:full_name, :string)
+    field(:phone, :string)
+    field(:company, :string)
+    field(:timezone, :string)
+    field(:max_bookings_per_day, :integer)
+    field(:max_bookings_per_week, :integer)
+    field(:max_bookings_per_month, :integer)
+    field(:avatar, :string)
+    field(:booking_theme, :string, default: Catalog.default_id())
+    field(:has_custom_theme, :boolean, default: false)
+    field(:allowed_embed_domains, {:array, :string}, default: ["none"])
+    field(:booking_page_published_at, :utc_datetime)
+    field(:booking_text_enabled, :boolean, default: false)
+    field(:booking_heading, :string)
+    field(:booking_greeting, :string)
+    field(:booking_instruction, :string)
+    field(:freebusy_token, :string)
+    field(:public_calendar_enabled, :boolean, default: true)
+    field(:public_calendar_colors, :boolean, default: false)
+    field(:public_calendar_visible_from, :time)
+    field(:public_calendar_visible_to, :time)
+    field(:public_calendar_show_historical_events, :boolean, default: false)
+    field(:contacts_enabled, :boolean, default: false)
+    field(:auto_delete_cancelled_meetings_enabled, :boolean, default: false)
+    field(:auto_delete_cancelled_meetings_after_days, :integer, default: 30)
+    field(:meeting_types, {:array, :map}, virtual: true)
+
+    embeds_many(:booking_text_translations, ProfileBookingTextTranslation, on_replace: :delete)
+
+    belongs_to(:user, Tymeslot.Auth.UserSchema)
+
+    belongs_to(
+      :primary_calendar_integration,
+      Tymeslot.Integrations.Calendar.CalendarIntegrationSchema
+    )
+
+    has_one(:theme_customization, ThemeCustomizationSchema, foreign_key: :profile_id)
+
+    timestamps(type: :utc_datetime)
+  end
+
+  @doc false
+  @spec changeset(t(), map()) :: Ecto.Changeset.t()
+  def changeset(profile, attrs) do
+    profile
+    |> cast(attrs, [
+      :user_id,
+      :username,
+      :full_name,
+      :phone,
+      :company,
+      :timezone,
+      :max_bookings_per_day,
+      :max_bookings_per_week,
+      :max_bookings_per_month,
+      :avatar,
+      :booking_theme,
+      :has_custom_theme,
+      :allowed_embed_domains,
+      :booking_page_published_at,
+      :primary_calendar_integration_id,
+      :public_calendar_enabled,
+      :public_calendar_colors,
+      :public_calendar_visible_from,
+      :public_calendar_visible_to,
+      :public_calendar_show_historical_events,
+      :contacts_enabled,
+      :auto_delete_cancelled_meetings_enabled,
+      :auto_delete_cancelled_meetings_after_days
+    ])
+    |> validate_required([:user_id])
+    # The column is a varchar(255); a longer name must fail here, not at insert.
+    |> validate_length(:full_name, max: 255)
+    |> validate_username()
+    |> validate_timezone()
+    |> validate_booking_theme()
+    |> validate_embed_domains()
+    |> validate_public_calendar_visible_hours()
+    |> validate_number(
+      :auto_delete_cancelled_meetings_after_days,
+      Constraints.cancelled_meeting_retention_days_opts()
+    )
+    |> validate_booking_limits(:profiles)
+    |> unique_constraint(:username)
+    |> unique_constraint(:user_id)
+    |> foreign_key_constraint(:primary_calendar_integration_id)
+  end
+
+  @doc """
+  Focused changeset for setting or clearing the free/busy feed token, without
+  re-validating unrelated fields. A `nil` token disables the feed.
+  """
+  @spec freebusy_token_changeset(t(), map()) :: Ecto.Changeset.t()
+  def freebusy_token_changeset(profile, attrs) do
+    profile
+    |> cast(attrs, [:freebusy_token])
+    |> unique_constraint(:freebusy_token)
+  end
+
+  @booking_text_fields [:booking_heading, :booking_greeting, :booking_instruction]
+
+  @doc """
+  Focused changeset for the booking page's introductory text.
+
+  The three strings are kept whether or not they are in use, so switching the
+  customisation off and back on restores the organiser's wording instead of
+  losing it. That is why `validate_required/2` applies only while
+  `booking_text_enabled` is true: a blank field is an error when the text is
+  live and unremarkable when it is not.
+
+  Casts with `empty_values: []` deliberately. Ecto's default treats `""` as
+  absent, which would silently drop the change when an organiser clears a field,
+  leaving the old wording on the page.
+  """
+  @spec booking_text_changeset(t(), map()) :: Ecto.Changeset.t()
+  def booking_text_changeset(profile, attrs) do
+    profile
+    |> cast(attrs, [:booking_text_enabled | @booking_text_fields], empty_values: [])
+    |> update_booking_text()
+    |> validate_length(:booking_heading, max: Constraints.booking_heading_max_length())
+    |> validate_length(:booking_greeting, max: Constraints.booking_welcome_line_max_length())
+    |> validate_length(:booking_instruction, max: Constraints.booking_welcome_line_max_length())
+    |> cast_embed(:booking_text_translations, with: &ProfileBookingTextTranslation.changeset/2)
+    |> validate_unique_locales(:booking_text_translations)
+    |> validate_booking_text_present()
+  end
+
+  defp update_booking_text(changeset) do
+    Enum.reduce(@booking_text_fields, changeset, fn field, acc ->
+      update_change(acc, field, &normalize_booking_text/1)
+    end)
+  end
+
+  defp normalize_booking_text(nil), do: nil
+
+  defp normalize_booking_text(value) when is_binary(value) do
+    # Postgres rejects null bytes even though they are valid UTF-8, so they are
+    # stripped at the boundary rather than left to blow up on insert.
+    trimmed =
+      value
+      |> String.replace("\x00", "")
+      |> String.trim()
+
+    blank_to_nil(trimmed)
+  end
+
+  defp blank_to_nil(""), do: nil
+  defp blank_to_nil(value), do: value
+
+  defp validate_booking_text_present(changeset) do
+    if fetch_field!(changeset, :booking_text_enabled) do
+      validate_required(changeset, @booking_text_fields)
+    else
+      changeset
+    end
+  end
+
+  defp validate_username(changeset) do
+    changeset
+    |> validate_change(:username, fn :username, username ->
+      case UsernameValidator.validate(username) do
+        :ok -> []
+        {:error, message} -> [username: message]
+      end
+    end)
+    |> validate_username_not_reserved()
+  end
+
+  defp validate_username_not_reserved(changeset) do
+    case get_change(changeset, :username) do
+      nil ->
+        changeset
+
+      username ->
+        if username in Profiles.reserved_paths() do
+          add_error(changeset, :username, "is reserved", validation: :reserved)
+        else
+          changeset
+        end
+    end
+  end
+
+  defp validate_timezone(changeset) do
+    case get_change(changeset, :timezone) do
+      nil ->
+        changeset
+
+      timezone ->
+        if Timezones.valid?(timezone) do
+          changeset
+        else
+          add_error(changeset, :timezone, "is not a valid timezone")
+        end
+    end
+  end
+
+  defp validate_booking_theme(changeset) do
+    valid_theme_ids = Catalog.valid_ids()
+
+    validate_inclusion(changeset, :booking_theme, valid_theme_ids,
+      message: "must be a valid theme"
+    )
+  end
+
+  defp validate_embed_domains(changeset) do
+    case get_change(changeset, :allowed_embed_domains) do
+      nil ->
+        changeset
+
+      domains when is_list(domains) ->
+        max_domains = 20
+
+        if length(domains) > max_domains do
+          add_error(
+            changeset,
+            :allowed_embed_domains,
+            "cannot have more than #{max_domains} domains (currently #{length(domains)})"
+          )
+        else
+          case Security.validate_domains(domains) do
+            {:ok, validated} -> put_change(changeset, :allowed_embed_domains, validated)
+            {:error, error_msg} -> add_error(changeset, :allowed_embed_domains, error_msg)
+          end
+        end
+
+      _other ->
+        add_error(changeset, :allowed_embed_domains, "must be a list of domains")
+    end
+  end
+
+  # A one-sided window (only "from" or only "to" set) can't clip anything
+  # meaningfully, so it's treated as an incomplete setting rather than
+  # silently applied — the public calendar page and free/busy feed both
+  # require both bounds present before they clip at all.
+  defp validate_public_calendar_visible_hours(changeset) do
+    changeset
+    |> validate_time_order(
+      :public_calendar_visible_from,
+      :public_calendar_visible_to,
+      message: "must be after the start time"
+    )
+    |> validate_visible_hours_both_or_neither()
+  end
+
+  defp validate_visible_hours_both_or_neither(changeset) do
+    from = get_field(changeset, :public_calendar_visible_from)
+    to = get_field(changeset, :public_calendar_visible_to)
+
+    cond do
+      is_nil(from) == is_nil(to) ->
+        changeset
+
+      is_nil(from) ->
+        add_error(changeset, :public_calendar_visible_from, "is required when an end time is set")
+
+      true ->
+        add_error(changeset, :public_calendar_visible_to, "is required when a start time is set")
+    end
+  end
+
+  # Removed redundant validation functions in favor of Tymeslot.Security.Security.validate_domain/1
+end

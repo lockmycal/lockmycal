@@ -1,0 +1,631 @@
+defmodule Tymeslot.Integrations.Calendar do
+  @moduledoc """
+  Integration management for calendar providers.
+
+  Owns CRUD, primary selection, discovery, validation, OAuth helpers,
+  and the higher-level orchestration wrappers used by LiveViews and
+  controllers.
+
+  Related sibling modules — public surface of the calendar domain, not detail
+  behind this facade. Each is a sanctioned entry point covered by Core's own
+  tests, so a rename goes red here before it breaks a downstream build.
+
+    * `Tymeslot.Integrations.Calendar.Diagnostics` — direct provider-event
+      operations and ephemeral integration builders used by `mix calendar_audit`
+      and other diagnostic tooling.
+    * `Tymeslot.Integrations.Calendar.EventColour` — the palette: which colour
+      keys exist and what each maps to per provider. A pure lookup table.
+    * `Tymeslot.Integrations.Calendar.EventColourOverrides` — a user's durable
+      per-event colour choices within that palette (set/clear/resolve).
+    * `Tymeslot.Integrations.Calendar.Recurrence.RRule` — RFC 5545 recurrence
+      parsing. Also pure, and already called directly from the calendar grid.
+    * `Tymeslot.Integrations.Calendar.DisplayHelpers` — user-facing string
+      helpers (provider display names, calendar name extraction, error
+      message normalisation).
+    * `Tymeslot.Integrations.Calendar.Events` — calendar event operations
+      (list/create/update/delete events) used by the booking pipeline.
+    * `Tymeslot.Integrations.Calendar.Webhooks` — handling of provider push
+      notifications: verification and the sync jobs they enqueue.
+  """
+
+  @behaviour Tymeslot.Security.EncryptedStorage
+
+  alias Tymeslot.Dashboard.DashboardContext
+  alias Tymeslot.Integrations.Calendar.CalendarEntry
+  alias Tymeslot.Integrations.Calendar.CalendarIntegrationSchema
+  alias Tymeslot.Integrations.Calendar.Connection
+  alias Tymeslot.Integrations.Calendar.ConnectionLimit
+  alias Tymeslot.Integrations.Calendar.Creation
+  alias Tymeslot.Integrations.Calendar.Defaults
+  alias Tymeslot.Integrations.Calendar.Deletion
+  alias Tymeslot.Integrations.Calendar.Discovery
+  alias Tymeslot.Integrations.Calendar.Exchange.Creation, as: ExchangeCreation
+  alias Tymeslot.Integrations.Calendar.Exchange.FreeBusy
+  alias Tymeslot.Integrations.Calendar.Nextcloud.Login, as: NextcloudLogin
+  alias Tymeslot.Integrations.Calendar.OAuth
+  alias Tymeslot.Integrations.Calendar.Orchestration.Workflows
+  alias Tymeslot.Integrations.Calendar.ProviderConfig
+  alias Tymeslot.Integrations.Calendar.Reconnection
+  alias Tymeslot.Integrations.Calendar.Runtime.CalendarPathResolver
+  alias Tymeslot.Integrations.Calendar.Selection
+  alias Tymeslot.Integrations.{CalendarManagement, CalendarPrimary}
+  alias Tymeslot.Integrations.Providers.Directory
+  alias Tymeslot.Integrations.Shared.InputValidators
+  alias Tymeslot.Workers.SyncIcsCalendarWorker
+
+  @type user_id :: pos_integer()
+  @type integration_id :: pos_integer()
+  @type integration :: CalendarIntegrationSchema.t()
+  @type calendar_selection_params :: %{required(:selected_calendars) => [String.t()]}
+
+  @typedoc """
+  One block of busy time read from a provider's free/busy view. It carries no
+  item identity, so a caller correlates blocks by time and never by uid.
+  """
+  @type busy_interval :: FreeBusy.interval()
+
+  @impl Tymeslot.Security.EncryptedStorage
+  def encrypted_storage,
+    do:
+      {CalendarIntegrationSchema.__schema__(:source),
+       CalendarIntegrationSchema.encrypted_credential_fields()}
+
+  # ---------------------------
+  # Public API: Listing/CRUD
+  # ---------------------------
+
+  @doc """
+  Lists calendar integrations for a user and annotates the primary one.
+  """
+  @spec list_integrations(user_id()) :: [integration()]
+  def list_integrations(user_id) when is_integer(user_id) do
+    integrations = CalendarManagement.list_calendar_integrations(user_id)
+
+    primary_id =
+      case CalendarPrimary.get_primary_calendar_integration(user_id) do
+        {:ok, primary} -> primary.id
+        {:error, :not_found} -> nil
+        {:error, :no_primary_set} -> nil
+      end
+
+    integrations
+    |> Enum.map(fn integration ->
+      Map.put(integration, :is_primary, integration.id == primary_id)
+    end)
+    |> Enum.sort_by(fn integration ->
+      # Sort by: primary first (true = 1, false = 0), then by is_active (desc), then by name (asc)
+      # We negate is_primary and is_active to get descending order (false/0 sorts before true/1 naturally)
+      {!integration.is_primary, !integration.is_active, integration.name}
+    end)
+  end
+
+  @typedoc "See `Tymeslot.Integrations.Calendar.ConnectionLimit`."
+  @type connection_limit :: ConnectionLimit.t()
+
+  @doc "The user's calendar usage against their limit — see `ConnectionLimit.status/1`."
+  @spec connection_limit(user_id()) :: connection_limit()
+  defdelegate connection_limit(user_id), to: ConnectionLimit, as: :status
+
+  @doc "Refuses a new connection at the limit — see `ConnectionLimit.check_new/1`."
+  @spec check_connection_limit(user_id()) :: :ok | {:error, :calendar_limit_reached}
+  defdelegate check_connection_limit(user_id), to: ConnectionLimit, as: :check_new
+
+  @doc "Whether one more integration may be active — see `ConnectionLimit.may_activate?/1`."
+  @spec may_activate?(user_id()) :: boolean()
+  defdelegate may_activate?(user_id), to: ConnectionLimit
+
+  @doc "Pauses active integrations beyond the limit — see `ConnectionLimit.deactivate_over_limit/1`."
+  @spec deactivate_over_limit(user_id()) :: {:ok, [integration_id()]}
+  defdelegate deactivate_over_limit(user_id), to: ConnectionLimit
+
+  @doc "Gets a calendar integration by ID for a user."
+  @spec get_integration(integration_id(), user_id()) ::
+          {:ok, integration()} | {:error, :not_found}
+  def get_integration(id, user_id) when is_integer(id) and is_integer(user_id) do
+    CalendarManagement.get_calendar_integration(id, user_id)
+  end
+
+  @doc """
+  The user's active Nextcloud calendar integrations, by id and name, for
+  another integration to copy its server and login from.
+  """
+  @spec nextcloud_logins(user_id()) :: [%{id: integration_id(), name: String.t()}]
+  defdelegate nextcloud_logins(user_id), to: NextcloudLogin, as: :list
+
+  @doc """
+  The server root, login name and password of one of the user's active
+  Nextcloud calendar integrations. The password must never reach a browser.
+  """
+  @spec nextcloud_login(integration_id(), user_id()) ::
+          {:ok, NextcloudLogin.login()} | {:error, :not_found}
+  defdelegate nextcloud_login(integration_id, user_id), to: NextcloudLogin, as: :fetch
+
+  @doc """
+  Creates a new calendar integration, with provider-specific parsing and optional pre-validation.
+  """
+  @spec create_integration(%{String.t() => term()}, user_id()) ::
+          {:ok, integration()} | {:error, Ecto.Changeset.t() | any()}
+  def create_integration(params, user_id) when is_map(params) and is_integer(user_id) do
+    # The changeset runs before the pre-validation probe, not after it. A
+    # submission it rejects is decided entirely in-process, while the probe is
+    # an outbound request to an address the organiser typed and is metered as
+    # one; charging their connection budget for a local rejection is what made a
+    # save report itself as too many connection tests.
+    with {:ok, attrs} <- Creation.prepare_attrs(params, user_id),
+         :ok <- CalendarIntegrationSchema.validate_new(attrs),
+         {:ok, attrs} <- Creation.prevalidate_config(attrs) do
+      CalendarManagement.create_calendar_integration(attrs)
+    end
+  end
+
+  @doc "Updates an existing calendar integration."
+  @spec update_integration(integration(), %{optional(atom()) => term()}) ::
+          {:ok, integration()} | {:error, Ecto.Changeset.t()}
+  def update_integration(integration, attrs) do
+    CalendarManagement.update_calendar_integration(integration, attrs)
+  end
+
+  @doc """
+  Renames an integration to a name a person typed.
+
+  Sanitises and length-checks it exactly as the connection form does, rather
+  than trusting the caller, so a rename cannot store a name that could not have
+  been created. The `{:error, %{name: message}}` shape is the validator's, and
+  carries a message already translated for display.
+  """
+  @spec rename_integration(integration(), term(), map()) ::
+          {:ok, integration()} | {:error, Ecto.Changeset.t() | %{name: String.t()}}
+  def rename_integration(integration, name, metadata) do
+    with {:ok, sanitised} <- InputValidators.validate_integration_name(name, metadata) do
+      CalendarManagement.update_calendar_integration(integration, %{name: sanitised})
+    end
+  end
+
+  @doc """
+  Toggles active status of an integration by ID for a user.
+  Ensures primary reassignment is handled atomically.
+  """
+  @spec toggle_integration(integration_id(), user_id()) :: {:ok, integration()} | {:error, any()}
+  def toggle_integration(id, user_id) do
+    with {:ok, integration} <- CalendarManagement.get_calendar_integration(id, user_id) do
+      CalendarManagement.toggle_with_primary_rebalance(integration)
+    end
+  end
+
+  # ---------------------------
+  # Public API: Discovery/Selection
+  # ---------------------------
+
+  @doc """
+  Discovers calendars for the given integration using provider-specific logic.
+  Returns {:ok, calendars} with standardized calendar entries.
+  """
+  @spec discover_calendars_for_integration(integration()) :: {:ok, list()} | {:error, any()}
+  def discover_calendars_for_integration(integration) do
+    Discovery.discover_calendars_for_integration(integration)
+  end
+
+  @doc """
+  Toggles a single calendar's selection state within an integration.
+  """
+  @spec toggle_calendar_selection(integration(), String.t() | integer()) ::
+          {:ok, integration()} | {:error, any()}
+  def toggle_calendar_selection(integration, calendar_id) do
+    current_selection =
+      Enum.reduce(integration.calendar_list || [], [], fn cal, acc ->
+        is_now_selected =
+          if to_string(cal.id) == to_string(calendar_id), do: !cal.selected, else: cal.selected
+
+        if is_now_selected, do: [to_string(cal.id) | acc], else: acc
+      end)
+
+    update_calendar_selection(integration, %{"selected_calendars" => current_selection})
+  end
+
+  @spec update_calendar_selection(integration(), %{String.t() => term()}) ::
+          {:ok, integration()} | {:error, any()}
+  defp update_calendar_selection(integration, params) do
+    Selection.update_calendar_selection(integration, params)
+  end
+
+  @doc """
+  Returns the entries from an integration's `calendar_list` whose `selected`
+  flag is truthy, including read-only ones. See
+  `Tymeslot.Integrations.Calendar.Selection.selected_calendars/1`.
+
+  Use this for conflict-checking visibility — a calendar the user cannot
+  write to can still surface existing events. Callers that need a booking or
+  sync target (which must be writable) should use `writable_calendars/1`
+  instead.
+  """
+  @spec selected_calendars([CalendarEntry.t()] | nil) :: [CalendarEntry.t()]
+  defdelegate selected_calendars(calendar_list), to: Selection
+
+  @doc """
+  Returns the selected entries from an integration's `calendar_list` that
+  are also writable — the calendars available as booking/sync targets. See
+  `Tymeslot.Integrations.Calendar.Selection.writable_calendars/1`.
+  """
+  @spec writable_calendars([CalendarEntry.t()] | nil) :: [CalendarEntry.t()]
+  defdelegate writable_calendars(calendar_list), to: Selection
+
+  @doc "Keeps the integrations that can take a new event. See `Selection.writable_integrations/1`."
+  @spec writable_integrations([map()]) :: [map()]
+  defdelegate writable_integrations(integrations), to: Selection
+
+  @doc """
+  Drops cached events from calendars the user has deselected. See
+  `Tymeslot.Integrations.Calendar.Selection.visible_events/2`.
+  """
+  @spec visible_events([map()], [map()]) :: [map()]
+  defdelegate visible_events(events, integrations), to: Selection
+
+  @doc """
+  Derives, per integration id, a query-ready description of calendar
+  selection for filtering cached events in SQL. See
+  `Tymeslot.Integrations.Calendar.Selection.visibility_rules/1`.
+  """
+  @spec visibility_rules([map()]) :: %{integer() => Selection.visibility_rule()}
+  defdelegate visibility_rules(integrations), to: Selection
+
+  @doc """
+  Returns whether the integration has calendars selected but none of them
+  are writable — the booking-target picker has nothing to offer even
+  though the user has enabled calendars for this account. Distinguishes
+  that dead end from "nothing selected yet" (`selected_calendars/1` is
+  empty), which is a different, unremarkable state.
+  """
+  @spec all_selected_read_only?([CalendarEntry.t()] | nil) :: boolean()
+  def all_selected_read_only?(calendar_list) do
+    selected_calendars(calendar_list) != [] and writable_calendars(calendar_list) == []
+  end
+
+  @doc """
+  Resolves the calendar entry that booking currently targets within a
+  calendar list. See
+  `Tymeslot.Integrations.Calendar.Defaults.default_booking_calendar/2`.
+  """
+  @spec default_booking_calendar([CalendarEntry.t()] | nil, String.t() | nil) ::
+          CalendarEntry.t() | nil
+  defdelegate default_booking_calendar(calendar_list, booking_id), to: Defaults
+
+  @doc """
+  Resolves the calendar entry bookings on this integration are written to,
+  tagged `:ok` or `:read_only`, or `:none` when there is no such entry. Unlike
+  `default_booking_calendar/2`, this follows the stored booking calendar even
+  when it is read-only and never guesses "first calendar". See
+  `Tymeslot.Integrations.Calendar.Defaults.booking_target/1`.
+  """
+  @spec booking_target(%{
+          :calendar_list => [CalendarEntry.t()] | nil,
+          :default_booking_calendar_id => String.t() | nil,
+          optional(atom()) => term()
+        }) :: {:ok, CalendarEntry.t()} | {:read_only, CalendarEntry.t()} | :none
+  defdelegate booking_target(integration), to: Defaults
+
+  @doc """
+  Finds the calendar entry with the given id. See
+  `Tymeslot.Integrations.Calendar.Selection.find_calendar_by_id/2`.
+  """
+  @spec find_calendar_by_id([CalendarEntry.t()], String.t() | nil) :: CalendarEntry.t() | nil
+  defdelegate find_calendar_by_id(calendar_list, id), to: Selection
+
+  @doc """
+  Finds the calendar entry whose `path` is a prefix of the given
+  provider-side identifier. See
+  `Tymeslot.Integrations.Calendar.Selection.find_calendar_by_path/2`.
+  """
+  @spec find_calendar_by_path([CalendarEntry.t()], String.t() | nil) :: CalendarEntry.t() | nil
+  defdelegate find_calendar_by_path(calendar_list, path), to: Selection
+
+  @doc """
+  Resolves the calendar entry an event was synced from. See
+  `Tymeslot.Integrations.Calendar.Selection.calendar_for_event/2`.
+  """
+  @spec calendar_for_event(map(), [CalendarEntry.t()] | nil) :: CalendarEntry.t() | nil
+  defdelegate calendar_for_event(event, calendar_list), to: Selection
+
+  @doc """
+  The collection path a CalDAV-family integration writes new events to, or
+  `nil` when it has none. See
+  `Tymeslot.Integrations.Calendar.Runtime.CalendarPathResolver.resolve/1`.
+  """
+  @spec booking_calendar_path(integration()) :: String.t() | nil
+  defdelegate booking_calendar_path(integration), to: CalendarPathResolver, as: :resolve
+
+  # ---------------------------
+  # Public API: Validation/Connection
+  # ---------------------------
+
+  @doc """
+  Tests connectivity to an integration's provider and returns a
+  display-friendly message.
+
+  `:scope` distinguishes an interactive "Test connection" click from a
+  scheduled background probe; see
+  `Tymeslot.Integrations.Calendar.Connection.test_connection/2`.
+  """
+  @spec test_connection(integration(), keyword()) :: {:ok, String.t()} | {:error, any()}
+  defdelegate test_connection(integration, opts \\ []), to: Connection
+
+  @doc """
+  Returns the list of CalDAV-based provider atoms.
+  See `Tymeslot.Integrations.Calendar.ProviderConfig.caldav_based_providers/0`.
+  """
+  defdelegate caldav_based_providers(), to: ProviderConfig
+
+  @doc """
+  Returns the list of CalDAV-based provider strings, matching the `provider`
+  column shape stored in the database.
+  """
+  defdelegate caldav_based_provider_strings(), to: ProviderConfig
+
+  @doc """
+  Returns `true` when the provider refuses every write, so its calendars can
+  block availability but can never receive an event. Takes the provider atom
+  or the string form stored on an integration.
+
+  For the narrower question of whether a booking may be written to a given
+  integration, see `Tymeslot.Integrations.Calendar.BookingEligibility`.
+  """
+  @spec read_only_provider?(atom() | String.t() | nil) :: boolean()
+  defdelegate read_only_provider?(provider), to: ProviderConfig, as: :read_only?
+
+  # ---------------------------
+  # Public API: Higher-level wrappers (submodules)
+  # ---------------------------
+
+  @doc """
+  Validates and creates an integration through the creation pipeline.
+  """
+  @spec create_integration_with_validation(user_id(), %{String.t() => term()}, keyword()) ::
+          {:ok, integration()}
+          | {:error,
+             {:form_errors, %{atom() => String.t()}}
+             | {:changeset, Ecto.Changeset.t()}
+             | any()}
+  def create_integration_with_validation(user_id, params, opts \\ []) do
+    Creation.create_with_validation(user_id, params, opts)
+  end
+
+  @doc """
+  Validates and creates a read-only calendar subscription from a feed URL.
+  """
+  @spec create_subscription_with_validation(user_id(), %{String.t() => term()}, keyword()) ::
+          {:ok, integration()}
+          | {:error,
+             {:form_errors, %{atom() => String.t()}}
+             | {:changeset, Ecto.Changeset.t()}
+             | {:rate_limited, String.t()}
+             | :unattributable
+             | :calendar_limit_reached}
+  def create_subscription_with_validation(user_id, params, opts \\ []) do
+    Creation.create_subscription_with_validation(user_id, params, opts)
+  end
+
+  @doc """
+  Validates and creates a read-only Exchange (EWS) integration.
+  """
+  @spec create_exchange_with_validation(user_id(), %{String.t() => term()}, keyword()) ::
+          {:ok, integration()}
+          | {:error,
+             {:form_errors, %{String.t() => term()}}
+             | {:changeset, Ecto.Changeset.t()}
+             | {:rate_limited, String.t()}
+             | :unattributable
+             | :duplicate_integration
+             | :calendar_limit_reached}
+  def create_exchange_with_validation(user_id, params, opts) do
+    ExchangeCreation.create_with_validation(user_id, params, opts)
+  end
+
+  @doc """
+  Validates and applies a new feed URL to an existing calendar subscription.
+  """
+  @spec update_subscription_url_with_validation(integration(), %{String.t() => term()}, keyword()) ::
+          {:ok, integration()}
+          | {:error,
+             {:form_errors, %{atom() => String.t()}}
+             | {:changeset, Ecto.Changeset.t()}
+             | {:rate_limited, String.t()}
+             | :unattributable
+             | :duplicate_integration
+             | :not_a_subscription}
+  def update_subscription_url_with_validation(integration, params, opts \\ []) do
+    Creation.update_subscription_url_with_validation(integration, params, opts)
+  end
+
+  @doc """
+  Prepare selection params from selected paths and discovered calendars.
+  """
+  @spec prepare_selection_params([String.t()], list()) ::
+          %{required(String.t()) => [String.t()] | [CalendarEntry.t()]}
+  def prepare_selection_params(selected_paths, discovered) do
+    Selection.prepare_selected_params(selected_paths, discovered)
+  end
+
+  @doc """
+  Delete integration and invalidate dashboard cache for the user.
+  Wraps delete_with_primary_reassignment/2 and triggers downstream invalidation.
+  """
+  @spec delete_with_primary_reassignment_and_invalidate(user_id(), integration_id()) ::
+          {:ok, any()} | {:error, any()}
+  def delete_with_primary_reassignment_and_invalidate(user_id, id) do
+    with {:ok, result} <- Deletion.delete_with_primary_reassignment(user_id, id) do
+      DashboardContext.invalidate_integration_status(user_id)
+      {:ok, result}
+    end
+  end
+
+  # ---------------------------
+  # Public API: OAuth helpers
+  # ---------------------------
+
+  @doc """
+  Initiates an asynchronous calendar list refresh for an integration.
+  Discovers fresh calendars from the provider and updates the database.
+  Sends {:calendar_list_refreshed, component_id, integration_id, calendars} back to the caller.
+  """
+  @spec refresh_calendar_list_async(integration_id(), user_id(), String.t()) :: {:ok, pid()}
+  def refresh_calendar_list_async(integration_id, user_id, component_id) do
+    Workflows.refresh_calendar_list_async(integration_id, user_id, component_id)
+  end
+
+  @doc """
+  Initiates Google Calendar OAuth flow and returns the authorization URL.
+
+  ## Options
+    - `:return_to` — relative path to redirect to after the OAuth callback
+  """
+  @spec initiate_google_oauth(user_id(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
+  def initiate_google_oauth(user_id, opts \\ []) when is_integer(user_id) do
+    OAuth.initiate_google_oauth(user_id, opts)
+  end
+
+  @doc """
+  Initiates Outlook Calendar OAuth flow and returns the authorization URL.
+
+  ## Options
+    - `:return_to` — relative path to redirect to after the OAuth callback
+  """
+  @spec initiate_outlook_oauth(user_id(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
+  def initiate_outlook_oauth(user_id, opts \\ []) when is_integer(user_id) do
+    OAuth.initiate_outlook_oauth(user_id, opts)
+  end
+
+  @doc """
+  Completes a Google or Outlook OAuth callback and connects the calendar,
+  invalidating the user's cached dashboard integration status on success.
+  """
+  @spec complete_oauth(OAuth.provider(), String.t(), String.t()) ::
+          {:ok, integration()} | {:error, term()}
+  defdelegate complete_oauth(provider, code, state), to: OAuth, as: :complete
+
+  @doc """
+  Initiates a Google scope upgrade for an existing integration.
+  Validates the integration belongs to the user and is a Google provider.
+  Returns the authorization URL for the upgrade flow.
+  """
+  @spec initiate_google_scope_upgrade(user_id(), integration_id()) ::
+          {:ok, String.t()} | {:error, any()}
+  def initiate_google_scope_upgrade(user_id, integration_id)
+      when is_integer(user_id) and is_integer(integration_id) do
+    OAuth.initiate_google_scope_upgrade(user_id, integration_id)
+  end
+
+  @doc """
+  Checks if a Google integration needs scope upgrade.
+  """
+  @spec needs_scope_upgrade?(integration()) :: boolean()
+  def needs_scope_upgrade?(integration) do
+    OAuth.needs_scope_upgrade?(integration)
+  end
+
+  # ---------------------------
+  # Public API: Orchestration helpers
+  # ---------------------------
+
+  @doc """
+  List available providers for calendar integrations.
+  """
+  @spec list_available_providers(atom()) :: list()
+  def list_available_providers(type) do
+    Directory.list(type)
+  end
+
+  @doc """
+  Discover calendars and update the integration with merged selection state.
+  Persists the updated calendar_list to the database.
+
+  Preserves existing selection state if discovery returns empty but integration
+  previously had calendars selected, to prevent accidental data loss.
+  """
+  @spec update_integration_with_discovery(integration()) ::
+          {:ok, integration()} | {:error, term()}
+  def update_integration_with_discovery(integration) do
+    Workflows.update_integration_with_discovery(integration)
+  end
+
+  @doc """
+  Refreshes an integration at the user's request.
+
+  A subscription has no discoverable calendar list to refresh (discovery
+  returns the same synthetic entry every time), so refreshing one re-fetches
+  the feed instead, through the same worker the scheduled sync sweep uses; a
+  refresh already queued for it counts as success. Every other provider
+  re-runs discovery via `update_integration_with_discovery/1`.
+
+  This asks about the feed family specifically, not about read-only
+  providers: `ics_url` is the only read-only provider left, but the two
+  questions are different and need not stay in step. An Exchange mailbox
+  discovers real folders and has no feed to re-fetch, so it belongs on the
+  discovery path with every other credentialed provider.
+  """
+  @spec refresh_integration(integration()) ::
+          {:ok, :feed_sync_enqueued | :calendars_rediscovered} | {:error, term()}
+  def refresh_integration(%{provider: provider} = integration) do
+    if ProviderConfig.subscription?(provider) do
+      with {:ok, _outcome} <- SyncIcsCalendarWorker.enqueue(integration.id),
+           do: {:ok, :feed_sync_enqueued}
+    else
+      with {:ok, _updated} <- update_integration_with_discovery(integration),
+           do: {:ok, :calendars_rediscovered}
+    end
+  end
+
+  @doc """
+  Discovers calendars for raw credentials and filters them for valid paths.
+
+  `user_id` is the plain owner id the discovery is charged to; the
+  rate-limiter actor tuple is built internally rather than by the caller.
+  """
+  @spec discover_and_filter_calendars(
+          atom() | String.t(),
+          String.t(),
+          String.t(),
+          String.t(),
+          user_id(),
+          keyword()
+        ) ::
+          {:ok, %{calendars: list(), discovery_credentials: Discovery.discovery_credentials()}}
+          | {:error, any()}
+  def discover_and_filter_calendars(provider, url, username, password, user_id, opts \\ []) do
+    Workflows.discover_and_filter_calendars(provider, url, username, password, user_id, opts)
+  end
+
+  # ---------------------------
+  # Public API: Reconnection
+  # ---------------------------
+
+  @doc """
+  Reconnect an existing CalDAV-family integration. Returns either
+  `{:ok, :updated, integration}` (password-only path, done) or
+  `{:ok, :needs_calendar_selection, payload}` (account change; caller must
+  prompt for calendar selection and then call `finalise_caldav_reconnect/3`).
+  See `Reconnection.reconnect_for_user/3`.
+  """
+  @spec reconnect_caldav_integration(user_id(), integration_id(), map()) ::
+          Reconnection.reconnect_ok()
+          | {:error, :not_found}
+          | Reconnection.reconnect_error()
+  defdelegate reconnect_caldav_integration(user_id, integration_id, params),
+    to: Reconnection,
+    as: :reconnect_for_user
+
+  @doc """
+  Finalise the account-change branch by persisting the user's selected
+  calendars alongside the new credentials. See
+  `reconnect_caldav_integration/3` and `Reconnection.finalise_for_user/3`.
+  """
+  @spec finalise_caldav_reconnect(user_id(), integration_id(), %{
+          required(:payload) => map(),
+          required(:selected_paths) => [String.t()]
+        }) ::
+          {:ok, integration()}
+          | {:error, :not_found}
+          | {:error, :no_calendars_selected}
+          | {:error, {:changeset, Ecto.Changeset.t()}}
+  defdelegate finalise_caldav_reconnect(user_id, integration_id, selection),
+    to: Reconnection,
+    as: :finalise_for_user
+end

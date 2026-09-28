@@ -1,0 +1,343 @@
+defmodule Tymeslot.Integrations.Calendar.Google.OAuthHelper do
+  @moduledoc """
+  Helper module for Google Calendar OAuth flow.
+
+  This module provides functions to generate OAuth URLs and handle
+  the OAuth callback for Google Calendar integration.
+  """
+
+  @behaviour Tymeslot.Integrations.Calendar.Auth.OAuthHelperBehaviour
+
+  require Logger
+
+  alias Tymeslot.Infrastructure.Config
+  alias Tymeslot.Integrations.Calendar
+  alias Tymeslot.Integrations.Calendar.CalendarIntegrationQueries
+  alias Tymeslot.Integrations.Calendar.CalendarIntegrationSchema
+  alias Tymeslot.Integrations.Calendar.Google.Provider, as: GoogleProvider
+  alias Tymeslot.Integrations.Calendar.PrimarySelection
+  alias Tymeslot.Integrations.CalendarManagement
+  alias Tymeslot.Integrations.CalendarPrimary
+  alias Tymeslot.Integrations.Common.OAuth.AccountMatch
+  alias Tymeslot.Integrations.Google.GoogleOAuthHelper
+  alias Tymeslot.Meetings.MeetingListQueries
+  alias Tymeslot.Workers.SyncGoogleCalendarWorker
+  alias Tymeslot.Workers.VideoRoomWorker
+
+  @doc """
+  Generates the OAuth authorization URL for Google Calendar.
+
+  Requests `calendar.events` (read/write on events, incl. Google Meet creation
+  via `calendar.v3.Events.Insert`) and `calendar.calendarlist.readonly`
+  (listing the user's calendars) rather than the broad `calendar` scope, which
+  also grants managing the calendar list and calendars themselves — access
+  this app never uses.
+  """
+  @impl Tymeslot.Integrations.Calendar.Auth.OAuthHelperBehaviour
+  @spec authorization_url(pos_integer(), String.t()) :: String.t()
+  def authorization_url(user_id, redirect_uri) do
+    GoogleOAuthHelper.authorization_url(user_id, redirect_uri, [
+      :calendar_events,
+      :calendarlist_readonly
+    ])
+  end
+
+  @doc """
+  Generates the OAuth authorization URL for Google Calendar with specific scopes.
+
+  Accepts a keyword list as the third argument. When a list of atoms/strings is
+  given it is treated as scopes (backward compatible). When a keyword list is
+  given, `:scopes` defaults to `[:calendar_events, :calendarlist_readonly]` and
+  other keys (e.g. `:return_to`) are forwarded to the shared helper.
+  """
+  @impl Tymeslot.Integrations.Calendar.Auth.OAuthHelperBehaviour
+  @spec authorization_url(pos_integer(), String.t(), list(atom() | String.t()) | keyword()) ::
+          String.t()
+  def authorization_url(user_id, redirect_uri, opts) when is_list(opts) do
+    if Keyword.keyword?(opts) do
+      scopes = Keyword.get(opts, :scopes, [:calendar_events, :calendarlist_readonly])
+      GoogleOAuthHelper.authorization_url(user_id, redirect_uri, scopes, opts)
+    else
+      GoogleOAuthHelper.authorization_url(user_id, redirect_uri, opts)
+    end
+  end
+
+  @doc """
+  Generates the OAuth authorization URL with explicit scopes *and* options.
+
+  Used when reconnecting an existing integration: the caller fixes the scopes
+  while `integration_id` and `login_hint` target the account already connected,
+  so the user is not asked to pick one again and cannot connect the wrong one.
+  """
+  @impl Tymeslot.Integrations.Calendar.Auth.OAuthHelperBehaviour
+  @spec authorization_url(pos_integer(), String.t(), list(atom() | String.t()), keyword()) ::
+          String.t()
+  def authorization_url(user_id, redirect_uri, scopes, opts)
+      when is_list(scopes) and is_list(opts) do
+    GoogleOAuthHelper.authorization_url(user_id, redirect_uri, scopes, opts)
+  end
+
+  @doc """
+  Handles the OAuth callback and creates or updates a calendar integration.
+  """
+  @impl Tymeslot.Integrations.Calendar.Auth.OAuthHelperBehaviour
+  @spec handle_callback(String.t(), String.t(), String.t()) ::
+          {:ok, CalendarIntegrationSchema.t()}
+          | {:error, Tymeslot.Integrations.Calendar.Auth.OAuthHelperBehaviour.callback_error()}
+  def handle_callback(code, state, redirect_uri) do
+    with {:ok, tokens} <- GoogleOAuthHelper.exchange_code_for_tokens(code, redirect_uri, state),
+         :ok <- ensure_calendar_write_scope(tokens),
+         {:ok, integration} <-
+           create_or_update_calendar_integration(tokens.user_id, tokens, tokens[:integration_id]) do
+      register_push_channel_async(integration)
+      enqueue_pending_video_room_retries(integration.user_id)
+      {:ok, integration}
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # Validates that Google returned a token whose granted scope grants calendar
+  # event write access. Without it, downstream Google Meet creation will fail
+  # with HTTP 403 (ACCESS_TOKEN_SCOPE_INSUFFICIENT) — so we reject the callback
+  # before any database write happens.
+  defp ensure_calendar_write_scope(%{scope: scope, user_id: user_id}) do
+    if GoogleProvider.has_calendar_write_scope?(scope) do
+      :ok
+    else
+      Logger.info("Google Calendar OAuth callback rejected: calendar write scope not granted",
+        user_id: user_id,
+        granted_scope: scope
+      )
+
+      {:error, :calendar_scope_missing}
+    end
+  end
+
+  # After a successful (re-)connection, kick the user's confirmed upcoming
+  # meetings whose video room creation was previously blocked. The Oban job's
+  # 5-minute uniqueness window prevents duplicates with any in-flight retries.
+  # Best-effort: failures are logged but must not fail the OAuth response.
+  defp enqueue_pending_video_room_retries(user_id) do
+    user_id
+    |> MeetingListQueries.list_user_meetings_missing_video_rooms(DateTime.utc_now())
+    |> Enum.each(&VideoRoomWorker.schedule_video_room_creation(&1.id))
+
+    :ok
+  rescue
+    error ->
+      Logger.warning(
+        "Failed to enqueue pending video room retries after calendar reconnect",
+        user_id: user_id,
+        error: inspect(error)
+      )
+
+      :ok
+  end
+
+  @doc """
+  Exchanges authorization code for access and refresh tokens.
+  """
+  @impl Tymeslot.Integrations.Calendar.Auth.OAuthHelperBehaviour
+  @spec exchange_code_for_tokens(String.t(), String.t()) :: {:ok, map()} | {:error, term()}
+  def exchange_code_for_tokens(code, redirect_uri) do
+    GoogleOAuthHelper.exchange_code_for_tokens(code, redirect_uri)
+  end
+
+  @doc """
+  Refreshes an access token using a refresh token.
+  """
+  @impl Tymeslot.Integrations.Calendar.Auth.OAuthHelperBehaviour
+  @spec refresh_access_token(String.t(), String.t() | nil, keyword()) ::
+          {:ok, map()} | {:error, term()}
+  def refresh_access_token(refresh_token, current_scope \\ nil, opts \\ []) do
+    GoogleOAuthHelper.refresh_access_token(refresh_token, current_scope, opts)
+  end
+
+  # Private functions
+
+  defp create_or_update_calendar_integration(user_id, tokens, integration_id) do
+    token_attrs = %{
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      token_expires_at: tokens.expires_at,
+      oauth_scope: tokens.scope,
+      provider_account_id: tokens[:provider_account_id],
+      provider_account_email: tokens[:provider_account_email]
+    }
+
+    cond do
+      # Re-authorization of specific integration
+      integration_id ->
+        case CalendarManagement.fetch_integration_for_user(integration_id, user_id) do
+          {:ok, existing} ->
+            AccountMatch.verify_account_match(existing, tokens[:provider_account_id], fn ->
+              update_existing_integration(existing, token_attrs)
+            end)
+
+          {:error, :not_found} ->
+            {:error, "Integration not found"}
+        end
+
+      # New connection with known account
+      is_binary(tokens[:provider_account_id]) ->
+        case CalendarIntegrationQueries.get_by_account_for_user(
+               user_id,
+               "google",
+               tokens[:provider_account_id]
+             ) do
+          {:ok, existing} ->
+            update_existing_integration(existing, token_attrs)
+
+          {:error, :not_found} ->
+            create_new_google_integration(user_id, tokens[:provider_account_id], token_attrs)
+        end
+
+      # Fallback — no account ID available
+      true ->
+        case CalendarIntegrationQueries.get_by_user_and_provider(user_id, "google") do
+          {:ok, _existing} ->
+            # User already has Google integration(s) but we can't identify which account
+            # this callback belongs to. Reject to avoid silently overwriting.
+            {:error,
+             "Could not identify your Google account. Please try again. If the problem persists, remove and re-add the integration."}
+
+          {:error, :not_found} ->
+            create_new_google_integration(user_id, nil, token_attrs)
+        end
+    end
+  end
+
+  defp create_new_google_integration(user_id, provider_account_id, token_attrs) do
+    attrs =
+      Map.merge(token_attrs, %{
+        user_id: user_id,
+        name: "Google Calendar",
+        provider: "google",
+        base_url: "https://www.googleapis.com/calendar/v3",
+        is_active: true
+      })
+
+    create_fn = fn -> PrimarySelection.create_with_auto_primary(attrs) end
+
+    result =
+      if is_binary(provider_account_id) do
+        # A paused connection comes back on only while the user is under their
+        # active-calendar limit; otherwise it is reconnected but stays paused.
+        reactivation_attrs =
+          if Calendar.may_activate?(user_id),
+            do: Map.put(token_attrs, :is_active, true),
+            else: token_attrs
+
+        AccountMatch.find_or_create_with_reactivation(
+          fn ->
+            CalendarIntegrationQueries.get_any_by_account_for_user(
+              user_id,
+              "google",
+              provider_account_id
+            )
+          end,
+          fn existing ->
+            update_existing_integration(existing, reactivation_attrs)
+          end,
+          fn ->
+            AccountMatch.create_with_race_protection(
+              create_fn,
+              fn ->
+                CalendarIntegrationQueries.get_by_account_for_user(
+                  user_id,
+                  "google",
+                  provider_account_id
+                )
+              end,
+              fn existing ->
+                CalendarIntegrationQueries.update_credentials(existing, token_attrs)
+              end
+            )
+          end
+        )
+      else
+        create_fn.()
+      end
+
+    with {:ok, integration} <- result do
+      if integration.calendar_list == [] do
+        discover_and_configure_calendars(integration)
+      else
+        {:ok, integration}
+      end
+    end
+  end
+
+  defp update_existing_integration(existing, token_attrs) do
+    with {:ok, updated} <- CalendarIntegrationQueries.update_credentials(existing, token_attrs) do
+      if updated.calendar_list == [] do
+        discover_and_configure_calendars(updated)
+      else
+        {:ok, updated}
+      end
+    end
+  end
+
+  defp register_push_channel_async(integration) do
+    # Always enqueue a sync job so the initial event backfill happens — this
+    # path is independent of the webhook URL and works on self-hosted. The
+    # worker detects the nil sync token and calls `bootstrap_sync/1`.
+    enqueue_initial_sync(integration)
+
+    case Application.get_env(:tymeslot, :webhook_base_url) do
+      nil ->
+        Logger.info(
+          "Google push channel subscription skipped: WEBHOOK_BASE_URL not configured",
+          integration_id: integration.id
+        )
+
+      _url ->
+        Task.Supervisor.start_child(Tymeslot.TaskSupervisor, fn ->
+          case Config.google_calendar_api_module().register_push_channel(integration) do
+            {:ok, _updated} ->
+              Logger.info("Google push channel registered",
+                integration_id: integration.id
+              )
+
+            {:error, reason} ->
+              log_push_channel_failure(integration, reason)
+
+            {:error, type, message} ->
+              log_push_channel_failure(integration, {type, message})
+          end
+        end)
+    end
+  end
+
+  defp log_push_channel_failure(integration, reason) do
+    Logger.error("Google push channel registration failed",
+      integration_id: integration.id,
+      reason: inspect(reason)
+    )
+  end
+
+  defp enqueue_initial_sync(integration) do
+    result =
+      %{"calendar_integration_id" => integration.id}
+      |> SyncGoogleCalendarWorker.new()
+      |> Oban.insert()
+
+    case result do
+      {:ok, _job} ->
+        :ok
+
+      {:error, reason} ->
+        Logger.error("Failed to enqueue initial Google Calendar sync",
+          integration_id: integration.id,
+          error: inspect(reason)
+        )
+
+        :ok
+    end
+  end
+
+  defp discover_and_configure_calendars(integration) do
+    CalendarPrimary.discover_and_configure_calendars(integration)
+  end
+end

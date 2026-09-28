@@ -1,0 +1,108 @@
+/* Language Switcher - Rhythm Theme */
+
+/* Positioning lives in public-top-bar.css now — the switcher is a flex child
+   of the shared `.public-top-bar` (see TymeslotWeb.Components.PublicTopBar),
+   not its own absolutely-positioned container. */
+
+.language-switcher-button-rhythm {
+  background: rgba(0, 0, 0, 0.6);
+  border: var(--border-width-thin) solid var(--border-light);
+  transition: background var(--transition-normal), border-color var(--transition-normal), transform var(--transition-normal);
+}
+
+.language-switcher-button-rhythm:hover {
+  background: rgba(0, 0, 0, 0.7);
+  border-color: var(--border-medium);
+  transform: translateY(-1px);
+}
+
+.language-switcher-button-rhythm:active {
+  transform: translateY(0);
+}
+
+.language-dropdown-rhythm {
+  background: rgba(0, 0, 0, 0.9);
+  border: var(--border-width-thin) solid var(--border-light);
+  box-shadow: var(--shadow-md);
+  animation: slideDown var(--transition-normal);
+  max-height: var(--dropdown-max-height);
+  overflow-y: auto;
+}
+
+.language-dropdown-item-rhythm {
+  color: var(--theme-text);
+  border-bottom: var(--border-width-thin) solid var(--border-subtle);
+}
+
+.language-dropdown-item-rhythm:last-child {
+  border-bottom: none;
+}
+
+.language-dropdown-item-rhythm:hover {
+  background: var(--surface-light);
+  color: #ffffff;
+}
+
+.language-dropdown-item-rhythm.active {
+  background: var(--surface-medium);
+  color: #ffffff;
+  font-weight: var(--font-weight-semibold);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 479px) {
+  .language-switcher-button-rhythm {
+    padding: var(--space-xs) var(--space-sm);
+    min-height: var(--min-touch-target);
+  }
+
+  .language-dropdown-rhythm {
+    width: var(--container-xs);
+    max-height: var(--dropdown-max-height);
+    right: 0;
+    left: auto;
+  }
+
+  .language-dropdown-item-rhythm {
+    padding: var(--space-sm) var(--space-sm);
+    min-height: var(--min-touch-target);
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* Tablet */
+@media (min-width: 480px) and (max-width: 767px) {
+  .language-switcher-button-rhythm {
+    padding: var(--space-sm) var(--space-md);
+    min-height: var(--min-touch-target);
+  }
+
+  .language-dropdown-rhythm {
+    width: var(--container-sm);
+    max-height: var(--dropdown-max-height);
+  }
+
+  .language-dropdown-item-rhythm {
+    padding: var(--space-sm) var(--space-md);
+    min-height: var(--min-touch-target);
+  }
+}
+
+/* Desktop */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .language-dropdown-rhythm {
+    width: var(--container-sm);
+  }
+}

@@ -1,0 +1,609 @@
+defmodule Tymeslot.WebhooksTest do
+  use Tymeslot.DataCase, async: false
+  use Oban.Testing, repo: Tymeslot.Repo
+
+  @moduletag :security
+
+  import Tymeslot.ConfigTestHelpers
+  import Tymeslot.Factory
+
+  alias Tymeslot.Webhooks
+  alias Tymeslot.Webhooks.WebhookSchema
+  alias Tymeslot.Workers.WebhookWorker
+
+  # WebhookSchema.generate_secure_token/0: "ts_" plus 24 random bytes in
+  # unpadded Base64.
+  @token_format ~r/^ts_[A-Za-z0-9+\/]{32}$/
+
+  setup do
+    setup_config(:tymeslot, feature_access_checker: Tymeslot.Features.DefaultAccessChecker)
+    :ok
+  end
+
+  # ============================================================================
+  # CRUD Operations
+  # ============================================================================
+
+  describe "create_webhook/2" do
+    test "creates a webhook with valid attributes" do
+      user = insert(:user)
+
+      attrs = %{
+        name: "My Webhook",
+        url: "https://example.com/webhook",
+        events: ["meeting.created"]
+      }
+
+      assert {:ok, webhook} = Webhooks.create_webhook(user.id, attrs)
+      assert webhook.name == "My Webhook"
+      assert webhook.url == "https://example.com/webhook"
+      assert webhook.events == ["meeting.created"]
+      assert webhook.user_id == user.id
+      assert webhook.is_active == true
+    end
+
+    test "generates a webhook token automatically" do
+      user = insert(:user)
+
+      attrs = %{
+        name: "Token Test",
+        url: "https://example.com/hook",
+        events: ["meeting.created"]
+      }
+
+      assert {:ok, webhook} = Webhooks.create_webhook(user.id, attrs)
+
+      # The plaintext token comes back on the virtual field; only the encrypted
+      # form is persisted.
+      assert webhook.webhook_token =~ @token_format
+      refute webhook.webhook_token_encrypted == webhook.webhook_token
+    end
+
+    test "returns error changeset when name is missing" do
+      user = insert(:user)
+      attrs = %{url: "https://example.com/hook", events: ["meeting.created"]}
+
+      assert {:error, changeset} = Webhooks.create_webhook(user.id, attrs)
+      assert %{name: [_error | _rest]} = errors_on(changeset)
+    end
+
+    test "returns error changeset when url is missing" do
+      user = insert(:user)
+      attrs = %{name: "Missing URL", events: ["meeting.created"]}
+
+      assert {:error, changeset} = Webhooks.create_webhook(user.id, attrs)
+      assert %{url: [_error | _rest]} = errors_on(changeset)
+    end
+
+    test "returns error changeset with invalid event types" do
+      user = insert(:user)
+
+      attrs = %{
+        name: "Bad Events",
+        url: "https://example.com/hook",
+        events: ["invalid.event"]
+      }
+
+      assert {:error, changeset} = Webhooks.create_webhook(user.id, attrs)
+      assert %{events: [_msg | _rest]} = errors_on(changeset)
+    end
+
+    test "allows creation with empty events list (default)" do
+      user = insert(:user)
+
+      attrs = %{
+        name: "No Events",
+        url: "https://example.com/hook",
+        events: []
+      }
+
+      # Empty list matches the schema default, so no change is detected
+      # and the events validation is not triggered
+      assert {:ok, webhook} = Webhooks.create_webhook(user.id, attrs)
+      assert webhook.events == []
+    end
+  end
+
+  describe "list_webhooks/1" do
+    test "returns webhooks belonging to the user" do
+      user = insert(:user)
+      webhook = insert(:webhook, user: user)
+
+      result = Webhooks.list_webhooks(user.id)
+
+      assert length(result) == 1
+      assert hd(result).id == webhook.id
+    end
+
+    test "does not return webhooks belonging to other users" do
+      user = insert(:user)
+      other_user = insert(:user)
+      insert(:webhook, user: other_user)
+
+      result = Webhooks.list_webhooks(user.id)
+
+      assert result == []
+    end
+
+    test "returns empty list when user has no webhooks" do
+      user = insert(:user)
+
+      assert Webhooks.list_webhooks(user.id) == []
+    end
+
+    test "decrypts webhook tokens in returned results" do
+      user = insert(:user)
+
+      {:ok, _webhook} =
+        Webhooks.create_webhook(user.id, %{
+          name: "Token Check",
+          url: "https://example.com/hook",
+          events: ["meeting.created"]
+        })
+
+      [listed] = Webhooks.list_webhooks(user.id)
+      assert listed.webhook_token =~ @token_format
+    end
+  end
+
+  describe "get_webhook/2" do
+    test "returns the webhook when it belongs to the user" do
+      user = insert(:user)
+
+      {:ok, created} =
+        Webhooks.create_webhook(user.id, %{
+          name: "Findable",
+          url: "https://example.com/hook",
+          events: ["meeting.created"]
+        })
+
+      assert {:ok, found} = Webhooks.get_webhook(created.id, user.id)
+      assert found.id == created.id
+    end
+
+    test "returns error when webhook does not exist" do
+      user = insert(:user)
+
+      assert {:error, :not_found} = Webhooks.get_webhook(-1, user.id)
+    end
+
+    test "returns error when webhook belongs to a different user" do
+      user = insert(:user)
+      other_user = insert(:user)
+
+      {:ok, created} =
+        Webhooks.create_webhook(other_user.id, %{
+          name: "Other User's Webhook",
+          url: "https://example.com/hook",
+          events: ["meeting.created"]
+        })
+
+      assert {:error, :not_found} = Webhooks.get_webhook(created.id, user.id)
+    end
+
+    test "decrypts the webhook token" do
+      user = insert(:user)
+
+      {:ok, created} =
+        Webhooks.create_webhook(user.id, %{
+          name: "Decrypt Check",
+          url: "https://example.com/hook",
+          events: ["meeting.created"]
+        })
+
+      assert {:ok, found} = Webhooks.get_webhook(created.id, user.id)
+      assert found.webhook_token == created.webhook_token
+      assert found.webhook_token =~ @token_format
+    end
+  end
+
+  describe "update_webhook/2" do
+    test "updates webhook attributes" do
+      user = insert(:user)
+
+      {:ok, webhook} =
+        Webhooks.create_webhook(user.id, %{
+          name: "Original",
+          url: "https://example.com/hook",
+          events: ["meeting.created"]
+        })
+
+      assert {:ok, updated} = Webhooks.update_webhook(webhook, %{name: "Updated"})
+      assert updated.name == "Updated"
+      assert updated.url == "https://example.com/hook"
+    end
+
+    test "updates the URL" do
+      user = insert(:user)
+
+      {:ok, webhook} =
+        Webhooks.create_webhook(user.id, %{
+          name: "URL Update",
+          url: "https://example.com/old",
+          events: ["meeting.created"]
+        })
+
+      assert {:ok, updated} =
+               Webhooks.update_webhook(webhook, %{url: "https://example.com/new"})
+
+      assert updated.url == "https://example.com/new"
+    end
+
+    test "updates events list" do
+      user = insert(:user)
+
+      {:ok, webhook} =
+        Webhooks.create_webhook(user.id, %{
+          name: "Events Update",
+          url: "https://example.com/hook",
+          events: ["meeting.created"]
+        })
+
+      assert {:ok, updated} =
+               Webhooks.update_webhook(webhook, %{
+                 events: ["meeting.created", "meeting.cancelled"]
+               })
+
+      assert "meeting.cancelled" in updated.events
+    end
+
+    test "returns error with invalid events" do
+      user = insert(:user)
+
+      {:ok, webhook} =
+        Webhooks.create_webhook(user.id, %{
+          name: "Bad Update",
+          url: "https://example.com/hook",
+          events: ["meeting.created"]
+        })
+
+      assert {:error, changeset} =
+               Webhooks.update_webhook(webhook, %{events: ["not.real"]})
+
+      assert %{events: [_msg | _rest]} = errors_on(changeset)
+    end
+  end
+
+  describe "toggle_webhook/1" do
+    test "toggles active webhook to inactive" do
+      user = insert(:user)
+
+      {:ok, webhook} =
+        Webhooks.create_webhook(user.id, %{
+          name: "Toggle Test",
+          url: "https://example.com/hook",
+          events: ["meeting.created"]
+        })
+
+      assert webhook.is_active == true
+      assert {:ok, toggled} = Webhooks.toggle_webhook(webhook)
+      assert toggled.is_active == false
+    end
+
+    test "toggles inactive webhook back to active" do
+      user = insert(:user)
+
+      {:ok, webhook} =
+        Webhooks.create_webhook(user.id, %{
+          name: "Toggle Back",
+          url: "https://example.com/hook",
+          events: ["meeting.created"]
+        })
+
+      {:ok, inactive} = Webhooks.toggle_webhook(webhook)
+      assert inactive.is_active == false
+
+      {:ok, active_again} = Webhooks.toggle_webhook(inactive)
+      assert active_again.is_active == true
+    end
+
+    # `record_delivery_failure/2` auto-disables past the failure threshold
+    # and stamps `disabled_at`/`disabled_reason`. Re-enabling that webhook
+    # through the same toggle a manual on/off uses must reset the failure
+    # bookkeeping too, or the very next failed delivery immediately
+    # auto-disables it again (one strike instead of a fresh threshold).
+    test "re-enabling an auto-disabled webhook resets failure bookkeeping" do
+      user = insert(:user)
+
+      {:ok, webhook} =
+        Webhooks.create_webhook(user.id, %{
+          name: "Auto-disabled",
+          url: "https://example.com/hook",
+          events: ["meeting.created"]
+        })
+
+      disabled =
+        Enum.reduce(1..WebhookSchema.max_failure_count(), webhook, fn _i, acc ->
+          {:ok, updated} = Webhooks.record_delivery_failure(acc, "HTTP 500")
+          updated
+        end)
+
+      assert disabled.is_active == false
+      assert disabled.disabled_at
+      assert disabled.disabled_reason
+
+      assert {:ok, reenabled} = Webhooks.toggle_webhook(disabled)
+      assert reenabled.is_active == true
+      assert reenabled.disabled_at == nil
+      assert reenabled.disabled_reason == nil
+      assert reenabled.failure_count == 0
+    end
+  end
+
+  describe "delete_webhook/1" do
+    test "deletes the webhook" do
+      user = insert(:user)
+
+      {:ok, webhook} =
+        Webhooks.create_webhook(user.id, %{
+          name: "To Delete",
+          url: "https://example.com/hook",
+          events: ["meeting.created"]
+        })
+
+      assert {:ok, _webhook} = Webhooks.delete_webhook(webhook)
+      assert {:error, :not_found} = Webhooks.get_webhook(webhook.id, user.id)
+    end
+  end
+
+  # ============================================================================
+  # Token Regeneration
+  # ============================================================================
+
+  describe "regenerate_token/1" do
+    test "generates a new token different from the original" do
+      user = insert(:user)
+
+      {:ok, webhook} =
+        Webhooks.create_webhook(user.id, %{
+          name: "Regen Test",
+          url: "https://example.com/hook",
+          events: ["meeting.created"]
+        })
+
+      original_encrypted = webhook.webhook_token_encrypted
+
+      assert {:ok, regenerated} = Webhooks.regenerate_token(webhook)
+      assert regenerated.webhook_token_encrypted != original_encrypted
+    end
+  end
+
+  # ============================================================================
+  # Events
+  # ============================================================================
+
+  describe "available_events/0" do
+    test "returns a non-empty list" do
+      events = Webhooks.available_events()
+      refute Enum.empty?(events)
+    end
+
+    test "contains meeting.created event" do
+      events = Webhooks.available_events()
+      values = Enum.map(events, & &1.value)
+      assert "meeting.created" in values
+    end
+
+    test "contains meeting.cancelled event" do
+      events = Webhooks.available_events()
+      values = Enum.map(events, & &1.value)
+      assert "meeting.cancelled" in values
+    end
+
+    test "contains meeting.rescheduled event" do
+      events = Webhooks.available_events()
+      values = Enum.map(events, & &1.value)
+      assert "meeting.rescheduled" in values
+    end
+
+    test "each event has value, label, and description keys" do
+      events = Webhooks.available_events()
+
+      Enum.each(events, fn event ->
+        assert Map.has_key?(event, :value)
+        assert Map.has_key?(event, :label)
+        assert Map.has_key?(event, :description)
+      end)
+    end
+  end
+
+  # ============================================================================
+  # Headers
+  # ============================================================================
+
+  # ============================================================================
+  # Feature Access Denial
+  # ============================================================================
+
+  describe "create_webhook/2 - feature access denied" do
+    setup do
+      setup_config(:tymeslot,
+        feature_access_checker: Tymeslot.WebhooksTest.DenyAccessChecker
+      )
+
+      :ok
+    end
+
+    test "returns :insufficient_plan when feature access is denied" do
+      user = insert(:user)
+
+      attrs = %{
+        name: "Blocked Webhook",
+        url: "https://example.com/webhook",
+        events: ["meeting.created"]
+      }
+
+      assert {:error, :insufficient_plan} = Webhooks.create_webhook(user.id, attrs)
+    end
+  end
+
+  # ============================================================================
+  # Enable Webhook
+  # ============================================================================
+
+  describe "enable_webhook/1" do
+    test "re-enables a disabled webhook and resets failure fields" do
+      user = insert(:user)
+
+      webhook =
+        insert(:webhook,
+          user: user,
+          is_active: false,
+          failure_count: 10,
+          disabled_at: DateTime.utc_now(),
+          disabled_reason: "Too many failures"
+        )
+
+      assert {:ok, enabled} = Webhooks.enable_webhook(webhook)
+      assert enabled.is_active == true
+      assert enabled.failure_count == 0
+      assert enabled.disabled_at == nil
+      assert enabled.disabled_reason == nil
+    end
+
+    test "returns :insufficient_plan when feature access is denied" do
+      setup_config(:tymeslot,
+        feature_access_checker: Tymeslot.WebhooksTest.DenyAccessChecker
+      )
+
+      user = insert(:user)
+
+      webhook =
+        insert(:webhook,
+          user: user,
+          is_active: false,
+          failure_count: 10,
+          disabled_at: DateTime.utc_now(),
+          disabled_reason: "Too many failures"
+        )
+
+      assert {:error, :insufficient_plan} = Webhooks.enable_webhook(webhook)
+    end
+  end
+
+  # ============================================================================
+  # Record Failure (WebhookQueries)
+  # ============================================================================
+
+  describe "record_delivery_failure/2" do
+    test "increments failure_count by 1" do
+      user = insert(:user)
+      webhook = insert(:webhook, user: user, failure_count: 0)
+
+      assert {:ok, updated} = Webhooks.record_delivery_failure(webhook, "timeout")
+      assert updated.failure_count == 1
+    end
+
+    test "auto-disables webhook on the 10th failure" do
+      user = insert(:user)
+      webhook = insert(:webhook, user: user, failure_count: 9)
+
+      assert {:ok, updated} = Webhooks.record_delivery_failure(webhook, "timeout")
+      assert updated.is_active == false
+      assert %DateTime{} = updated.disabled_at
+      assert updated.disabled_reason == "Too many consecutive failures: timeout"
+    end
+
+    test "returns {:error, :not_found} for non-existent webhook" do
+      fake_webhook = %Tymeslot.Webhooks.WebhookSchema{id: -1}
+
+      assert {:error, :not_found} = Webhooks.record_delivery_failure(fake_webhook, "timeout")
+    end
+  end
+
+  # ============================================================================
+  # Trigger Webhook
+  # ============================================================================
+
+  describe "trigger_webhook/3" do
+    test "schedules delivery for an active webhook subscribed to the event" do
+      user = insert(:user)
+
+      webhook =
+        insert(:webhook,
+          user: user,
+          is_active: true,
+          events: ["meeting.created"]
+        )
+
+      meeting = insert(:meeting, organizer_user: user)
+
+      # `schedule_delivery/3` answers :ok for a fresh insert and for a
+      # unique-constraint conflict alike, so the enqueued job is what proves a
+      # delivery was actually scheduled.
+      assert :ok = Webhooks.trigger_webhook(webhook, "meeting.created", meeting)
+
+      assert_enqueued(
+        worker: WebhookWorker,
+        args: %{
+          "webhook_id" => webhook.id,
+          "event_type" => "meeting.created",
+          "meeting_id" => meeting.id
+        }
+      )
+    end
+
+    test "returns error for an inactive webhook" do
+      user = insert(:user)
+
+      webhook =
+        insert(:webhook,
+          user: user,
+          is_active: false,
+          events: ["meeting.created"]
+        )
+
+      meeting = insert(:meeting, organizer_user: user)
+
+      assert {:error, :webhook_not_active} =
+               Webhooks.trigger_webhook(webhook, "meeting.created", meeting)
+    end
+
+    test "returns error for an active webhook not subscribed to the event" do
+      user = insert(:user)
+
+      webhook =
+        insert(:webhook,
+          user: user,
+          is_active: true,
+          events: ["meeting.cancelled"]
+        )
+
+      meeting = insert(:meeting, organizer_user: user)
+
+      assert {:error, :webhook_not_active} =
+               Webhooks.trigger_webhook(webhook, "meeting.created", meeting)
+    end
+  end
+
+  describe "build_headers/2" do
+    test "includes content type and user agent" do
+      headers = Webhooks.build_headers(%{}, nil)
+
+      assert {"Content-Type", "application/json"} in headers
+      assert {"User-Agent", "Lockmycal-Webhooks/1.0"} in headers
+    end
+
+    test "includes timestamp header" do
+      headers = Webhooks.build_headers(%{}, nil)
+      assert Enum.any?(headers, fn {k, _v} -> k == "X-Lockmycal-Timestamp" end)
+    end
+
+    test "includes token header when token is provided" do
+      headers = Webhooks.build_headers(%{}, "my-secret-token")
+      assert {"X-Lockmycal-Token", "my-secret-token"} in headers
+    end
+
+    test "omits token header when token is nil" do
+      headers = Webhooks.build_headers(%{}, nil)
+      refute Enum.any?(headers, fn {k, _v} -> k == "X-Lockmycal-Token" end)
+    end
+  end
+end
+
+defmodule Tymeslot.WebhooksTest.DenyAccessChecker do
+  @moduledoc false
+
+  @spec check_access(any(), atom()) :: {:error, :insufficient_plan}
+  def check_access(_user_id, _feature), do: {:error, :insufficient_plan}
+end
