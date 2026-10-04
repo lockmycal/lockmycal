@@ -7,7 +7,7 @@
 # image a major release ahead of every other target. The Debian release is pinned to trixie
 # to match the runtime stage below, so the bundled ERTS links against the same OpenSSL and
 # ncurses it will find there.
-ARG BASE_IMAGE=hexpm/elixir:1.20.3-erlang-28.5.0.5-debian-trixie-20260803-slim
+ARG BASE_IMAGE=hexpm/elixir:1.20.4-erlang-28.5.0.7-debian-trixie-20260918-slim
 FROM ${BASE_IMAGE} AS build
 
 # Avoid prompts from apt and configure debconf
@@ -98,7 +98,7 @@ ARG APP_UID=1000
 ARG APP_GID=1000
 RUN groupadd --gid ${APP_GID} app && \
     useradd --uid ${APP_UID} --gid ${APP_GID} --create-home --shell /bin/bash app && \
-    mkdir -p /app /app/data /app/data/uploads && \
+    mkdir -p /app /app/data /app/data/uploads /app/data/private_uploads && \
     chown -R app:app /app
 
 WORKDIR /app

@@ -101,42 +101,47 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.OverviewComponent do
                       <img
                         src={Demo.avatar_url(@organizer_profile)}
                         alt={Demo.avatar_alt_text(@organizer_profile)}
-                        class="overview-avatar rounded-[1.75rem] object-cover shadow-2xl border-4 border-white/50 transition-all duration-300 hover:scale-105 cursor-pointer"
+                        class="overview-avatar rounded-2xl object-cover shadow-2xl border-4 border-white/50 transition-all duration-300 hover:scale-105 cursor-pointer"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <h1 class="section-header overview-title">
-                      {BookingText.heading(
-                        @organizer_profile,
-                        :quill,
-                        Profiles.display_name(@organizer_profile),
-                        @locale
-                      )}
-                    </h1>
-                    <%!-- Greeting and instruction are separate settings, often
-                         separate thoughts; each starts on its own line, as the
-                         Rhythm theme shows them. --%>
-                    <p class="overview-description text-glass-primary">
-                      <%= if greeting = BookingText.greeting(@organizer_profile, Profiles.display_name(@organizer_profile), @locale) do %>
-                        {greeting}<br />
-                      <% end %>
-                      {BookingText.instruction(@organizer_profile, @locale)}
-                    </p>
+                    <%!-- Title and text on the left, the full-calendar link in
+                         the card's top right corner once there is room
+                         (`.overview-heading` in overview.css). --%>
+                    <div class="overview-heading">
+                      <h1 class="section-header overview-title">
+                        {BookingText.heading(
+                          @organizer_profile,
+                          :quill,
+                          Profiles.display_name(@organizer_profile),
+                          @locale
+                        )}
+                      </h1>
+                      <%!-- Greeting and instruction are separate settings, often
+                           separate thoughts; each starts on its own line, as the
+                           Rhythm theme shows them. --%>
+                      <p class="overview-description text-glass-primary">
+                        <%= if greeting = BookingText.greeting(@organizer_profile, Profiles.display_name(@organizer_profile), @locale) do %>
+                          {greeting}<br />
+                        <% end %>
+                        {BookingText.instruction(@organizer_profile, @locale)}
+                      </p>
 
-                    <.link
-                      :if={
-                        @username_context not in [nil, ""] and
-                          Profiles.public_calendar_enabled?(@organizer_profile)
-                      }
-                      navigate={~p"/#{@username_context}/calendar"}
-                      class="action-button action-button--secondary overview-full-calendar-link"
-                      data-testid="view-full-calendar"
-                    >
-                      <.icon name="hero-calendar-days" class="calendar-download-icon" />
-                      {dgettext("booking", "View full calendar")}
-                    </.link>
+                      <.link
+                        :if={
+                          @username_context not in [nil, ""] and
+                            Profiles.public_calendar_enabled?(@organizer_profile)
+                        }
+                        navigate={~p"/#{@username_context}/calendar"}
+                        class="action-button action-button--secondary overview-full-calendar-link"
+                        data-testid="view-full-calendar"
+                      >
+                        <.icon name="hero-calendar-days" class="calendar-download-icon" />
+                        {dgettext("booking", "View full calendar")}
+                      </.link>
+                    </div>
 
                     <div class="overview-duration-list">
                       <%= if @meeting_types == [] do %>

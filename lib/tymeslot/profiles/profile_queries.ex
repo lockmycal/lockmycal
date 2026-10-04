@@ -6,6 +6,7 @@ defmodule Tymeslot.Profiles.ProfileQueries do
   import Ecto.Query
   alias Tymeslot.Profiles.ProfileSchema
   alias Tymeslot.Repo
+  alias Tymeslot.Security.Token
 
   @doc """
   Inserts a new profile record for a user ID.
@@ -29,7 +30,7 @@ defmodule Tymeslot.Profiles.ProfileQueries do
   """
   @spec get_by_freebusy_token(String.t()) :: {:ok, ProfileSchema.t()} | {:error, :not_found}
   def get_by_freebusy_token(token) when is_binary(token) and token != "" do
-    case Repo.get_by(ProfileSchema, freebusy_token: token) do
+    case Repo.get_by(ProfileSchema, freebusy_token_hash: Token.hash_token(token)) do
       nil -> {:error, :not_found}
       profile -> {:ok, Repo.preload(profile, :user)}
     end
@@ -281,17 +282,57 @@ defmodule Tymeslot.Profiles.ProfileQueries do
 
   @doc """
   Sets the primary calendar integration for a user's profile.
-  Updates only the `primary_calendar_integration_id` field.
+  Updates only the `primary_calendar_integration_id` field, and drops the
+  `default_calendar_id` picked within the previous one.
   """
   @spec set_primary_calendar_integration(integer(), integer()) ::
           {:ok, ProfileSchema.t()} | {:error, Ecto.Changeset.t() | term()}
   def set_primary_calendar_integration(user_id, integration_id) do
     case get_by_user_id(user_id) do
+      {:ok, %{primary_calendar_integration_id: ^integration_id} = profile} ->
+        {:ok, profile}
+
       {:ok, profile} ->
-        update_profile(profile, %{primary_calendar_integration_id: integration_id})
+        update_profile(profile, %{
+          primary_calendar_integration_id: integration_id,
+          default_calendar_id: nil
+        })
 
       error ->
         error
+    end
+  end
+
+  @doc """
+  Sets the user's default calendar: the primary calendar integration and,
+  when it has several calendars, which of them (`nil` for the connection's
+  own booking calendar).
+  """
+  @spec set_default_calendar(integer(), integer(), String.t() | nil) ::
+          {:ok, ProfileSchema.t()} | {:error, Ecto.Changeset.t() | term()}
+  def set_default_calendar(user_id, integration_id, calendar_id) do
+    case get_by_user_id(user_id) do
+      {:ok, profile} ->
+        update_profile(profile, %{
+          primary_calendar_integration_id: integration_id,
+          default_calendar_id: calendar_id
+        })
+
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  Records whether the user's bookings on other people's pages are also
+  written to their own calendar. Updates only that field.
+  """
+  @spec set_save_bookings_to_own_calendar(integer(), :ask | :always | :never) ::
+          {:ok, ProfileSchema.t()} | {:error, Ecto.Changeset.t() | term()}
+  def set_save_bookings_to_own_calendar(user_id, choice) do
+    case get_by_user_id(user_id) do
+      {:ok, profile} -> update_profile(profile, %{save_bookings_to_own_calendar: choice})
+      error -> error
     end
   end
 
@@ -303,7 +344,7 @@ defmodule Tymeslot.Profiles.ProfileQueries do
   def clear_primary_calendar_integration(user_id) do
     case get_by_user_id(user_id) do
       {:ok, profile} ->
-        update_profile(profile, %{primary_calendar_integration_id: nil})
+        update_profile(profile, %{primary_calendar_integration_id: nil, default_calendar_id: nil})
 
       error ->
         error

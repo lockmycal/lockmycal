@@ -1,12 +1,9 @@
 defmodule TymeslotWeb.DashboardAppearanceTopbarTest do
   @moduledoc """
-  Covers the topbar sun/moon appearance quick toggle
-  (`DashboardLayout.top_navigation/1`, `AppearanceToggle` JS hook,
-  `DashboardLive`'s `"change_appearance"` handler). Unlike Profile Settings'
-  3-way `<.option_toggle>`, this button carries no `phx-click`/`phx-value-*`
-  — the hook computes the target value client-side and pushes it itself, so
-  the round-trip is exercised here via `render_hook/3` (what the hook's
-  `pushEvent` call does) rather than `render_click/1`.
+  Covers the top bar's Light / System / Dark switch
+  (`DashboardLayout.top_navigation/1`, `AppearanceToggle` JS hook) and the
+  saving of its `change_appearance` event by `AppAppearanceHook`, which every
+  dashboard LiveView rendering the layout runs.
   """
 
   use TymeslotWeb.LiveCase, async: true
@@ -21,48 +18,66 @@ defmodule TymeslotWeb.DashboardAppearanceTopbarTest do
 
   setup :setup_dashboard_user
 
-  describe "the topbar appearance toggle" do
-    test "is present, hooked, and needs no phx-click of its own", %{conn: conn} do
+  defp switch_button(view, option),
+    do: element(view, "#appearance-topbar-switch button[phx-value-option='#{option}']")
+
+  describe "the top bar appearance switch" do
+    test "offers light, system and dark, marking the saved choice", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/dashboard/overview")
 
       doc = Floki.parse_document!(html)
-      buttons = Floki.find(doc, "button#appearance-topbar-toggle")
+      assert Floki.attribute(doc, "#appearance-topbar-switch", "phx-hook") == ["AppearanceToggle"]
 
-      assert buttons != []
-      assert Floki.attribute(buttons, "phx-hook") == ["AppearanceToggle"]
-      assert Floki.attribute(buttons, "data-appearance-flip") == [""]
+      assert doc
+             |> Floki.find("#appearance-topbar-switch button")
+             |> Enum.flat_map(&Floki.attribute(&1, "phx-value-option")) ==
+               ["light", "system", "dark"]
+
+      # No preference saved yet: "system" is the active one.
+      assert Floki.attribute(
+               doc,
+               "#appearance-topbar-switch button[phx-value-option='system']",
+               "aria-pressed"
+             ) == ["true"]
     end
 
-    test "persists the value the hook pushes, from any dashboard page", %{
-      conn: conn,
-      user: user
-    } do
+    test "saves the choice and marks it", %{conn: conn, user: user} do
       {:ok, view, _html} = live(conn, ~p"/dashboard/overview")
 
-      render_hook(view, "change_appearance", %{"value" => "dark"})
+      view |> switch_button("dark") |> render_click()
 
       assert Repo.get(UserSchema, user.id).theme_preference == "dark"
+      assert view |> switch_button("dark") |> render() =~ ~s(aria-pressed="true")
     end
 
     test "a fresh page load then renders <html class=\"dark\">", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/dashboard/overview")
 
-      render_hook(view, "change_appearance", %{"value" => "dark"})
+      view |> switch_button("dark") |> render_click()
 
       {:ok, _reloaded, html} = live(conn, ~p"/dashboard/overview")
 
       assert html =~ ~s(class="dark")
     end
 
-    test "flipping back to light clears the dark class on the next load", %{conn: conn} do
+    test "system clears the saved preference", %{conn: conn, user: user} do
       {:ok, view, _html} = live(conn, ~p"/dashboard/overview")
 
-      render_hook(view, "change_appearance", %{"value" => "dark"})
-      render_hook(view, "change_appearance", %{"value" => "light"})
+      view |> switch_button("dark") |> render_click()
+      view |> switch_button("system") |> render_click()
+
+      assert Repo.get(UserSchema, user.id).theme_preference == nil
 
       {:ok, _reloaded, html} = live(conn, ~p"/dashboard/overview")
-
       refute html =~ ~s(class="dark")
+    end
+
+    test "works on the analytics page too", %{conn: conn, user: user} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/analytics")
+
+      view |> switch_button("light") |> render_click()
+
+      assert Repo.get(UserSchema, user.id).theme_preference == "light"
     end
   end
 end

@@ -7,12 +7,16 @@ defmodule Tymeslot.Dashboard.DashboardContext do
   require Logger
 
   alias Tymeslot.Agenda
+  alias Tymeslot.Dashboard.OverviewStats
   alias Tymeslot.Infrastructure.DashboardCache
+  alias Tymeslot.Infrastructure.Logging.LogFormat
+  alias Tymeslot.Infrastructure.Tasks
   alias Tymeslot.Integrations.Calendar.BookingEligibility
   alias Tymeslot.Integrations.CalendarManagement
   alias Tymeslot.Integrations.Video.VideoIntegrationQueries
   alias Tymeslot.MeetingTypes
   alias Tymeslot.MeetingTypes.MeetingTypeQueries
+  alias Tymeslot.Venues
 
   @typep integration_status :: %{
            has_calendar: boolean(),
@@ -55,7 +59,7 @@ defmodule Tymeslot.Dashboard.DashboardContext do
         # If cache computation fails, return empty default to maintain contract
         Logger.warning("Failed to get integration status from cache",
           user_id: user_id,
-          reason: inspect(error_reason)
+          reason: LogFormat.reason(error_reason)
         )
 
         default_integration_status()
@@ -74,6 +78,7 @@ defmodule Tymeslot.Dashboard.DashboardContext do
   @spec invalidate_integration_status(integer()) :: :ok
   def invalidate_integration_status(user_id) do
     DashboardCache.invalidate(DashboardCache.integration_status_key(user_id))
+    DashboardCache.invalidate(DashboardCache.integration_attention_key(user_id))
     :ok
   end
 
@@ -83,23 +88,26 @@ defmodule Tymeslot.Dashboard.DashboardContext do
   @spec get_meeting_settings_data(integer()) :: %{
           meeting_types: list(),
           video_integrations: list(),
-          calendar_integrations: list()
+          calendar_integrations: list(),
+          venues: list()
         }
   def get_meeting_settings_data(user_id) when is_integer(user_id) do
     %{
       meeting_types: MeetingTypes.get_all_meeting_types(user_id),
       video_integrations: VideoIntegrationQueries.list_active_for_user_public(user_id),
-      calendar_integrations: CalendarManagement.list_calendar_integrations(user_id)
+      calendar_integrations: CalendarManagement.list_calendar_integrations(user_id),
+      venues: Venues.list_venues(user_id)
     }
   end
 
   @spec get_meeting_settings_data(nil | any()) :: %{
           meeting_types: list(),
           video_integrations: list(),
-          calendar_integrations: list()
+          calendar_integrations: list(),
+          venues: list()
         }
   def get_meeting_settings_data(_user_id),
-    do: %{meeting_types: [], video_integrations: [], calendar_integrations: []}
+    do: %{meeting_types: [], video_integrations: [], calendar_integrations: [], venues: []}
 
   @doc """
   Gets dashboard-specific data for a given action.
@@ -107,24 +115,36 @@ defmodule Tymeslot.Dashboard.DashboardContext do
   For the `:overview` and `:calendar` actions, builds the live agenda
   (`Agenda.Day`) for the user in their timezone — the merged Today/Tomorrow
   view of bookings and synced calendar events. The calendar uses it for the
-  "Up next" strip above the grid. Other actions need no extra data and return
+  "Up next" strip above the grid. `:overview` also gets its KPI and widget
+  figures (`OverviewStats`); `opts` are passed through to `OverviewStats.build/3`
+  (e.g. `analytics_allowed: true`). Other actions need no extra data and return
   an empty map.
 
   ## Examples
 
       iex> get_dashboard_data_for_action(user, "Europe/Berlin", :overview)
-      %{agenda: %Tymeslot.Agenda.Day{}}
+      %{agenda: %Tymeslot.Agenda.Day{}, overview_stats: %Tymeslot.Dashboard.OverviewStats{}}
 
       iex> get_dashboard_data_for_action(user, "Europe/Berlin", :settings)
       %{}
   """
-  @spec get_dashboard_data_for_action(map(), String.t() | nil, atom()) :: map()
-  def get_dashboard_data_for_action(%{email: email} = user, timezone, action)
-      when is_binary(email) and action in [:overview, :calendar] do
+  @spec get_dashboard_data_for_action(map(), String.t() | nil, atom(), keyword()) :: map()
+  def get_dashboard_data_for_action(user, timezone, action, opts \\ [])
+
+  def get_dashboard_data_for_action(%{email: email} = user, timezone, :overview, opts)
+      when is_binary(email) do
+    %{
+      agenda: Agenda.day_agenda(user, timezone),
+      overview_stats: OverviewStats.build(user, timezone, opts)
+    }
+  end
+
+  def get_dashboard_data_for_action(%{email: email} = user, timezone, :calendar, _opts)
+      when is_binary(email) do
     %{agenda: Agenda.day_agenda(user, timezone)}
   end
 
-  def get_dashboard_data_for_action(_user, _timezone, _action), do: %{}
+  def get_dashboard_data_for_action(_user, _timezone, _action, _opts), do: %{}
 
   # Runs calendar, video, and meeting type queries concurrently with timeout
   # protection. If any query times out, it falls back to an empty list for
@@ -132,17 +152,17 @@ defmodule Tymeslot.Dashboard.DashboardContext do
   @spec fetch_integration_status(integer()) :: map()
   defp fetch_integration_status(user_id) do
     calendar_task =
-      Task.Supervisor.async(Tymeslot.TaskSupervisor, fn ->
+      Tasks.async(Tymeslot.TaskSupervisor, fn ->
         CalendarManagement.list_active_calendar_integrations(user_id)
       end)
 
     video_task =
-      Task.Supervisor.async(Tymeslot.TaskSupervisor, fn ->
+      Tasks.async(Tymeslot.TaskSupervisor, fn ->
         VideoIntegrationQueries.list_active_for_user(user_id)
       end)
 
     meeting_types_task =
-      Task.Supervisor.async(Tymeslot.TaskSupervisor, fn ->
+      Tasks.async(Tymeslot.TaskSupervisor, fn ->
         MeetingTypeQueries.list_active_meeting_types(user_id)
       end)
 

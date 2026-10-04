@@ -19,6 +19,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.ComponentView do
   alias TymeslotWeb.Dashboard.CalendarGrid.Modals.ConfirmDeleteModal
   alias TymeslotWeb.Dashboard.CalendarGrid.Modals.ConfirmDiscardAttendeesModal
   alias TymeslotWeb.Dashboard.CalendarGrid.Modals.ConfirmRemoveAttendeeModal
+  alias TymeslotWeb.Dashboard.CalendarGrid.Modals.ConfirmSeriesMoveModal
   alias TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModal
   alias TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal
   alias TymeslotWeb.Dashboard.CalendarGrid.Modals.NotifyPromptModal
@@ -91,7 +92,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.ComponentView do
           date={@date}
           integrations={@integrations}
           integration_colors={@integration_colors}
-          calendar_colour_keys={@calendar_colour_keys}
           hidden_integration_ids={@hidden_integration_ids}
           hidden_calendar_keys={@hidden_calendar_keys}
           show_calendar_list={@show_calendar_list}
@@ -193,10 +193,12 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.ComponentView do
           time_format={Helpers.time_format(assigns)}
           myself={@myself}
           editable={EditWorkflow.event_editable?(assigns, @selected_event)}
+          read_only={EditWorkflow.event_read_only?(assigns, @selected_event)}
           attendee_input={@attendee_input}
           pending_attendees={@pending_attendees}
           video_integrations={@video_integrations}
           pending_notification={@pending_notification}
+          title_rev={@event_title_rev}
         />
         <BookingDetailModal.booking_detail_modal
           :if={@selected_booking}
@@ -214,8 +216,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.ComponentView do
         <ConfirmDeleteModal.confirm_delete_modal
           :if={@confirm_delete_event}
           event={@confirm_delete_event}
+          scopes={@confirm_delete_scopes}
           deleting={@deleting_event}
           linked_to_booking={@confirm_delete_linked_to_booking}
+          myself={@myself}
+        />
+        <ConfirmSeriesMoveModal.confirm_series_move_modal
+          :if={@series_move_prompt}
+          prompt={@series_move_prompt}
           myself={@myself}
         />
         <ConfirmRemoveAttendeeModal.confirm_remove_attendee_modal

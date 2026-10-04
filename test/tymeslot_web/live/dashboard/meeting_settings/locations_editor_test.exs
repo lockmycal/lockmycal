@@ -16,49 +16,11 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.LocationsEditorTest do
   import Phoenix.LiveViewTest
   import Tymeslot.DashboardTestHelpers
   import Tymeslot.Factory
+  import Tymeslot.LocationsEditorTestHelpers
 
-  alias Tymeslot.MeetingTypes
   alias Tymeslot.MeetingTypes.LocationOption
 
   setup :setup_dashboard_user
-
-  defp open_editor(%{conn: conn, user: user}, locations) do
-    meeting_type =
-      insert(:meeting_type,
-        user: user,
-        name: "Consultation",
-        duration_minutes: 30,
-        locations: locations
-      )
-
-    {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
-
-    view
-    |> element("[phx-click='edit_type'][phx-value-id='#{meeting_type.id}']")
-    |> render_click()
-
-    view |> element("[phx-click='switch_tab'][phx-value-tab='location']") |> render_click()
-
-    {view, meeting_type}
-  end
-
-  # The editor and the list both mutate via `send_update`, which is delivered
-  # as a message *after* the event round-trip returns. Draining the LiveView's
-  # mailbox is what makes the auto-save it triggers observable here.
-  defp reload(view, meeting_type, user) do
-    _drain = :sys.get_state(view.pid)
-    MeetingTypes.get_meeting_type(meeting_type.id, user.id)
-  end
-
-  defp office do
-    %LocationOption{
-      id: "loc-office",
-      kind: "in_person",
-      label: "Our office",
-      details: "12 High Street",
-      position: 0
-    }
-  end
 
   describe "the locations list" do
     test "shows each configured location", ctx do
@@ -76,7 +38,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.LocationsEditorTest do
 
       html = render(view)
       assert html =~ "Our office"
-      assert html =~ "12 High Street"
+      assert html =~ "Address arranged after booking"
       assert html =~ "Ring us"
       assert html =~ "Bookers will be asked to choose one of these."
     end
@@ -101,9 +63,13 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.LocationsEditorTest do
       view |> element("button[data-testid='add-location']") |> render_click()
 
       view
+      |> form("#location-editor-form", %{"location" => %{"kind" => "custom"}})
+      |> render_change()
+
+      view
       |> form("#location-editor-form", %{
         "location" => %{
-          "kind" => "in_person",
+          "kind" => "custom",
           "label" => "The workshop",
           "details" => "Unit 4, Mill Lane"
         }
@@ -312,11 +278,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.LocationsEditorTest do
 
       view
       |> form("#location-editor-form", %{
-        "location" => %{
-          "kind" => "in_person",
-          "label" => "Our new office",
-          "details" => "1 Market Square"
-        }
+        "location" => %{"kind" => "in_person", "label" => "Our new office"}
       })
       |> render_submit()
 
@@ -324,7 +286,6 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.LocationsEditorTest do
       assert updated.id == "loc-office"
       assert updated.position == 0
       assert updated.label == "Our new office"
-      assert updated.details == "1 Market Square"
     end
   end
 

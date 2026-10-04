@@ -21,8 +21,6 @@ defmodule Tymeslot.Availability.Schedules do
   alias Tymeslot.Repo
   alias Tymeslot.Validation.Constraints
 
-  @default_schedule_name "Working hours"
-
   # A profile's schedules are presented as a tab strip, which stops reading as
   # navigation once there are too many of them. The cap keeps that surface
   # legible; it is deliberately low and easy to raise.
@@ -60,7 +58,7 @@ defmodule Tymeslot.Availability.Schedules do
   """
   @spec create_default(integer(), Ecto.Repo.t()) :: result()
   def create_default(profile_id, repo \\ Repo) do
-    attrs = %{profile_id: profile_id, name: @default_schedule_name, is_default: true}
+    attrs = %{profile_id: profile_id, name: default_schedule_name(), is_default: true}
 
     with {:ok, schedule} <- AvailabilityScheduleQueries.insert(attrs, repo),
          {:ok, _count} <- WeeklyAvailabilityQueries.create_default_weekly_days(schedule.id, repo) do
@@ -253,10 +251,13 @@ defmodule Tymeslot.Availability.Schedules do
   def resolve_for(_meeting_type, _profile), do: nil
 
   @doc """
-  The name given to a profile's default schedule at creation time.
+  The name given to a profile's default schedule at creation time, in the
+  current Gettext locale — the user's own when the profile is created from
+  their session, so the name they then see (and can rename) is in their
+  language rather than always English.
   """
   @spec default_schedule_name() :: String.t()
-  def default_schedule_name, do: @default_schedule_name
+  def default_schedule_name, do: dgettext("dashboard_availability", "Working hours")
 
   @doc """
   One scheduling policy value for a resolved schedule.

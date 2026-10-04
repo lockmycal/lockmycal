@@ -10,21 +10,22 @@ defmodule TymeslotWeb.Public.CalendarLive do
   as a generic "Busy" chip rather than the real summary shown to the
   signed-in owner on `/dashboard/calendar` (`CalendarGridComponent`).
 
-  A meeting awaiting the organiser's approval has no synced calendar event
-  yet (`Tymeslot.Meetings.pending_approval_time_ranges/3`), so `FreeBusy`
-  alone would render its slot as free even though it's already held. `assign_month/1`
-  merges those in as their own chips, styled like the "awaiting approval"
-  red treatment on the dashboard grid (`EventPositioning.pending_approval?/1`)
-  — same privacy boundary as everything else here: only the time range, never
-  a title or attendee.
+  A meeting awaiting the organiser's approval is shown as its own chip,
+  sourced from the meetings table (`Tymeslot.Meetings.pending_approval_time_ranges/3`)
+  rather than from `FreeBusy`: the tentative hold the booking writes to the
+  host's calendar only shows up once sync brings it back, and would read as
+  plain "Busy" when it does. `assign_month/1` merges the pending chips in and
+  leaves that hold out of `FreeBusy`'s intervals, so the slot appears once,
+  styled like the "awaiting approval" red treatment on the dashboard grid
+  (`EventPositioning.pending_approval?/1`) — same privacy boundary as
+  everything else here: only the time range, never a title or attendee.
 
   Visually mirrors the booking flow (`TymeslotWeb.Themes.Quill.Scheduling.*`)
   rather than the dashboard: rendered through the `:theme_browser`
-  pipeline/`scheduling_root` layout, same as the scheduling routes, so the
-  organiser's chosen booking theme CSS loads here too (`ThemeHook` resolves
-  `theme_id` from `profile.booking_theme`, same as `/:username`). Currently
-  only the Quill theme's classes are used in this template — a Rhythm
-  organiser still gets Quill's palette here until this page grows per-theme
+  pipeline/`scheduling_root` layout, same as the scheduling routes. The
+  template only uses the Quill theme's classes, so `mount/3` pins `theme_id` to
+  Quill (overriding what `ThemeHook` resolved from `profile.booking_theme`): a
+  Rhythm organiser gets Quill's look here until this page grows per-theme
   variants like the scheduling dispatcher has.
 
   Days are dimmed and unclickable outside the organiser's actual booking
@@ -41,7 +42,9 @@ defmodule TymeslotWeb.Public.CalendarLive do
   use Gettext, backend: TymeslotWeb.Gettext
 
   import TymeslotWeb.Components.PublicTopBar
+  import TymeslotWeb.Components.PublicFooter
 
+  alias Tymeslot.Availability.Calculate
   alias Tymeslot.Availability.Schedules
   alias Tymeslot.CalendarGrid
   alias Tymeslot.FreeBusy
@@ -59,6 +62,12 @@ defmodule TymeslotWeb.Public.CalendarLive do
 
   @impl Phoenix.LiveView
   def mount(%{"username" => username}, _session, socket) do
+    # The template is Quill markup whatever the organiser's booking theme, so
+    # the layout loads Quill's stylesheet: with Rhythm's (the one ThemeHook
+    # resolves for a Rhythm organiser) none of its classes match and the page
+    # falls apart.
+    socket = assign(socket, :theme_id, "1")
+
     case Profiles.resolve_organizer_context(username) do
       {:ok, context} ->
         if Profiles.public_calendar_enabled?(context.profile) do
@@ -79,10 +88,6 @@ defmodule TymeslotWeb.Public.CalendarLive do
   end
 
   defp mount_calendar(socket, context) do
-    # theme_id is already in assigns by now — TymeslotWeb.Hooks.ThemeHook
-    # (on_mount, runs before this) resolves it from profile.booking_theme.
-    theme_id = socket.assigns[:theme_id] || "1"
-
     {:ok,
      socket
      |> assign(:username, context.username)
@@ -91,7 +96,7 @@ defmodule TymeslotWeb.Public.CalendarLive do
      |> assign(:not_found, false)
      |> assign(:dropdown_open, false)
      |> assign(:locales, Locales.supported())
-     |> CustomizationHelpers.assign_theme_customization(context.profile, theme_id)}
+     |> CustomizationHelpers.assign_theme_customization(context.profile, "1")}
   end
 
   @impl Phoenix.LiveView
@@ -164,6 +169,7 @@ defmodule TymeslotWeb.Public.CalendarLive do
             dropdown_open={@dropdown_open}
             theme="quill"
             current_user={@current_user}
+            username={@username}
           />
 
           <div class="public-calendar-container">
@@ -233,7 +239,10 @@ defmodule TymeslotWeb.Public.CalendarLive do
                   </h1>
                 </div>
 
-                <div class="public-calendar-grid">
+                <div class={[
+                  "public-calendar-grid",
+                  !@show_weekends && "public-calendar-grid--weekdays"
+                ]}>
                   <div class="public-calendar-weekdays">
                     <div
                       :for={day_name <- @day_names}
@@ -329,6 +338,8 @@ defmodule TymeslotWeb.Public.CalendarLive do
             </.glass_morphism_card>
           </div>
         </div>
+
+        <.public_footer />
       </div>
     </div>
     """
@@ -339,24 +350,14 @@ defmodule TymeslotWeb.Public.CalendarLive do
     tz = profile.timezone || "Etc/UTC"
     days = PreferenceHelpers.month_matrix(month, :monday)
 
-    window_start = to_utc(List.first(days), ~T[00:00:00], tz)
-    window_end = DateTime.add(to_utc(List.last(days), ~T[00:00:00], tz), 1, :day)
-
     today = DateTime.utc_now() |> DateTime.shift_zone!(tz) |> DateTime.to_date()
-
-    pending_approval_intervals =
-      FreeBusy.clip_to_visible_window(
-        pending_approval_intervals(profile, List.first(days), List.last(days)),
-        tz,
-        profile.public_calendar_visible_from,
-        profile.public_calendar_visible_to
-      )
+    schedule = Schedules.resolve_for(nil, profile)
+    range = bookable_range(schedule, tz, today)
+    show_weekends = show_weekends?(profile, days, range, schedule)
 
     busy_intervals =
       filter_historical(
-        FreeBusy.busy_intervals_with_source(profile, window_start, window_end) ++
-          FreeBusy.non_blocking_intervals(profile, window_start, window_end) ++
-          pending_approval_intervals,
+        month_intervals(profile, days, tz),
         today,
         tz,
         profile.public_calendar_show_historical_events
@@ -364,14 +365,20 @@ defmodule TymeslotWeb.Public.CalendarLive do
 
     socket
     |> assign(:month, month)
-    |> assign(:days, days)
-    |> assign(:day_names, monday_first_weekday_names(socket.assigns.locale))
+    |> assign(:show_weekends, show_weekends)
+    |> assign(:days, if(show_weekends, do: days, else: Enum.reject(days, &weekend?/1)))
+    |> assign(
+      :day_names,
+      socket.assigns.locale
+      |> monday_first_weekday_names()
+      |> Enum.take(if show_weekends, do: 7, else: 5)
+    )
     |> assign(:timezone, tz)
     |> assign(:today, today)
     |> assign(:busy_intervals, busy_intervals)
     |> assign(:has_pending_approvals, Enum.any?(busy_intervals, &pending_approval_interval?/1))
     |> assign(:has_non_blocking, Enum.any?(busy_intervals, &non_blocking_interval?/1))
-    |> assign(:bookable_range, bookable_range(profile, tz, today))
+    |> assign(:bookable_range, range)
     |> assign(:show_colors, profile.public_calendar_colors)
     |> assign(:integration_colors, integration_colors(profile))
     |> assign(
@@ -380,25 +387,40 @@ defmodule TymeslotWeb.Public.CalendarLive do
     )
   end
 
-  # Meetings awaiting the organiser's approval have no synced calendar event
-  # yet (that write only happens once approved — see
-  # `Tymeslot.Meetings.pending_approval_time_ranges/3`'s own doc), so
-  # `FreeBusy` never sees them even though the slot is already held. Tagged
-  # `:pending_approval` instead of a real `calendar_integration_id` so
-  # `chip_color_class/2` and the template can style/label it distinctly —
-  # only the time range ever leaves this module, same as every other chip.
+  # Every chip interval of the month grid: FreeBusy's busy and non-blocking
+  # blocks plus the pending-approval chips, which stand in for those bookings'
+  # tentative holds — so FreeBusy leaves the holds out.
+  defp month_intervals(profile, days, tz) do
+    window_start = to_utc(List.first(days), ~T[00:00:00], tz)
+    window_end = DateTime.add(to_utc(List.last(days), ~T[00:00:00], tz), 1, :day)
+
+    pending_approvals = pending_approvals(profile, List.first(days), List.last(days))
+    free_busy_opts = [exclude_linked_to: pending_approvals]
+
+    pending_approval_intervals =
+      pending_approvals
+      |> Enum.map(&{&1.start_time, &1.end_time, :pending_approval})
+      |> FreeBusy.clip_to_public_visibility(profile)
+
+    FreeBusy.busy_intervals_with_source(profile, window_start, window_end, free_busy_opts) ++
+      FreeBusy.non_blocking_intervals(profile, window_start, window_end, free_busy_opts) ++
+      pending_approval_intervals
+  end
+
+  # Meetings awaiting the organiser's approval, from the meetings table: their
+  # tentative calendar hold may not have synced yet, and once it has it would
+  # only read as "Busy". Turned into intervals tagged `:pending_approval`
+  # instead of a real `calendar_integration_id` so `chip_color_class/2` and
+  # the template can style/label them distinctly — only the time range ever
+  # leaves this module, same as every other chip.
   #
   # Bounds are whole UTC calendar days padding the requested range, rather
   # than exact instants, so a meeting is never missed at a timezone/DST edge.
-  defp pending_approval_intervals(profile, start_date, end_date) do
+  defp pending_approvals(profile, start_date, end_date) do
     range_start = DateTime.new!(start_date, ~T[00:00:00], "Etc/UTC")
     range_end = DateTime.new!(Date.add(end_date, 1), ~T[00:00:00], "Etc/UTC")
 
-    profile.user_id
-    |> Meetings.pending_approval_time_ranges(range_start, range_end)
-    |> Enum.map(fn %{start_time: start_time, end_time: end_time} ->
-      {start_time, end_time, :pending_approval}
-    end)
+    Meetings.pending_approval_time_ranges(profile.user_id, range_start, range_end)
   end
 
   defp pending_approval_interval?({_start_time, _end_time, :pending_approval}), do: true
@@ -536,8 +558,22 @@ defmodule TymeslotWeb.Public.CalendarLive do
     end
   end
 
-  defp bookable_range(profile, tz, today) do
-    schedule = Schedules.resolve_for(nil, profile)
+  # With `public_calendar_show_weekends` off the grid is Monday to Friday,
+  # unless a weekend day it shows can be booked: inside the booking window and
+  # open in the organiser's schedule. Hiding that day would hide the way to
+  # book it, so the weekend columns stay for that month.
+  defp show_weekends?(%{public_calendar_show_weekends: true}, _days, _range, _schedule),
+    do: true
+
+  defp show_weekends?(_profile, days, range, schedule) do
+    days
+    |> Enum.filter(&(weekend?(&1) and bookable?(&1, range)))
+    |> Calculate.any_business_day?(schedule && schedule.id)
+  end
+
+  defp weekend?(day), do: Date.day_of_week(day) in [6, 7]
+
+  defp bookable_range(schedule, tz, today) do
     min_advance_hours = Schedules.policy(schedule, :min_advance_hours)
     advance_booking_days = Schedules.policy(schedule, :advance_booking_days)
 

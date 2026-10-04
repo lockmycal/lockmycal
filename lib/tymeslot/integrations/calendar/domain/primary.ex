@@ -40,6 +40,36 @@ defmodule Tymeslot.Integrations.CalendarPrimary do
   end
 
   @doc """
+  Makes `integration_id` the user's default calendar, with `calendar_id` the
+  calendar of it picked as their default (`nil` leaves the connection's own
+  booking calendar in charge). Only a calendar that can take a booking can be
+  picked: one that is synced and writable (`Selection.writable_calendars/1`).
+  """
+  @spec set_default_calendar(user_id(), integration_id(), String.t() | nil) ::
+          {:ok, CalendarIntegrationSchema.t()}
+          | {:error, :not_found | :unauthorized | :not_bookable | Ecto.Changeset.t()}
+  def set_default_calendar(user_id, integration_id, calendar_id) do
+    with {:ok, integration} <- validate_and_prepare_integration(user_id, integration_id),
+         :ok <- verify_default_calendar(integration, calendar_id),
+         {:ok, _profile} <-
+           ProfileQueries.set_default_calendar(user_id, integration_id, calendar_id) do
+      {:ok, ensure_default_booking_calendar(integration)}
+    end
+  end
+
+  @doc """
+  The user's default connection and the calendar picked within it
+  (`set_default_calendar/3`), each `nil` when there is none.
+  """
+  @spec default_calendar(user_id()) :: {integration_id() | nil, String.t() | nil}
+  def default_calendar(user_id) do
+    case ProfileQueries.get_by_user_id(user_id) do
+      {:ok, profile} -> {profile.primary_calendar_integration_id, profile.default_calendar_id}
+      {:error, _reason} -> {nil, nil}
+    end
+  end
+
+  @doc """
   Gets the primary calendar integration for a user.
   """
   @spec get_primary_calendar_integration(user_id()) ::
@@ -190,6 +220,17 @@ defmodule Tymeslot.Integrations.CalendarPrimary do
     else
       {:error, :not_bookable}
     end
+  end
+
+  defp verify_default_calendar(_integration, nil), do: :ok
+
+  defp verify_default_calendar(integration, calendar_id) do
+    if Enum.any?(
+         Selection.writable_calendars(integration.calendar_list),
+         &(&1.id == calendar_id)
+       ),
+       do: :ok,
+       else: {:error, :not_bookable}
   end
 
   defp update_profile_primary(user_id, integration_id) do

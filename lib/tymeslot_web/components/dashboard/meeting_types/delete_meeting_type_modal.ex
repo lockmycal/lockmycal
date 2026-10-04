@@ -7,6 +7,7 @@ defmodule TymeslotWeb.Components.Dashboard.MeetingTypes.DeleteMeetingTypeModal d
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Phoenix.LiveView.JS
+  alias Tymeslot.MeetingTypes
   alias TymeslotWeb.Components.CoreComponents
 
   @doc """
@@ -59,7 +60,11 @@ defmodule TymeslotWeb.Components.Dashboard.MeetingTypes.DeleteMeetingTypeModal d
             {dgettext(
               "dashboard_meeting_types",
               "Are you sure you want to delete the meeting type \"%{name}\"?",
-              name: @meeting_type.name
+              name:
+                MeetingTypes.localized_name(
+                  @meeting_type,
+                  Gettext.get_locale(TymeslotWeb.Gettext)
+                )
             )}
           </p>
           <p class="text-neutral-500 font-medium">

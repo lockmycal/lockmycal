@@ -38,12 +38,13 @@ export const EmbedPreview = {
     }
   },
   ensureEmbedScript() {
-    if (!window.TymeslotBooking && !document.getElementById('tymeslot-embed-script')) {
+    const hasBookingApi = !!(window.LockMyCalBooking || window.TymeslotBooking);
+    if (!hasBookingApi && !document.getElementById('lockmycal-embed-script') && !document.getElementById('tymeslot-embed-script')) {
       const { embedScriptUrl } = this.el.dataset;
       if (!embedScriptUrl) return;
 
       const script = document.createElement('script');
-      script.id = 'tymeslot-embed-script';
+      script.id = 'lockmycal-embed-script';
       script.src = embedScriptUrl;
       script.async = true;
       document.head.appendChild(script);
@@ -146,15 +147,17 @@ export const EmbedPreview = {
 
   openModal(username, options = {}) {
     const modalOptions = this.buildOptionsForJs(options);
-    if (window.TymeslotBooking) {
-      window.TymeslotBooking.open(username, modalOptions);
+    const bookingApi = window.LockMyCalBooking || window.TymeslotBooking;
+    if (bookingApi) {
+      bookingApi.open(username, modalOptions);
     } else {
       // Retry for a moment if script is still loading
       let retries = 0;
       if (this._modalRetryInterval) clearInterval(this._modalRetryInterval);
       this._modalRetryInterval = setInterval(() => {
-        if (window.TymeslotBooking) {
-          window.TymeslotBooking.open(username, modalOptions);
+        const retryApi = window.LockMyCalBooking || window.TymeslotBooking;
+        if (retryApi) {
+          retryApi.open(username, modalOptions);
           clearInterval(this._modalRetryInterval);
           this._modalRetryInterval = null;
         } else if (retries > 10) {

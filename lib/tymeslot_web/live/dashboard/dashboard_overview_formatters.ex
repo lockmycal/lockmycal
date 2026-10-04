@@ -25,22 +25,14 @@ defmodule TymeslotWeb.Dashboard.DashboardOverviewFormatters do
     if diff <= 0, do: dgettext("dashboard_home", "now"), else: countdown(diff)
   end
 
-  @doc """
-  The countdown text for an entry `seconds` away.
-
-  Shared with `AgendaDetailModal`, which renders the same entry: the two used
-  to carry the same gettext msgid and disagree below a minute, one showing
-  "in 0m" where the other clamped to "in 1m". A countdown that reads zero is
-  the wrong one.
-  """
-  @spec countdown(integer()) :: String.t()
-  def countdown(seconds) when seconds < 3600,
+  # Clamped to at least a minute: a countdown that reads "in 0m" is wrong.
+  defp countdown(seconds) when seconds < 3600,
     do: fill(minutes_template(), max(div(seconds, 60), 1))
 
-  def countdown(seconds) when seconds < 86_400,
+  defp countdown(seconds) when seconds < 86_400,
     do: fill(hours_template(), div(seconds, 3600))
 
-  def countdown(seconds),
+  defp countdown(seconds),
     do: fill(days_template(), div(seconds, 86_400))
 
   @doc """
@@ -106,6 +98,18 @@ defmodule TymeslotWeb.Dashboard.DashboardOverviewFormatters do
     datetime
     |> DateTimeUtils.convert_to_timezone(timezone)
     |> TimeFormat.format(time_format)
+  end
+
+  @doc """
+  The organiser's current date for the Overview header, in the dashboard's
+  language, e.g. "Monday, September 28, 2026" / "pondělí, 28. září 2026".
+  """
+  @spec today_label(DateTime.t(), String.t()) :: String.t()
+  def today_label(now, timezone) do
+    locale = Gettext.get_locale(TymeslotWeb.Gettext)
+    today = local_date(now, timezone)
+    weekday = LocaleFormat.format_weekday_name(Date.day_of_week(today), locale, :full)
+    "#{weekday}, #{LocaleFormat.format_date(today, locale)}"
   end
 
   @spec local_date(DateTime.t(), String.t()) :: Date.t()

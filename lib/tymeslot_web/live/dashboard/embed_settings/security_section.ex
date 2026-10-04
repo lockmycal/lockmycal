@@ -153,7 +153,7 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.SecuritySection do
             <% end %>
 
             <%!-- Current Status --%>
-            <div class="bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-lg p-4 border-2 border-neutral-300 dark:border-twilight-indigo-700">
+            <div class="bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-lg p-4 border-2 border-neutral-300 dark:border-twilight-indigo-800">
               <p class="text-token-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-2">
                 {dgettext("dashboard_embed", "Current Status:")}
               </p>

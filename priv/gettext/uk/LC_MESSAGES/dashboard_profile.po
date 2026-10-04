@@ -695,7 +695,7 @@ msgstr "Ваш обліковий запис не видалено: підтве
 #: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
 #, elixir-autogen, elixir-format
 msgid "Microsoft does not let us withdraw your consent for Tymeslot. To remove it, open myapps.microsoft.com and remove Tymeslot from your apps."
-msgstr "Microsoft не дозволяє нам відкликати вашу згоду для Tymeslot. Щоб її зняти, відкрийте myapps.microsoft.com і видаліть Tymeslot зі своїх застосунків."
+msgstr "Microsoft не дозволяє нам відкликати вашу згоду для LockMyCal. Щоб її зняти, відкрийте myapps.microsoft.com і видаліть LockMyCal зі своїх застосунків."
 
 #: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
 #, elixir-autogen, elixir-format
@@ -736,3 +736,43 @@ msgstr "Компанія"
 #, elixir-autogen, elixir-format
 msgid "Phone"
 msgstr "Телефон"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update meeting titles"
+msgstr "Не вдалося оновити назви зустрічей"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Information"
+msgstr "Інформація про зустріч"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Titles"
+msgstr "Назви зустрічей"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting titles updated"
+msgstr "Назви зустрічей оновлено"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting type"
+msgstr "Тип зустрічі"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Set meeting titles"
+msgstr "Налаштувати назви зустрічей"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Controls how bookings are titled on your dashboard overview and calendar and in your connected calendar: by the meeting information your guest entered when booking, or by the meeting type. Bookings without meeting information always show the meeting type. The event description in your connected calendar always carries all the details. Events already in your calendar change the next time they are updated."
+msgstr "Визначає, як називаються бронювання в огляді та календарі панелі, а також у підключеному календарі: за інформацією про зустріч, яку гість указав під час бронювання, або за типом зустрічі. Бронювання без інформації про зустріч завжди показують тип зустрічі. Опис події в підключеному календарі завжди містить усі подробиці. Події, які вже є в календарі, зміняться під час наступного оновлення."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Name bookings by"
+msgstr "Називати бронювання за"

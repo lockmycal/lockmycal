@@ -1,28 +1,30 @@
 defmodule TymeslotWeb.Dashboard.DashboardOverview.ComponentView do
   @moduledoc """
-  Markup for the dashboard overview: the onboarding checklist, the focus
-  cockpit for the next appointment, and the day spine beneath it.
+  Markup for the dashboard overview: the page grid (KPI row, the agenda as the
+  main panel, a side column of widgets), the onboarding checklist and the two
+  agenda blocks — "Your day today" (the focus cockpit for today's next
+  appointment and the day spine beneath it) and "Coming up tomorrow". The KPI row
+  and built-in side widgets live in `DashboardOverview.Widgets`.
 
   Extracted from `DashboardOverviewComponent` so that module is left with the
-  agenda view model and the events that rebuild it, matching how
+  agenda view model, matching how
   `CalendarSettings.ComponentView` sits behind `CalendarSettingsComponent`.
   `agenda/1` receives the component's assigns unchanged, so LiveView change
   tracking is preserved.
 
   The private function components here are the rail's vocabulary — cockpit,
-  spine row, rail, peek row — and are only ever rendered from `agenda/1`.
+  spine row, rail, tomorrow row — and are only ever rendered from `agenda/1`.
   """
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Phoenix.LiveView.JS
-  alias Tymeslot.Agenda.Day
   alias Tymeslot.Agenda.Entry
-  alias Tymeslot.Integrations.Calendar.EventColour
+  alias Tymeslot.Dashboard.OverviewWidget
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Scheduling.LinkAccessPolicy
-  alias Tymeslot.Utils.UrlBuilder
-  alias TymeslotWeb.Dashboard.AgendaDetailModal
   alias TymeslotWeb.Dashboard.AgendaTimeline
+  alias TymeslotWeb.Dashboard.DashboardOverview.Widgets
   alias TymeslotWeb.Dashboard.OnboardingChecklist
 
   import TymeslotWeb.Dashboard.DashboardOverviewFormatters
@@ -31,26 +33,11 @@ defmodule TymeslotWeb.Dashboard.DashboardOverview.ComponentView do
   def agenda(assigns) do
     ~H"""
     <div class="space-y-10 pb-20">
-      <.section_header icon="hero-home" title={dgettext("dashboard_home", "Overview")} />
-
-      <%!-- Welcome Section --%>
-      <div class="card-glass-banner rounded-token-3xl px-8 py-3 lg:px-12 lg:py-4">
-        <div class="relative z-10">
-          <h1 class="text-3xl lg:text-4xl font-black mb-1 tracking-tight">
-            {if @first_dashboard_visit,
-              do: dgettext("dashboard_home", "Welcome"),
-              else: dgettext("dashboard_home", "Welcome back")}{if @profile.full_name,
-              do: ", #{@profile.full_name}",
-              else: ""}!
-          </h1>
-          <p class="text-lg text-white/90 font-medium max-w-4xl leading-snug">
-            {dgettext(
-              "dashboard_home",
-              "Here's an overview of your scheduling setup and recent activity."
-            )}
-          </p>
-        </div>
-      </div>
+      <.section_header
+        icon="hero-home"
+        title={dgettext("dashboard_home", "What's ahead")}
+        subtitle={"#{greeting(@first_dashboard_visit, @profile)} · #{today_label(@now, @agenda.timezone)}"}
+      />
 
       <%!-- Onboarding checklist — only while setup is incomplete and not dismissed --%>
       <OnboardingChecklist.onboarding_checklist
@@ -60,188 +47,217 @@ defmodule TymeslotWeb.Dashboard.DashboardOverview.ComponentView do
         profile={@profile}
       />
 
-      <%!-- Share the booking page — targets the dashboard-wide share modal --%>
-      <div
-        :if={LinkAccessPolicy.can_link?(@profile, @integration_status)}
-        class="card-glass flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div>
-          <.section_header
-            level={3}
-            icon="hero-share"
-            title={dgettext("dashboard_home", "Share your booking page")}
-            subtitle={
-              dgettext(
-                "dashboard_home",
-                "Send your booking page, public calendar or a specific meeting type to anyone."
-              )
-            }
-          />
-        </div>
-        <div class="flex flex-wrap gap-3 shrink-0">
-          <.action_button
-            id="overview-copy-booking-link"
-            variant={:secondary}
-            phx-hook="CopyOnClick"
-            data-copy-text={UrlBuilder.booking_url(@profile.username)}
-            data-copy-feedback={dgettext("dashboard_common", "Scheduling link copied to clipboard!")}
-          >
-            <.icon name="hero-clipboard" class="w-4 h-4" />
-            {dgettext("dashboard_home", "Copy link")}
-          </.action_button>
-          <.action_button
-            id="overview-email-booking-link"
-            variant={:primary}
-            phx-click="open"
-            phx-target="#share-links-modal"
-          >
-            <.icon name="hero-envelope" class="w-4 h-4" />
-            {dgettext("dashboard_common", "Send links by email")}
-          </.action_button>
-        </div>
-      </div>
+      <Widgets.kpi_row today_count={@today_count} stats={@stats} />
 
-      <%!-- Live agenda --%>
-      <div class="card-glass min-w-0">
-        <div class="flex items-center justify-between gap-4 mb-8">
-          <div class="flex items-center gap-3">
-            <.section_header level={2} title={dgettext("dashboard_home", "Your day")} />
-            <span
-              :if={@today_count > 0}
-              class="rounded-token-full bg-primary-100 px-2.5 py-0.5 text-token-xs font-black text-primary-700 tabular-nums"
+      <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <%!-- Main column: the live agenda, today and tomorrow as two blocks --%>
+        <div class="min-w-0 space-y-8 lg:col-span-2">
+          <section id="overview-today" class="card-glass shadow-none! hover:shadow-none!">
+            <div class="flex items-center justify-between gap-4 mb-8">
+              <div class="flex items-center gap-3">
+                <.section_header level={2} title={dgettext("dashboard_home", "Your day today")} />
+                <span
+                  :if={@today_count > 0}
+                  class="rounded-token-full bg-primary-100 dark:bg-primary-900 px-2.5 py-0.5 text-token-xs font-black text-primary-700 dark:text-primary-300 tabular-nums"
+                >
+                  {@today_count} {dgettext("dashboard_home", "today")}
+                </span>
+              </div>
+              <.link
+                patch={~p"/dashboard"}
+                class="text-primary-600 hover:text-primary-700 font-bold text-token-sm transition-colors flex items-center gap-1 group shrink-0"
+              >
+                {dgettext("dashboard_home", "View calendar")}
+                <span class="group-hover:translate-x-1 transition-transform">→</span>
+              </.link>
+            </div>
+
+            <%!-- Focus cockpit: today's next appointment, zoomed in. A next
+                 appointment that is tomorrow's belongs to the block below. --%>
+            <div :if={@next_today?} class="mb-8">
+              <.agenda_cockpit
+                entry={@agenda.next}
+                timezone={@agenda.timezone}
+                time_format={@time_format}
+                then_entry={@then_entry}
+                more_count={@more_count}
+              />
+            </div>
+
+            <%!-- Today spine --%>
+            <div :if={@spine != [] or @all_day_today != []}>
+              <.group_heading label={dgettext("dashboard_home", "Today")} />
+
+              <div :if={@all_day_today != []} class="mb-4 flex flex-wrap gap-2">
+                <.link
+                  :for={entry <- @all_day_today}
+                  navigate={calendar_path(entry)}
+                  class="inline-flex items-center gap-1.5 rounded-token-full bg-neutral-100 dark:bg-twilight-indigo-800 px-3 py-1 text-token-xs font-black text-neutral-600 dark:text-neutral-300 cursor-pointer hover:bg-neutral-200 dark:hover:bg-twilight-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-primary-400 transition-colors"
+                >
+                  <span
+                    :if={entry.colour_class}
+                    class={[
+                      "w-2 h-2 rounded-token-full shrink-0",
+                      entry.colour_class
+                    ]}
+                    aria-hidden="true"
+                  ></span>
+                  <.icon
+                    :if={!entry.colour_class}
+                    name="hero-sun-mini"
+                    class="w-4 h-4 text-neutral-400"
+                  />{entry.title}
+                </.link>
+              </div>
+
+              <div :if={@spine != []} class="relative">
+                <.spine_row
+                  :for={row <- @spine}
+                  row={row}
+                  now={@now}
+                  timezone={@agenda.timezone}
+                  time_format={@time_format}
+                />
+              </div>
+            </div>
+
+            <%!-- Empty state --%>
+            <div
+              :if={@spine == [] and @all_day_today == []}
+              class="text-center py-10 bg-neutral-50/50 dark:bg-twilight-indigo-900/40 rounded-token-2xl border-2 border-dashed border-neutral-300 dark:border-twilight-indigo-800"
             >
-              {@today_count} {dgettext("dashboard_home", "today")}
-            </span>
-          </div>
-          <.link
-            patch={~p"/dashboard"}
-            class="text-primary-600 hover:text-primary-700 font-bold text-token-sm transition-colors flex items-center gap-1 group shrink-0"
-          >
-            {dgettext("dashboard_home", "View calendar")}
-            <span class="group-hover:translate-x-1 transition-transform">→</span>
-          </.link>
-        </div>
+              <div class="w-14 h-14 bg-white dark:bg-twilight-indigo-950 rounded-token-2xl flex items-center justify-center mx-auto mb-3">
+                <.icon
+                  name="hero-check-circle"
+                  class="w-7 h-7 text-neutral-300 dark:text-twilight-indigo-600"
+                />
+              </div>
+              <p class="text-neutral-500 dark:text-twilight-indigo-200 font-bold">
+                {dgettext("dashboard_home", "Nothing on your plate today.")}
+              </p>
+            </div>
 
-        <%!-- Focus cockpit: the next appointment, zoomed in --%>
-        <div :if={@agenda.next} class="mb-8">
-          <.agenda_cockpit
-            entry={@agenda.next}
-            timezone={@agenda.timezone}
-            time_format={@time_format}
-            then_entry={@then_entry}
-            more_count={@more_count}
-            myself={@myself}
-          />
-        </div>
-
-        <%!-- Today spine --%>
-        <div :if={@spine != [] or @all_day_today != []} class="mb-8">
-          <.group_heading label={dgettext("dashboard_home", "Today")} />
-
-          <div :if={@all_day_today != []} class="mb-4 flex flex-wrap gap-2">
-            <button
-              :for={entry <- @all_day_today}
-              type="button"
-              phx-click="open_entry"
-              phx-value-id={entry.id}
-              phx-target={@myself}
-              class="inline-flex items-center gap-1.5 rounded-token-full bg-neutral-100 dark:bg-twilight-indigo-800 px-3 py-1 text-token-xs font-black text-neutral-600 dark:text-neutral-300 cursor-pointer hover:bg-neutral-200 focus:outline-hidden focus:ring-2 focus:ring-primary-400 transition-colors"
+            <%!-- Connect-a-calendar nudge --%>
+            <.link
+              :if={not @agenda.has_calendar?}
+              navigate={~p"/dashboard/calendar-integration"}
+              class="mt-4 flex items-center justify-center gap-2 text-token-sm font-bold text-primary-600 hover:text-primary-700 transition-colors"
             >
+              <.icon name="hero-calendar-days" class="w-4 h-4" />
+              {dgettext("dashboard_home", "Connect a calendar to see your whole schedule here")}
+            </.link>
+          </section>
+
+          <section id="overview-tomorrow" class="card-glass shadow-none! hover:shadow-none!">
+            <div class="flex items-center gap-3 mb-6">
+              <.section_header level={2} title={dgettext("dashboard_home", "Coming up tomorrow")} />
               <span
-                :if={EventColour.tailwind_class(entry.colour)}
-                class={[
-                  "w-2 h-2 rounded-token-full shrink-0",
-                  EventColour.tailwind_class(entry.colour)
-                ]}
-                aria-hidden="true"
-              ></span>
-              <.icon
-                :if={!EventColour.tailwind_class(entry.colour)}
-                name="hero-sun-mini"
-                class="w-4 h-4 text-neutral-400"
-              />{entry.title}
-            </button>
-          </div>
+                :if={@tomorrow_entries != []}
+                class="rounded-token-full bg-neutral-100 dark:bg-twilight-indigo-800 px-2.5 py-0.5 text-token-xs font-black text-neutral-600 dark:text-neutral-300 tabular-nums"
+              >
+                {length(@tomorrow_entries)}
+              </span>
+            </div>
 
-          <div :if={@spine != []} class="relative">
-            <.spine_row
-              :for={row <- @spine}
-              row={row}
-              now={@now}
-              timezone={@agenda.timezone}
-              time_format={@time_format}
-              myself={@myself}
-            />
-          </div>
+            <div :if={@tomorrow_entries != []} class="space-y-3">
+              <.tomorrow_row
+                :for={entry <- @tomorrow_entries}
+                entry={entry}
+                timezone={@agenda.timezone}
+                time_format={@time_format}
+              />
+            </div>
+
+            <p
+              :if={@tomorrow_entries == []}
+              class="py-4 text-center font-bold text-neutral-500 dark:text-twilight-indigo-200"
+            >
+              {dgettext("dashboard_home", "Nothing scheduled for tomorrow.")}
+            </p>
+
+            <%!-- Nothing today or tomorrow, but something further out: keep the
+                 next appointment in sight, dated rather than timed. --%>
+            <div :if={@tomorrow_entries == [] and @agenda.later?} class="space-y-3">
+              <.group_heading label={dgettext("dashboard_home", "Next appointment")} />
+              <.tomorrow_row
+                entry={@agenda.next}
+                label={day_label(@agenda.next, @agenda.timezone)}
+                timezone={@agenda.timezone}
+                time_format={@time_format}
+              />
+            </div>
+          </section>
         </div>
 
-        <%!-- Tomorrow peek --%>
-        <div :if={@tomorrow_entries != []} class="mt-8 pt-6 border-t border-neutral-300">
-          <.group_heading label={dgettext("dashboard_home", "Tomorrow")} />
-          <div class="space-y-2">
-            <.peek_row
-              :for={entry <- @tomorrow_entries}
-              entry={entry}
-              timezone={@agenda.timezone}
-              time_format={@time_format}
-              myself={@myself}
-            />
+        <%!-- Side column: widgets --%>
+        <div class="min-w-0 space-y-8">
+          <Widgets.quick_actions
+            can_link?={LinkAccessPolicy.can_link?(@profile, @integration_status)}
+            profile={@profile}
+          />
+
+          <Widgets.integrations_widget integration_status={@integration_status} stats={@stats} />
+
+          <Widgets.analytics_widget
+            :if={@stats.analytics}
+            analytics={@stats.analytics}
+            timezone={@agenda.timezone}
+          />
+
+          <div
+            :for={widget <- OverviewWidget.registered()}
+            id={"overview-widget-#{widget.id()}"}
+            class="contents"
+          >
+            {widget.render(@current_user)}
           </div>
         </div>
-
-        <%!-- Empty state --%>
-        <div
-          :if={Day.empty?(@agenda)}
-          class="text-center py-12 bg-neutral-50/50 dark:bg-twilight-indigo-900/40 rounded-token-2xl border-2 border-dashed border-neutral-300 dark:border-twilight-indigo-700"
-        >
-          <div class="w-16 h-16 bg-white dark:bg-twilight-indigo-950 rounded-token-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <.icon
-              name="hero-check-circle"
-              class="w-8 h-8 text-neutral-300 dark:text-twilight-indigo-600"
-            />
-          </div>
-          <p class="text-neutral-500 dark:text-twilight-indigo-200 font-bold">
-            {dgettext("dashboard_home", "Nothing on your plate today or tomorrow.")}
-          </p>
-        </div>
-
-        <%!-- Connect-a-calendar nudge --%>
-        <.link
-          :if={not @agenda.has_calendar?}
-          navigate={~p"/dashboard/calendar-integration"}
-          class="mt-2 flex items-center justify-center gap-2 text-token-sm font-bold text-primary-600 hover:text-primary-700 transition-colors"
-        >
-          <.icon name="hero-calendar-days" class="w-4 h-4" />
-          {dgettext("dashboard_home", "Connect a calendar to see your whole schedule here")}
-        </.link>
       </div>
-
-      <%!-- Appointment detail modal --%>
-      <AgendaDetailModal.agenda_detail_modal
-        :if={@selected_entry}
-        entry={@selected_entry}
-        timezone={@agenda.timezone}
-        time_format={@time_format}
-        now={@now}
-        myself={@myself}
-      />
     </div>
     """
   end
 
+  defp greeting(first_visit?, profile) do
+    name = profile && profile.full_name
+
+    case {first_visit?, name} do
+      {true, name} when is_binary(name) and name != "" ->
+        dgettext("dashboard_home", "Welcome, %{name}!", name: name)
+
+      {true, _no_name} ->
+        dgettext("dashboard_home", "Welcome!")
+
+      {false, name} when is_binary(name) and name != "" ->
+        dgettext("dashboard_home", "Welcome back, %{name}!", name: name)
+
+      {false, _no_name} ->
+        dgettext("dashboard_home", "Welcome back!")
+    end
+  end
+
   # DOM/LiveView bindings that turn any agenda surface into a clickable,
-  # keyboard-focusable button opening the detail modal. Spread with `{...}`
-  # alongside an explicit `phx-target={@myself}` at each call site.
-  defp open_attrs(%Entry{id: id}) do
+  # keyboard-focusable link opening the appointment in the calendar. A card
+  # rather than an `<a>`, since it holds a Join link of its own. Spread with
+  # `{...}` at each call site.
+  defp open_attrs(%Entry{} = entry) do
+    open = JS.navigate(calendar_path(entry))
+
     %{
-      "phx-click" => "open_entry",
-      "phx-keydown" => "open_entry",
+      "phx-click" => open,
+      "phx-keydown" => open,
       "phx-key" => "Enter",
-      "phx-value-id" => id,
-      "role" => "button",
+      "role" => "link",
       "tabindex" => "0"
     }
   end
+
+  # The calendar on the entry's day, with its detail modal open (see
+  # `CalendarGrid.UpdateHandlers.maybe_open_linked_entry/1`).
+  defp calendar_path(%Entry{source: :tymeslot} = entry),
+    do: ~p"/dashboard?#{[booking: entry.source_id, date: Date.to_iso8601(entry.day)]}"
+
+  defp calendar_path(%Entry{} = entry),
+    do: ~p"/dashboard?#{[event: entry.source_id, date: Date.to_iso8601(entry.day)]}"
 
   # --- Focus cockpit ---------------------------------------------------------
 
@@ -250,15 +266,13 @@ defmodule TymeslotWeb.Dashboard.DashboardOverview.ComponentView do
   attr :time_format, :string, required: true
   attr :then_entry, :map, default: nil
   attr :more_count, :integer, default: 0
-  attr :myself, :any, required: true
 
   defp agenda_cockpit(assigns) do
     ~H"""
     <div
       {open_attrs(@entry)}
-      phx-target={@myself}
       aria-label={dgettext("dashboard_home", "View details for %{title}", title: @entry.title)}
-      class="relative overflow-hidden rounded-token-2xl bg-linear-to-br from-primary-600 via-secondary-600 to-tertiary-600 p-6 text-white shadow-xl shadow-primary-500/20 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-white/60"
+      class="relative overflow-hidden rounded-token-2xl bg-linear-to-br from-primary-600 to-secondary-600 p-6 text-white cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-white/60"
     >
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_55%)]">
       </div>
@@ -349,7 +363,6 @@ defmodule TymeslotWeb.Dashboard.DashboardOverview.ComponentView do
   attr :now, :map, required: true
   attr :timezone, :string, required: true
   attr :time_format, :string, required: true
-  attr :myself, :any, required: true
 
   defp spine_row(%{row: {:event, _entry, _meta}} = assigns) do
     {:event, entry, meta} = assigns.row
@@ -359,25 +372,25 @@ defmodule TymeslotWeb.Dashboard.DashboardOverview.ComponentView do
         entry: entry,
         next?: meta[:next?],
         in_progress?: meta[:in_progress?],
-        colour_class: EventColour.tailwind_class(entry.colour)
+        colour_class: entry.colour_class
       )
 
     ~H"""
     <div class="flex gap-3">
-      <div class="w-12 shrink-0 pt-3.5 text-right text-token-xs font-black tabular-nums text-neutral-400">
+      <div class="w-12 shrink-0 pt-3.5 text-right text-token-xs font-black tabular-nums text-neutral-400 dark:text-twilight-indigo-300">
         {time_label(@entry, @timezone, @time_format)}
       </div>
       <.rail node={if @in_progress?, do: :live, else: :event} colour_class={@colour_class} />
       <div
         {open_attrs(@entry)}
-        phx-target={@myself}
         aria-label={dgettext("dashboard_home", "View details for %{title}", title: @entry.title)}
         class={[
           "flex-1 min-w-0 mb-3 flex items-center gap-3 p-4 rounded-token-2xl border-2 transition-all group cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-primary-400",
-          (@next? or @in_progress?) &&
-            "bg-white border-primary-200 shadow-md shadow-primary-500/10",
-          not (@next? or @in_progress?) &&
-            "bg-neutral-50/50 border-neutral-300 hover:bg-white hover:shadow-md"
+          @entry.awaiting_approval? && awaiting_approval_card_class(),
+          (not @entry.awaiting_approval? and (@next? or @in_progress?)) &&
+            "bg-white dark:bg-twilight-indigo-950 border-primary-200 dark:border-primary-800",
+          (not @entry.awaiting_approval? and not (@next? or @in_progress?)) &&
+            "bg-neutral-50/50 dark:bg-twilight-indigo-900/60 border-neutral-300 dark:border-twilight-indigo-800 hover:bg-white dark:hover:bg-twilight-indigo-800"
         ]}
       >
         <span
@@ -387,23 +400,24 @@ defmodule TymeslotWeb.Dashboard.DashboardOverview.ComponentView do
         ></span>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-neutral-900 dark:text-neutral-50 font-black tracking-tight truncate group-hover:text-primary-700 transition-colors">
+            <span class="text-neutral-900 dark:text-neutral-50 font-black tracking-tight truncate group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">
               {@entry.title}
             </span>
             <span
               :if={@in_progress?}
-              class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 text-token-xs font-black bg-primary-100 text-primary-700 rounded-token-full uppercase tracking-wider"
+              class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 text-token-xs font-black bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 rounded-token-full uppercase tracking-wider"
             >
               <span class="w-1.5 h-1.5 rounded-token-full bg-primary-500 animate-pulse"></span> {dgettext(
                 "dashboard_home",
                 "Now"
               )}
             </span>
-            <.source_badge source={@entry.source} />
+            <.awaiting_approval_badge :if={@entry.awaiting_approval?} attending?={@entry.attending?} />
+            <.source_badge entry={@entry} />
           </div>
           <div
             :if={@entry.who || @entry.location}
-            class="mt-0.5 text-token-sm text-neutral-500 font-semibold truncate"
+            class="mt-0.5 text-token-sm text-neutral-500 dark:text-twilight-indigo-200 font-semibold truncate"
           >
             <span :if={@entry.who}>{@entry.who}</span>
             <span :if={@entry.who && @entry.location}> · </span>
@@ -416,7 +430,7 @@ defmodule TymeslotWeb.Dashboard.DashboardOverview.ComponentView do
           target="_blank"
           rel="noopener noreferrer"
           phx-click={%JS{}}
-          class="shrink-0 inline-flex items-center gap-1.5 rounded-token-xl bg-primary-50 px-3 py-1.5 text-token-xs font-black text-primary-700 hover:bg-primary-100 transition-colors"
+          class="shrink-0 inline-flex items-center gap-1.5 rounded-token-xl bg-primary-50 dark:bg-primary-950/40 px-3 py-1.5 text-token-xs font-black text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900 transition-colors"
         >
           <.icon name="hero-video-camera-mini" class="w-4 h-4" /> {dgettext(
             "dashboard_home",
@@ -435,8 +449,11 @@ defmodule TymeslotWeb.Dashboard.DashboardOverview.ComponentView do
     <div class="flex gap-3">
       <div class="w-12 shrink-0"></div>
       <.rail node={:none} dashed />
-      <div class="flex-1 py-2 text-token-xs font-bold text-neutral-400 flex items-center gap-1.5">
-        <.icon name="hero-sparkles-mini" class="w-3.5 h-3.5 text-neutral-300" />
+      <div class="flex-1 py-2 text-token-xs font-bold text-neutral-400 dark:text-twilight-indigo-300 flex items-center gap-1.5">
+        <.icon
+          name="hero-sparkles-mini"
+          class="w-3.5 h-3.5 text-neutral-300 dark:text-twilight-indigo-400"
+        />
         {AgendaTimeline.format_gap(@minutes)}
       </div>
     </div>
@@ -467,15 +484,16 @@ defmodule TymeslotWeb.Dashboard.DashboardOverview.ComponentView do
     <div class="relative w-3 shrink-0 flex justify-center">
       <span class={[
         "absolute inset-y-0 border-l-2",
-        @dashed && "border-dashed border-neutral-300",
-        not @dashed && "border-neutral-300"
+        @dashed && "border-dashed border-neutral-300 dark:border-twilight-indigo-800",
+        not @dashed && "border-neutral-300 dark:border-twilight-indigo-800"
       ]}></span>
       <span
         :if={@node == :event}
         class={[
           "relative mt-4 w-3 h-3 rounded-token-full border-2",
           @colour_class && ["#{@colour_class}", "border-transparent"],
-          !@colour_class && "bg-white border-neutral-300"
+          !@colour_class &&
+            "bg-white dark:bg-twilight-indigo-950 border-neutral-300 dark:border-twilight-indigo-600"
         ]}
       ></span>
       <span
@@ -490,40 +508,54 @@ defmodule TymeslotWeb.Dashboard.DashboardOverview.ComponentView do
     """
   end
 
-  # --- Tomorrow peek ---------------------------------------------------------
+  # --- Tomorrow ------------------------------------------------------------
 
   attr :entry, :map, required: true
+  attr :label, :string, default: nil, doc: "replaces the time label (e.g. a date)"
   attr :timezone, :string, required: true
   attr :time_format, :string, required: true
-  attr :myself, :any, required: true
 
-  defp peek_row(assigns) do
+  defp tomorrow_row(assigns) do
+    assigns = assign(assigns, :colour_class, assigns.entry.colour_class)
+
     ~H"""
-    <div
-      {open_attrs(@entry)}
-      phx-target={@myself}
-      aria-label={dgettext("dashboard_home", "View details for %{title}", title: @entry.title)}
-      class="flex items-center gap-3 py-1.5 px-2 -mx-2 rounded-token-xl cursor-pointer hover:bg-neutral-50 focus:outline-hidden focus:ring-2 focus:ring-primary-400 transition-colors"
-    >
-      <div class="w-14 shrink-0 text-token-xs font-black tabular-nums text-neutral-400">
-        {if @entry.all_day?,
-          do: dgettext("dashboard_home", "All day"),
-          else: time_label(@entry, @timezone, @time_format)}
+    <div class="flex gap-3">
+      <div class="w-14 shrink-0 pt-4 text-right text-token-xs font-black tabular-nums text-neutral-400 dark:text-twilight-indigo-300">
+        {@label || time_label(@entry, @timezone, @time_format)}
       </div>
-      <span
-        :if={EventColour.tailwind_class(@entry.colour)}
-        class={["w-2 h-2 shrink-0 rounded-token-full", EventColour.tailwind_class(@entry.colour)]}
-        aria-hidden="true"
-      ></span>
-      <span class="flex-1 min-w-0 text-token-sm text-neutral-700 dark:text-neutral-200 font-bold truncate">
-        {@entry.title}
-      </span>
-      <span
-        :if={@entry.who}
-        class="shrink-0 text-token-xs text-neutral-400 font-semibold truncate max-w-[40%]"
+      <div
+        {open_attrs(@entry)}
+        aria-label={dgettext("dashboard_home", "View details for %{title}", title: @entry.title)}
+        class={[
+          "flex-1 min-w-0 flex items-center gap-3 p-4 rounded-token-2xl border-2 transition-all group cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-primary-400",
+          @entry.awaiting_approval? && awaiting_approval_card_class(),
+          not @entry.awaiting_approval? &&
+            "bg-neutral-50/50 dark:bg-twilight-indigo-900/60 border-neutral-300 dark:border-twilight-indigo-800 hover:bg-white dark:hover:bg-twilight-indigo-800"
+        ]}
       >
-        {@entry.who}
-      </span>
+        <span
+          :if={@colour_class}
+          class={["w-1 self-stretch shrink-0 rounded-token-full", @colour_class]}
+          aria-hidden="true"
+        ></span>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-neutral-900 dark:text-neutral-50 font-black tracking-tight truncate group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">
+              {@entry.title}
+            </span>
+            <.awaiting_approval_badge :if={@entry.awaiting_approval?} attending?={@entry.attending?} />
+            <.source_badge entry={@entry} />
+          </div>
+          <div
+            :if={@entry.who || @entry.location}
+            class="mt-0.5 text-token-sm text-neutral-500 dark:text-twilight-indigo-200 font-semibold truncate"
+          >
+            <span :if={@entry.who}>{@entry.who}</span>
+            <span :if={@entry.who && @entry.location}> · </span>
+            <span :if={@entry.location}>{@entry.location}</span>
+          </div>
+        </div>
+      </div>
     </div>
     """
   end
@@ -534,27 +566,55 @@ defmodule TymeslotWeb.Dashboard.DashboardOverview.ComponentView do
 
   defp group_heading(assigns) do
     ~H"""
-    <h4 class="mb-3 text-token-xs font-black uppercase tracking-widest text-neutral-400">
+    <h4 class="mb-3 text-token-xs font-black uppercase tracking-widest text-neutral-400 dark:text-twilight-indigo-300">
       {@label}
     </h4>
     """
   end
 
-  attr :source, :atom, required: true
+  # A request the organiser has not answered yet: the whole card turns red, so
+  # it can't be mistaken for an agreed appointment.
+  defp awaiting_approval_card_class,
+    do:
+      "bg-red-50/60 dark:bg-red-950/30 border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/50"
 
-  defp source_badge(%{source: :tymeslot} = assigns) do
+  attr :attending?, :boolean, default: false
+
+  # A request the user sent elsewhere waits on its organiser, not on them.
+  defp awaiting_approval_badge(assigns) do
     ~H"""
-    <span class="shrink-0 px-2 py-0.5 text-token-xs font-black bg-primary-100 text-primary-700 rounded-token-full uppercase tracking-wider">
-      {dgettext("dashboard_home", "Booking")}
+    <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 text-token-xs font-black bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-token-full uppercase tracking-wider">
+      <.icon name="hero-inbox-arrow-down-mini" class="w-3.5 h-3.5" />
+      {if @attending?,
+        do: dgettext("dashboard_home", "Awaiting host approval"),
+        else: dgettext("dashboard_home", "Awaiting approval")}
     </span>
     """
   end
 
+  attr :entry, Entry, required: true
+
+  # Names the calendar an entry sits in (the agenda's `Entry.calendar`); a
+  # booking in no connected calendar is the app's own. Bookings keep the
+  # primary tint and synced events the neutral one, so the two stay apart at a
+  # glance.
   defp source_badge(assigns) do
+    assigns = assign(assigns, :label, badge_label(assigns.entry))
+
     ~H"""
-    <span class="shrink-0 px-2 py-0.5 text-token-xs font-black bg-neutral-100 dark:bg-twilight-indigo-800 text-neutral-600 dark:text-neutral-300 rounded-token-full uppercase tracking-wider">
-      {dgettext("dashboard_home", "Calendar")}
+    <span class={[
+      "shrink-0 max-w-full truncate px-2 py-0.5 text-token-xs font-bold rounded-token-full",
+      @entry.source == :tymeslot &&
+        "bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300",
+      @entry.source != :tymeslot &&
+        "bg-neutral-100 dark:bg-twilight-indigo-800 text-neutral-600 dark:text-neutral-300"
+    ]}>
+      {@label}
     </span>
     """
   end
+
+  defp badge_label(%Entry{calendar: name}) when is_binary(name), do: name
+  defp badge_label(%Entry{source: :tymeslot}), do: Config.app_name()
+  defp badge_label(_entry), do: dgettext("dashboard_home", "Calendar")
 end

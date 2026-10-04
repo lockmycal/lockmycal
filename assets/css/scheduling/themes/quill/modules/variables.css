@@ -14,7 +14,7 @@
    to that reflow. */
 :root {
   /* Typography - Font Family */
-  --theme-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --theme-font-family: 'Schibsted Grotesk', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   /* Typography - Font Size Scale (fluid responsive using clamp()) */
   --theme-font-size-3xs: clamp(0.625rem, 1.0vw, 0.688rem);    /* ~10-11px - tiny labels */
@@ -126,12 +126,12 @@
   --border-intense: rgba(255, 255, 255, 0.3);
 
   /* Border Radius Scale */
-  --radius-sm: 0.375rem;   /* 6px */
-  --radius-md: 0.5rem;     /* 8px */
-  --radius-lg: 0.75rem;    /* 12px */
-  --radius-xl: 1rem;       /* 16px */
-  --radius-2xl: 1.5rem;    /* 24px */
-  --radius-3xl: 2rem;      /* 32px */
+  --radius-sm: 0.125rem;   /* 2px */
+  --radius-md: 0.25rem;    /* 4px */
+  --radius-lg: 0.375rem;   /* 6px */
+  --radius-xl: 0.5rem;     /* 8px */
+  --radius-2xl: 0.75rem;   /* 12px */
+  --radius-3xl: 1rem;      /* 16px */
   --radius-full: 9999px;   /* pills and circular avatars */
 
   /* Border Width Scale */
@@ -240,12 +240,12 @@
   /* Component-Specific Tokens - Buttons */
   --button-padding: 0.75rem 1.5rem;
   --button-padding-sm: 0.625rem 1rem;
-  --button-radius: 0.75rem;
-  --button-radius-sm: 0.5rem;
+  --button-radius: 0.375rem;
+  --button-radius-sm: 0.25rem;
   --button-hover-transform: translateY(-2px);
 
   /* Component-Specific Tokens - Forms */
-  --input-border-radius: 0.75rem;
+  --input-border-radius: 0.375rem;
   --input-padding: 0.75rem 1rem;
   --input-min-height: 44px;
   --textarea-min-height: clamp(60px, 15vh, 120px);
@@ -291,33 +291,33 @@
   --glass-shadow: 0 24px 48px rgba(0, 0, 0, 0.28), 0 8px 16px rgba(0, 0, 0, 0.16);
 
   /* Card Border Radius (legacy - use radius tokens) */
-  --card-border-radius: 1.5rem;
+  --card-border-radius: 0.75rem;
 
   /* Calendar integration colours — mirrors app.css/base/variables.css so the
      public calendar's busy chips (bg-calendar-N, see EventColour) match the
      dashboard calendar's palette exactly. Keep the two in sync. Only 8 slots:
      EventColour's rotation only ever cycles through 8 (rotation_size/0). */
-  --color-calendar-1: #14b8a6;
-  --color-calendar-2: #3b82f6;
-  --color-calendar-3: #a855f7;
-  --color-calendar-4: #0d9488;
-  --color-calendar-5: #06b6d4;
-  --color-calendar-6: #6366f1;
-  --color-calendar-7: #f43f5e;
-  --color-calendar-8: #f59e0b;
-  --color-calendar-fallback: #a1a1aa;
+  --color-calendar-1: #0f766e;
+  --color-calendar-2: #2563eb;
+  --color-calendar-3: #9333ea;
+  --color-calendar-4: #115e59;
+  --color-calendar-5: #0e7490;
+  --color-calendar-6: #4f46e5;
+  --color-calendar-7: #e11d48;
+  --color-calendar-8: #b45309;
+  --color-calendar-fallback: #646A76;
 
   /* Named palette (a colour a person explicitly picked for one calendar or
      event) — same values as app.css/base/variables.css, kept in sync for the
      same reason as the numbered rotation above. */
-  --color-calendar-tomato: #f43f5e;
-  --color-calendar-tangerine: #f97316;
-  --color-calendar-banana: #eab308;
-  --color-calendar-sage: #65a30d;
-  --color-calendar-peacock: #06b6d4;
-  --color-calendar-blueberry: #3b82f6;
-  --color-calendar-grape: #a855f7;
-  --color-calendar-graphite: #71717a;
+  --color-calendar-tomato: #e11d48;
+  --color-calendar-tangerine: #c2410c;
+  --color-calendar-banana: #a16207;
+  --color-calendar-sage: #4d7c0f;
+  --color-calendar-peacock: #0e7490;
+  --color-calendar-blueberry: #2563eb;
+  --color-calendar-grape: #9333ea;
+  --color-calendar-graphite: #3f3f46;
 
   /* Input Glassmorphism Colors (component-specific) */
   --input-border-glass: rgba(255, 255, 255, 0.3);

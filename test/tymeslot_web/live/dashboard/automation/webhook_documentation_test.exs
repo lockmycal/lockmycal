@@ -18,7 +18,7 @@ defmodule TymeslotWeb.Dashboard.Automation.WebhookDocumentationTest do
     test "documents the delivery id header that lets receivers discard duplicates" do
       html = render_component(&WebhookDocumentation.webhook_documentation/1, %{})
 
-      assert html =~ "X-Tymeslot-Delivery-Id"
+      assert html =~ "X-Lockmycal-Delivery-Id"
       assert html =~ "the same on every retry of one delivery"
     end
   end

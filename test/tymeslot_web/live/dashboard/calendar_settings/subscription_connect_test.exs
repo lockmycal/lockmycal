@@ -390,8 +390,13 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.SubscriptionConnectTest do
       subscribe(view)
       subscribe(view, @new_feed_url)
 
+      # Sorted by id: `Repo.all/1` has no ORDER BY, so the rows can come back in
+      # either order, and `second` must be the subscription created second.
       [first, second] =
-        Enum.filter(Repo.all(CalendarIntegrationSchema), &(&1.user_id == user.id))
+        CalendarIntegrationSchema
+        |> Repo.all()
+        |> Enum.filter(&(&1.user_id == user.id))
+        |> Enum.sort_by(& &1.id)
 
       open_reconnect_modal(view, second.id)
 

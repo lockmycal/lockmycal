@@ -32,6 +32,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.ConnectionRow do
   attr :toggle_disabled, :boolean, default: false
   attr :myself, :any, required: true
   slot :actions
+  slot :title_badges, doc: "markers shown beside the title, after the type tag"
 
   @spec connection_row(map()) :: Phoenix.LiveView.Rendered.t()
   def connection_row(assigns) do
@@ -62,6 +63,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.ConnectionRow do
               >
                 {@type_tag}
               </span>
+              {render_slot(@title_badges)}
             </div>
             <p
               title={@summary != "" && @summary}

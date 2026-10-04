@@ -22,6 +22,7 @@ defmodule TymeslotWeb.Dashboard.PaymentsSettingsComponent do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Infrastructure.Config
+  alias Tymeslot.Infrastructure.Tasks
   alias Tymeslot.MeetingPayments
 
   import TymeslotWeb.Dashboard.PaymentsSettings.ConnectCta, only: [connect_cta: 1]
@@ -322,9 +323,13 @@ defmodule TymeslotWeb.Dashboard.PaymentsSettingsComponent do
     payment_id = payment.id
 
     {:noreply,
-     start_async(socket, :issue_refund, fn ->
-       MeetingPayments.refund_payment_for_host(payment_id, user_id, amount_cents)
-     end)}
+     start_async(
+       socket,
+       :issue_refund,
+       Tasks.with_context(fn ->
+         MeetingPayments.refund_payment_for_host(payment_id, user_id, amount_cents)
+       end)
+     )}
   end
 
   @impl Phoenix.LiveComponent

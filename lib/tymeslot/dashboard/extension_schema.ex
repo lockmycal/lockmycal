@@ -114,6 +114,7 @@ defmodule Tymeslot.Dashboard.ExtensionSchema do
 
   require Logger
 
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias TymeslotWeb.Components.CoreComponents.Heroicons
 
   @type extension :: %{
@@ -229,7 +230,7 @@ defmodule Tymeslot.Dashboard.ExtensionSchema do
 
       {:error, errors} ->
         Logger.warning("Dropping invalid dashboard extension",
-          extension: inspect(extension),
+          extension: LogFormat.reason(extension),
           errors: errors
         )
 
@@ -239,7 +240,7 @@ defmodule Tymeslot.Dashboard.ExtensionSchema do
 
   defp valid_extension?(extension) do
     Logger.warning("Dropping invalid dashboard extension: not a map",
-      extension: inspect(extension)
+      extension: LogFormat.reason(extension)
     )
 
     false

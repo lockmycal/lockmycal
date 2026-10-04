@@ -21,7 +21,7 @@ defmodule TymeslotWeb.Themes.Shared.PollVotingComponents do
   alias TymeslotWeb.Themes.Shared.LocalizationHelpers
   alias TymeslotWeb.Themes.Shared.SecurityFields
 
-  import TymeslotWeb.Components.CoreComponents, only: [icon: 1]
+  import TymeslotWeb.Components.CoreComponents, only: [honeypot_field: 1, icon: 1]
 
   @responses [:yes, :if_need_be, :no]
 
@@ -145,17 +145,7 @@ defmodule TymeslotWeb.Themes.Shared.PollVotingComponents do
     >
       <%!-- Honeypot: hidden from real users, tempting to bots. A non-empty
             value is silently rejected by the register handler. --%>
-      <div class="honeypot-field" aria-hidden="true">
-        <label for="poll-website">Website</label>
-        <input
-          id="poll-website"
-          type="text"
-          name="website"
-          tabindex="-1"
-          autocomplete="off"
-          value=""
-        />
-      </div>
+      <.honeypot_field id="poll-website" />
 
       <%!-- The active provider's hook finds this by id when the form posts
             flat params rather than a nested param root. Rendered only when
@@ -171,6 +161,7 @@ defmodule TymeslotWeb.Themes.Shared.PollVotingComponents do
       <div
         :if={@bot_provider == :cloudflare and BotProtection.active?(:booking)}
         id="poll-cf-turnstile"
+        phx-update="ignore"
       />
 
       <div class="poll-field">

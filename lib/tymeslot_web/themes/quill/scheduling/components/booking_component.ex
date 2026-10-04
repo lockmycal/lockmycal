@@ -10,11 +10,14 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
   alias Tymeslot.Utils.DateTimeUtils.Duration
   alias TymeslotWeb.Live.Scheduling.OrganizerHelpers
   alias TymeslotWeb.Live.Shared.FormValidationHelpers
+  alias TymeslotWeb.Themes.Shared.AttendeeAttachmentUpload
   alias TymeslotWeb.Themes.Shared.BookingLabels
   alias TymeslotWeb.Themes.Shared.BookingLocation
   alias TymeslotWeb.Themes.Shared.Components.ApprovalNotice
+  alias TymeslotWeb.Themes.Shared.Components.AttachmentField
   alias TymeslotWeb.Themes.Shared.Components.GuestField
   alias TymeslotWeb.Themes.Shared.Components.LocationField
+  alias TymeslotWeb.Themes.Shared.Components.OwnCalendar
   alias TymeslotWeb.Themes.Shared.GuestBooking
   alias TymeslotWeb.Themes.Shared.LocalizationHelpers
   alias TymeslotWeb.Themes.Shared.SecurityFields
@@ -23,9 +26,15 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
 
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
-    # Filter out reserved assigns that can't be set directly
-    filtered_assigns = Map.drop(assigns, [:flash, :socket])
-    {:ok, assign(socket, filtered_assigns)}
+    # Filter out reserved assigns that can't be set directly. `:uploads` is
+    # this component's own (see AttendeeAttachmentUpload), never the parent's.
+    filtered_assigns = Map.drop(assigns, [:flash, :socket, :uploads])
+
+    {:ok,
+     socket
+     |> assign(filtered_assigns)
+     |> assign_new(:attachment_error, fn -> nil end)
+     |> AttendeeAttachmentUpload.maybe_allow()}
   end
 
   @impl Phoenix.LiveComponent
@@ -42,13 +51,12 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
 
   @impl Phoenix.LiveComponent
   def handle_event("submit", %{"booking" => booking_params}, socket) do
-    # Set submitting state immediately for instant UI feedback — but only when
-    # the location picker has an answer the LiveView will accept. An
-    # incomplete one is refused without changing any assign this component
-    # renders, so a flag set here would have nothing to clear it again.
-    socket = assign(socket, :submitting, BookingLocation.complete?(socket.assigns))
-    send(self(), {:step_event, :booking, :submit, booking_params})
-    {:noreply, socket}
+    AttendeeAttachmentUpload.submit(socket, booking_params)
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("cancel_attachment", %{"ref" => ref}, socket) do
+    {:noreply, cancel_upload(socket, :attachments, ref)}
   end
 
   @impl Phoenix.LiveComponent
@@ -66,6 +74,12 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
   @impl Phoenix.LiveComponent
   def handle_event("select_video_provider", %{"id" => id}, socket) do
     send(self(), {:step_event, :booking, :select_video_provider, id})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("select_venue", %{"id" => id}, socket) do
+    send(self(), {:step_event, :booking, :select_venue, id})
     {:noreply, socket}
   end
 
@@ -163,10 +177,19 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
                     selected_location_id={@selected_location_id}
                     video_choices={BookingLocation.video_choices(assigns)}
                     selected_video_id={@selected_video_id}
+                    venue_choices={BookingLocation.venue_choices(assigns)}
+                    selected_venue_id={@selected_venue_id}
+                    kept_location={BookingLocation.kept_location(assigns)}
                     location_phone={@location_phone}
                     location_error={@location_error}
                     phone_required={BookingLocation.phone_required?(assigns)}
                     target={@myself}
+                  />
+
+                  <LocationField.stated_location
+                    :if={BookingLocation.stated_location?(assigns)}
+                    option={BookingLocation.selected(assigns)}
+                    venue_choices={BookingLocation.venue_choices(assigns)}
                   />
 
                   <.form
@@ -180,8 +203,9 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
                     class="space-y-2"
                     id="booking-form"
                     {SecurityFields.recaptcha_form_attrs("booking_form", "booking")}
+                    novalidate
                   >
-                    <SecurityFields.honeypot_field id_prefix="booking" param_root="booking" />
+                    <.honeypot_field id="booking-website" param_root="booking" />
 
                     <div class="booking-inline-fields">
                       <.input
@@ -250,6 +274,19 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
                       phx-target={@myself}
                     />
 
+                    <AttachmentField.attachment_field
+                      :if={assigns[:uploads][:attachments]}
+                      upload={@uploads.attachments}
+                      error={@attachment_error}
+                      target={@myself}
+                    />
+
+                    <OwnCalendar.field form={f} offer={assigns[:own_calendar_offer]} />
+                    <OwnCalendar.signed_out_hint
+                      login_path={assigns[:own_calendar_login_path]}
+                      embedded={assigns[:embedded] || false}
+                    />
+
                     <SecurityFields.recaptcha_token_field id_prefix="booking" param_root="booking" />
                   </.form>
 
@@ -262,8 +299,6 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
                     max_guests={@max_guests}
                     target={@myself}
                   />
-
-                  <SecurityFields.recaptcha_notice_block />
 
                   <ApprovalNotice.block
                     :if={Approval.required?(@meeting_type)}
@@ -299,6 +334,8 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
                       {submit_label(@is_rescheduling, @meeting_type)}
                     </.loading_button>
                   </div>
+
+                  <SecurityFields.recaptcha_notice_block />
                 </div>
               </.glass_morphism_card>
             </div>

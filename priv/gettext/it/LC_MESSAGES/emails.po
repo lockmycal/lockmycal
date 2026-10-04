@@ -89,7 +89,9 @@ msgstr "MESSAGGIO DAL PARTECIPANTE:"
 msgid "Meeting"
 msgstr "Riunione"
 
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
 #: lib/tymeslot/integrations/calendar/utils/ics_generator.ex
+#: lib/tymeslot/meetings/booker_calendar_sync.ex
 #, elixir-autogen, elixir-format
 msgid "Message from %{name}:"
 msgstr "Messaggio da %{name}:"
@@ -144,6 +146,7 @@ msgstr "Videochiamata"
 
 #: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
 #: lib/tymeslot/integrations/calendar/utils/ics_generator.ex
+#: lib/tymeslot/meetings/booker_calendar_sync.ex
 #, elixir-autogen, elixir-format
 msgid "Video meeting:"
 msgstr "Riunione video:"
@@ -534,12 +537,12 @@ msgstr "Messaggio dal partecipante:"
 #: lib/tymeslot/emails/email_service/auth_emails.ex
 #, elixir-autogen, elixir-format
 msgid "You already have a Tymeslot account"
-msgstr "Hai già un account Tymeslot"
+msgstr "Hai già un account LockMyCal"
 
 #: lib/tymeslot/emails/email_service/auth_emails.ex
 #, elixir-autogen, elixir-format
 msgid "Your Tymeslot account has no password"
-msgstr "Il tuo account Tymeslot non ha una password"
+msgstr "Il tuo account LockMyCal non ha una password"
 
 #: lib/tymeslot/emails/shared/sign_in_provider.ex
 #, elixir-autogen, elixir-format
@@ -570,3 +573,114 @@ msgstr "Dettagli della riunione"
 #, elixir-autogen, elixir-format
 msgid "Not specified"
 msgstr "Non specificato"
+
+#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
+#, elixir-autogen, elixir-format
+msgid "ATTACHMENTS:"
+msgstr "ALLEGATI:"
+
+#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
+#, elixir-autogen, elixir-format
+msgid "Attachments"
+msgstr "Allegati"
+
+#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
+#, elixir-autogen, elixir-format
+msgid "The files are attached to this email."
+msgstr "I file sono allegati a questa email."
+
+#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
+#, elixir-autogen, elixir-format
+msgid "The files are too large to attach to this email. Download them from the booking on your dashboard: %{url}"
+msgstr "I file sono troppo grandi per essere allegati a questa email. Scaricali dalla prenotazione nella tua dashboard: %{url}"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Files from the attendee (sign in to download):"
+msgstr "File del partecipante (accedi per scaricarli):"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Company: %{company}"
+msgstr "Azienda: %{company}"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting type: %{type}"
+msgstr "Tipo di riunione: %{type}"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#: lib/tymeslot/meetings/booker_calendar_sync.ex
+#, elixir-autogen, elixir-format
+msgid "Phone: %{phone}"
+msgstr "Telefono: %{phone}"
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} has cancelled a recurring event you were invited to. Every occurrence is cancelled."
+msgstr "%{name} ha annullato un evento ricorrente a cui eri invitato. Tutte le ricorrenze sono annullate."
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} has cancelled an event you were invited to."
+msgstr "%{name} ha annullato un evento a cui eri invitato."
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled"
+msgstr "Annullato"
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled - %{title} (every occurrence)"
+msgstr "Annullato - %{title} (tutte le ricorrenze)"
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled - %{title} on %{date}"
+msgstr "Annullato - %{title} il %{date}"
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "Event Cancelled"
+msgstr "Evento annullato"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "NOTE FROM THE ORGANISER:"
+msgstr "NOTA DALL’ORGANIZZATORE:"
+
+#: lib/tymeslot/emails/shared/meeting/notes.ex
+#, elixir-autogen, elixir-format
+msgid "Note from the organiser"
+msgstr "Nota dall’organizzatore"
+
+#: lib/tymeslot/bookings/booking_title.ex
+#, elixir-autogen, elixir-format
+msgid "%{meeting_type} with %{name}"
+msgstr "%{meeting_type} con %{name}"
+
+#: lib/tymeslot/bookings/demo_orchestrator.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting with %{name}"
+msgstr "Riunione con %{name}"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "The address is to be arranged with the booker."
+msgstr "L'indirizzo è da concordare con la persona che ha prenotato."
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "The address will be arranged after booking."
+msgstr "L'indirizzo verrà concordato dopo la prenotazione."
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "The address will be arranged with you after booking."
+msgstr "L'indirizzo verrà concordato con te dopo la prenotazione."
+
+#: lib/tymeslot/meetings/booker_calendar_sync.ex
+#, elixir-autogen, elixir-format
+msgid "Organizer: %{organizer}"
+msgstr "Organizzatore: %{organizer}"

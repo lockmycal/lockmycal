@@ -211,14 +211,16 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.Components do
             </button>
           </div>
         <% else %>
-          <button
-            type="button"
-            class="btn btn-primary"
-            phx-click="enable_freebusy"
-            phx-target={@myself}
-          >
-            {dgettext("dashboard_calendar_settings", "Enable free/busy feed")}
-          </button>
+          <div class="flex justify-end">
+            <button
+              type="button"
+              class="btn btn-primary"
+              phx-click="enable_freebusy"
+              phx-target={@myself}
+            >
+              {dgettext("dashboard_calendar_settings", "Enable free/busy feed")}
+            </button>
+          </div>
         <% end %>
       </div>
     </section>

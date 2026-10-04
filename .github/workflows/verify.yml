@@ -22,8 +22,8 @@ jobs:
     env:
       MIX_ENV: test
       TEST_DB_POOL_SIZE: "10"
-      ELIXIR_VERSION: "1.20.3"
-      OTP_VERSION: "28.5.0.5"
+      ELIXIR_VERSION: "1.20.4"
+      OTP_VERSION: "28.5.0.7"
     steps:
       - uses: actions/checkout@v5
       - uses: erlef/setup-beam@v1
@@ -78,6 +78,12 @@ jobs:
           sudo tar -xzf /tmp/git-cliff.tar.gz -C /usr/local/bin --strip-components=1 "git-cliff-${CLIFF_VERSION}/git-cliff"
           git-cliff --version
       - run: mix test
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: assets/package-lock.json
+      - run: mix test.js
       # Catalogue references drift whenever a translatable string is added,
       # removed, or moved between files, and nothing else in this workflow
       # notices. Run it locally the same way, from the repository root:

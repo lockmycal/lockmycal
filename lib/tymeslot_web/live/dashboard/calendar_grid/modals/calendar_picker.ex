@@ -1,12 +1,17 @@
 defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CalendarPicker do
-  @moduledoc "Shared calendar picker component used by calendar grid modals."
+  @moduledoc """
+  The calendar an event is written to, picked from a native select: one
+  option group per connection, one option per writable calendar in it, and
+  the selected connection's colour as a dot in the closed field. Each change
+  sends `event_name` with a `calendar_target` param; `expand_target/1` turns it
+  into the `"integration-id"` / `"calendar-id"` pair the handlers read.
+  """
 
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Integrations.Calendar
   alias Tymeslot.Integrations.Calendar.DisplayHelpers
-  alias TymeslotWeb.Components.Icons.ProviderIcon
   alias TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
 
@@ -16,80 +21,109 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CalendarPicker do
   attr :selected_calendar_id, :string, default: nil
   attr :myself, :any, required: true
   attr :event_name, :string, required: true
+  attr :id, :string, default: "calendar-picker"
 
   @spec calendar_picker(map()) :: Phoenix.LiveView.Rendered.t()
   def calendar_picker(assigns) do
     # A connection with nothing writable is not a target. Filtering here rather
     # than at each call site means no picker can offer one, whatever list it is
     # handed.
+    integrations = Calendar.writable_integrations(assigns.integrations)
+    options = Enum.map(integrations, &option_group/1)
+
+    selected_integration =
+      Enum.find(integrations, &(&1.id == assigns.selected_integration_id))
+
     assigns =
-      assign(assigns, :integrations, Calendar.writable_integrations(assigns.integrations))
+      assigns
+      |> assign(:options, options)
+      |> assign(:value, selected_value(selected_integration, assigns.selected_calendar_id))
+      |> assign(:selected_integration, selected_integration)
+      # One choice is no choice: shown so the dialog says where the event is,
+      # but not offered as a control.
+      |> assign(:disabled, options |> Enum.flat_map(&elem(&1, 1)) |> length() <= 1)
 
     ~H"""
-    <div class="space-y-3">
-      <div :for={integration <- @integrations}>
-        <% calendars = Calendar.writable_calendars(integration.calendar_list) %>
-        <% is_active_integration = integration.id == @selected_integration_id %>
-        <%!-- Integration header --%>
-        <div class="flex items-center gap-1.5 mb-1.5">
-          <div class={"w-2 h-2 rounded-full shrink-0 #{Helpers.color_dot(%{integration_colors: @integration_colors}, integration)}"}>
-          </div>
-          <ProviderIcon.provider_icon provider={integration.provider} type="calendar" size="mini" />
-          <span class="text-token-xs font-semibold text-neutral-500 dark:text-twilight-indigo-300 uppercase tracking-wide truncate">
-            {integration.name}
-          </span>
-        </div>
-
-        <%!-- Calendar buttons --%>
-        <% fallback_id = EditWorkflow.default_calendar_id_for(integration) %>
-        <div :if={calendars != []} class="flex flex-wrap gap-1.5 pl-3.5">
-          <% cal_name = fn cal -> DisplayHelpers.extract_calendar_display_name(cal) end %>
-          <% is_selected = fn cal ->
-            is_active_integration and calendar_selected?(cal.id, @selected_calendar_id, fallback_id)
-          end %>
-          <button
-            :for={cal <- calendars}
-            type="button"
-            phx-click={@event_name}
-            phx-value-integration-id={integration.id}
-            phx-value-calendar-id={cal.id}
-            phx-target={@myself}
-            aria-pressed={to_string(is_selected.(cal))}
-            class={"inline-flex items-center gap-1.5 px-2.5 py-1 rounded-token-lg border text-token-xs transition-all #{if is_selected.(cal), do: "border-primary-400 bg-primary-50 dark:bg-primary-950/40 text-primary-800 dark:text-primary-300 font-semibold", else: "border-neutral-300 dark:border-twilight-indigo-700 text-neutral-600 dark:text-twilight-indigo-200 hover:border-neutral-300 dark:hover:border-twilight-indigo-600 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-900"}"}
-            title={cal_name.(cal)}
-          >
-            <div
-              :if={cal.color}
-              class="w-2 h-2 rounded-token-full shrink-0"
-              style={"background-color: #{cal.color}"}
-            >
-            </div>
-            <span class="truncate max-w-[10rem]">{cal_name.(cal)}</span>
-            <span
-              :if={cal.primary}
-              class="text-token-xs font-bold bg-neutral-200 dark:bg-twilight-indigo-800 px-1 py-0.5 rounded-token-md text-neutral-500 dark:text-twilight-indigo-300 uppercase"
-            >{dgettext("dashboard_calendar_events", "Primary")}</span>
-          </button>
-        </div>
-        <%!-- Fallback: a connection whose calendars have not been discovered,
-              which is written to through the provider's own default. A
-              connection that *has* a list but nothing writable in it never
-              reaches this point — `writable_integrations/1` has already
-              dropped it. --%>
-        <div :if={calendars == []} class="pl-3.5">
-          <button
-            type="button"
-            phx-click={@event_name}
-            phx-value-integration-id={integration.id}
-            phx-target={@myself}
-            class={"inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-token-xs transition-all #{if is_active_integration, do: "border-primary-400 bg-primary-50 dark:bg-primary-950/40 text-primary-800 dark:text-primary-300 font-semibold", else: "border-neutral-300 dark:border-twilight-indigo-700 text-neutral-600 dark:text-twilight-indigo-200 hover:border-neutral-300 dark:hover:border-twilight-indigo-600 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-900"}"}
-          >
-            <span>{dgettext("dashboard_calendar_events", "Default calendar")}</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    <form id={"#{@id}-form"} phx-change={@event_name} phx-target={@myself}>
+      <.input
+        type="select"
+        id={@id}
+        name="calendar_target"
+        value={@value}
+        options={@options}
+        disabled={@disabled}
+        style={@selected_integration && "--leading-icon-width: 0.625rem"}
+      >
+        <:leading_icon :if={@selected_integration}>
+          <span class={[
+            "block w-2.5 h-2.5 rounded-full",
+            Helpers.color_dot(%{integration_colors: @integration_colors}, @selected_integration)
+          ]}></span>
+        </:leading_icon>
+      </.input>
+    </form>
     """
+  end
+
+  @doc """
+  Reads the picker's `calendar_target` value back into the
+  `"integration-id"` / `"calendar-id"` params the handlers take (the calendar
+  id absent for a connection written to through its provider default).
+  Params without it are returned unchanged.
+  """
+  @spec expand_target(map()) :: map()
+  def expand_target(%{"calendar_target" => target} = params) when is_binary(target) do
+    case String.split(target, ":", parts: 2) do
+      [integration_id, ""] ->
+        Map.put(params, "integration-id", integration_id)
+
+      [integration_id, calendar_id] ->
+        Map.merge(params, %{"integration-id" => integration_id, "calendar-id" => calendar_id})
+
+      _malformed ->
+        params
+    end
+  end
+
+  def expand_target(params), do: params
+
+  # The integration id goes first because it is an integer: splitting on the
+  # first colon then leaves any colon inside a calendar id where it was.
+  defp target_value(integration_id, calendar_id), do: "#{integration_id}:#{calendar_id}"
+
+  # One <optgroup> per connection, named by it; a connection whose calendars
+  # have not been discovered is written to through the provider's own
+  # default. A connection that *has* a list but nothing writable in it never
+  # gets here — `writable_integrations/1` has already dropped it.
+  defp option_group(integration) do
+    options =
+      case Calendar.writable_calendars(integration.calendar_list) do
+        [] ->
+          [
+            {dgettext("dashboard_calendar_events", "Default calendar"),
+             target_value(integration.id, "")}
+          ]
+
+        calendars ->
+          Enum.map(calendars, fn cal ->
+            {DisplayHelpers.extract_calendar_display_name(cal),
+             target_value(integration.id, cal.id)}
+          end)
+      end
+
+    # Upper-cased as text: a native <optgroup> label takes no CSS.
+    {String.upcase(integration.name || ""), options}
+  end
+
+  defp selected_value(nil, _selected_calendar_id), do: nil
+
+  defp selected_value(integration, selected_calendar_id) do
+    calendar_id =
+      if is_binary(selected_calendar_id),
+        do: selected_calendar_id,
+        else: EditWorkflow.default_calendar_id_for(integration)
+
+    target_value(integration.id, calendar_id || "")
   end
 
   @doc """
@@ -108,9 +142,5 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CalendarPicker do
       %{id: id} -> id
       nil -> EditWorkflow.default_calendar_id_for(integration)
     end
-  end
-
-  defp calendar_selected?(cal_id, selected_id, default_id) do
-    if is_binary(selected_id), do: cal_id == selected_id, else: cal_id == default_id
   end
 end

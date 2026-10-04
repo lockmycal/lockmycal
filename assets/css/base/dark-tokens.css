@@ -1,94 +1,89 @@
-/* ===================================
-   DARK MODE TOKEN OVERRIDES
-   ===================================
-   Re-declares the semantic/glass CSS custom properties from
-   ./variables.css, scoped under html.dark, mapped onto the
-   twilight-indigo/prussian-blue scales registered in app.css's `@theme`
-   block. Any CSS-var-driven surface (.card, dropdowns, flash cards, ...)
-   picks up a working dark value automatically without touching each rule
-   individually. Primitives built from literal Tailwind utility classes
-   (card-glass, the button systems, inputs, modals, ...) still need their
-   own `dark:` companions where they're defined — see the component files
-   under ./components/.
-
-   Folds in the two overrides that used to live in a `prefers-color-scheme`
-   media query in ./variables.css (removed — see that file's history): a
-   bare media query can't be excluded by an explicit "Light" choice, so
-   those two tokens now live here instead, scoped to the `.dark` class.
-
-   `--color-text-primary` and the two `--color-border-*` values below are
-   deliberately NOT plain `twilight-indigo-*` steps — they're carried over
-   verbatim from the reference dark palette in the public marketing site
-   (Grav CMS, theme `modernai`,
-   user/themes/modernai/css/base/variables.css's `[data-theme="dark"]`
-   block), so the dashboard's dark mode reads as the same colour as that
-   site: a faint blue-tinted white for primary text (not a neutral grey),
-   and translucent white borders (not a solid navy step).
-
-   Selector is a plain `html.dark`, NOT `:where(html.dark)`. Every one of
-   these custom properties has its light-mode value declared on `:root` in
-   ./variables.css, and `:root` (a pseudo-class) carries real specificity
-   (0,1,0) — `:where(...)` always contributes zero specificity, so
-   `:where(html.dark) { --color-bg-primary: ... }` (0,0,0) *lost* to
-   `:root`'s (0,1,0) regardless of source order, silently keeping every
-   surface in its light-mode colour even with the `.dark` class applied.
-   `html.dark` (an element + class selector, (0,1,1)) reliably outranks
-   `:root`. This is unrelated to Tailwind's own `dark:` utilities — those
-   compile as `&:where(.dark, .dark *)` nested *inside* the same base
-   selector they modify (e.g. `.card-glass`), so both rules share the same
-   selector and specificity, and the later one in the stylesheet wins on
-   that tie; there's no competing `:root`-level declaration to lose to. */
+/* ===========================================================================
+   DARK MODE TOKEN OVERRIDES - LockMyCal Redesign
+   ===========================================================================
+   Values sourced from the LockMyCal Design System (docs/design-system/tokens.json).
+   Scoped under `html.dark`.
+   =========================================================================== */
 
 html.dark {
-  /* Tells the browser to use its native dark rendering for form controls it
-     paints itself — <select>'s option list, <input type="date">/"time">'s
-     picker popover, scrollbars — none of which a page's own CSS can reach
-     directly. Without this they keep rendering in the OS/browser's default
-     (light) palette regardless of our `.dark` class. */
   color-scheme: dark;
 
+  /* LockMyCal Core Design Tokens (Dark Mode) */
+  --lmc-bg: #0E1116;
+  --lmc-bg-alt: #121620;
+  --lmc-bg-code: #0B0C0A;
+  --lmc-surface: #171C26;
+  --lmc-surface-raised: #22231F;
+  --lmc-line: #3A3B36;
+  --lmc-line-strong: #55554F;
+  --lmc-ink: #ECEAE4;
+  --lmc-ink-2: #C9C8C1;
+  --lmc-ink-3: #B4B3AC;
+  --lmc-muted: #A09F98;
+  --lmc-subtle: #8E8D86;
+  --lmc-faint: #6F6E68;
+  --lmc-disabled: #55554F;
+  --lmc-ink-dim: #7E7D76;
+  --lmc-accent: #F08A3C;
+  --lmc-accent-ink: #F08A3C;
+  --lmc-on-accent: #111210;
+  --lmc-conflict-bg: #5A2E14;
+  --lmc-conflict-ink: #FFD9BC;
+  --lmc-protected-ink: #F5C9A6;
+
   /* Backgrounds */
-  --color-bg-primary: var(--color-prussian-blue-950);
-  --color-bg-secondary: var(--color-prussian-blue-900);
-  --color-bg-tertiary: var(--color-twilight-indigo-900);
-  --color-bg-inverse: #ffffff;
+  --color-bg-primary: #0E1116;
+  --color-bg-secondary: #121620;
+  --color-bg-tertiary: #171C26;
+  --color-bg-inverse: #FAFAF7;
 
-  /* Glass morphism backgrounds */
-  --color-glass-bg-light: rgba(20, 20, 40, 0.4);
-  --color-glass-bg-medium: rgba(20, 20, 40, 0.55);
-  --color-glass-bg-strong: rgba(20, 20, 40, 0.7);
-  --color-glass-bg-card: rgba(26, 39, 76, 0.55);
-  --color-glass-bg-card-enhanced: rgba(26, 39, 76, 0.65);
-  --color-glass-bg-overlay: rgba(20, 20, 40, 0.5);
-  --color-glass-bg-overlay-enhanced: rgba(20, 20, 40, 0.65);
+  /* Glass / Card Backgrounds */
+  --color-glass-bg-light: rgba(18, 22, 32, 0.6);
+  --color-glass-bg-medium: rgba(23, 28, 38, 0.75);
+  --color-glass-bg-strong: rgba(23, 28, 38, 0.9);
+  --color-glass-bg-card: #171C26;
+  --color-glass-bg-card-enhanced: #171C26;
+  --color-glass-bg-overlay: rgba(14, 17, 22, 0.7);
+  --color-glass-bg-overlay-enhanced: rgba(14, 17, 22, 0.85);
 
-  /* Text — #bcc9f1 matches the reference site's dark-mode text-primary
-     exactly (its dark `--color-primary-100`, tuned lighter than the plain
-     twilight-indigo-100 step for legibility). */
-  --color-text-primary: #bcc9f1;
-  --color-text-secondary: var(--color-twilight-indigo-300);
-  --color-text-tertiary: var(--color-twilight-indigo-400);
-  --color-text-inverse: var(--color-neutral-900);
+  /* Text — LockMyCal dark mode typography */
+  --color-text-primary: #ECEAE4;
+  --color-text-secondary: #C9C8C1;
+  --color-text-tertiary: #B4B3AC;
+  --color-text-inverse: #14161B;
 
-  --color-text-glass-primary: rgba(244, 244, 245, 1);
-  --color-text-glass-secondary: rgba(212, 212, 216, 0.85);
-  --color-text-glass-light: rgba(212, 212, 216, 0.7);
+  --color-text-glass-primary: #ECEAE4;
+  --color-text-glass-secondary: #C9C8C1;
+  --color-text-glass-light: #8E8D86;
 
-  /* Borders — translucent white, matching the reference site's
-     `--border`/`--border-subtle` (rgba overlays, not solid navy steps). */
-  --color-border-light: rgba(255, 255, 255, 0.09);
-  --color-border-default: rgba(255, 255, 255, 0.14);
-  --color-border-dark: var(--color-twilight-indigo-600);
+  /* Borders — slightly lighter in dark mode for clear field & container definition */
+  --color-border-light: #3A3B36;
+  --color-border-default: #55554F;
+  --color-border-dark: #6F6E68;
 
-  --color-border-glass-light: rgba(255, 255, 255, 0.12);
-  --color-border-glass-medium: rgba(255, 255, 255, 0.18);
-  --color-border-glass-strong: rgba(255, 255, 255, 0.28);
-  --color-border-glass-dark: rgba(9, 13, 27, 0.5);
-  --color-border-glass-dark-medium: rgba(9, 13, 27, 0.65);
-  --color-border-glass-dark-strong: rgba(9, 13, 27, 0.8);
+  --color-border-glass-light: #3A3B36;
+  --color-border-glass-medium: #55554F;
+  --color-border-glass-strong: #6F6E68;
+  --color-border-glass-dark: rgba(14, 17, 22, 0.6);
+  --color-border-glass-dark-medium: rgba(14, 17, 22, 0.75);
+  --color-border-glass-dark-strong: rgba(14, 17, 22, 0.9);
 
-  /* Calendar/error tokens — previously the orphaned prefers-color-scheme
-     block in ./variables.css, now correctly scoped to an explicit choice. */
-  --color-calendar-fallback: var(--color-neutral-500);
-  --color-error-bg: rgba(239, 68, 68, 0.15);
+  /* OAuth/Authentication Button Properties in Dark Mode */
+  --oauth-divider-color: rgba(255, 255, 255, 0.15);
+  --oauth-button-bg: #171C26;
+  --oauth-button-bg-hover: #22231F;
+  --oauth-button-border: #55554F;
+  --oauth-button-border-hover: #6F6E68;
+  --oauth-button-text: #ECEAE4;
+
+  /* Dropdown Component Dark */
+  --dropdown-bg: #171C26;
+  --dropdown-border: #55554F;
+  --dropdown-item-hover-bg: #22231F;
+  --dropdown-item-hover-text: #ECEAE4;
+  --dropdown-divider: #3A3B36;
+
+  /* Calendar / Fallback */
+  --color-calendar-fallback: #8E8D86;
+  --color-error-bg: rgba(194, 56, 47, 0.15);
 }

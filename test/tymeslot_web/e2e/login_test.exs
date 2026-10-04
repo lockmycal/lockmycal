@@ -25,7 +25,7 @@ defmodule TymeslotWeb.E2E.LoginTest do
     |> fill_in(text_field("email"), with: user.email)
     |> fill_in(css("#password-input"), with: "WrongPassword99!")
     |> click(css("button[type='submit']"))
-    |> assert_has(css(".bg-red-50"))
+    |> assert_has(css("[role='alert']", text: "Invalid email or password"))
   end
 
   feature "login page fits the narrowest supported viewport", %{session: session} do

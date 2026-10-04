@@ -15,6 +15,7 @@ defmodule Tymeslot.Integrations.Calendar.CalendarBehaviour do
               | MeetingSchema.t()
               | MeetingTypeSchema.t()
               | {pos_integer(), pos_integer()}
+              | {pos_integer(), pos_integer(), String.t()}
               | nil
             ) ::
               {:ok, CreatedEvent.t()} | {:error, any()}
@@ -25,6 +26,19 @@ defmodule Tymeslot.Integrations.Calendar.CalendarBehaviour do
               | MeetingSchema.t()
               | MeetingTypeSchema.t()
               | {pos_integer(), pos_integer()}
+              | {pos_integer(), pos_integer(), String.t()}
+              | nil
+            ) ::
+              :ok
+              | {:ok, %{optional(:document) => String.t(), optional(:tail) => map()}}
+              | {:error, any()}
+  @callback delete_event(
+              binary(),
+              pos_integer()
+              | MeetingSchema.t()
+              | MeetingTypeSchema.t()
+              | {pos_integer(), pos_integer()}
+              | {pos_integer(), pos_integer(), String.t()}
               | nil
             ) ::
               :ok | {:error, any()}
@@ -34,19 +48,11 @@ defmodule Tymeslot.Integrations.Calendar.CalendarBehaviour do
               | MeetingSchema.t()
               | MeetingTypeSchema.t()
               | {pos_integer(), pos_integer()}
-              | nil
-            ) ::
-              :ok | {:error, any()}
-  @callback delete_event(
-              binary(),
-              pos_integer()
-              | MeetingSchema.t()
-              | MeetingTypeSchema.t()
-              | {pos_integer(), pos_integer()}
+              | {pos_integer(), pos_integer(), String.t()}
               | nil,
               keyword()
             ) ::
-              :ok | {:error, any()}
+              :ok | {:ok, %{document: String.t() | nil}} | {:error, any()}
   @callback get_booking_integration_info(pos_integer() | MeetingTypeSchema.t()) ::
               {:ok,
                %{

@@ -813,7 +813,7 @@ msgstr "Prova a usare una password specifica per app invece della tua password a
 #: lib/tymeslot/integrations/calendar/caldav/offline_queue.ex
 #, elixir-autogen, elixir-format
 msgid "Tymeslot could not send this change to the calendar server."
-msgstr "Tymeslot non è riuscito a inviare questa modifica al server di calendario."
+msgstr "LockMyCal non è riuscito a inviare questa modifica al server di calendario."
 
 #: lib/tymeslot/integrations/calendar/shared/error_messages.ex
 #, elixir-autogen, elixir-format
@@ -1047,7 +1047,7 @@ msgstr "Colore"
 #: lib/tymeslot_web/components/dashboard/integrations/calendar/calendar_selection_modal.ex
 #, elixir-autogen, elixir-format
 msgid "How this calendar's events are shown in your Tymeslot calendar."
-msgstr "Come vengono mostrati gli eventi di questo calendario nel tuo calendario Tymeslot."
+msgstr "Come vengono mostrati gli eventi di questo calendario nel tuo calendario LockMyCal."
 
 #: lib/tymeslot_web/components/dashboard/integrations/calendar/calendar_selection_modal.ex
 #, elixir-autogen, elixir-format
@@ -1087,7 +1087,7 @@ msgstr "Exchange non ha restituito alcun evento del calendario, ma la cache ne c
 #: lib/tymeslot/workers/sync_exchange_calendar_worker.ex
 #, elixir-autogen, elixir-format
 msgid "The Exchange server answered the free/busy request with nothing Tymeslot could read. Retrying rather than treating your diary as free."
-msgstr "Il server Exchange ha risposto alla richiesta di disponibilità con un contenuto che Tymeslot non è riuscito a leggere. Il tentativo verrà ripetuto invece di considerare libera la tua agenda."
+msgstr "Il server Exchange ha risposto alla richiesta di disponibilità con un contenuto che LockMyCal non è riuscito a leggere. Il tentativo verrà ripetuto invece di considerare libera la tua agenda."
 
 #: lib/tymeslot/workers/sync_exchange_calendar_worker.ex
 #, elixir-autogen, elixir-format
@@ -1102,7 +1102,7 @@ msgstr "Il server Exchange ha rifiutato le credenziali salvate. Ricollega l'inte
 #: lib/tymeslot/workers/sync_exchange_calendar_worker.ex
 #, elixir-autogen, elixir-format
 msgid "Tymeslot needs the mailbox's email address to read its free/busy time. Please reconnect the integration and provide it."
-msgstr "Tymeslot ha bisogno dell'indirizzo e-mail della casella di posta per leggerne la disponibilità. Ricollega l'integrazione e indicalo."
+msgstr "LockMyCal ha bisogno dell'indirizzo e-mail della casella di posta per leggerne la disponibilità. Ricollega l'integrazione e indicalo."
 
 #: lib/tymeslot/integrations/calendar/shared/error_messages.ex
 #, elixir-autogen, elixir-format
@@ -1317,4 +1317,4 @@ msgstr "Questa modifica riguarda una sola occorrenza di un evento ricorrente, ma
 #: lib/tymeslot/integrations/calendar/caldav/errors.ex
 #, elixir-autogen, elixir-format
 msgid "The calendar server returned more data than Tymeslot can process at once."
-msgstr "Il server di calendario ha restituito più dati di quanti Tymeslot possa elaborare in una volta."
+msgstr "Il server di calendario ha restituito più dati di quanti LockMyCal possa elaborare in una volta."

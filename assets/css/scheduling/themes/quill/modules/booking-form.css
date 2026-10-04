@@ -269,6 +269,11 @@
   margin-top: var(--space-sm);
 }
 
+/* Bot-protection notice sits below the action buttons, set apart from them */
+.booking-actions + .recaptcha-notice {
+  margin-top: var(--space-md);
+}
+
 /* Booking card typography & spacing scale with the card's own width,
    not the viewport — so the heading shrinks correctly in narrow embeds
    even when the host page is wide. */
@@ -278,21 +283,20 @@
   }
 
   .booking-heading-wrapper {
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-2xs);
   }
 
   .booking-heading {
-    font-size: var(--theme-font-size-3xl);
+    font-size: var(--theme-font-size-2xl);
   }
 
   .booking-subtitle {
-    font-size: var(--theme-font-size-lg);
-    margin-bottom: var(--space-md);
+    font-size: var(--theme-font-size-sm);
+    margin-bottom: var(--space-3xs);
   }
 
   .booking-datetime {
-    font-size: var(--theme-font-size-sm);
-    margin-bottom: var(--space-lg);
+    margin-bottom: var(--space-md);
   }
 }
 
@@ -302,11 +306,11 @@
   }
 
   .booking-heading {
-    font-size: var(--theme-font-size-4xl);
+    font-size: var(--theme-font-size-3xl);
   }
 
   .booking-subtitle {
-    font-size: var(--theme-font-size-xl);
+    font-size: var(--theme-font-size-base);
   }
 }
 
@@ -494,6 +498,118 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* ===== Attachments field ===== */
+/* Lives inside the booking form (a file input only uploads with the form
+   that contains it), below the message; the chosen files are listed as rows
+   rather than chips because names are long and sizes matter. */
+
+.quill-theme-wrapper .attachment-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  margin-top: var(--space-xs);
+}
+
+/* Visually hidden: the note under the input already says what may be
+   attached. Kept for screen readers, since it is the file input's label. */
+.quill-theme-wrapper .attachment-field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.quill-theme-wrapper .attachment-field__input {
+  width: 100%;
+  font-size: var(--theme-font-size-sm);
+  color: var(--text-opacity-medium-high);
+}
+
+.quill-theme-wrapper .attachment-field__input::file-selector-button {
+  margin-right: var(--space-xs);
+  padding: var(--button-padding-sm);
+  border: var(--border-width-thin) solid var(--border-light);
+  border-radius: var(--button-radius-sm);
+  background: var(--surface-light);
+  color: var(--text-opacity-medium-high);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.quill-theme-wrapper .attachment-field__note {
+  font-size: var(--theme-font-size-2xs);
+  color: var(--text-opacity-subtle);
+}
+
+.quill-theme-wrapper .attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quill-theme-wrapper .attachment-list__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-3xs) var(--space-2xs);
+  background: var(--surface-light);
+  border: var(--border-width-thin) solid var(--border-light);
+  border-radius: var(--button-radius-sm);
+}
+
+.quill-theme-wrapper .attachment-list__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--theme-font-size-2xs);
+  color: var(--text-opacity-medium-high);
+}
+
+.quill-theme-wrapper .attachment-list__size {
+  flex: none;
+  font-size: var(--theme-font-size-2xs);
+  color: var(--text-opacity-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.quill-theme-wrapper .attachment-list__remove {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--text-opacity-subtle);
+  font-size: var(--theme-font-size-md);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.quill-theme-wrapper .attachment-list__remove:hover {
+  color: white;
+  background: var(--theme-danger);
+}
+
+.quill-theme-wrapper .attachment-field__error {
+  font-size: var(--theme-font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--theme-danger);
+}
+
 /* ===== Container Queries ===== */
 
 /* Small containers: constrain form width */
@@ -575,16 +691,19 @@
    guest field does. */
 
 .quill-theme-wrapper .location-field {
-  margin: 0 0 var(--space-sm);
-  padding: 0;
+  margin: 0 0 var(--space-md);
+  padding: 0 0 var(--space-md);
   border: none;
+  border-bottom: var(--border-width-thin) solid var(--option-tile-border);
 }
 
+/* Same as the form's field labels (`.label`), so the question reads as one
+   of the form's fields. */
 .quill-theme-wrapper .location-field__label {
   padding: 0;
   margin-bottom: var(--space-xs);
   font-size: var(--theme-font-size-sm);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semibold);
   color: var(--text-opacity-medium-high);
 }
 
@@ -597,49 +716,45 @@
 .quill-theme-wrapper .location-group + .location-group {
   margin-top: var(--space-sm);
 }
+/* Options as cards, two to a row when the card is wide enough. */
 .quill-theme-wrapper .location-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3xs);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-xs);
   margin: 0;
-  padding: var(--space-3xs);
-  background: var(--option-tile-bg);
-  border: var(--border-width-thin) solid var(--option-tile-border);
-  border-radius: var(--input-border-radius);
-  backdrop-filter: blur(var(--glass-blur-sm));
-  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  padding: 0;
 }
 .quill-theme-wrapper .location-option {
   position: relative;
-  flex: 1 1 auto;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-2xs);
-  padding: var(--space-2xs) var(--space-sm);
-  border-radius: var(--radius-md);
+  gap: var(--space-sm);
+  min-width: 0;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--option-tile-bg);
+  border: var(--border-width-thin) solid var(--option-tile-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(var(--glass-blur-sm));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
   color: var(--option-tile-text);
-  font-size: var(--theme-font-size-xs);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: var(--letter-spacing-wide);
-  text-transform: uppercase;
+  text-align: left;
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 .quill-theme-wrapper .location-option:hover {
   background: var(--option-tile-bg-hover);
-  color: white;
+  border-color: var(--option-tile-border-hover);
 }
 .quill-theme-wrapper .location-option:has(.location-option__radio:focus-visible) {
   box-shadow: 0 0 0 3px var(--theme-primary-focus);
 }
 .quill-theme-wrapper .location-option--selected,
 .quill-theme-wrapper .location-option--selected:hover {
-  background: var(--theme-primary-solid);
-  color: var(--theme-on-primary);
+  background: color-mix(in srgb, var(--theme-primary) 18%, transparent);
+  border-color: var(--theme-primary);
 }
 /* The native radio stays in the page for keyboard and screen-reader use;
-   the toggle it sits in is what the booker sees. */
+   the card it sits in is what the booker sees. */
 .quill-theme-wrapper .location-option__radio {
   position: absolute;
   width: 1px;
@@ -648,15 +763,71 @@
   opacity: 0;
   pointer-events: none;
 }
-.quill-theme-wrapper .location-option__icon {
+.quill-theme-wrapper .location-option__icon-tile {
   flex: none;
-  width: 1rem;
-  height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  background: var(--option-tile-bg-hover);
+  color: white;
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
-.quill-theme-wrapper .location-field__detail {
-  margin: var(--space-2xs) 0 0;
+.quill-theme-wrapper .location-option--selected .location-option__icon-tile {
+  background: var(--theme-primary-solid);
+  color: var(--theme-on-primary);
+}
+.quill-theme-wrapper .location-option__icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+.quill-theme-wrapper .location-option__text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+.quill-theme-wrapper .location-option__title {
   font-size: var(--theme-font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: white;
+}
+.quill-theme-wrapper .location-option__hint {
+  font-size: var(--theme-font-size-2xs);
   color: var(--text-opacity-subtle);
+  overflow-wrap: anywhere;
+}
+.quill-theme-wrapper .location-option__check {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: var(--border-width-medium) solid var(--option-tile-border-hover);
+  border-radius: 9999px;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.quill-theme-wrapper .location-option__check-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  opacity: 0;
+}
+.quill-theme-wrapper .location-option--selected .location-option__check {
+  background: var(--theme-primary-solid);
+  border-color: var(--theme-primary-solid);
+  color: var(--theme-on-primary);
+}
+.quill-theme-wrapper .location-option--selected .location-option__check-icon {
+  opacity: 1;
+}
+/* Each card carries its own hint, so the chosen option's detail line under
+   the row would only repeat it. */
+.quill-theme-wrapper .location-field__detail {
+  display: none;
 }
 .quill-theme-wrapper .location-phone {
   margin-top: var(--space-xs);
@@ -694,4 +865,79 @@
   margin-top: var(--space-3xs);
   font-size: var(--theme-font-size-sm);
   color: var(--theme-error-light);
+}
+
+/* ===== Saved venues ===== */
+/* The venues an in-person location offers, one per line so each can carry
+   its address beneath its name. The radio inside reuses
+   `.location-option__radio`, and a single venue or the arranged-later note
+   sits where an option's detail would. A venue's address may run over
+   several lines, which `pre-line` keeps. */
+
+.quill-theme-wrapper .location-venues {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  margin: 0;
+  padding: var(--space-3xs);
+  background: var(--option-tile-bg);
+  border: var(--border-width-thin) solid var(--option-tile-border);
+  border-radius: var(--input-border-radius);
+  backdrop-filter: blur(var(--glass-blur-sm));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+}
+.quill-theme-wrapper .location-venue {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  padding: var(--space-2xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  color: var(--option-tile-text);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.quill-theme-wrapper .location-venue:hover {
+  background: var(--option-tile-bg-hover);
+}
+.quill-theme-wrapper .location-venue:has(.location-option__radio:focus-visible) {
+  box-shadow: 0 0 0 3px var(--theme-primary-focus);
+}
+.quill-theme-wrapper .location-venue--selected,
+.quill-theme-wrapper .location-venue--selected:hover {
+  background: var(--theme-primary-solid);
+  color: var(--theme-on-primary);
+}
+.quill-theme-wrapper .location-venue__name {
+  font-size: var(--theme-font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+.quill-theme-wrapper .location-venue__description,
+.quill-theme-wrapper .location-field__venue-description {
+  font-size: var(--theme-font-size-xs);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.quill-theme-wrapper .location-field__venue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+.quill-theme-wrapper .location-field__venue-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-opacity-medium-high);
+}
+.quill-theme-wrapper .location-field__note {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--theme-font-size-sm);
+  color: var(--text-opacity-subtle);
+}
+.quill-theme-wrapper .location-stated__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin: 0;
+  font-size: var(--theme-font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-opacity-medium-high);
 }

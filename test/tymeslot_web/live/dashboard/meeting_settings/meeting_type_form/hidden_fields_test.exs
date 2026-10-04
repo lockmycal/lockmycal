@@ -29,6 +29,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.HiddenFieldsTest
       payment_required: false,
       payment_price: "",
       allow_guests: false,
+      allow_attachments: false,
       show_as_free: false
     )
   end

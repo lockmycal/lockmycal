@@ -1,13 +1,14 @@
 defmodule TymeslotWeb.Dashboard.CalendarGrid.PerCalendarAppearanceTest do
   @moduledoc """
-  Showing, hiding and colouring one calendar inside a connected account, from
-  the dashboard calendar's "My Calendars" dropdown.
+  Showing and hiding one calendar inside a connected account, from the
+  dashboard calendar's "My Calendars" dropdown, and a stored per-calendar
+  colour painting its events (the dropdown no longer offers a colour picker).
 
   The pieces below this are covered elsewhere: `appearance_test.exs` for the
   store and its ownership check, `calendar_colour_classes_test.exs` for the
   order a colour is resolved in. What is asserted here is what only the
-  LiveView can show: that a choice made in the dropdown reaches the grid, and
-  that it does not take the account's other calendars with it.
+  LiveView can show: that a choice reaches the grid, and that it does not take
+  the account's other calendars with it.
   """
   use TymeslotWeb.LiveCase, async: false
 
@@ -55,16 +56,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.PerCalendarAppearanceTest do
     |> Enum.filter(&(Floki.text(&1) =~ summary))
     |> Floki.attribute("class")
     |> Enum.join(" ")
-  end
-
-  defp pressed?(html, calendar_id, colour) do
-    html
-    |> Floki.parse_document!()
-    |> Floki.find(
-      ~s(button[phx-value-calendar_id="#{calendar_id}"][phx-value-colour="#{colour}"])
-    )
-    |> Floki.attribute("aria-pressed")
-    |> Enum.any?(&(&1 == "true"))
   end
 
   describe "the My Calendars dropdown" do
@@ -186,27 +177,18 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.PerCalendarAppearanceTest do
   end
 
   describe "colouring one calendar" do
-    test "stores the palette key against that calendar", %{conn: conn, user: user} do
+    test "the dropdown offers no colour picker", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/dashboard/calendar")
       open_dropdown(view)
 
-      view
-      |> element(
-        "button[phx-click='set_calendar_colour'][phx-value-calendar_id='cal-main'][phx-value-colour='banana']"
-      )
-      |> render_click()
-
-      assert [%{provider_calendar_id: "cal-main", colour: "banana"}] =
-               Appearance.list_for_user(user.id)
+      refute has_element?(view, "button[phx-value-colour]")
     end
 
-    test "paints that calendar's events in the grid and leaves its siblings alone", %{
+    test "a stored colour still paints that calendar's events and leaves its siblings alone", %{
       conn: conn,
+      user: user,
       integration: integration
     } do
-      # Storing the row is not the feature; painting the event is. Asserting only
-      # on the stored colour passes even when no view receives the colour map,
-      # which is exactly how the first version of this shipped broken.
       at = DateTime.new!(Date.utc_today(), ~T[10:00:00], "Etc/UTC")
 
       for {cal, summary} <- [{"cal-main", "Sprint planning"}, {"cal-birthdays", "A birthday"}] do
@@ -219,76 +201,13 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.PerCalendarAppearanceTest do
         )
       end
 
+      {:ok, _appearance} = Appearance.set_colour(user.id, integration.id, "cal-main", "tomato")
+
       {:ok, view, _html} = live(conn, ~p"/dashboard/calendar")
-      open_dropdown(view)
-
-      view
-      |> element(
-        "button[phx-click='set_calendar_colour'][phx-value-calendar_id='cal-main'][phx-value-colour='tomato']"
-      )
-      |> render_click()
-
       html = render(view)
 
       assert event_classes(html, "Sprint planning") =~ "bg-calendar-tomato"
       refute event_classes(html, "A birthday") =~ "bg-calendar-tomato"
-    end
-
-    test "leaves the account's other calendars inheriting", %{conn: conn, user: user} do
-      {:ok, view, _html} = live(conn, ~p"/dashboard/calendar")
-      open_dropdown(view)
-
-      view
-      |> element(
-        "button[phx-click='set_calendar_colour'][phx-value-calendar_id='cal-main'][phx-value-colour='banana']"
-      )
-      |> render_click()
-
-      keys = user.id |> Appearance.list_for_user() |> Enum.map(& &1.provider_calendar_id)
-
-      refute "cal-birthdays" in keys
-    end
-
-    test "the clearing pill restores inheritance rather than storing a colour", %{
-      conn: conn,
-      user: user
-    } do
-      {:ok, view, _html} = live(conn, ~p"/dashboard/calendar")
-      open_dropdown(view)
-
-      view
-      |> element(
-        "button[phx-click='set_calendar_colour'][phx-value-calendar_id='cal-main'][phx-value-colour='banana']"
-      )
-      |> render_click()
-
-      view
-      |> element(
-        "button[phx-click='set_calendar_colour'][phx-value-calendar_id='cal-main'][phx-value-colour='default']"
-      )
-      |> render_click()
-
-      assert [%{colour: nil}] = Appearance.list_for_user(user.id)
-    end
-
-    test "marks the chosen swatch as pressed without a reload", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/dashboard/calendar")
-      open_dropdown(view)
-
-      html =
-        view
-        |> element(
-          "button[phx-click='set_calendar_colour'][phx-value-calendar_id='cal-main'][phx-value-colour='banana']"
-        )
-        |> render_click()
-
-      # The swatch reads its pressed state from `calendar_colour_keys`, which is
-      # a different assign from the one the grid paints with. Refreshing only
-      # the painting map would leave the control the organiser just clicked
-      # looking unselected. Parsed rather than regexed so the assertion does not
-      # depend on the order the attributes happen to be rendered in.
-      assert pressed?(html, "cal-main", "banana")
-      refute pressed?(html, "cal-main", "grape")
     end
   end
 end

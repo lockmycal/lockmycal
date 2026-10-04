@@ -1,6 +1,6 @@
 defmodule TymeslotWeb.Dashboard.BookingsManagement.Modals do
   @moduledoc """
-  The four modals the bookings dashboard can open, in one place.
+  The modals the bookings dashboard can open, in one place.
 
   Extracted from the component's `render/1` so the list, its tabs, and the
   loading states stay readable: the modals are always mounted and almost always
@@ -10,15 +10,19 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.Modals do
   distinct rather than one parameterised modal. Cancelling ends a meeting both
   sides agreed to; declining refuses one that was only ever requested; asking
   for a reschedule proposes a new time; deleting permanently removes an
-  already-cancelled meeting's record. Collapsing them would mean one body of
-  copy trying to say all four things.
+  already-cancelled meeting's record; adding guests invites more people to one
+  already booked. Collapsing them would mean one body of copy trying to say
+  all of these things.
   """
 
   use Phoenix.Component
 
   alias Phoenix.LiveView.JS
 
+  alias TymeslotWeb.Dashboard.BookingsManagement.GuestActions
+
   alias TymeslotWeb.Components.Dashboard.Meetings.{
+    AddGuestsModal,
     CancelMeetingModal,
     DeclineRequestModal,
     DeleteMeetingModal,
@@ -39,6 +43,10 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.Modals do
   attr :delete_meeting, :map, default: nil
   attr :show_delete, :boolean, required: true
   attr :deleting, :boolean, required: true
+  attr :add_guests, :map, default: nil
+  attr :show_add_guests, :boolean, required: true
+  attr :staged_guests, :list, default: []
+  attr :existing_guests, :list, default: []
   attr :profile, :any, default: nil
   attr :time_format, :string, required: true
   attr :target, :any, required: true
@@ -94,6 +102,18 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.Modals do
       deleting={@deleting}
       on_cancel={JS.push("hide_delete_modal", target: @target)}
       confirm_event="confirm_delete_meeting"
+      target={@target}
+    />
+
+    <AddGuestsModal.add_guests_modal
+      id="add-guests-modal"
+      show={@show_add_guests}
+      meeting={@add_guests}
+      staged={@staged_guests}
+      existing={@existing_guests}
+      remaining={GuestActions.room(@existing_guests)}
+      on_cancel={JS.push("hide_add_guests_modal", target: @target)}
+      confirm_event="confirm_add_guests"
       target={@target}
     />
     """

@@ -24,6 +24,7 @@ defmodule TymeslotWeb.AuthLive do
 
   alias Phoenix.Controller
   alias Tymeslot.Auth
+  alias Tymeslot.Security.RedirectPath
   alias TymeslotWeb.AuthLive.PageMetaHelper
   alias TymeslotWeb.AuthLive.PasswordResetEvents
   alias TymeslotWeb.AuthLive.SignupEvents
@@ -69,11 +70,20 @@ defmodule TymeslotWeb.AuthLive do
       |> prefill_verification_email()
       |> StateHelper.clear_errors()
       |> PageMetaHelper.assign_page_meta()
+      |> assign(:return_to, return_to(params))
 
     Logger.info("AuthLive: handle_params completed", current_state: socket.assigns.current_state)
 
     {:noreply, socket}
   end
+
+  # Where to land after signing in, e.g. back on the booking form a visitor
+  # left to sign in. Only a same-origin path is kept.
+  defp return_to(%{"return_to" => path}) do
+    if RedirectPath.safe?(path), do: path
+  end
+
+  defp return_to(_params), do: nil
 
   @impl Phoenix.LiveView
   def handle_info(:resend_cooldown_tick, socket), do: VerificationEvents.tick(socket)

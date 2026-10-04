@@ -62,6 +62,9 @@ defmodule TymeslotWeb.E2E.PublicBookingTest do
       |> assert_has(css("[data-testid='booking-form']"))
       |> fill_in(css("input[name='booking[name]']"), with: "Jane Doe")
       |> fill_in(css("input[name='booking[email]']"), with: "jane@example.com")
+      # This fork requires the booking form's own phone and message fields.
+      |> fill_in(css("input[name='booking[phone]']"), with: "+1 555 0199")
+      |> fill_in(css("textarea[name='booking[message]']"), with: "Looking forward to it")
       |> execute_script("document.activeElement.blur()")
 
     # Wait for button to become enabled (server has validated the complete form)

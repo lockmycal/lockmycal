@@ -42,6 +42,8 @@ defmodule TymeslotWeb.Hooks.PageViewHook do
 
   alias Tymeslot.Analytics
   alias Tymeslot.Analytics.Fingerprint
+  # Used only by the asynchronous write mode, compiled out when it is off.
+  alias Tymeslot.Infrastructure.Tasks, warn: false
   alias Tymeslot.MeetingTypes
   alias Tymeslot.Profiles
   alias TymeslotWeb.Helpers.ClientIP
@@ -70,7 +72,7 @@ defmodule TymeslotWeb.Hooks.PageViewHook do
 
   # Compute the visitor hash exactly once, here, via the canonical ClientIP
   # module (Cloudflare-aware). The hash is assigned to the socket so a later
-  # booking can persist the *same* value — `assign_tracking/2` folds it into the
+  # booking can persist the *same* value — `TrackingHelpers.assign_tracking/2` folds it into the
   # `:tracking` map. The async page-view write recomputes the hash from the
   # identical (ip, user_agent, session_id) inputs, so the event and the booking
   # always share one join key. Anything else risks two extractors disagreeing
@@ -112,7 +114,7 @@ defmodule TymeslotWeb.Hooks.PageViewHook do
   # arm costs the mount path a check.
   if @async_page_view_logging do
     defp run_page_view_write(write) do
-      Task.Supervisor.start_child(Tymeslot.TaskSupervisor, write)
+      Tasks.start_child(Tymeslot.TaskSupervisor, write)
       :ok
     end
   else

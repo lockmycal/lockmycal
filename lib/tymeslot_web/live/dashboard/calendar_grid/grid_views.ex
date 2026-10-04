@@ -10,6 +10,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Infrastructure.Config
+  alias TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
   alias TymeslotWeb.Dashboard.CalendarGrid.Views.AllDayRow
   alias TymeslotWeb.Dashboard.CalendarGrid.Views.EventBadges
@@ -107,9 +108,9 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
           </div>
           <div
             :for={day <- @visible_days}
-            class={"text-center py-2 border-l border-neutral-300 dark:border-twilight-indigo-800 #{Helpers.day_header_class(day, @user_timezone)}"}
+            class={"text-center py-2 border-l border-neutral-300 dark:border-twilight-indigo-800 #{Helpers.day_header_class(day, @user_timezone)} #{Helpers.day_column_class(day, assigns)}"}
           >
-            <span :if={@view == :day} class="text-token-sm font-medium hidden sm:inline">{full_day_label(
+            <span :if={@view == :day} class="text-token-sm font-medium hidden sm:inline">{LocaleFormat.format_weekday_date(
               day,
               @locale
             )}</span>
@@ -144,7 +145,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
               <%!-- Day columns --%>
               <div
                 :for={day <- @visible_days}
-                class="relative border-l border-neutral-300 dark:border-twilight-indigo-800"
+                class={"relative border-l border-neutral-300 dark:border-twilight-indigo-800 #{Helpers.day_column_class(day, assigns)}"}
                 data-day-col={Date.to_iso8601(day)}
                 style="min-height: 96rem;"
               >
@@ -200,7 +201,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
                       :if={(Map.get(event, :reminders) || []) != []}
                       name="hero-bell-micro"
                       class="inline-block w-3 h-3 opacity-70 mr-0.5 align-text-bottom"
-                    />{event.summary || dgettext("dashboard_calendar", "(No title)")}
+                    /><AttendeeAttachments.marker attachments={Map.get(event, :attendee_attachments)} />{event.summary ||
+                      dgettext("dashboard_calendar", "(No title)")}
                   </div>
                   <div class="opacity-80">
                     {Helpers.format_display_time_range(
@@ -358,12 +360,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
 
   defp max_datetime(a, b), do: if(DateTime.compare(a, b) == :gt, do: a, else: b)
 
-  # Localised day-column header labels (weekday/month rendered in the active locale).
-  defp full_day_label(day, locale) do
-    "#{LocaleFormat.format_weekday_name(Date.day_of_week(day), locale, :full)}, " <>
-      "#{LocaleFormat.format_month_name(day.month, locale)} #{day.day}, #{day.year}"
-  end
-
+  # Localised short day-column header label, for narrow screens.
   defp short_day_label(day, locale) do
     "#{LocaleFormat.format_weekday_name(Date.day_of_week(day), locale, :short)} #{day.day}"
   end

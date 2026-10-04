@@ -16,8 +16,11 @@ defmodule Tymeslot.Webhooks do
   require Logger
 
   alias Tymeslot.Features
+  alias Tymeslot.Infrastructure.Logging.LogFormat
+  alias Tymeslot.Infrastructure.Tasks
   alias Tymeslot.Meetings.MeetingSchema
   alias Tymeslot.Notifications.EventTypes
+  alias Tymeslot.Security.EncryptedString
 
   alias Tymeslot.Webhooks.{
     HttpDelivery,
@@ -32,7 +35,9 @@ defmodule Tymeslot.Webhooks do
 
   @impl Tymeslot.Security.EncryptedStorage
   def encrypted_storage,
-    do: {WebhookSchema.__schema__(:source), WebhookSchema.encrypted_credential_fields()}
+    do:
+      {WebhookSchema.__schema__(:source),
+       WebhookSchema.encrypted_credential_fields() ++ EncryptedString.columns(WebhookSchema)}
 
   # ============================================================================
   # CRUD Operations
@@ -217,7 +222,7 @@ defmodule Tymeslot.Webhooks do
 
   defp run_bounded_test_connection(url, addresses, payload, headers) do
     task =
-      Task.Supervisor.async(Tymeslot.TaskSupervisor, fn ->
+      Tasks.async(Tymeslot.TaskSupervisor, fn ->
         HttpDelivery.post(url, Jason.encode!(payload), headers,
           skip_initial_check: true,
           pin_addresses: addresses
@@ -318,7 +323,7 @@ defmodule Tymeslot.Webhooks do
               Logger.warning("Failed to schedule webhook delivery",
                 webhook_id: webhook.id,
                 event_type: event_type,
-                reason: inspect(reason)
+                reason: LogFormat.reason(reason)
               )
           end
         end)

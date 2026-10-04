@@ -74,8 +74,8 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.RescheduleRequestModal do
             )}
           </p>
 
-          <div class="bg-neutral-50 rounded-token-2xl p-6 border border-neutral-300 space-y-3">
-            <p class="text-token-xs font-black text-neutral-500 uppercase tracking-wider">
+          <div class="bg-neutral-50 dark:bg-twilight-indigo-900/40 rounded-token-2xl p-6 border border-neutral-300 dark:border-twilight-indigo-800 space-y-3">
+            <p class="text-token-xs font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
               {dgettext("dashboard_bookings", "Current Meeting")}
             </p>
             <div class="text-neutral-900 dark:text-neutral-50 font-black text-lg space-y-2">
@@ -102,11 +102,11 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.RescheduleRequestModal do
             </div>
           </div>
 
-          <div class="bg-primary-50/50 border-2 border-primary-100 rounded-token-2xl p-6">
-            <p class="text-primary-800 font-black mb-3">
+          <div class="bg-primary-50/50 dark:bg-primary-950/30 border-2 border-primary-100 dark:border-primary-900 rounded-token-2xl p-6">
+            <p class="text-primary-800 dark:text-primary-200 font-black mb-3">
               {dgettext("dashboard_bookings", "What happens next:")}
             </p>
-            <ul class="text-primary-700 font-medium space-y-2">
+            <ul class="text-primary-700 dark:text-primary-300 font-medium space-y-2">
               <li class="flex items-start gap-2">
                 <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary-400 shrink-0"></span>
                 <span>{dgettext(

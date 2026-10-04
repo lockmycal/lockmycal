@@ -387,7 +387,7 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid do
         </div>
 
         <%!-- Preview --%>
-        <div class="mb-4 bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-lg p-4 border-2 border-neutral-300 dark:border-twilight-indigo-700">
+        <div class="mb-4 bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-lg p-4 border-2 border-neutral-300 dark:border-twilight-indigo-800">
           {render_slot(@preview)}
         </div>
 

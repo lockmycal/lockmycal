@@ -9,6 +9,7 @@
 @import "../../shared/layout.css";
 @import "../../shared/utilities.css";
 @import "../../shared/brand-tokens.css";
+@import "../../../base/fonts.css";
 @import "../../shared/background-motion.css";
 
 /* ===========================================================================
@@ -70,6 +71,7 @@
 @import "./modules/video.css";
 @import "./modules/overview.css";
 @import "./modules/approval-notice.css";
+@import "./modules/own-calendar.css";
 @import "./modules/preview-notice.css";
 @import "./modules/schedule-header.css";
 @import "./modules/booking-form.css";
@@ -80,6 +82,7 @@
 @import "./modules/components.css";
 @import "./modules/language-switcher.css";
 @import "./modules/public-top-bar.css";
+@import "./modules/public-footer.css";
 @import "./modules/calendar.css";
 @import "./modules/time-slots.css";
 @import "./modules/iframe.css";

@@ -20,7 +20,7 @@ defmodule TymeslotWeb.Dashboard.Automation.TabNav do
   @spec tab_nav(map()) :: Phoenix.LiveView.Rendered.t()
   def tab_nav(assigns) do
     ~H"""
-    <div class="flex bg-white dark:bg-twilight-indigo-950 border-2 border-neutral-300 dark:border-twilight-indigo-700 rounded-[1.25rem] p-1.5 shadow-sm max-w-fit mb-10">
+    <div class="flex bg-white dark:bg-twilight-indigo-950 border-2 border-neutral-300 dark:border-twilight-indigo-700 rounded-2xl p-1.5 shadow-sm max-w-fit mb-10">
       <button
         phx-click={JS.push("switch_tab", value: %{"tab" => "webhooks"}, target: @myself)}
         class={tab_class(@active_tab == :webhooks)}

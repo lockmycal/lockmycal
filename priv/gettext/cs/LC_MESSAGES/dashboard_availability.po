@@ -858,3 +858,8 @@ msgstr "Maximální čas schůzek v den %{day}"
 #, elixir-autogen, elixir-format
 msgid "No time limit"
 msgstr "Bez časového limitu"
+
+#: lib/tymeslot/availability/schedules.ex
+#, elixir-autogen, elixir-format
+msgid "Working hours"
+msgstr "Pracovní doba"

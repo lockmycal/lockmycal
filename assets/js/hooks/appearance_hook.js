@@ -7,30 +7,13 @@
  * component's own DOM, so without this hook the saved preference wouldn't
  * visibly apply until the next full page load.
  *
- * Two shapes of caller, distinguished by markup:
- *  - Mounted on a wrapper containing `button[phx-value-option]` children
- *    (Profile Settings' 3-way Light/Dark/System <.option_toggle>): the
- *    wrapper's own `phx-click`/`phx-value-option` already round-trips to the
- *    server, this hook only does the instant class flip.
- *  - Mounted directly on a single button carrying `data-appearance-flip`
- *    (the topbar sun/moon quick toggle): there's no separate "value" to read
- *    from the DOM, so the hook computes the opposite of the *currently
- *    visible* state (not the stored preference — under "System" the server
- *    never resolved a concrete value, only the client knows what's actually
- *    showing), flips the class, and pushes the result to the server itself.
+ * Mounted on a wrapper containing `button[phx-value-option]` children (Profile
+ * Settings' Light/Dark/System <.option_toggle>, the top bar's icon switch):
+ * each button's own `phx-click`/`phx-value-option` round-trips to the server
+ * to save the choice, this hook only does the instant class flip.
  */
 export const AppearanceToggle = {
   mounted() {
-    if (this.el.hasAttribute("data-appearance-flip")) {
-      this.el.addEventListener("click", () => {
-        const isDark = document.documentElement.classList.contains("dark");
-        const next = isDark ? "light" : "dark";
-        applyAppearance(next);
-        this.pushEvent("change_appearance", { value: next });
-      });
-      return;
-    }
-
     this.el.addEventListener("click", (event) => {
       const button = event.target.closest("button[phx-value-option]");
       if (!button) return;

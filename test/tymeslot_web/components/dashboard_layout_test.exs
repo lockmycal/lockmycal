@@ -1,5 +1,6 @@
 defmodule TymeslotWeb.Components.DashboardLayoutTest do
-  use TymeslotWeb.ConnCase, async: true
+  # async: false — the footer tests set the global `:web_host` config.
+  use TymeslotWeb.ConnCase, async: false
 
   @moduletag :utils
 
@@ -8,6 +9,7 @@ defmodule TymeslotWeb.Components.DashboardLayoutTest do
   import Tymeslot.Factory
   alias Floki
   alias TymeslotWeb.Components.DashboardLayout
+  alias TymeslotWeb.Live.Shared.DocsUrl
 
   test "renders dashboard layout with sidebar and top navigation" do
     assigns = %{}
@@ -52,5 +54,68 @@ defmodule TymeslotWeb.Components.DashboardLayoutTest do
     assert html =~ "Test User"
 
     assert Floki.find(doc, "button[aria-label='Toggle sidebar']") != []
+  end
+
+  test "top_navigation links to the docs, and to no website while WEB_HOST is unset" do
+    user = build(:user)
+    profile = build(:profile, user: user)
+
+    html =
+      render_component(&DashboardLayout.top_navigation/1, %{current_user: user, profile: profile})
+
+    doc = Floki.parse_document!(html)
+
+    assert [docs] = Floki.find(doc, "a[aria-label='Documentation']")
+    assert Floki.attribute(docs, "href") == [DocsUrl.home_url()]
+    assert Floki.attribute(docs, "target") == ["_blank"]
+    assert Floki.find(doc, "a[aria-label='Website']") == []
+  end
+
+  describe "footer" do
+    setup do
+      previous = Application.fetch_env(:tymeslot, :web_host)
+
+      on_exit(fn ->
+        case previous do
+          {:ok, value} -> Application.put_env(:tymeslot, :web_host, value)
+          :error -> Application.delete_env(:tymeslot, :web_host)
+        end
+      end)
+    end
+
+    test "links to the website's bug forum once WEB_HOST is set" do
+      Application.put_env(:tymeslot, :web_host, "https://example.com")
+      doc = render_layout()
+
+      assert [link] = Floki.find(doc, "footer a")
+      assert Floki.attribute(link, "href") == ["https://example.com/forum/bugs"]
+      assert Floki.attribute(link, "target") == ["_blank"]
+      assert Floki.text(link) =~ "Report a bug"
+    end
+
+    test "shows the app name and version, without the bug link while WEB_HOST is unset" do
+      Application.put_env(:tymeslot, :web_host, nil)
+      assert [footer] = Floki.find(render_layout(), "footer")
+
+      assert Floki.text(footer) =~ "Powered by LockMyCal · v#{Application.spec(:tymeslot, :vsn)}"
+      assert Floki.find(footer, "a") == []
+    end
+  end
+
+  defp render_layout do
+    assigns = %{}
+    user = build(:user)
+
+    html =
+      render_component(&DashboardLayout.dashboard_layout/1, %{
+        current_user: user,
+        profile: build(:profile, user: user),
+        current_action: :overview,
+        inner_block: [
+          %{__slot__: :inner_block, inner_block: fn _assigns, _changed -> ~H"Main Content" end}
+        ]
+      })
+
+    Floki.parse_document!(html)
   end
 end

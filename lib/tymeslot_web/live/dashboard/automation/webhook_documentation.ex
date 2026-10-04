@@ -77,7 +77,7 @@ defmodule TymeslotWeb.Dashboard.Automation.WebhookDocumentation do
               {dgettext("dashboard_automation", "Build automation"),
                dgettext("dashboard_automation", "Add actions to process the webhook data")}
             ], 1) do %>
-              <div class="flex items-start gap-3 p-3 bg-white dark:bg-twilight-indigo-950 rounded-token-xl border-2 border-neutral-300 dark:border-twilight-indigo-700 hover:border-primary-200 dark:hover:border-primary-700 transition-all">
+              <div class="flex items-start gap-3 p-3 bg-white dark:bg-twilight-indigo-950 rounded-token-xl border-2 border-neutral-300 dark:border-twilight-indigo-800 hover:border-primary-200 dark:hover:border-primary-700 transition-all">
                 <div class="shrink-0 w-6 h-6 rounded-full bg-linear-to-br from-primary-500 to-secondary-500 text-white flex items-center justify-center text-xs font-black">
                   {step_index}
                 </div>
@@ -108,7 +108,7 @@ defmodule TymeslotWeb.Dashboard.Automation.WebhookDocumentation do
               {"meeting.cancelled", "M6 18L18 6M6 6l12 12"},
               {"meeting.rescheduled", "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"}
             ] do %>
-              <div class="p-4 bg-white dark:bg-twilight-indigo-950 rounded-token-xl border-2 border-neutral-300 dark:border-twilight-indigo-700 hover:border-primary-200 dark:hover:border-primary-700 hover:shadow-md transition-all">
+              <div class="p-4 bg-white dark:bg-twilight-indigo-950 rounded-token-xl border-2 border-neutral-300 dark:border-twilight-indigo-800 hover:border-primary-200 dark:hover:border-primary-700 hover:shadow-md transition-all">
                 <div class="flex items-center gap-2 mb-2">
                   <div class="p-1.5 bg-primary-50 dark:bg-primary-950/40 rounded-lg">
                     <svg
@@ -157,7 +157,7 @@ defmodule TymeslotWeb.Dashboard.Automation.WebhookDocumentation do
             </h4>
           </div>
           <div class="ml-5 space-y-3">
-            <div class="p-4 bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-xl border-2 border-neutral-300 dark:border-twilight-indigo-700">
+            <div class="p-4 bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-xl border-2 border-neutral-300 dark:border-twilight-indigo-800">
               <div class="flex items-start gap-3">
                 <div class="p-2 bg-white dark:bg-twilight-indigo-950 rounded-lg shrink-0">
                   <svg
@@ -198,11 +198,11 @@ defmodule TymeslotWeb.Dashboard.Automation.WebhookDocumentation do
                         {dgettext("dashboard_automation", "Request timestamp")}
                       </span>
                     </div>
-                    <div class="flex items-center gap-2 p-2 bg-white rounded-lg">
-                      <code class="text-token-xs font-black text-turquoise-700 bg-turquoise-50 px-2 py-1 rounded">
-                        X-Tymeslot-Delivery-Id
+                    <div class="flex items-center gap-2 p-2 bg-white dark:bg-twilight-indigo-950 rounded-lg">
+                      <code class="text-token-xs font-black text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-950/40 px-2 py-1 rounded">
+                        X-Lockmycal-Delivery-Id
                       </code>
-                      <span class="text-token-xs text-tymeslot-600 font-medium">
+                      <span class="text-token-xs text-neutral-600 dark:text-neutral-300 font-medium">
                         {dgettext("dashboard_automation", "Delivery ID")}
                       </span>
                     </div>
@@ -214,7 +214,7 @@ defmodule TymeslotWeb.Dashboard.Automation.WebhookDocumentation do
                       app_name: Config.app_name()
                     )}
                   </p>
-                  <p class="text-tymeslot-600 text-token-xs font-medium mt-2">
+                  <p class="text-neutral-600 dark:text-neutral-300 text-token-xs font-medium mt-2">
                     {dgettext(
                       "dashboard_automation",
                       "The delivery ID is the same on every retry of one delivery and different for every other delivery. A failed or timed-out delivery can be retried, so your endpoint may receive the same event twice: record the delivery ID and ignore a request whose ID you have already processed."

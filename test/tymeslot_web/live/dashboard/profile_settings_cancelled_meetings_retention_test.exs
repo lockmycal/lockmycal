@@ -17,14 +17,17 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsCancelledMeetingsRetentionTest do
   setup :setup_dashboard_user
 
   describe "the Cancelled Meetings section" do
-    test "is offered on the settings page, disabled by default", %{conn: conn} do
+    test "is offered on the settings page, enabled by default", %{conn: conn, user: user} do
       {:ok, _view, html} = live(conn, ~p"/dashboard/settings")
 
       assert html =~ "Cancelled Meetings"
       assert html =~ "Automatically delete cancelled meetings?"
+      assert html =~ "Delete after (days since cancellation)"
+      assert Profiles.get_profile(user.id).auto_delete_cancelled_meetings_enabled
     end
 
     test "enabling it stores the setting", %{conn: conn, user: user} do
+      turn_off(user)
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
       view
@@ -36,7 +39,8 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsCancelledMeetingsRetentionTest do
       assert Profiles.get_profile(user.id).auto_delete_cancelled_meetings_enabled
     end
 
-    test "confirms the change to the organiser", %{conn: conn} do
+    test "confirms the change to the organiser", %{conn: conn, user: user} do
+      turn_off(user)
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
       view
@@ -50,7 +54,8 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsCancelledMeetingsRetentionTest do
       assert render(view) =~ "Cancelled meetings will now be deleted automatically"
     end
 
-    test "reveals the days field once enabled", %{conn: conn} do
+    test "reveals the days field once enabled", %{conn: conn, user: user} do
+      turn_off(user)
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
       refute render(view) =~ "Delete after (days since cancellation)"
@@ -117,5 +122,13 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsCancelledMeetingsRetentionTest do
 
       refute Profiles.get_profile(user.id).auto_delete_cancelled_meetings_enabled
     end
+  end
+
+  defp turn_off(user) do
+    Profiles.update_profile_field(
+      Profiles.get_profile(user.id),
+      :auto_delete_cancelled_meetings_enabled,
+      false
+    )
   end
 end

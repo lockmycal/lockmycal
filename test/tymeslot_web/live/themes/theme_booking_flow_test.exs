@@ -227,6 +227,41 @@ defmodule TymeslotWeb.Live.Themes.ThemeBookingFlowTest do
     end
   end
 
+  describe "booking form validation" do
+    # Validation is the app's: its own messages and clear-on-type behaviour
+    # must not be pre-empted by the browser blocking an empty submission.
+    for {theme_id, meta} <- @themes do
+      @tag :capture_log
+      test "#{meta.name} booking form leaves validation to the app", %{conn: conn} do
+        %{profile: profile} =
+          seed_booking_account(unquote(theme_id), "novalidate-#{unquote(meta.name)}", "UTC")
+
+        {:ok, view, _html} = live(conn, ~p"/#{profile.username}?timezone=UTC")
+        advance_to_booking_form(view, unquote(meta.name))
+
+        assert has_element?(view, "form[data-testid='booking-form'][novalidate]")
+      end
+    end
+
+    @tag :capture_log
+    test "quill marks name and email required for assistive technology", %{conn: conn} do
+      %{profile: profile} = seed_booking_account("1", "required-quill", "UTC")
+
+      {:ok, view, _html} = live(conn, ~p"/#{profile.username}?timezone=UTC")
+      advance_to_booking_form(view, "quill")
+
+      assert has_element?(
+               view,
+               "form[data-testid='booking-form'] input[name='booking[name]'][required]"
+             )
+
+      assert has_element?(
+               view,
+               "form[data-testid='booking-form'] input[name='booking[email]'][required]"
+             )
+    end
+  end
+
   describe "booking edge cases" do
     @tag :capture_log
     test "blocks booking on a past date via URL manipulation", %{conn: conn} do
@@ -523,75 +558,6 @@ defmodule TymeslotWeb.Live.Themes.ThemeBookingFlowTest do
           |> List.flatten()
 
         assert rendered_slugs == ["zebra-session", "alpha-session", "middle-session"]
-      end
-    end
-  end
-
-  describe "meeting cancel flow (feature-level)" do
-    for {theme_id, meta} <- @themes do
-      @tag :capture_log
-      test "visitor can keep meeting on cancel page with #{meta.name} theme", %{conn: conn} do
-        user = insert(:user)
-
-        profile =
-          insert(:profile,
-            user: user,
-            username: "cancel-keep-#{unquote(meta.name)}",
-            booking_theme: unquote(theme_id)
-          )
-
-        meeting =
-          insert(:meeting,
-            organizer_user_id: user.id,
-            organizer_name: user.name,
-            attendee_timezone: profile.timezone,
-            status: "confirmed"
-          )
-
-        {:ok, view, _html} =
-          live(conn, ~p"/#{profile.username}/meeting/#{meeting.uid}/cancel")
-
-        assert has_element?(view, "[data-testid='keep-meeting']")
-
-        view
-        |> element("[data-testid='keep-meeting']")
-        |> render_click()
-
-        assert render(view) =~ "Meeting Confirmed"
-      end
-
-      @tag :capture_log
-      test "visitor can cancel meeting from cancel page with #{meta.name} theme", %{conn: conn} do
-        user = insert(:user)
-
-        profile =
-          insert(:profile,
-            user: user,
-            username: "cancel-cancel-#{unquote(meta.name)}",
-            booking_theme: unquote(theme_id)
-          )
-
-        meeting =
-          insert(:meeting,
-            organizer_user_id: user.id,
-            organizer_name: user.name,
-            attendee_timezone: profile.timezone,
-            status: "confirmed"
-          )
-
-        {:ok, view, _html} =
-          live(conn, ~p"/#{profile.username}/meeting/#{meeting.uid}/cancel")
-
-        assert has_element?(view, "[data-testid='cancel-meeting']")
-
-        assert {:error, {:redirect, %{to: to}}} =
-                 view
-                 |> element("[data-testid='cancel-meeting']")
-                 |> render_click()
-
-        assert String.contains?(to, "/cancel-confirmed")
-
-        assert Repo.get_by!(MeetingSchema, uid: meeting.uid).status == "cancelled"
       end
     end
   end

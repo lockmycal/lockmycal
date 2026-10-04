@@ -15,8 +15,10 @@ defmodule Tymeslot.FreeBusy do
   alias Tymeslot.Integrations.Calendar.CalendarEventQueries
   alias Tymeslot.Integrations.Calendar.CalendarIntegrationQueries
   alias Tymeslot.Integrations.Calendar.FreebusyGenerator
+  alias Tymeslot.Meetings
   alias Tymeslot.Profiles.ProfileQueries
   alias Tymeslot.Profiles.ProfileSchema
+  alias Tymeslot.Utils.DateTimeUtils
 
   @token_bytes 24
   @default_horizon_days 60
@@ -101,23 +103,24 @@ defmodule Tymeslot.FreeBusy do
   into `ProfileSchema.public_calendar_colors`. Not used by the VFREEBUSY
   feed, which is deliberately source-agnostic. Time off blocks are not
   represented here, since they don't have a source calendar.
+
+  `opts[:exclude_linked_to]` takes meetings (anything carrying `:uid` /
+  `:provider_event_id`) whose own calendar events are left out — the public
+  calendar passes the bookings awaiting approval, which it shows as their own
+  chips, so their tentative hold isn't shown a second time as busy.
   """
-  @spec busy_intervals_with_source(ProfileSchema.t(), DateTime.t(), DateTime.t()) ::
+  @spec busy_intervals_with_source(ProfileSchema.t(), DateTime.t(), DateTime.t(), keyword()) ::
           [{DateTime.t(), DateTime.t(), integer()}]
   def busy_intervals_with_source(
-        %ProfileSchema{
-          user_id: user_id,
-          timezone: timezone,
-          public_calendar_visible_from: visible_from,
-          public_calendar_visible_to: visible_to
-        },
+        %ProfileSchema{user_id: user_id} = profile,
         window_start,
-        window_end
+        window_end,
+        opts \\ []
       ) do
-    timezone = timezone || "Etc/UTC"
+    timezone = profile.timezone || "Etc/UTC"
 
     user_id
-    |> window_events(window_start, window_end)
+    |> window_events(window_start, window_end, opts)
     |> Enum.filter(&CalendarEvent.blocking?/1)
     |> Enum.flat_map(fn event ->
       event
@@ -126,7 +129,7 @@ defmodule Tymeslot.FreeBusy do
         {start_at, end_at, event.calendar_integration_id}
       end)
     end)
-    |> clip_to_visible_window(timezone, visible_from, visible_to)
+    |> clip_to_public_visibility(profile)
   end
 
   @doc """
@@ -139,31 +142,28 @@ defmodule Tymeslot.FreeBusy do
 
   All-day events, birthday/anniversary reminders and cancelled or declined
   events are left out, and the organiser's visible-hours window applies as it
-  does to busy blocks.
+  does to busy blocks. `opts[:exclude_linked_to]` works as in
+  `busy_intervals_with_source/4`.
   """
-  @spec non_blocking_intervals(ProfileSchema.t(), DateTime.t(), DateTime.t()) ::
+  @spec non_blocking_intervals(ProfileSchema.t(), DateTime.t(), DateTime.t(), keyword()) ::
           [{DateTime.t(), DateTime.t(), :non_blocking}]
   def non_blocking_intervals(
-        %ProfileSchema{
-          user_id: user_id,
-          timezone: timezone,
-          public_calendar_visible_from: visible_from,
-          public_calendar_visible_to: visible_to
-        },
+        %ProfileSchema{user_id: user_id} = profile,
         window_start,
-        window_end
+        window_end,
+        opts \\ []
       ) do
-    timezone = timezone || "Etc/UTC"
+    timezone = profile.timezone || "Etc/UTC"
 
     user_id
-    |> window_events(window_start, window_end)
+    |> window_events(window_start, window_end, opts)
     |> Enum.filter(&free_timed_event?/1)
     |> Enum.flat_map(fn event ->
       event
       |> event_interval(timezone)
       |> Enum.map(fn {start_at, end_at} -> {start_at, end_at, :non_blocking} end)
     end)
-    |> clip_to_visible_window(timezone, visible_from, visible_to)
+    |> clip_to_public_visibility(profile)
   end
 
   # Free (transparent) and still on: cancelled and declined events are not
@@ -175,13 +175,107 @@ defmodule Tymeslot.FreeBusy do
   end
 
   # Every non-reminder event of the user's active calendars in the window,
-  # whatever its transparency or status.
-  defp window_events(user_id, window_start, window_end) do
+  # whatever its transparency or status, minus the events of the meetings in
+  # `opts[:exclude_linked_to]`.
+  defp window_events(user_id, window_start, window_end, opts) do
+    excluded = opts |> Keyword.get(:exclude_linked_to, []) |> Meetings.calendar_identifier_set()
+
     user_id
     |> CalendarIntegrationQueries.list_active_for_user()
     |> Enum.map(& &1.id)
     |> CalendarEventQueries.in_range({window_start, window_end})
-    |> Enum.reject(&CalendarEvent.reminder?/1)
+    |> Enum.reject(
+      &(CalendarEvent.reminder?(&1) or Meetings.linked_to_calendar_event?(&1, excluded))
+    )
+  end
+
+  @doc """
+  Restricts `{start, end, ...}` intervals to what the organiser publishes: their
+  daily visible-hours window (`clip_to_visible_window/4`), then — unless
+  `ProfileSchema.public_calendar_show_weekends` is on — weekdays only
+  (`drop_weekends/3`), both in the profile's timezone.
+
+  The one place both settings are applied, shared by the free/busy ICS feed
+  and the public calendar page (`TymeslotWeb.Public.CalendarLive`, which also
+  runs its pending-approval chips through it), so a visitor sees the same
+  busy times everywhere.
+  """
+  @spec clip_to_public_visibility([tuple()], ProfileSchema.t()) :: [tuple()]
+  def clip_to_public_visibility(intervals, %ProfileSchema{} = profile) do
+    timezone = profile.timezone || "Etc/UTC"
+
+    intervals
+    |> clip_to_visible_window(
+      timezone,
+      profile.public_calendar_visible_from,
+      profile.public_calendar_visible_to
+    )
+    |> drop_weekends(timezone, profile.public_calendar_show_weekends)
+  end
+
+  @doc """
+  Removes the Saturday and Sunday parts (local days in `timezone`) of each
+  `{start, end, ...}` interval, unless `show_weekends?` is true. An interval
+  spanning a weekend keeps its weekday stretches, each consecutive run of
+  weekdays as one piece; one lying wholly on a weekend is dropped.
+  """
+  @spec drop_weekends([tuple()], String.t(), boolean()) :: [tuple()]
+  def drop_weekends(intervals, _timezone, true = _show_weekends?), do: intervals
+
+  def drop_weekends(intervals, timezone, _show_weekends?) do
+    Enum.flat_map(intervals, fn interval ->
+      interval
+      |> elem(0)
+      |> weekday_pieces(elem(interval, 1), timezone)
+      |> Enum.map(fn {piece_start, piece_end} ->
+        interval |> put_elem(0, piece_start) |> put_elem(1, piece_end)
+      end)
+    end)
+  end
+
+  # Each local day the interval touches, clipped to that day and kept only on
+  # weekdays; adjacent pieces (a Monday–Friday stretch) are merged back into
+  # one, so an interval without a weekend day comes out unchanged.
+  defp weekday_pieces(start_at, end_at, timezone) do
+    local_start = DateTime.shift_zone!(start_at, timezone)
+    local_end = DateTime.shift_zone!(end_at, timezone)
+
+    local_start
+    |> DateTime.to_date()
+    |> Date.range(DateTime.to_date(local_end))
+    |> Enum.reject(&(Date.day_of_week(&1) in [6, 7]))
+    |> Enum.flat_map(fn day ->
+      day_start = local_midnight_utc(day, timezone)
+      day_end = local_midnight_utc(Date.add(day, 1), timezone)
+      piece_start = Enum.max([start_at, day_start], DateTime)
+      piece_end = Enum.min([end_at, day_end], DateTime)
+
+      if DateTime.compare(piece_start, piece_end) == :lt,
+        do: [{piece_start, piece_end}],
+        else: []
+    end)
+    |> merge_adjacent()
+  end
+
+  # Total even where midnight falls in a DST gap.
+  defp local_midnight_utc(day, timezone) do
+    day
+    |> DateTimeUtils.create_datetime_safe(~T[00:00:00], timezone)
+    |> DateTime.shift_zone!("Etc/UTC")
+  end
+
+  defp merge_adjacent(pieces) do
+    pieces
+    |> Enum.reduce([], fn
+      {piece_start, piece_end}, [{prev_start, prev_end} | rest] ->
+        if DateTime.compare(prev_end, piece_start) == :eq,
+          do: [{prev_start, piece_end} | rest],
+          else: [{piece_start, piece_end}, {prev_start, prev_end} | rest]
+
+      piece, [] ->
+        [piece]
+    end)
+    |> Enum.reverse()
   end
 
   @doc """
@@ -193,11 +287,8 @@ defmodule Tymeslot.FreeBusy do
   off by default and only activates once both are configured (enforced by
   `ProfileSchema.changeset/2`).
 
-  Shared by the free/busy ICS feed (`feed/2`, via `busy_intervals/3`) and the
-  public calendar page (`TymeslotWeb.Public.CalendarLive`, both for the
-  FreeBusy-sourced chips here and for its separately-computed
-  pending-approval chips), so the same window applies everywhere a visitor
-  can see an organiser's busy times.
+  Applied everywhere a visitor can see an organiser's busy times through
+  `clip_to_public_visibility/2`, together with the weekend setting.
   """
   @spec clip_to_visible_window([tuple()], String.t(), Time.t() | nil, Time.t() | nil) :: [
           tuple()

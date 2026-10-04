@@ -131,7 +131,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.ProviderPickerMod
       phx-value-provider={@provider.provider}
       phx-target={@target}
       class={[
-        "group flex items-center gap-3 rounded-token-xl border-2 border-neutral-300 dark:border-twilight-indigo-700 bg-white dark:bg-twilight-indigo-950 p-3 text-left transition-all",
+        "group flex items-center gap-3 rounded-token-xl border-2 border-neutral-300 dark:border-twilight-indigo-800 bg-white dark:bg-twilight-indigo-950 p-3 text-left transition-all",
         (@provider.click_event &&
            "hover:border-primary-200 dark:hover:border-primary-700 hover:bg-primary-50/40 dark:hover:bg-primary-950/40") ||
           "opacity-60 cursor-not-allowed"

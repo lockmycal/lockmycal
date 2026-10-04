@@ -395,7 +395,7 @@ fi
 # ==================== SECTION 7: Application Data Directory Setup ====================
 # Create required directories for timezone data and user uploads
 echo "Setting up application data directories..."
-mkdir -p /app/data/tzdata /app/data/uploads
+mkdir -p /app/data/tzdata /app/data/uploads /app/data/private_uploads
 # Set proper ownership so the 'app' user can write to these directories
 chown -R app:app /app/data
 echo "✓ Data directories ready"

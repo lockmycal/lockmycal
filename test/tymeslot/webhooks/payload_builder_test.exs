@@ -301,4 +301,32 @@ defmodule Tymeslot.Webhooks.PayloadBuilderTest do
                  "If you receive this, your webhook is configured correctly!"
     end
   end
+
+  describe "attendee attachments" do
+    test "carry metadata only, never a path or URL" do
+      meeting =
+        build(:meeting,
+          attendee_attachments: [
+            %{
+              "id" => "a1",
+              "filename" => "Brief.pdf",
+              "stored_path" => "booking_attachments/1/b/a1.pdf",
+              "content_type" => "application/pdf",
+              "byte_size" => 1234
+            }
+          ]
+        )
+
+      payload = PayloadBuilder.build_payload("meeting.created", meeting, "1")
+
+      assert payload.data.meeting.attendee.attachments == [
+               %{filename: "Brief.pdf", content_type: "application/pdf", byte_size: 1234}
+             ]
+    end
+
+    test "is an empty list without attachments" do
+      payload = PayloadBuilder.build_payload("meeting.created", build(:meeting), "1")
+      assert payload.data.meeting.attendee.attachments == []
+    end
+  end
 end

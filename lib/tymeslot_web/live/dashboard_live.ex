@@ -29,6 +29,7 @@ defmodule TymeslotWeb.DashboardLive do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Auth
+  alias Tymeslot.CalendarGrid.WriteGuardian
   alias Tymeslot.Dashboard.DashboardContext
   alias Tymeslot.Meetings
   alias Tymeslot.Onboarding
@@ -124,6 +125,18 @@ defmodule TymeslotWeb.DashboardLive do
 
   defp handle_dashboard_params(params, socket) do
     action = socket.assigns.live_action
+
+    # Leaving the calendar unmounts the grid while this process lives on,
+    # so the writes it still has queued are handed to their guardian. The
+    # count tells a grid LiveView revives, rather than mounts afresh, to
+    # take them back (see `EventWrites.adopt/1`).
+    socket =
+      if action == :calendar do
+        assign_new(socket, :calendar_left, fn -> 0 end)
+      else
+        WriteGuardian.detach()
+        assign(socket, :calendar_left, Map.get(socket.assigns, :calendar_left, 0) + 1)
+      end
 
     socket =
       if connected?(socket) && action == :calendar &&
@@ -243,6 +256,7 @@ defmodule TymeslotWeb.DashboardLive do
               client_ip={@client_ip}
               user_agent={@user_agent}
               live_action={@live_action}
+              calendar_left={@calendar_left}
               params={@params}
               custom_questions_allowed={@custom_questions_allowed}
               payments_allowed={@payments_allowed}
@@ -457,6 +471,9 @@ defmodule TymeslotWeb.DashboardLive do
   def handle_info({:event_video_result, result}, socket),
     do: CalendarEventHandlers.handle_event_video_result(result, socket)
 
+  def handle_info({:event_writes_released, release}, socket),
+    do: CalendarEventHandlers.handle_event_writes_released(release, socket)
+
   def handle_info({:execute_create_event, payload}, socket),
     do: CalendarEventHandlers.handle_execute_create_event(payload, socket)
 
@@ -519,19 +536,6 @@ defmodule TymeslotWeb.DashboardLive do
     end
   end
 
-  # Fired by the topbar sun/moon quick toggle (DashboardLayout.top_navigation/1,
-  # AppearanceToggle JS hook) — a plain function component, not a LiveComponent,
-  # so the click lands directly here rather than on a component's handle_event.
-  # The fuller Light/Dark/System control lives on Profile Settings
-  # (AppearanceFormComponent); this is just the two-way quick flip, and the hook
-  # already applied the class client-side before this round-trip returns.
-  def handle_event("change_appearance", %{"value" => value}, socket) do
-    case Auth.update_user_theme_preference(socket.assigns.current_user, value) do
-      {:ok, user} -> {:noreply, assign(socket, :current_user, user)}
-      {:error, _changeset} -> {:noreply, socket}
-    end
-  end
-
   # Private functions
 
   @spec handle_saving_animation(Phoenix.LiveView.Socket.t(), non_neg_integer()) ::
@@ -568,7 +572,11 @@ defmodule TymeslotWeb.DashboardLive do
     timezone = socket.assigns[:profile] && socket.assigns.profile.timezone
 
     if user do
-      dashboard_data = DashboardContext.get_dashboard_data_for_action(user, timezone, action)
+      dashboard_data =
+        DashboardContext.get_dashboard_data_for_action(user, timezone, action,
+          analytics_allowed: Map.get(socket.assigns, :analytics_allowed, false)
+        )
+
       assign(socket, dashboard_data)
     else
       socket

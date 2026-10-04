@@ -391,7 +391,7 @@ msgstr "Nessuna integrazione Telegram"
 #: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "No channels available. Invite the Tymeslot bot to at least one channel in Slack, then click Refresh."
-msgstr "Nessun canale disponibile. Invita il bot di Tymeslot in almeno un canale di Slack, quindi fai clic su Aggiorna."
+msgstr "Nessun canale disponibile. Invita il bot di LockMyCal in almeno un canale di Slack, quindi fai clic su Aggiorna."
 
 #: lib/tymeslot_web/live/dashboard/automation/telegram_form_component.ex
 #, elixir-autogen, elixir-format
@@ -417,7 +417,7 @@ msgstr "Scegli un canale"
 #: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Pick a channel for Tymeslot to post booking notifications to."
-msgstr "Scegli un canale in cui Tymeslot pubblicherà le notifiche di prenotazione."
+msgstr "Scegli un canale in cui LockMyCal pubblicherà le notifiche di prenotazione."
 
 #: lib/tymeslot_web/live/dashboard/automation/slack_card.ex
 #, elixir-autogen, elixir-format
@@ -661,7 +661,7 @@ msgstr "Per trovare il tuo ID chat, scrivi a %{bot} o aggiungi il tuo bot a un g
 #: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Tymeslot will post booking notifications to this channel. Public channels appear automatically; for a private channel, invite the Tymeslot bot in Slack (%{command}), then click Refresh."
-msgstr "Tymeslot pubblicherà le notifiche di prenotazione in questo canale. I canali pubblici compaiono automaticamente; per un canale privato, invita il bot di Tymeslot in Slack (%{command}), quindi fai clic su Aggiorna."
+msgstr "LockMyCal pubblicherà le notifiche di prenotazione in questo canale. I canali pubblici compaiono automaticamente; per un canale privato, invita il bot di LockMyCal in Slack (%{command}), quindi fai clic su Aggiorna."
 
 #: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
 #, elixir-autogen, elixir-format
@@ -676,7 +676,7 @@ msgstr "Slack collegato: scegli un canale per completare la configurazione."
 #: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Tymeslot posts notifications to this URL. The destination channel is fixed by Slack when the webhook is created - see the full setup guide on %{guide}."
-msgstr "Tymeslot pubblica le notifiche su questo URL. Il canale di destinazione viene impostato da Slack al momento della creazione del webhook: consulta la guida completa alla configurazione su %{guide}."
+msgstr "LockMyCal pubblica le notifiche su questo URL. Il canale di destinazione viene impostato da Slack al momento della creazione del webhook: consulta la guida completa alla configurazione su %{guide}."
 
 #: lib/tymeslot_web/live/dashboard/automation/slack_tab.ex
 #, elixir-autogen, elixir-format
@@ -821,7 +821,7 @@ msgstr "Impossibile salvare l'integrazione Slack."
 #: lib/tymeslot/slack/slack.ex
 #, elixir-autogen, elixir-format
 msgid "Channel not accessible. If it's a private channel, invite the Tymeslot bot first."
-msgstr "Canale non accessibile. Se è un canale privato, invita prima il bot di Tymeslot."
+msgstr "Canale non accessibile. Se è un canale privato, invita prima il bot di LockMyCal."
 
 #: lib/tymeslot/slack/slack.ex
 #, elixir-autogen, elixir-format

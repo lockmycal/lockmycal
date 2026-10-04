@@ -1,0 +1,79 @@
+/* ==========================================================================
+   Own calendar — the booker's copy of the booking in their own calendar
+
+   Matches the shared component
+   (TymeslotWeb.Themes.Shared.Components.OwnCalendar):
+
+     .own-calendar-field  — the save-to-my-calendar choice on the booking form
+     .own-calendar-hint   — the sign-in hint on the booking form, signed out
+   ========================================================================== */
+
+.own-calendar-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-sm);
+  border: var(--border-width-thin) solid color-mix(in srgb, var(--theme-primary) 35%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--theme-primary) 10%, transparent);
+}
+
+.own-calendar-field__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  cursor: pointer;
+}
+
+/* The core input wraps the checkbox in a full-width column meant for a
+   labelled field; here the text sits beside it instead. */
+.quill-theme-wrapper .own-calendar-field .form-field-wrapper {
+  display: flex;
+  width: auto;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.own-calendar-field__text {
+  color: var(--text-opacity-medium-high);
+  font-size: var(--theme-font-size-sm);
+  line-height: var(--theme-line-height-snug);
+}
+
+.own-calendar-field__option--secondary .own-calendar-field__text {
+  font-size: var(--theme-font-size-xs);
+  opacity: 0.85;
+}
+
+.own-calendar-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  margin: var(--space-xs) 0 0;
+  padding: var(--space-sm);
+  border: var(--border-width-thin) solid color-mix(in srgb, var(--theme-primary) 35%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--theme-primary) 10%, transparent);
+  text-align: left;
+}
+
+.own-calendar-hint__icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--theme-primary);
+}
+
+.own-calendar-hint__text {
+  margin: 0;
+  color: var(--text-opacity-medium-high);
+  font-size: var(--theme-font-size-sm);
+  line-height: var(--theme-line-height-relaxed);
+}
+
+.own-calendar-hint__link {
+  margin-left: var(--space-2xs);
+  color: var(--theme-primary);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+}

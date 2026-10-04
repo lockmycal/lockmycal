@@ -13,7 +13,9 @@ defmodule Tymeslot.CalendarGrid.BookingEvent do
   Bookings already mirrored into a connected calendar are deduplicated at load
   time against the synced copy, so this struct chiefly represents bookings
   with no provider-side counterpart — most importantly every booking of a
-  user with no calendar integration at all.
+  user with no calendar integration at all. A booking awaiting approval is the
+  exception: it replaces its synced tentative hold and takes that hold's
+  `calendar_integration_id`/`provider_calendar_id`.
   """
 
   @enforce_keys [:id, :meeting_id, :summary, :start_at, :end_at]
@@ -23,6 +25,8 @@ defmodule Tymeslot.CalendarGrid.BookingEvent do
     :uid,
     :summary,
     :location,
+    :description,
+    :attendee_message,
     :start_at,
     :end_at,
     :attendee_name,
@@ -30,6 +34,7 @@ defmodule Tymeslot.CalendarGrid.BookingEvent do
     :join_url,
     :provider_event_id,
     all_day: false,
+    attendee_attachments: [],
     calendar_integration_id: nil,
     provider_calendar_id: nil,
     colour: nil,
@@ -45,6 +50,8 @@ defmodule Tymeslot.CalendarGrid.BookingEvent do
           uid: String.t() | nil,
           summary: String.t(),
           location: String.t() | nil,
+          description: String.t() | nil,
+          attendee_message: String.t() | nil,
           start_at: DateTime.t(),
           end_at: DateTime.t(),
           attendee_name: String.t() | nil,
@@ -52,8 +59,9 @@ defmodule Tymeslot.CalendarGrid.BookingEvent do
           join_url: String.t() | nil,
           provider_event_id: String.t() | nil,
           all_day: false,
-          calendar_integration_id: nil,
-          provider_calendar_id: nil,
+          attendee_attachments: [map()],
+          calendar_integration_id: pos_integer() | nil,
+          provider_calendar_id: String.t() | nil,
           colour: nil,
           status: String.t(),
           transparency: String.t(),

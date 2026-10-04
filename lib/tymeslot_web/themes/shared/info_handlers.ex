@@ -8,9 +8,11 @@ defmodule TymeslotWeb.Themes.Shared.InfoHandlers do
   import Phoenix.LiveView, only: [put_flash: 3]
   require Logger
 
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias TymeslotWeb.Live.Scheduling.AvailabilityHelpers
   alias TymeslotWeb.Live.Scheduling.Handlers.SlotFetchingHandlerComponent
   alias TymeslotWeb.Live.Scheduling.NextAvailable
+  alias TymeslotWeb.Themes.Shared.BookingLocation
 
   @doc """
   Handles calendar events updated via PubSub.
@@ -60,7 +62,7 @@ defmodule TymeslotWeb.Themes.Shared.InfoHandlers do
     Process.demonitor(ref, [:flush])
 
     finalize_availability_task(socket, ref, :error, nil, fn ->
-      Logger.warning("Month availability fetch failed", reason: inspect(reason))
+      Logger.warning("Month availability fetch failed", reason: LogFormat.reason(reason))
     end)
   end
 
@@ -180,6 +182,7 @@ defmodule TymeslotWeb.Themes.Shared.InfoHandlers do
         socket =
           socket
           |> assign(:meeting_uid, meeting.uid)
+          |> BookingLocation.assign_booked(meeting)
           |> assign(:name, meeting.attendee_name)
           |> assign(:email, meeting.attendee_email)
 

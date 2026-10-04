@@ -8,6 +8,7 @@ defmodule Tymeslot.Dashboard.DashboardContextTest do
 
   alias Tymeslot.Agenda.Day
   alias Tymeslot.Dashboard.DashboardContext
+  alias Tymeslot.Dashboard.OverviewStats
   alias Tymeslot.Security.Encryption
 
   setup do
@@ -23,13 +24,24 @@ defmodule Tymeslot.Dashboard.DashboardContextTest do
         start_time: future_start,
         end_time: DateTime.add(future_start, 60, :minute),
         status: "confirmed",
-        title: "Kickoff"
+        title: "Kickoff",
+        attendee_message: nil
       )
 
       assert %{agenda: %Day{} = agenda} =
                DashboardContext.get_dashboard_data_for_action(user, "Etc/UTC", :overview)
 
       assert agenda.next.title == "Kickoff"
+    end
+
+    test "adds the overview stats for :overview, but not for :calendar", %{user: user} do
+      assert %{overview_stats: %OverviewStats{}} =
+               DashboardContext.get_dashboard_data_for_action(user, "Etc/UTC", :overview)
+
+      refute Map.has_key?(
+               DashboardContext.get_dashboard_data_for_action(user, "Etc/UTC", :calendar),
+               :overview_stats
+             )
     end
 
     test "returns an empty map for non-overview actions", %{user: user} do

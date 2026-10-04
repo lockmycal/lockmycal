@@ -51,6 +51,7 @@ defmodule Tymeslot.Integrations.Calendar do
   alias Tymeslot.Integrations.{CalendarManagement, CalendarPrimary}
   alias Tymeslot.Integrations.Providers.Directory
   alias Tymeslot.Integrations.Shared.InputValidators
+  alias Tymeslot.Security.EncryptedString
   alias Tymeslot.Workers.SyncIcsCalendarWorker
 
   @type user_id :: pos_integer()
@@ -68,7 +69,8 @@ defmodule Tymeslot.Integrations.Calendar do
   def encrypted_storage,
     do:
       {CalendarIntegrationSchema.__schema__(:source),
-       CalendarIntegrationSchema.encrypted_credential_fields()}
+       CalendarIntegrationSchema.encrypted_credential_fields() ++
+         EncryptedString.columns(CalendarIntegrationSchema)}
 
   # ---------------------------
   # Public API: Listing/CRUD
@@ -81,16 +83,15 @@ defmodule Tymeslot.Integrations.Calendar do
   def list_integrations(user_id) when is_integer(user_id) do
     integrations = CalendarManagement.list_calendar_integrations(user_id)
 
-    primary_id =
-      case CalendarPrimary.get_primary_calendar_integration(user_id) do
-        {:ok, primary} -> primary.id
-        {:error, :not_found} -> nil
-        {:error, :no_primary_set} -> nil
-      end
+    {primary_id, default_calendar_id} = CalendarPrimary.default_calendar(user_id)
 
     integrations
     |> Enum.map(fn integration ->
-      Map.put(integration, :is_primary, integration.id == primary_id)
+      primary? = integration.id == primary_id
+
+      integration
+      |> Map.put(:is_primary, primary?)
+      |> Map.put(:default_calendar_id, if(primary?, do: default_calendar_id))
     end)
     |> Enum.sort_by(fn integration ->
       # Sort by: primary first (true = 1, false = 0), then by is_active (desc), then by name (asc)
@@ -98,6 +99,26 @@ defmodule Tymeslot.Integrations.Calendar do
       {!integration.is_primary, !integration.is_active, integration.name}
     end)
   end
+
+  @doc """
+  Makes `integration_id` the user's default calendar: the primary integration
+  that bookings without a calendar of their own, and the user's own copies of
+  bookings they make elsewhere, are written to. `calendar_id` picks which of
+  its calendars takes those copies, when it has several.
+  """
+  @spec set_default_integration(user_id(), integration_id(), String.t() | nil) ::
+          {:ok, integration()}
+          | {:error, :not_found | :unauthorized | :not_bookable | Ecto.Changeset.t()}
+  defdelegate set_default_integration(user_id, integration_id, calendar_id),
+    to: CalendarPrimary,
+    as: :set_default_calendar
+
+  @doc """
+  The user's default connection and the calendar picked within it, each `nil`
+  when there is none.
+  """
+  @spec default_calendar(user_id()) :: {integration_id() | nil, String.t() | nil}
+  defdelegate default_calendar(user_id), to: CalendarPrimary
 
   @typedoc "See `Tymeslot.Integrations.Calendar.ConnectionLimit`."
   @type connection_limit :: ConnectionLimit.t()
@@ -302,21 +323,6 @@ defmodule Tymeslot.Integrations.Calendar do
           optional(atom()) => term()
         }) :: {:ok, CalendarEntry.t()} | {:read_only, CalendarEntry.t()} | :none
   defdelegate booking_target(integration), to: Defaults
-
-  @doc """
-  Finds the calendar entry with the given id. See
-  `Tymeslot.Integrations.Calendar.Selection.find_calendar_by_id/2`.
-  """
-  @spec find_calendar_by_id([CalendarEntry.t()], String.t() | nil) :: CalendarEntry.t() | nil
-  defdelegate find_calendar_by_id(calendar_list, id), to: Selection
-
-  @doc """
-  Finds the calendar entry whose `path` is a prefix of the given
-  provider-side identifier. See
-  `Tymeslot.Integrations.Calendar.Selection.find_calendar_by_path/2`.
-  """
-  @spec find_calendar_by_path([CalendarEntry.t()], String.t() | nil) :: CalendarEntry.t() | nil
-  defdelegate find_calendar_by_path(calendar_list, path), to: Selection
 
   @doc """
   Resolves the calendar entry an event was synced from. See

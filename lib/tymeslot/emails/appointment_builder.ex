@@ -5,6 +5,7 @@ defmodule Tymeslot.Emails.AppointmentBuilder do
   """
 
   require Logger
+  alias Tymeslot.Bookings.BookingTitle
   alias Tymeslot.CalendarGrid
   alias Tymeslot.Emails.RecipientLocale
   alias Tymeslot.Emails.Shared.BookingRequestLocation
@@ -95,11 +96,21 @@ defmodule Tymeslot.Emails.AppointmentBuilder do
     end
   end
 
+  # `uid` here is the calendar event's UID (the `.ics` UID and the attachment
+  # filename), so it is the meeting's `calendar_uid`: the attendee's copy has to
+  # match the organiser's event, and the booking's own `uid` is the capability
+  # behind the cancel and reschedule links, which travel as their own fields.
+  #
+  # The title is the attendee's: this payload is built in their locale, and
+  # the attendee and guest copies carry it into the `.ics` they import. The
+  # organiser's copies do not render it.
   defp base_details(meeting) do
+    title = BookingTitle.localise(meeting)
+
     %{
-      uid: meeting.uid,
-      title: meeting.title,
-      summary: meeting.summary || meeting.title,
+      uid: meeting.calendar_uid,
+      title: title,
+      summary: if(meeting.summary in [nil, meeting.title], do: title, else: meeting.summary),
       description: meeting.description || "",
       start_time: meeting.start_time,
       end_time: meeting.end_time,
@@ -111,7 +122,8 @@ defmodule Tymeslot.Emails.AppointmentBuilder do
       meeting_type: meeting.meeting_type,
       ical_sequence: Map.get(meeting, :ical_sequence) || 0,
       custom_fields_snapshot: Map.get(meeting, :custom_fields_snapshot) || [],
-      custom_field_answers: Map.get(meeting, :custom_field_answers) || %{}
+      custom_field_answers: Map.get(meeting, :custom_field_answers) || %{},
+      attendee_attachments: Map.get(meeting, :attendee_attachments) || []
     }
   end
 
@@ -141,6 +153,7 @@ defmodule Tymeslot.Emails.AppointmentBuilder do
       attendee_name: meeting.attendee_name,
       attendee_email: meeting.attendee_email,
       attendee_message: meeting.attendee_message,
+      organizer_note: meeting.organizer_note,
       attendee_phone: meeting.attendee_phone,
       attendee_company: meeting.attendee_company
     }

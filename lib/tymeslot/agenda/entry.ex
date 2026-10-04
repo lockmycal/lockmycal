@@ -10,6 +10,14 @@ defmodule Tymeslot.Agenda.Entry do
   entries carry the local-timezone midnight boundaries of their date, which keeps
   them sorting ahead of that day's timed entries. `day` is the entry's local
   (user-timezone) date, precomputed so grouping never has to reconvert.
+
+  `awaiting_approval?` marks a booking request the organiser has not answered
+  yet: it is listed on its day so the organiser sees it, but never featured as
+  the next appointment.
+
+  `attending?` marks a booking the user made on someone else's page: it is on
+  their agenda as the attendee, so it names the organiser, and a pending one
+  waits for the organiser's approval rather than theirs.
   """
 
   alias Tymeslot.Utils.DateTimeUtils
@@ -28,16 +36,20 @@ defmodule Tymeslot.Agenda.Entry do
     :who,
     :calendar,
     :colour,
-    :target
+    :colour_class,
+    :source_id,
+    awaiting_approval?: false,
+    attending?: false
   ]
 
   @type source :: :tymeslot | :external
 
   @typedoc """
-  The stable override target for this entry: a booking (`{:meeting, uuid}`) or an
-  external event (`{:external, integration_id, uid}`). Used to set/clear a colour.
+  The id of the record behind this entry: a booking's meeting id (for
+  `source: :tymeslot`) or a synced event's cached-row id (for `:external`), the
+  same ids the calendar grid opens an appointment by.
   """
-  @type target :: {:meeting, Ecto.UUID.t()} | {:external, integer(), String.t()}
+  @type source_id :: Ecto.UUID.t() | integer()
 
   @type t :: %__MODULE__{
           id: String.t(),
@@ -52,7 +64,10 @@ defmodule Tymeslot.Agenda.Entry do
           who: String.t() | nil,
           calendar: String.t() | nil,
           colour: String.t() | nil,
-          target: target() | nil
+          colour_class: String.t() | nil,
+          source_id: source_id(),
+          awaiting_approval?: boolean(),
+          attending?: boolean()
         }
 
   @doc """

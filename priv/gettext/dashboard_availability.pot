@@ -853,3 +853,8 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "No time limit"
 msgstr ""
+
+#: lib/tymeslot/availability/schedules.ex
+#, elixir-autogen, elixir-format
+msgid "Working hours"
+msgstr ""

@@ -6,6 +6,7 @@ defmodule Tymeslot.Payments.Webhooks.CheckoutSessionHandler do
 
   require Logger
 
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Payments.AuditTrail
   alias Tymeslot.Payments.CustomerLookup
 
@@ -59,7 +60,7 @@ defmodule Tymeslot.Payments.Webhooks.CheckoutSessionHandler do
         {:error, reason} ->
           Logger.error("Subscription processing failed",
             session_id: session["id"],
-            error: inspect(reason)
+            error: LogFormat.reason(reason)
           )
 
           {:error, :subscription_failed, "Subscription processing failed: #{inspect(reason)}"}

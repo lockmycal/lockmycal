@@ -9,9 +9,11 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlow do
   import Phoenix.LiveView, only: [put_flash: 3]
 
   alias Phoenix.Component
+  alias Tymeslot.Bookings.AttendeeAttachments
   alias Tymeslot.Security.InputProcessor
   alias TymeslotWeb.Live.Scheduling.BookingConfig
   alias TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
+  alias TymeslotWeb.Live.Scheduling.OrganizerHelpers
   alias TymeslotWeb.Themes.Shared.BookingLocation
 
   @type transition_fun :: (Phoenix.LiveView.Socket.t(), atom(), map() ->
@@ -48,8 +50,24 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlow do
         # picker rather than as a flash, and never dispatched, so no meeting
         # is created half-addressed.
         {:error, socket} ->
-          {:noreply, assign(socket, :submitting, false)}
+          {:noreply, socket |> discard_attachments() |> assign(:submitting, false)}
       end
+    end
+  end
+
+  @doc """
+  Takes over the files the booking component just stored for the submission
+  that follows (see `TymeslotWeb.Themes.Shared.AttendeeAttachmentUpload`).
+  While a submission is already in flight the new batch is not needed: it is
+  deleted rather than silently replacing the files that submission carries.
+  """
+  @spec put_attachments(Phoenix.LiveView.Socket.t(), [map()]) :: Phoenix.LiveView.Socket.t()
+  def put_attachments(socket, attachments) do
+    if socket.assigns[:submitting] do
+      AttendeeAttachments.delete_batch(attachments)
+      socket
+    else
+      assign(socket, :attendee_attachments, attachments)
     end
   end
 
@@ -58,21 +76,23 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlow do
 
     case BookingSubmissionHandlerComponent.submit_booking(socket, booking_params) do
       {:ok, socket} ->
-        {:noreply, transition_fun.(socket, :confirmation, %{})}
+        {:noreply, socket |> keep_attachments() |> transition_fun.(:confirmation, %{})}
 
       {:redirect, socket} ->
-        {:noreply, socket}
+        {:noreply, keep_attachments(socket)}
 
       {:awaiting_payment, socket} ->
-        {:noreply, transition_fun.(socket, :awaiting_payment, %{})}
+        {:noreply, socket |> keep_attachments() |> transition_fun.(:awaiting_payment, %{})}
 
       {:slot_taken, socket} ->
-        {:noreply, return_to_schedule_for_new_slot(socket, transition_fun)}
+        {:noreply,
+         socket |> discard_attachments() |> return_to_schedule_for_new_slot(transition_fun)}
 
       {:honeypot, socket} ->
         {:noreply,
-         put_flash(
-           socket,
+         socket
+         |> discard_attachments()
+         |> put_flash(
            :info,
            dgettext(
              "booking",
@@ -81,8 +101,23 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlow do
          )}
 
       {:error, socket} ->
-        {:noreply, assign(socket, :submitting, false)}
+        {:noreply, socket |> discard_attachments() |> assign(:submitting, false)}
     end
+  end
+
+  # The meeting now references the files; they stay listed on the
+  # confirmation step but must not ride along into another booking made from
+  # this page.
+  defp keep_attachments(socket) do
+    socket
+    |> assign(:submitted_attachments, socket.assigns[:attendee_attachments] || [])
+    |> assign(:attendee_attachments, [])
+  end
+
+  # No meeting was created, so nothing will ever reference the stored files.
+  defp discard_attachments(socket) do
+    AttendeeAttachments.delete_batch(socket.assigns[:attendee_attachments] || [])
+    assign(socket, :attendee_attachments, [])
   end
 
   # Recover from a lost slot race: drop the stale time, return to the schedule
@@ -120,22 +155,47 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlow do
         MapSet.size(touched_fields) > 0 ||
         Map.has_key?(booking_params, "_target")
 
-    # Filter errors to only show for fields the user has actually interacted
-    # with (blurred). This matches the per-field validation UX of auth and
-    # contact forms — touching name doesn't reveal email errors.
-    visible_errors =
-      case InputProcessor.validate_form(booking_params, BookingConfig.booking_field_spec()) do
-        {:ok, _sanitized_params} -> %{}
-        {:error, errors} -> filter_errors_for_touched_fields(errors, touched_fields)
-      end
-
     socket =
       socket
       |> assign(:form, Component.to_form(booking_params))
-      |> assign(:validation_errors, visible_errors)
+      |> assign(:validation_errors, visible_errors(booking_params, touched_fields))
       |> assign(:form_touched, form_touched)
 
     {:noreply, socket}
+  end
+
+  @doc """
+  Marks a booking field as touched when the booker leaves it, and shows its
+  error right away.
+
+  Without re-validating here, a field left empty would show nothing until
+  the next change event, which never comes when the booker only tabs
+  through: they would face a disabled submit button with no hint why.
+  """
+  @spec handle_field_blur(Phoenix.LiveView.Socket.t(), String.t()) ::
+          Phoenix.LiveView.Socket.t()
+  def handle_field_blur(socket, field_name) do
+    socket = OrganizerHelpers.mark_field_touched(socket, field_name)
+
+    params =
+      case socket.assigns[:form] do
+        %{source: source} when is_map(source) -> source
+        _no_form -> %{}
+      end
+
+    socket
+    |> assign(:validation_errors, visible_errors(params, socket.assigns.touched_fields))
+    |> assign(:form_touched, true)
+  end
+
+  # Filter errors to only show for fields the user has actually interacted
+  # with (blurred). This matches the per-field validation UX of auth and
+  # contact forms — touching name doesn't reveal email errors.
+  defp visible_errors(booking_params, touched_fields) do
+    case InputProcessor.validate_form(booking_params, BookingConfig.booking_field_spec()) do
+      {:ok, _sanitized_params} -> %{}
+      {:error, errors} -> filter_errors_for_touched_fields(errors, touched_fields)
+    end
   end
 
   defp filter_errors_for_touched_fields(errors, touched_fields) do

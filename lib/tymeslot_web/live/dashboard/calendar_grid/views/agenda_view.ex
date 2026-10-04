@@ -11,6 +11,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.AgendaView do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Infrastructure.Config
+  alias TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
   alias TymeslotWeb.Helpers.LocaleFormat
 
@@ -140,6 +141,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.AgendaView do
               </span>
               <span class="min-w-0 flex-1">
                 <span class={"block text-token-sm truncate #{Helpers.event_text_class(event)}"}>
+                  <AttendeeAttachments.marker attachments={Map.get(event, :attendee_attachments)} />
                   {event.summary || dgettext("dashboard_calendar", "(No title)")}
                 </span>
                 <span

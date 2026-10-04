@@ -38,6 +38,10 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingStatusBadge do
 
   attr :meeting, :map, required: true
 
+  attr :organizer?, :boolean,
+    default: true,
+    doc: "false for a booking the viewer made as its attendee, whose request awaits the host"
+
   @spec status_badges(map()) :: Phoenix.LiveView.Rendered.t()
   def status_badges(assigns) do
     variant = badge_variant(assigns.meeting)
@@ -46,7 +50,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingStatusBadge do
       assign(assigns,
         classes: badge_classes(variant),
         icon: badge_icon(variant),
-        label: badge_label(variant)
+        label: badge_label(variant, assigns.organizer?)
       )
 
     ~H"""
@@ -119,6 +123,12 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingStatusBadge do
   defp badge_icon(:awaiting_payment), do: "hero-credit-card"
   defp badge_icon(:completed), do: "hero-check"
   defp badge_icon(:scheduled), do: "hero-calendar-days"
+
+  @spec badge_label(variant(), boolean()) :: String.t()
+  defp badge_label(:awaiting_approval, false = _organizer?),
+    do: dgettext("dashboard_bookings", "Awaiting host approval")
+
+  defp badge_label(variant, _organizer?), do: badge_label(variant)
 
   @spec badge_label(variant()) :: String.t()
   defp badge_label(:cancelled), do: dgettext("dashboard_bookings", "Cancelled")

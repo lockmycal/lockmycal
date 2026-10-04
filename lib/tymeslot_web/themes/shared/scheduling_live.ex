@@ -36,7 +36,7 @@ defmodule TymeslotWeb.Themes.Shared.SchedulingLive do
       use TymeslotWeb, :live_view
       require Logger
 
-      alias TymeslotWeb.Live.Scheduling.{AvailabilityHelpers, CalendarHelpers, OrganizerHelpers}
+      alias TymeslotWeb.Live.Scheduling.{AvailabilityHelpers, CalendarHelpers}
 
       alias TymeslotWeb.Live.Scheduling.Handlers.{
         SlotFetchingHandlerComponent,
@@ -56,7 +56,8 @@ defmodule TymeslotWeb.Themes.Shared.SchedulingLive do
         PathHandlers,
         ReschedulePin,
         SchedulingInit,
-        SlotGrouping
+        SlotGrouping,
+        TrackingHelpers
       }
 
       alias TymeslotWeb.Themes.Shared.StateMachineHelpers, as: StateMachine
@@ -82,7 +83,7 @@ defmodule TymeslotWeb.Themes.Shared.SchedulingLive do
             &setup_initial_state/3
           )
 
-        socket = LiveHelpers.assign_tracking(socket, params)
+        socket = TrackingHelpers.assign_tracking(socket, params)
 
         {:ok, socket}
       end
@@ -338,10 +339,15 @@ defmodule TymeslotWeb.Themes.Shared.SchedulingLive do
             BookingFlow.handle_form_validation(socket, data)
 
           :field_blur ->
-            {:noreply, OrganizerHelpers.mark_field_touched(socket, data)}
+            {:noreply, BookingFlow.handle_field_blur(socket, data)}
 
           picker_event
-          when picker_event in [:select_location, :select_video_provider, :location_phone] ->
+          when picker_event in [
+                 :select_location,
+                 :select_video_provider,
+                 :select_venue,
+                 :location_phone
+               ] ->
             {:noreply, BookingLocation.apply_event(socket, picker_event, data)}
 
           :toggle_guests ->
@@ -358,6 +364,9 @@ defmodule TymeslotWeb.Themes.Shared.SchedulingLive do
 
           :remove_guest ->
             {:noreply, GuestBooking.remove(socket, data)}
+
+          :attachments ->
+            {:noreply, BookingFlow.put_attachments(socket, data)}
 
           :submit ->
             BookingFlow.submit_booking(socket, data, &transition_to/3)

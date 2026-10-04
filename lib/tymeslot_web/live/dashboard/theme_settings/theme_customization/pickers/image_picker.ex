@@ -101,7 +101,7 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.ThemeCustomization.Pickers.ImagePi
         </div>
       </div>
 
-      <div class="bg-neutral-50 dark:bg-twilight-indigo-900/60 p-8 rounded-[2rem] border-2 border-neutral-300 dark:border-twilight-indigo-700 border-dashed">
+      <div class="bg-neutral-50 dark:bg-twilight-indigo-900/60 p-8 rounded-4xl border-2 border-neutral-300 dark:border-twilight-indigo-800 border-dashed">
         <form
           id="theme-background-image-form"
           phx-submit="save_background_image"
@@ -156,7 +156,7 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.ThemeCustomization.Pickers.ImagePi
               <% end %>
 
               <%= for entry <- @uploads.background_image.entries do %>
-                <div class="mt-6 p-4 bg-white dark:bg-twilight-indigo-950 rounded-token-2xl border-2 border-neutral-300 dark:border-twilight-indigo-700 shadow-sm">
+                <div class="mt-6 p-4 bg-white dark:bg-twilight-indigo-950 rounded-token-2xl border-2 border-neutral-300 dark:border-twilight-indigo-800 shadow-sm">
                   <div class="flex items-center justify-between mb-2">
                     <span class="text-neutral-700 dark:text-neutral-200 font-black text-token-xs uppercase tracking-wider truncate mr-4">
                       {entry.client_name}
@@ -220,7 +220,7 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.ThemeCustomization.Pickers.ImagePi
             </p>
           </div>
 
-          <div class="mt-4 aspect-video rounded-token-2xl overflow-hidden border-2 border-neutral-300 dark:border-twilight-indigo-700 shadow-sm">
+          <div class="mt-4 aspect-video rounded-token-2xl overflow-hidden border-2 border-neutral-300 dark:border-twilight-indigo-800 shadow-sm">
             <img
               src={"/uploads/#{CustomizationHelpers.sanitize_path(@customization.background_image_path)}"}
               alt={dgettext("dashboard_appearance", "Your current custom background image")}

@@ -207,7 +207,7 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.ThemeCustomization.Components do
         </div>
 
         <%= if not is_nil(@customization.custom_palette_seed) and @palette_picker_open do %>
-          <div class="mt-6 animate-fade-in-up rounded-token-2xl border-2 border-neutral-300 dark:border-twilight-indigo-700 bg-neutral-50/50 dark:bg-twilight-indigo-900/50 p-4">
+          <div class="mt-6 animate-fade-in-up rounded-token-2xl border-2 border-neutral-300 dark:border-twilight-indigo-800 bg-neutral-50/50 dark:bg-twilight-indigo-900/50 p-4">
             <.colour_picker_widget
               id="custom-palette-picker"
               target={@myself}

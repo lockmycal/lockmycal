@@ -32,6 +32,7 @@ defmodule TymeslotWeb.Dashboard.Admin.HubComponent do
   alias Tymeslot.Auth.UserSchema
   alias Tymeslot.Emails.Branding
   alias Tymeslot.Infrastructure.Config
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Locales
   alias Tymeslot.MeetingPayments
   alias Tymeslot.Pagination.OffsetPage
@@ -413,7 +414,7 @@ defmodule TymeslotWeb.Dashboard.Admin.HubComponent do
            |> load_settings_data()}
 
         {:error, reason} ->
-          Logger.warning("Failed to remove email logo", reason: inspect(reason))
+          Logger.warning("Failed to remove email logo", reason: LogFormat.reason(reason))
 
           {:noreply,
            Flash.put_flash(
@@ -437,6 +438,10 @@ defmodule TymeslotWeb.Dashboard.Admin.HubComponent do
 
   def handle_event("audit_per_page", %{"audit_paging" => %{"per_page" => per_page}}, socket) do
     with_admin(socket, &{:noreply, AuditActions.set_per_page(&1, per_page)})
+  end
+
+  def handle_event("toggle_booking_attachment_type", %{"type" => type}, socket) do
+    with_admin(socket, &SettingsActions.toggle_booking_attachment_type(&1, type))
   end
 
   def handle_event("set_audit_event", %{"key" => key, "state" => state}, socket) do

@@ -11,6 +11,7 @@ defmodule Tymeslot.Meetings.Listing do
   require Logger
 
   alias Tymeslot.Auth.UserQueries
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Meetings.MeetingListQueries
   alias Tymeslot.Pagination.CursorPage
 
@@ -90,7 +91,7 @@ defmodule Tymeslot.Meetings.Listing do
     error ->
       Logger.error("Exception while listing meetings by filter",
         user_id: user_id,
-        error: inspect(error),
+        error: LogFormat.reason(error),
         stacktrace: __STACKTRACE__
       )
 
@@ -115,16 +116,23 @@ defmodule Tymeslot.Meetings.Listing do
 
   @doc """
   Meetings awaiting approval for `organizer_user_id` that overlap
-  `[range_start, range_end]`, as plain `%{start_time:, end_time:}` maps.
+  `[range_start, range_end]`, as plain `%{start_time:, end_time:, uid:,
+  provider_event_id:}` maps.
 
-  A meeting `status: "awaiting_approval"` deliberately has no external
-  calendar event yet (that write happens only on approval), so a caller
-  sourcing blocking events from synced provider data alone would otherwise
-  show its slot as free — e.g. the public calendar page, or the
-  availability engine.
+  The booking writes a tentative hold to the host's calendar, but until sync
+  brings it back (or when that write failed) a caller sourcing blocking events
+  from synced provider data alone would show the slot as free — e.g. the
+  public calendar page. `uid`/`provider_event_id` let such a caller match the
+  hold once it has synced (`calendar_identifier_set/1`), so it isn't shown
+  twice.
   """
   @spec pending_approval_time_ranges(integer(), DateTime.t(), DateTime.t()) :: [
-          %{start_time: DateTime.t(), end_time: DateTime.t()}
+          %{
+            start_time: DateTime.t(),
+            end_time: DateTime.t(),
+            uid: String.t() | nil,
+            provider_event_id: String.t() | nil
+          }
         ]
   def pending_approval_time_ranges(organizer_user_id, range_start, range_end) do
     MeetingListQueries.pending_approval_time_ranges(organizer_user_id, range_start, range_end)

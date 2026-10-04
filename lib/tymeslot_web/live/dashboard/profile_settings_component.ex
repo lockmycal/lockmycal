@@ -14,6 +14,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsComponent do
   alias TymeslotWeb.Dashboard.ProfileSettings.{
     AppearanceFormComponent,
     AvatarUploadComponent,
+    BookingTitleFormComponent,
     CancelledMeetingsRetentionFormComponent,
     ContactDetailsFormComponent,
     ContactsSettingsFormComponent,
@@ -138,6 +139,14 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsComponent do
                 <.live_component
                   module={TimeFormatFormComponent}
                   id="time-format-form"
+                  current_user={@current_user}
+                />
+              </div>
+
+              <div class="border-t-2 border-neutral-300 dark:border-twilight-indigo-800 pt-6">
+                <.live_component
+                  module={BookingTitleFormComponent}
+                  id="booking-title-form"
                   current_user={@current_user}
                 />
               </div>

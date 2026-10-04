@@ -25,6 +25,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
     Autosave,
     FormView,
     Init,
+    SlotInterval,
     Validation
   }
 
@@ -36,6 +37,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
   # - type: existing meeting type or nil
   # - is_edit: whether we are editing
   # - video_integrations: list for selection
+  # - venues: the organiser's saved venues, for in-person locations
   # - parent_myself: phx-target for parent events (submit/cancel)
   # - saving: parent's saving state to control the button disabled state
   # - current_user: used for security metadata in validation
@@ -48,6 +50,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
      |> assign(:form_data, %{})
      |> assign(:selected_icon, "none")
      |> assign(:locations, [])
+     |> assign(:venues, [])
      |> assign(:selected_calendar_integration_id, nil)
      |> assign(:selected_target_calendar_id, nil)
      |> assign(:selected_availability_schedule_id, nil)
@@ -80,9 +83,12 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
      |> assign(:payment_required, false)
      |> assign(:payment_price, "")
      |> assign(:allow_guests, false)
+     |> assign(:allow_attachments, false)
      |> assign(:requires_approval, false)
      |> assign(:approval_window_hours, nil)
      |> assign(:show_as_free, false)
+     |> assign(:show_email_to_bookers, false)
+     |> assign(:show_phone_to_bookers, false)
      |> assign(:booking_limits, Init.get_booking_limits(nil))
      |> assign(:active_tab, "details")
      |> assign(:__initialized__, false)}
@@ -323,6 +329,14 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
   end
 
   @impl Phoenix.LiveComponent
+  def handle_event("toggle_allow_attachments", %{"state" => state}, socket) do
+    {:noreply,
+     socket
+     |> assign(:allow_attachments, state == "true")
+     |> Autosave.maybe_run()}
+  end
+
+  @impl Phoenix.LiveComponent
   def handle_event("update_booking_limits", params, socket) do
     # The inputs sit inside the meeting-type form, so the event carries the
     # whole form's params under "meeting_type".
@@ -336,6 +350,22 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
     {:noreply,
      socket
      |> assign(:booking_limits, limits)
+     |> Autosave.maybe_run()}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_show_email_to_bookers", %{"state" => state}, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_email_to_bookers, state == "true")
+     |> Autosave.maybe_run()}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_show_phone_to_bookers", %{"state" => state}, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_phone_to_bookers, state == "true")
      |> Autosave.maybe_run()}
   end
 
@@ -532,7 +562,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
 
   defp drop_interval_mode_sentinel(params), do: params
 
-  defp custom_interval_sentinel?(value), do: value == FormView.custom_interval_option()
+  defp custom_interval_sentinel?(value), do: value == SlotInterval.custom_option()
 
   defp off_preset_interval?(value) when is_binary(value) do
     case Integer.parse(String.trim(value)) do

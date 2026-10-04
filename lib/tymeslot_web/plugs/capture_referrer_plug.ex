@@ -18,7 +18,7 @@ defmodule TymeslotWeb.Plugs.CaptureReferrerPlug do
   still reflects the actual external source. The captured value is
   forwarded to the LiveView through the session (via
   `TymeslotWeb.Router.scheduling_session/1`) so the `on_mount` hook and
-  `assign_tracking/2` can pick it up without touching socket headers.
+  `TrackingHelpers.assign_tracking/2` can pick it up without touching socket headers.
 
   ## First-touch semantics
 

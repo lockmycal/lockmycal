@@ -855,3 +855,8 @@ msgstr "Maximale Terminzeit am %{day}"
 #, elixir-autogen, elixir-format
 msgid "No time limit"
 msgstr "Kein Zeitlimit"
+
+#: lib/tymeslot/availability/schedules.ex
+#, elixir-autogen, elixir-format
+msgid "Working hours"
+msgstr "Arbeitszeiten"

@@ -198,4 +198,35 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SharedToUtcTest do
                "FREQ=DAILY;UNTIL=20261231T215959Z"
     end
   end
+
+  describe "compose_recurrence_rule — the first pick of an end condition" do
+    # Picking "After" or "On date" sends no count/until: its field only
+    # appears once the rule has one. Without a default the rule would come
+    # back never-ending and the dropdown would jump back to "Never ends".
+    test "“After” without a count yet ends after the default number of occurrences" do
+      params = %{"freq" => "weekly", "end_type" => "count"}
+
+      assert Shared.compose_recurrence_rule(params) ==
+               "FREQ=WEEKLY;COUNT=#{Shared.default_recurrence_count()}"
+    end
+
+    test "“On date” without a date yet ends a month after the event's start" do
+      params = %{"freq" => "weekly", "end_type" => "until"}
+      context = %{start_date: ~D[2026-06-01], all_day: true}
+
+      assert Shared.compose_recurrence_rule(params, context) == "FREQ=WEEKLY;UNTIL=20260701"
+    end
+
+    test "a new event's date as it stands anchors the default end date" do
+      params = %{"freq" => "daily", "end_type" => "until"}
+      context = %{reference_date: ~D[2026-11-15], all_day: true}
+
+      assert Shared.compose_recurrence_rule(params, context) == "FREQ=DAILY;UNTIL=20261215"
+    end
+
+    test "a count the organiser typed that doesn't parse still gives a never-ending rule" do
+      params = %{"freq" => "weekly", "end_type" => "count", "count" => "abc"}
+      assert Shared.compose_recurrence_rule(params) == "FREQ=WEEKLY"
+    end
+  end
 end

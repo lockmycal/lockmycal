@@ -6,6 +6,7 @@ defmodule Tymeslot.Meetings.MeetingQueriesTest do
   @moduletag :database
   @moduletag :queries
 
+  alias Tymeslot.Meetings.MeetingAttributionQueries
   alias Tymeslot.Meetings.MeetingListQueries
   alias Tymeslot.Meetings.MeetingQueries
   alias Tymeslot.Meetings.Scheduling
@@ -283,8 +284,8 @@ defmodule Tymeslot.Meetings.MeetingQueriesTest do
       insert_meeting_at(user.id, DateTime.add(base, 3600, :second))
       insert_meeting_at(other_user.id, base)
 
-      assert MeetingQueries.count_bookings(user.id, from, to) == 2
-      assert MeetingQueries.count_bookings(other_user.id, from, to) == 1
+      assert MeetingAttributionQueries.count_bookings(user.id, from, to) == 2
+      assert MeetingAttributionQueries.count_bookings(other_user.id, from, to) == 1
     end
 
     test "excludes bookings outside the date range" do
@@ -297,7 +298,7 @@ defmodule Tymeslot.Meetings.MeetingQueriesTest do
       past_from = DateTime.add(now, -7200, :second)
       past_to = DateTime.add(now, -3600, :second)
 
-      assert MeetingQueries.count_bookings(user.id, past_from, past_to) == 0
+      assert MeetingAttributionQueries.count_bookings(user.id, past_from, past_to) == 0
     end
 
     test "returns 0 when the user has no bookings" do
@@ -306,7 +307,7 @@ defmodule Tymeslot.Meetings.MeetingQueriesTest do
       from = DateTime.add(now, -3600, :second)
       to = DateTime.add(now, 3600, :second)
 
-      assert MeetingQueries.count_bookings(user.id, from, to) == 0
+      assert MeetingAttributionQueries.count_bookings(user.id, from, to) == 0
     end
   end
 
@@ -322,7 +323,7 @@ defmodule Tymeslot.Meetings.MeetingQueriesTest do
       insert_meeting_at(user.id, DateTime.add(base, 3600, :second), utm_source: "linkedin")
       insert_meeting_at(user.id, DateTime.add(base, 7200, :second), utm_source: "twitter")
 
-      result = MeetingQueries.count_by_utm_source(user.id, from, to)
+      result = MeetingAttributionQueries.count_by_utm_source(user.id, from, to)
 
       linkedin = Enum.find(result, &(&1.utm_source == "linkedin"))
       twitter = Enum.find(result, &(&1.utm_source == "twitter"))
@@ -341,7 +342,7 @@ defmodule Tymeslot.Meetings.MeetingQueriesTest do
       insert_meeting_at(user.id, base, utm_source: nil)
       insert_meeting_at(user.id, DateTime.add(base, 3600, :second), utm_source: "linkedin")
 
-      result = MeetingQueries.count_by_utm_source(user.id, from, to)
+      result = MeetingAttributionQueries.count_by_utm_source(user.id, from, to)
 
       assert length(result) == 1
       assert hd(result).utm_source == "linkedin"
@@ -358,7 +359,7 @@ defmodule Tymeslot.Meetings.MeetingQueriesTest do
       insert_meeting_at(user.id, base, utm_source: "linkedin")
       insert_meeting_at(other_user.id, base, utm_source: "twitter")
 
-      result = MeetingQueries.count_by_utm_source(user.id, from, to)
+      result = MeetingAttributionQueries.count_by_utm_source(user.id, from, to)
 
       assert length(result) == 1
       assert hd(result).utm_source == "linkedin"

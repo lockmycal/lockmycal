@@ -2,20 +2,24 @@ defmodule TymeslotWeb.Dashboard.DashboardOverviewComponent do
   @moduledoc """
   LiveView component for the dashboard overview.
 
-  Renders the onboarding checklist and the live agenda — a *focus cockpit* for
-  the next appointment (with a live countdown and a self-arming Join button) over
+  Renders a bento-style dashboard: KPI tiles (`OverviewStats`), the onboarding
+  checklist, side widgets (quick actions, integrations, 7-day analytics and any
+  registered `Tymeslot.Dashboard.OverviewWidget`) and, as the main panel, the
+  live agenda in two blocks. "Your day today" is a *focus cockpit* for today's
+  next appointment (with a live countdown and a self-arming Join button) over
   a *day spine*: a vertical time-rail where free stretches are compressed into
-  labelled connectors and a pulsing now-line marks the present. Tomorrow follows
-  as a compact peek. Bookings and synced calendar events are merged into one
+  labelled connectors and a pulsing now-line marks the present. "Coming up
+  tomorrow" lists every appointment of the next day. Bookings and synced calendar events are merged into one
   source-agnostic view upstream (`Tymeslot.Agenda`); here we only present it.
+  An appointment opens in the calendar, in the same detail modal a click on the
+  grid shows, so there is one detail view to keep right, not two.
   """
   use TymeslotWeb, :live_component
   use Gettext, backend: TymeslotWeb.Gettext
 
-  alias Tymeslot.Agenda
   alias Tymeslot.Agenda.Day
   alias Tymeslot.Agenda.Entry
-  alias Tymeslot.Integrations.Calendar.EventColourOverrides
+  alias Tymeslot.Dashboard.OverviewStats
   alias TymeslotWeb.Dashboard.AgendaTimeline
   alias TymeslotWeb.Dashboard.DashboardOverview.ComponentView
 
@@ -24,89 +28,14 @@ defmodule TymeslotWeb.Dashboard.DashboardOverviewComponent do
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
     agenda = get_in(assigns, [:shared_data, :agenda]) || %Day{}
+    stats = get_in(assigns, [:shared_data, :overview_stats]) || %OverviewStats{}
 
     {:ok,
      socket
      |> assign(assigns)
      |> assign(:agenda, agenda)
-     # Survive the 60s agenda tick: a re-render must not close a modal the user
-     # has open, so keep any already-selected entry rather than resetting it.
-     |> assign_new(:selected_entry, fn -> nil end)
+     |> assign(:stats, stats)
      |> assign_agenda_view(agenda, DateTime.utc_now())}
-  end
-
-  @impl Phoenix.LiveComponent
-  def handle_event("open_entry", %{"id" => id}, socket) do
-    {:noreply, assign(socket, :selected_entry, find_entry(socket.assigns.agenda, id))}
-  end
-
-  def handle_event("close_entry", _params, socket) do
-    {:noreply, assign(socket, :selected_entry, nil)}
-  end
-
-  def handle_event("set_entry_colour", %{"colour" => colour, "target" => target}, socket) do
-    case decode_target(target) do
-      :error ->
-        {:noreply, socket}
-
-      decoded ->
-        case EventColourOverrides.set(socket.assigns.current_user.id, decoded, colour) do
-          {:ok, _override} ->
-            {:noreply, reload_agenda_colours(socket)}
-
-          {:error, _changeset} ->
-            {:noreply,
-             Flash.put_flash(
-               socket,
-               :error,
-               dgettext("dashboard_home", "Couldn't save that colour. Please try again.")
-             )}
-        end
-    end
-  end
-
-  def handle_event("clear_entry_colour", %{"target" => target}, socket) do
-    case decode_target(target) do
-      :error ->
-        {:noreply, socket}
-
-      decoded ->
-        EventColourOverrides.clear(socket.assigns.current_user.id, decoded)
-        {:noreply, reload_agenda_colours(socket)}
-    end
-  end
-
-  # Rebuilds the agenda from the database (now reflecting the override) and keeps
-  # the detail modal open on the same entry so its picker shows the new colour.
-  defp reload_agenda_colours(socket) do
-    agenda = Agenda.day_agenda(socket.assigns.current_user, socket.assigns.agenda.timezone)
-
-    selected =
-      socket.assigns.selected_entry && find_entry(agenda, socket.assigns.selected_entry.id)
-
-    socket
-    |> assign(:agenda, agenda)
-    |> assign(:selected_entry, selected)
-    |> assign_agenda_view(agenda, DateTime.utc_now())
-  end
-
-  defp decode_target("meeting:" <> id), do: {:meeting, id}
-
-  defp decode_target("external:" <> rest) do
-    with [integration_id, uid] <- String.split(rest, ":", parts: 2),
-         {parsed_id, ""} <- Integer.parse(integration_id) do
-      {:external, parsed_id, uid}
-    else
-      _other -> :error
-    end
-  end
-
-  defp decode_target(_other), do: :error
-
-  defp find_entry(%Day{} = agenda, id) do
-    [agenda.next | agenda.today ++ agenda.tomorrow]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.find(&(&1.id == id))
   end
 
   # Reshapes the domain agenda into the view model the rail renders against. The
@@ -123,15 +52,15 @@ defmodule TymeslotWeb.Dashboard.DashboardOverviewComponent do
 
     assign(socket,
       now: now,
+      # The cockpit sits in the "today" block, so it only features a next
+      # appointment that is today's; tomorrow's lists in the block below.
+      next_today?: agenda.next != nil and Entry.covers?(agenda.next, today, agenda.timezone),
       all_day_today: all_day_today,
       spine: AgendaTimeline.spine(timed_today, now, next_id),
       today_count: length(all_day_today) + length(timed_today),
       then_entry: List.first(others),
       more_count: max(length(others) - 1, 0),
-      # The cockpit already features `next`; keep it out of the peek so a
-      # tomorrow-only hero isn't listed twice.
-      tomorrow_entries:
-        agenda |> entries_on(Date.add(today, 1)) |> Enum.reject(&(&1.id == next_id))
+      tomorrow_entries: entries_on(agenda, Date.add(today, 1))
     )
   end
 

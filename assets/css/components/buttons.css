@@ -1,61 +1,55 @@
-/* ===================================
-   BUTTON COMPONENTS
-   =================================== */
+/* ===========================================================================
+   BUTTON COMPONENTS - LockMyCal Design System
+   =========================================================================== */
 
 /* Base Button */
 .btn {
-  @apply inline-flex items-center justify-center font-bold transition-all duration-300 cursor-pointer outline-hidden no-underline whitespace-nowrap select-none touch-manipulation;
+  @apply inline-flex items-center justify-center font-semibold transition-all duration-150 cursor-pointer outline-hidden no-underline whitespace-nowrap select-none touch-manipulation;
 }
 
 .btn:focus-visible {
   @apply ring-2 ring-primary-500 ring-offset-2;
 }
 
-/* Button Variants — kept visually in sync with the sanctioned <.action_button>
-   component (.action-button--* below) so both class schemes render the same
-   primary/secondary/danger appearance. Only colour, weight and hover are aligned
-   here; display and width behaviour are deliberately left as-is so existing
-   layouts that use these classes are undisturbed. */
+/* Button Variants */
 .btn-primary {
-  @apply border-1 border-primary-600  bg-linear-to-r from-primary-600 to-secondary-600 text-white font-bold rounded-token-2xl px-6 py-3 transition-glass;
-  @apply hover:from-primary-700 hover:to-secondary-700;
+  @apply border border-primary-500 bg-primary-500 text-neutral-950 font-semibold rounded-token-lg px-5 py-2.5 transition-all;
+  @apply hover:bg-primary-600 hover:border-primary-600;
 }
 
 .btn-secondary {
-  @apply bg-white dark:bg-twilight-indigo-900 border-1 border-primary-600 text-primary-600 dark:text-primary-400 font-bold rounded-token-2xl px-6 py-3 transition-glass;
-  @apply hover:bg-linear-to-r hover:from-primary-600 hover:to-secondary-600 hover:text-white hover:border-transparent;
+  @apply bg-white dark:bg-twilight-indigo-900 border border-neutral-300 dark:border-twilight-indigo-700 text-neutral-900 dark:text-neutral-100 font-semibold rounded-token-lg px-5 py-2.5 transition-all;
+  @apply hover:bg-neutral-100 dark:hover:bg-twilight-indigo-800;
 }
 
 .btn-danger {
-  @apply bg-linear-to-r from-red-500 to-rose-600 text-white font-bold rounded-token-2xl px-6 py-3 transition-glass;
-  @apply hover:from-red-400 hover:to-rose-500;
+  @apply bg-red-600 hover:bg-red-700 text-white font-semibold rounded-token-lg px-5 py-2.5 transition-all;
 }
 
 .btn-success {
-  @apply bg-linear-to-r from-emerald-500 to-green-600 text-white font-bold rounded-token-2xl px-6 py-3 transition-glass;
-  @apply hover:from-emerald-400 hover:to-green-500;
+  @apply bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-token-lg px-5 py-2.5 transition-all;
 }
 
 .btn-ghost {
-  @apply bg-transparent text-neutral-600 dark:text-neutral-300 border-2 border-neutral-300 dark:border-twilight-indigo-700 font-bold rounded-token-2xl px-6 py-3 transition-glass;
+  @apply bg-transparent text-neutral-700 dark:text-neutral-200 border border-neutral-300 dark:border-twilight-indigo-700 font-semibold rounded-token-lg px-5 py-2.5 transition-all;
   @apply hover:bg-neutral-100 dark:hover:bg-twilight-indigo-800;
 }
 
 .btn-link {
-  @apply text-primary-600 font-bold hover:text-primary-700 transition-colors underline underline-offset-4 decoration-2 decoration-primary-200 hover:decoration-primary-400;
+  @apply text-primary-600 dark:text-primary-400 font-semibold hover:text-primary-700 dark:hover:text-primary-300 transition-colors underline underline-offset-4 decoration-primary-300 hover:decoration-primary-500;
 }
 
 /* Button Sizes */
 .btn-sm {
-  @apply px-4 py-2 text-token-xs rounded-token-xl;
+  @apply px-3 py-1.5 text-token-xs rounded-token-md;
 }
 
 .btn-lg {
-  @apply px-8 py-4 text-token-base rounded-token-2xl;
+  @apply px-6 py-3 text-token-base rounded-token-xl;
 }
 
 .btn-xl {
-  @apply px-10 py-5 text-token-xl rounded-token-2xl;
+  @apply px-8 py-3.5 text-token-lg rounded-token-xl;
 }
 
 /* Button States */
@@ -63,40 +57,30 @@
   @apply opacity-50! cursor-not-allowed! transform-none!;
 }
 
-/* Primary button carries its own hover colour shift without the base .btn
-   class, so it needs an explicit disabled treatment: grey it out and hold the
-   base gradient so it reads as inert. */
 .btn-primary:disabled {
   @apply opacity-50 cursor-not-allowed;
 }
 
 .btn-primary:disabled:hover {
-  @apply from-primary-600 to-secondary-600;
+  @apply bg-primary-500 border-primary-500;
 }
 
-/* Secondary button carries its own hover affordances (lift, border
-   colour shift) without the base .btn class, so it needs an explicit disabled
-   treatment: grey it out and strip every hover effect to signal it is inert. */
 .btn-secondary:disabled {
   @apply opacity-50 cursor-not-allowed;
 }
 
 .btn-secondary:disabled:hover {
-  @apply border-primary-600 bg-white text-primary-600 transform-none;
+  @apply border-neutral-300 bg-white text-neutral-900 transform-none;
 }
 
 .btn-auth {
-  @apply bg-white dark:bg-twilight-indigo-900 border-2 border-neutral-300 dark:border-twilight-indigo-700 text-neutral-700 dark:text-neutral-200 font-bold rounded-token-2xl px-4 py-3 transition-glass w-full;
-  @apply hover:border-primary-100 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-800;
+  @apply bg-white dark:bg-twilight-indigo-900 border border-neutral-300 dark:border-twilight-indigo-700 text-neutral-800 dark:text-neutral-200 font-semibold rounded-token-lg px-4 py-2.5 transition-all w-full;
+  @apply hover:border-primary-400 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-800;
 }
 
-/* Action Buttons — the sanctioned <.action_button> component surface (variants
-   :primary / :secondary / :danger / :outline). Base layout/interaction
-   properties (cursor, focus ring, disabled state, ...) and colours are kept
-   in sync with the .btn-* family above so both class schemes behave and
-   render identically. */
+/* Action Buttons — <.action_button> component surface */
 .action-button {
-  @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-token-2xl font-bold text-token-base transition-glass cursor-pointer outline-hidden no-underline whitespace-nowrap select-none touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-token-lg font-semibold text-token-base transition-all cursor-pointer outline-hidden no-underline whitespace-nowrap select-none touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .action-button:focus-visible {
@@ -104,31 +88,27 @@
 }
 
 .action-button--primary {
-  @apply bg-linear-to-r from-primary-600 to-secondary-600 text-white;
+  @apply bg-primary-500 border border-primary-500 text-neutral-950;
 }
 
 .action-button--primary:hover:not(:disabled) {
-  @apply from-primary-700 to-secondary-700;
+  @apply bg-primary-600 border-primary-600;
 }
 
 .action-button--secondary {
-  @apply bg-white dark:bg-twilight-indigo-900 border-2 border-primary-600 text-primary-600 dark:text-primary-400;
+  @apply bg-white dark:bg-twilight-indigo-900 border border-neutral-300 dark:border-twilight-indigo-700 text-neutral-900 dark:text-neutral-100;
 }
 
 .action-button--secondary:hover:not(:disabled) {
-  @apply bg-linear-to-r from-primary-600 to-secondary-600 text-white border-transparent;
+  @apply bg-neutral-100 dark:bg-twilight-indigo-800;
 }
 
 .action-button--danger {
-  @apply bg-linear-to-r from-red-500 to-rose-600 text-white;
-}
-
-.action-button--danger:hover:not(:disabled) {
-  @apply from-red-400 to-rose-500;
+  @apply bg-red-600 hover:bg-red-700 text-white;
 }
 
 .action-button--outline {
-  @apply bg-transparent border-2 border-neutral-300 dark:border-twilight-indigo-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-twilight-indigo-800;
+  @apply bg-transparent border border-neutral-300 dark:border-twilight-indigo-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-twilight-indigo-800;
 }
 
 /* Small-screen action button sizing */
@@ -138,56 +118,44 @@
   }
 }
 
-/* Modal/Dialog Icon Buttons — small square icon buttons used for dismiss
-   (close) and navigation (back) controls inside a dialog header. Default
-   variant hovers red (close/cancel); the --neutral variant hovers plain gray
-   for non-destructive actions like "back". */
+/* Modal/Dialog Icon Buttons */
 .modal-icon-button {
-  @apply w-10 h-10 shrink-0 rounded-token-xl bg-neutral-50 dark:bg-twilight-indigo-800 text-neutral-400 dark:text-primary-500 transition-all cursor-pointer flex items-center justify-center;
-  @apply hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-500 dark:hover:text-red-300;
+  @apply w-9 h-9 shrink-0 rounded-token-md bg-neutral-100 dark:bg-twilight-indigo-800 text-neutral-500 dark:text-twilight-indigo-300 transition-all cursor-pointer flex items-center justify-center;
+  @apply hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400;
 }
 
 .modal-icon-button--sm {
-  @apply w-9 h-9 rounded-token-lg;
+  @apply w-8 h-8 rounded-token-sm;
 }
 
 .modal-icon-button--neutral {
-  @apply text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-twilight-indigo-800 hover:text-neutral-600 dark:hover:text-neutral-200;
+  @apply text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-twilight-indigo-800 hover:text-neutral-900 dark:hover:text-neutral-100;
 }
 
-/* Row Action Buttons — compact action controls inside a row/card item
-   (integration connection rows in calendar & video settings, meeting type
-   cards). Shape and colour are separate modifiers so they combine freely:
-   --pill collapses to an icon-only square at desktop widths (label hidden by
-   the caller via `lg:hidden`), while --icon-only is always a plain square.
-   --neutral is the default palette; --attention promotes an action that
-   needs the user's notice (e.g. reconnect after auth expires); --danger is a
-   self-contained icon-only destructive action — visibly red at rest so a
-   delete control reads as dangerous without requiring a hover, filling solid
-   red with a white icon on hover/press. */
+/* Row Action Buttons */
 .row-action-button {
-  @apply flex items-center justify-center font-bold border-2 rounded-token-lg transition-all cursor-pointer;
+  @apply flex items-center justify-center font-medium border rounded-token-md transition-all cursor-pointer;
   @apply disabled:opacity-60 disabled:cursor-not-allowed;
 }
 
 .row-action-button--pill {
-  @apply gap-1.5 px-3 py-1.5 lg:h-9 lg:w-9 lg:px-0 lg:py-0;
+  @apply gap-1.5 px-3 py-1.5 lg:h-8 lg:w-8 lg:px-0 lg:py-0;
 }
 
 .row-action-button--icon-only {
-  @apply h-9 w-9;
+  @apply h-8 w-8;
 }
 
 .row-action-button--neutral {
-  @apply bg-neutral-50 dark:bg-twilight-indigo-900 text-neutral-700 dark:text-neutral-200 border-neutral-300 dark:border-twilight-indigo-700 hover:bg-tertiary-600 hover:text-white;
+  @apply bg-white dark:bg-twilight-indigo-900 text-neutral-700 dark:text-neutral-200 border-neutral-300 dark:border-twilight-indigo-700 hover:bg-neutral-100 dark:hover:bg-twilight-indigo-800 hover:text-neutral-900 dark:hover:text-neutral-50;
 }
 
 .row-action-button--attention {
-  @apply bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-200 border-amber-100 dark:border-amber-800;
+  @apply bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-200 border-amber-200 dark:border-amber-800;
   @apply hover:bg-amber-100 dark:hover:bg-amber-900/40;
 }
 
 .row-action-button--danger {
-  @apply h-9 w-9 border-red-100 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-300;
-  @apply hover:border-red-500 hover:bg-red-500 hover:text-white;
+  @apply h-8 w-8 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400;
+  @apply hover:border-red-600 hover:bg-red-600 hover:text-white;
 }

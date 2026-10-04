@@ -10,6 +10,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.CalendarConnectionRow do
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
 
+  alias Tymeslot.Dashboard.CalendarConnectionTag
   alias Tymeslot.Integrations.Calendar
   alias Tymeslot.Integrations.Calendar.BookingEligibility
   alias Tymeslot.Integrations.Calendar.DisplayHelpers
@@ -51,10 +52,17 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.CalendarConnectionRow do
     assigns =
       assigns
       |> assign(:calendar_list, calendar_list)
+      |> assign(:default_calendar, default_calendar(integration))
       |> assign(:status, integration_status(integration, assigns.health_state))
       |> assign(:summary, calendar_summary(integration))
       |> assign(:subscription?, subscription?)
-      |> assign(:read_only?, read_only?)
+      |> assign(
+        :type_tag,
+        if(read_only?,
+          do: dgettext("dashboard_calendar_settings", "Read-only"),
+          else: CalendarConnectionTag.for_integration(integration)
+        )
+      )
       |> assign(
         :display_name,
         if(integration.name == provider_name, do: provider_name, else: integration.name)
@@ -66,7 +74,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.CalendarConnectionRow do
       icon={@integration.provider}
       icon_type={:calendar}
       title={@display_name}
-      type_tag={if @read_only?, do: dgettext("dashboard_calendar_settings", "Read-only")}
+      type_tag={@type_tag}
       summary={@summary}
       notice={ConnectionRow.reconnect_reason(@integration)}
       status={@status}
@@ -75,7 +83,41 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.CalendarConnectionRow do
       toggle_disabled={@activation_blocked and not @integration.is_active}
       myself={@myself}
     >
+      <:title_badges>
+        <span
+          :if={Map.get(@integration, :is_primary)}
+          class="rounded-token-sm bg-primary-50 px-1.5 py-0.5 text-token-xs font-semibold uppercase text-primary-700"
+          title={
+            dgettext(
+              "dashboard_calendar_settings",
+              "Bookings without a calendar of their own, and your bookings on other pages, go here"
+            )
+          }
+          data-testid="default-calendar-badge"
+        >
+          {if @default_calendar,
+            do:
+              dgettext("dashboard_calendar_settings", "Default: %{calendar}",
+                calendar: @default_calendar
+              ),
+            else: dgettext("dashboard_calendar_settings", "Default")}
+        </span>
+      </:title_badges>
       <:actions>
+        <button
+          :if={can_become_default?(@integration)}
+          phx-click="show"
+          phx-value-id={@integration.id}
+          phx-target="#default-calendar-modal"
+          class="row-action-button row-action-button--pill row-action-button--neutral"
+          title={default_action_label(@integration)}
+          aria-label={default_action_label(@integration)}
+          data-testid="set-default-calendar"
+        >
+          <.icon name="hero-star" class="w-4 h-4" /><span class="lg:hidden">{default_action_label(
+            @integration
+          )}</span>
+        </button>
         <button
           :if={@integration.provider == "google" && Helpers.needs_scope_upgrade?(@integration)}
           phx-click="upgrade_google_scope"
@@ -135,6 +177,39 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.CalendarConnectionRow do
     </ConnectionRow.connection_row>
     """
   end
+
+  # Only a connection that can take a booking can be the default: it is where
+  # bookings are written (`CalendarPrimary.set_default_calendar/3` refuses any
+  # other). The default one keeps the action while it has several calendars,
+  # to change which of them is the default.
+  defp can_become_default?(integration) do
+    integration.is_active and not integration.needs_reauth and
+      BookingEligibility.bookable?(integration) and
+      (not Map.get(integration, :is_primary, false) or several_calendars?(integration))
+  end
+
+  defp default_action_label(integration) do
+    if Map.get(integration, :is_primary, false),
+      do: dgettext("dashboard_calendar_settings", "Change default calendar"),
+      else: dgettext("dashboard_calendar_settings", "Set as default")
+  end
+
+  defp several_calendars?(integration),
+    do: match?([_, _ | _], Calendar.writable_calendars(integration.calendar_list))
+
+  # The calendar picked within the default connection, named on its badge
+  # when there was a choice to make.
+  defp default_calendar(%{default_calendar_id: id} = integration) when is_binary(id) do
+    with true <- several_calendars?(integration),
+         %{} = calendar <-
+           Enum.find(Calendar.writable_calendars(integration.calendar_list), &(&1.id == id)) do
+      calendar.name || calendar.id
+    else
+      _no_pick -> nil
+    end
+  end
+
+  defp default_calendar(_integration), do: nil
 
   # Always-visible reconnect control: oauth providers re-trigger
   # `connect_provider`, everything else opens the CalDAV reconnect modal.

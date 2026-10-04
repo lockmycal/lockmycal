@@ -188,6 +188,17 @@ defmodule Tymeslot.MeetingTypesTest do
       assert %DateTime{} = Profiles.get_profile(user.id).booking_page_published_at
     end
 
+    test "names the default meeting types in the user's language" do
+      user = insert(:user)
+      insert(:profile, user: user, username: "host")
+      Gettext.put_locale(TymeslotWeb.Gettext, "cs")
+
+      assert {:ok, defaults} = MeetingTypes.create_default_meeting_types(user.id)
+
+      assert defaults |> Enum.map(& &1.name) |> Enum.sort() == ["15 minut", "30 minut"]
+      assert Enum.any?(defaults, &(&1.description == "Krátký rozhovor nebo rychlá konzultace"))
+    end
+
     test "does not stamp the booking page when the user has no username" do
       user = insert(:user)
       insert(:profile, user: user, username: nil)

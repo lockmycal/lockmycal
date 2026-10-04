@@ -15,6 +15,7 @@ defmodule TymeslotWeb.Registration.SignupComponent do
   import TymeslotWeb.Shared.PasswordToggleButtonComponent
   import TymeslotWeb.Components.CoreComponents
 
+  alias Tymeslot.Auth.SignupNotice
   alias Tymeslot.Infrastructure.Config
   alias TymeslotWeb.Live.Shared.FormValidationHelpers
   alias TymeslotWeb.Themes.Shared.SecurityFields
@@ -40,22 +41,13 @@ defmodule TymeslotWeb.Registration.SignupComponent do
       <:form>
         <.auth_form
           id="signup-form"
+          novalidate
           phx-submit="submit_signup"
           loading={@loading}
           csrf_token={@csrf_token}
           rest={SecurityFields.recaptcha_form_attrs("signup_form", "user", :signup)}
         >
-          <div class="sr-only" aria-hidden="true">
-            <label for="signup-website">Website</label>
-            <input
-              id="signup-website"
-              type="text"
-              name="user[website]"
-              tabindex="-1"
-              autocomplete="off"
-              value=""
-            />
-          </div>
+          <.honeypot_field id="signup-website" param_root="user" />
           <div class="space-y-4 sm:space-y-5 mb-2">
             <.input
               name="user[email]"
@@ -94,6 +86,14 @@ defmodule TymeslotWeb.Registration.SignupComponent do
             <%= if Application.get_env(:tymeslot, :enforce_legal_agreements, false) do %>
               <.terms_checkbox name="user[terms_accepted]" style={:simple} />
             <% end %>
+          </div>
+
+          <div
+            :for={notice <- SignupNotice.registered()}
+            id={"signup-notice-#{notice.id()}"}
+            class="contents"
+          >
+            {notice.render()}
           </div>
 
           <SecurityFields.recaptcha_fields id_prefix="signup" param_root="user" scope={:signup} />

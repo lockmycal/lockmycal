@@ -1,0 +1,74 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: en\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} is larger than the allowed size."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} is not an allowed file type."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "A file could not be uploaded."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/attachment_field.ex
+#, elixir-autogen, elixir-format
+msgid "Attachments (optional)"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "One of your files does not match its file type and was not accepted. Please check it and select it again."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "One of your files is not an allowed file type."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/attachment_field.ex
+#, elixir-autogen, elixir-format
+msgid "Remove %{name}"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "You have selected too many files."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/attachment_field.ex
+#, elixir-autogen, elixir-format
+msgid "Your attachments"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "Your files are still uploading. Please wait."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "Your files could not be saved. Please try again."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "Allowed file types: %{types}, up to %{max_mb} MB, maximum %{count} file."
+msgid_plural "Allowed file types: %{types}, up to %{max_mb} MB each, maximum %{count} files."
+msgstr[0] ""
+msgstr[1] ""

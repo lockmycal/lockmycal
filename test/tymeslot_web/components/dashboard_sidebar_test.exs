@@ -419,6 +419,42 @@ defmodule TymeslotWeb.Components.DashboardSidebarTest do
     assert Floki.text(users_link) =~ "Users"
   end
 
+  test "Administration section is collapsed by default outside admin pages" do
+    assigns = %{
+      current_action: :overview,
+      current_user: %{is_admin: true},
+      integration_status: %{has_calendar: true, has_video: true, has_meeting_types: true},
+      profile: %{username: "testuser"}
+    }
+
+    doc =
+      (&DashboardSidebar.sidebar/1)
+      |> render_component(assigns)
+      |> Floki.parse_document!()
+
+    assert [section] = Floki.find(doc, "details#dashboard-sidebar-admin-section")
+    assert Floki.attribute(section, "open") == []
+  end
+
+  test "Administration section is expanded on every admin page" do
+    for action <- [:admin, :admin_users, :admin_audit] do
+      assigns = %{
+        current_action: action,
+        current_user: %{is_admin: true},
+        integration_status: %{has_calendar: true, has_video: true, has_meeting_types: true},
+        profile: %{username: "testuser"}
+      }
+
+      doc =
+        (&DashboardSidebar.sidebar/1)
+        |> render_component(assigns)
+        |> Floki.parse_document!()
+
+      assert [section] = Floki.find(doc, "details#dashboard-sidebar-admin-section")
+      assert Floki.attribute(section, "open") != [], "expected open for #{action}"
+    end
+  end
+
   test "App Settings and Users each highlight only their own link" do
     for {action, href} <- [admin: "/dashboard/admin", admin_users: "/dashboard/admin/users"] do
       assigns = %{

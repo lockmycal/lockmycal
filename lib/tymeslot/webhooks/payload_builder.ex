@@ -95,8 +95,21 @@ defmodule Tymeslot.Webhooks.PayloadBuilder do
       phone: meeting.attendee_phone,
       company: meeting.attendee_company,
       timezone: meeting.attendee_timezone,
-      message: meeting.attendee_message
+      message: meeting.attendee_message,
+      attachments: build_attachments_data(meeting)
     }
+  end
+
+  # Metadata only: the files are private to the organiser and are downloaded
+  # from the dashboard, so no URL is ever published in a payload.
+  defp build_attachments_data(meeting) do
+    Enum.map(meeting.attendee_attachments || [], fn attachment ->
+      %{
+        filename: attachment["filename"],
+        content_type: attachment["content_type"],
+        byte_size: attachment["byte_size"]
+      }
+    end)
   end
 
   # Guests are read from the loaded association rather than fetched here, so

@@ -333,7 +333,7 @@ msgstr "Troppe modifiche: salvataggio a breve…"
 #: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
 #, elixir-autogen, elixir-format
 msgid "Turn this off to go back to the built-in text, which is translated into every language Tymeslot supports. Your own wording is discarded."
-msgstr "Disattiva questa opzione per tornare al testo predefinito, tradotto in tutte le lingue supportate da Tymeslot. Il tuo testo viene eliminato."
+msgstr "Disattiva questa opzione per tornare al testo predefinito, tradotto in tutte le lingue supportate da LockMyCal. Il tuo testo viene eliminato."
 
 #: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
 #, elixir-autogen, elixir-format

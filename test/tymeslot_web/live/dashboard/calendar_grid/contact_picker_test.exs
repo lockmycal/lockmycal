@@ -36,7 +36,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.ContactPickerTest do
       html = open_create_form(lv)
 
       assert html =~ ~s(id="create-meeting-contact-picker")
-      assert html =~ "Pick from contacts"
+      assert html =~ "Search your contacts, or fill in below"
     end
 
     test "is hidden when contacts is not allowed on the plan", %{conn: conn} do

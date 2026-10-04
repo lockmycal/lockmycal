@@ -94,7 +94,9 @@ msgstr "ПОВІДОМЛЕННЯ ВІД УЧАСНИКА:"
 msgid "Meeting"
 msgstr "Зустріч"
 
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
 #: lib/tymeslot/integrations/calendar/utils/ics_generator.ex
+#: lib/tymeslot/meetings/booker_calendar_sync.ex
 #, elixir-autogen, elixir-format
 msgid "Message from %{name}:"
 msgstr "Повідомлення від %{name}:"
@@ -149,6 +151,7 @@ msgstr "Відеодзвінок"
 
 #: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
 #: lib/tymeslot/integrations/calendar/utils/ics_generator.ex
+#: lib/tymeslot/meetings/booker_calendar_sync.ex
 #, elixir-autogen, elixir-format
 msgid "Video meeting:"
 msgstr "Відеозустріч:"
@@ -546,12 +549,12 @@ msgstr "Повідомлення від учасника:"
 #: lib/tymeslot/emails/email_service/auth_emails.ex
 #, elixir-autogen, elixir-format
 msgid "You already have a Tymeslot account"
-msgstr "У вас уже є обліковий запис Tymeslot"
+msgstr "У вас уже є обліковий запис LockMyCal"
 
 #: lib/tymeslot/emails/email_service/auth_emails.ex
 #, elixir-autogen, elixir-format
 msgid "Your Tymeslot account has no password"
-msgstr "Ваш обліковий запис Tymeslot не має пароля"
+msgstr "Ваш обліковий запис LockMyCal не має пароля"
 
 #: lib/tymeslot/emails/shared/sign_in_provider.ex
 #, elixir-autogen, elixir-format
@@ -582,3 +585,114 @@ msgstr "Деталі зустрічі"
 #, elixir-autogen, elixir-format
 msgid "Not specified"
 msgstr "Не вказано"
+
+#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
+#, elixir-autogen, elixir-format
+msgid "ATTACHMENTS:"
+msgstr "ВКЛАДЕННЯ:"
+
+#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
+#, elixir-autogen, elixir-format
+msgid "Attachments"
+msgstr "Вкладення"
+
+#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
+#, elixir-autogen, elixir-format
+msgid "The files are attached to this email."
+msgstr "Файли додано до цього листа."
+
+#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
+#, elixir-autogen, elixir-format
+msgid "The files are too large to attach to this email. Download them from the booking on your dashboard: %{url}"
+msgstr "Файли завеликі, щоб додати їх до цього листа. Завантажте їх з бронювання на панелі керування: %{url}"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Files from the attendee (sign in to download):"
+msgstr "Файли від учасника (увійдіть, щоб завантажити):"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Company: %{company}"
+msgstr "Компанія: %{company}"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting type: %{type}"
+msgstr "Тип зустрічі: %{type}"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#: lib/tymeslot/meetings/booker_calendar_sync.ex
+#, elixir-autogen, elixir-format
+msgid "Phone: %{phone}"
+msgstr "Телефон: %{phone}"
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} has cancelled a recurring event you were invited to. Every occurrence is cancelled."
+msgstr "%{name} скасував(-ла) повторювану подію, на яку вас запросили. Усі її повторення скасовано."
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} has cancelled an event you were invited to."
+msgstr "%{name} скасував(-ла) подію, на яку вас запросили."
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled"
+msgstr "Скасовано"
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled - %{title} (every occurrence)"
+msgstr "Скасовано - %{title} (усі повторення)"
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled - %{title} on %{date}"
+msgstr "Скасовано - %{title}, %{date}"
+
+#: lib/tymeslot/emails/templates/calendar_invitation.ex
+#, elixir-autogen, elixir-format
+msgid "Event Cancelled"
+msgstr "Подію скасовано"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "NOTE FROM THE ORGANISER:"
+msgstr "ПРИМІТКА ВІД ОРГАНІЗАТОРА:"
+
+#: lib/tymeslot/emails/shared/meeting/notes.ex
+#, elixir-autogen, elixir-format
+msgid "Note from the organiser"
+msgstr "Примітка від організатора"
+
+#: lib/tymeslot/bookings/booking_title.ex
+#, elixir-autogen, elixir-format
+msgid "%{meeting_type} with %{name}"
+msgstr "%{meeting_type} з %{name}"
+
+#: lib/tymeslot/bookings/demo_orchestrator.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting with %{name}"
+msgstr "Зустріч із %{name}"
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "The address is to be arranged with the booker."
+msgstr "Адресу потрібно погодити з тим, хто бронював."
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "The address will be arranged after booking."
+msgstr "Адресу погодять після бронювання."
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "The address will be arranged with you after booking."
+msgstr "Адресу погодять з вами після бронювання."
+
+#: lib/tymeslot/meetings/booker_calendar_sync.ex
+#, elixir-autogen, elixir-format
+msgid "Organizer: %{organizer}"
+msgstr "Організатор: %{organizer}"

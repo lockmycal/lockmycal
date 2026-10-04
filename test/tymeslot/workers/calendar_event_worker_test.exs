@@ -210,7 +210,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerTest do
 
     test "handles missing calendar integration on update" do
       meeting = insert(:meeting, calendar_integration_id: nil)
-      uid = meeting.uid
+      uid = meeting.calendar_uid
 
       # Should attempt update with nil integration_id
       expect(Tymeslot.CalendarMock, :update_event, fn ^uid, _data, meeting ->
@@ -239,7 +239,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerTest do
   describe "perform/1 - update action" do
     test "updates existing event" do
       %{meeting: meeting} = setup_calendar_scenario()
-      uid = meeting.uid
+      uid = meeting.calendar_uid
 
       expect(Tymeslot.CalendarMock, :update_event, fn ^uid, _data, _id -> :ok end)
 
@@ -252,7 +252,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerTest do
 
     test "creates new event if not found during update" do
       %{user: user, integration: integration, meeting: meeting} = setup_calendar_scenario()
-      uid = meeting.uid
+      uid = meeting.calendar_uid
 
       # Update fails with not_found
       expect(Tymeslot.CalendarMock, :update_event, fn ^uid, _data, meeting ->
@@ -279,6 +279,29 @@ defmodule Tymeslot.Workers.CalendarEventWorkerTest do
     end
   end
 
+  describe "perform/1 - update the provider cannot apply" do
+    # Issue #158: iCloud reported the event missing to the update while the
+    # recovery create found it present, and the job finished as a success
+    # with the event never moved.
+    test "fails the job rather than counting a contradicted absence as done" do
+      %{meeting: meeting} = setup_calendar_scenario()
+
+      expect(Tymeslot.CalendarMock, :update_event, 2, fn _uid, _data, _ctx ->
+        {:error, :not_found}
+      end)
+
+      expect(Tymeslot.CalendarMock, :create_event, fn _data, _ctx ->
+        {:error, :precondition_failed}
+      end)
+
+      assert {:error, :calendar_event_not_updatable} =
+               perform_job(CalendarEventWorker, %{
+                 "action" => "update",
+                 "meeting_id" => meeting.id
+               })
+    end
+  end
+
   describe "perform/1 - delete action" do
     # Deletion is only ever scheduled once the meeting's slot has already
     # been voided (cancellation, or a pending reschedule request) — mirror
@@ -287,7 +310,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerTest do
     test "deletes event" do
       %{meeting: meeting} = setup_calendar_scenario()
       {:ok, meeting} = MeetingQueries.update_meeting(meeting, %{status: "cancelled"})
-      uid = meeting.uid
+      uid = meeting.calendar_uid
 
       expect(Tymeslot.CalendarMock, :delete_event, fn ^uid, _id -> :ok end)
 
@@ -301,7 +324,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerTest do
     test "considers not_found as success for deletion (idempotent)" do
       %{integration: integration, meeting: meeting} = setup_calendar_scenario()
       {:ok, meeting} = MeetingQueries.update_meeting(meeting, %{status: "cancelled"})
-      uid = meeting.uid
+      uid = meeting.calendar_uid
 
       expect(Tymeslot.CalendarMock, :delete_event, fn ^uid, meeting ->
         assert meeting.calendar_integration_id == integration.id
@@ -336,7 +359,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerTest do
     test "cancels a pending create job for the same meeting before deleting" do
       %{meeting: meeting} = setup_calendar_scenario()
       {:ok, meeting} = MeetingQueries.update_meeting(meeting, %{status: "cancelled"})
-      uid = meeting.uid
+      uid = meeting.calendar_uid
 
       {:ok, pending_create} =
         %{"action" => "create", "meeting_id" => meeting.id}
@@ -357,7 +380,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerTest do
     test "cancels a pending update job for the same meeting before deleting" do
       %{meeting: meeting} = setup_calendar_scenario()
       {:ok, meeting} = MeetingQueries.update_meeting(meeting, %{status: "cancelled"})
-      uid = meeting.uid
+      uid = meeting.calendar_uid
 
       {:ok, pending_update} =
         %{"action" => "update", "meeting_id" => meeting.id}
@@ -378,7 +401,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerTest do
     test "leaves a pending job for a different meeting untouched" do
       %{meeting: meeting} = setup_calendar_scenario()
       {:ok, meeting} = MeetingQueries.update_meeting(meeting, %{status: "cancelled"})
-      uid = meeting.uid
+      uid = meeting.calendar_uid
 
       other_meeting = insert(:meeting)
 
@@ -401,7 +424,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerTest do
     test "leaves an already-completed job for the same meeting untouched" do
       %{meeting: meeting} = setup_calendar_scenario()
       {:ok, meeting} = MeetingQueries.update_meeting(meeting, %{status: "cancelled"})
-      uid = meeting.uid
+      uid = meeting.calendar_uid
 
       {:ok, completed_create} =
         %{"action" => "create", "meeting_id" => meeting.id}
@@ -459,7 +482,8 @@ defmodule Tymeslot.Workers.CalendarEventWorkerTest do
       # Meeting should have integration info from last execution
       updated_meeting = Repo.get(MeetingSchema, meeting.id)
       assert updated_meeting.calendar_integration_id == integration.id
-      assert updated_meeting.uid == "remote-uid-123"
+      assert updated_meeting.calendar_uid == "remote-uid-123"
+      assert updated_meeting.uid == meeting.uid
     end
   end
 

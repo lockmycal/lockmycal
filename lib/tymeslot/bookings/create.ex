@@ -21,6 +21,7 @@ defmodule Tymeslot.Bookings.Create do
   alias Tymeslot.Contacts
   alias Tymeslot.CustomFields
   alias Tymeslot.Infrastructure.AvailabilityCache
+  alias Tymeslot.Infrastructure.ErrorTracking
   alias Tymeslot.Locales
   alias Tymeslot.MeetingPayments
   alias Tymeslot.Meetings.BookingLimits.Checker
@@ -169,10 +170,12 @@ defmodule Tymeslot.Bookings.Create do
         location_option_id: Map.get(meeting_params, :location_option_id),
         location_phone: Map.get(meeting_params, :location_phone),
         location_video_integration_id: Map.get(meeting_params, :location_video_integration_id),
+        location_venue_id: Map.get(meeting_params, :location_venue_id),
         attendee_locale: Map.get(meeting_params, :attendee_locale) || default_locale(),
         custom_fields_snapshot: Map.get(meeting_params, :custom_fields_snapshot, []),
         custom_field_answers: Map.get(meeting_params, :custom_field_answers, %{}),
         guest_emails: Map.get(meeting_params, :guest_emails, []),
+        attendee_attachments: Map.get(meeting_params, :attendee_attachments, []),
         utm_source: Map.get(meeting_params, :utm_source),
         utm_medium: Map.get(meeting_params, :utm_medium),
         utm_campaign: Map.get(meeting_params, :utm_campaign),
@@ -180,7 +183,8 @@ defmodule Tymeslot.Bookings.Create do
         utm_term: Map.get(meeting_params, :utm_term),
         referrer_host: Map.get(meeting_params, :referrer_host),
         tracking_params: Map.get(meeting_params, :tracking_params, %{}),
-        visitor_hash: Map.get(meeting_params, :visitor_hash)
+        visitor_hash: Map.get(meeting_params, :visitor_hash),
+        booker_user_id: Map.get(meeting_params, :booker_user_id)
       }
 
       {:ok, booking_data}
@@ -325,14 +329,14 @@ defmodule Tymeslot.Bookings.Create do
       |> PaidBooking.create(booking_data,
         create_meeting: &create_meeting/1,
         create_guests: &create_guests/2,
-        classify_error: &classify_error/1,
+        classify_error: &classify_creation_error(&1, booking_data),
         on_created: &emit_booking_created/0
       )
       |> maybe_capture_contact()
     else
       meeting_attrs
       |> run_meeting_transaction(booking_data, opts)
-      |> map_transaction_result()
+      |> map_transaction_result(booking_data)
     end
   end
 
@@ -392,7 +396,7 @@ defmodule Tymeslot.Bookings.Create do
       booking_data
       |> Map.get(:guest_emails, [])
       |> Guests.sanitize_emails(meeting.attendee_email)
-      |> then(&Guests.create_for_meeting(meeting.id, &1))
+      |> then(&Guests.create_for_meeting(meeting.id, &1, :booker))
     else
       {:ok, []}
     end
@@ -414,14 +418,43 @@ defmodule Tymeslot.Bookings.Create do
     CalendarJobs.schedule_job(meeting, "create")
   end
 
-  defp map_transaction_result({:ok, meeting}) do
+  defp map_transaction_result({:ok, meeting}, _booking_data) do
     AvailabilityCache.invalidate_for_user(meeting.organizer_user_id)
     emit_booking_created()
     capture_contact(meeting)
     {:ok, meeting}
   end
 
-  defp map_transaction_result({:error, reason}), do: {:error, classify_error(reason)}
+  defp map_transaction_result({:error, reason}, booking_data),
+    do: {:error, classify_creation_error(reason, booking_data)}
+
+  # Once validation has passed, the only failures creating the meeting is
+  # expected to meet are the ones the classification names: a lost race, a
+  # limit reached, a changeset refusing the booker's input. Anything that
+  # classifies as nothing better than `:booking_failed` (a guest row the
+  # database refused after sanitising, a calendar job Oban would not insert,
+  # a reason nobody wrote a clause for) is a bug or an outage, and is
+  # recorded. Two reasons that also classify as `:booking_failed` are not:
+  # `:validation_error` is the booker's input refused, and `:database_error`
+  # was recorded, with its exception, by `Meetings.Scheduling` where it was
+  # raised.
+  @not_reported [:validation_error, :database_error]
+
+  defp classify_creation_error(reason, booking_data) do
+    case classify_error(reason) do
+      :booking_failed when reason not in @not_reported ->
+        :ok =
+          ErrorTracking.report_error(reason, nil, %{
+            organizer_user_id: booking_data.organizer_user_id,
+            meeting_type_id: booking_data.meeting_type_id
+          })
+
+        :booking_failed
+
+      classified ->
+        classified
+    end
+  end
 
   # Mirrors the free/awaiting-approval paths' capture_contact/1 call inside
   # map_transaction_result/1: a paid booking never reaches that function

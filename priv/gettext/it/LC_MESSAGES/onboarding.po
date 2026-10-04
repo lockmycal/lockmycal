@@ -173,7 +173,7 @@ msgstr ""
 #: lib/tymeslot/announcements/catalog.ex
 #, elixir-autogen, elixir-format
 msgid "Tymeslot now speaks your language"
-msgstr "Tymeslot ora parla la tua lingua"
+msgstr "LockMyCal ora parla la tua lingua"
 
 #: lib/tymeslot/announcements/catalog.ex
 #, elixir-autogen, elixir-format
@@ -207,7 +207,7 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Connect your Zoom account and Tymeslot creates a Zoom meeting for every booking - the link is added to the calendar invite and confirmation automatically."
 msgstr ""
-"Collega il tuo account Zoom e Tymeslot creerà una riunione Zoom per ogni "
+"Collega il tuo account Zoom e LockMyCal creerà una riunione Zoom per ogni "
 "prenotazione: il link verrà aggiunto automaticamente all'invito sul "
 "calendario e all'email di conferma."
 
@@ -226,7 +226,7 @@ msgstr ""
 msgid "Give any event its own colour, right from your dashboard agenda. Colours you set in Tymeslot write back to your connected calendar, and colours already on your Google or CalDAV events show up here too - so your day is colour-coded exactly the way you like it, everywhere you look."
 msgstr ""
 "Assegna a ogni evento il proprio colore, direttamente dall'agenda della tua "
-"dashboard. I colori impostati su Tymeslot vengono sincronizzati con il "
+"dashboard. I colori impostati su LockMyCal vengono sincronizzati con il "
 "calendario collegato, e anche quelli già presenti nei tuoi eventi Google o "
 "CalDAV vengono visualizzati qui. In questo modo, la tua giornata è "
 "organizzata per colori esattamente come piace a te, ovunque tu la guardi."
@@ -252,7 +252,7 @@ msgid "The whole app - your dashboard, booking pages and every email - is now av
 msgstr ""
 "L'intera app (la tua dashboard, le pagine di prenotazione e ogni singola "
 "email) è ora disponibile in tedesco, francese, italiano, ucraino e ceco. "
-"Tymeslot adotta automaticamente la lingua del tuo browser, oppure puoi "
+"LockMyCal adotta automaticamente la lingua del tuo browser, oppure puoi "
 "sceglierne una dalle impostazioni dell'account. Anche i tuoi invitati "
 "visualizzeranno le pagine di prenotazione e le conferme nella loro lingua."
 
@@ -299,7 +299,7 @@ msgstr "Approva le prenotazioni prima che siano confermate"
 #: lib/tymeslot/announcements/catalog.ex
 #, elixir-autogen
 msgid "The heading, greeting and instruction at the top of your booking page are now yours to write. Say what you actually do, in your own words, and watch it in the live preview as you type - every change saves itself. Switch it off any time to go back to the built-in wording, translated into every language Tymeslot supports."
-msgstr "Titolo, saluto e istruzione in cima alla tua pagina di prenotazione ora li scrivi tu. Racconta con parole tue cosa fai e guardalo nell'anteprima dal vivo mentre scrivi: ogni modifica si salva da sola. Disattivalo quando vuoi per tornare al testo predefinito, tradotto in tutte le lingue supportate da Tymeslot."
+msgstr "Titolo, saluto e istruzione in cima alla tua pagina di prenotazione ora li scrivi tu. Racconta con parole tue cosa fai e guardalo nell'anteprima dal vivo mentre scrivi: ogni modifica si salva da sola. Disattivalo quando vuoi per tornare al testo predefinito, tradotto in tutte le lingue supportate da LockMyCal."
 
 #: lib/tymeslot/announcements/catalog.ex
 #, elixir-autogen, elixir-format

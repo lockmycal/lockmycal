@@ -5,11 +5,15 @@ defmodule TymeslotWeb.Components.Dashboard.ProBadge do
   (e.g. the meeting-type "Change link" button in
   `ServiceSettings.ComponentView`) — extracted here once it had a second
   caller, per the shared-widget convention.
+
+  `label` replaces the default "Pro" text for a feature gated behind
+  something more specific than the plan itself (e.g. a paid add-on).
   """
 
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
 
+  attr :label, :string, default: nil, doc: "Text instead of the default \"Pro\""
   attr :class, :string, default: nil
   attr :rest, :global
 
@@ -23,7 +27,7 @@ defmodule TymeslotWeb.Components.Dashboard.ProBadge do
       ]}
       {@rest}
     >
-      {dgettext("dashboard_common", "Pro")}
+      {@label || dgettext("dashboard_common", "Pro")}
     </span>
     """
   end

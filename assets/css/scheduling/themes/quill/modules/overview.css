@@ -202,6 +202,30 @@
 }
 
 @container scheduling (min-width: 640px) {
+  /* The full-calendar link moves to the card's top right corner, beside the
+     title and greeting, as a smaller button. Below this width it stays under
+     the text, where it cannot crowd the title. */
+  .overview-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--space-md);
+    align-items: start;
+  }
+
+  .overview-heading > .overview-title,
+  .overview-heading > .overview-description {
+    grid-column: 1;
+  }
+
+  .overview-heading > .overview-full-calendar-link {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    margin-bottom: 0;
+    padding: var(--space-2xs) var(--space-sm);
+    font-size: var(--theme-font-size-xs);
+    white-space: nowrap;
+  }
+
   .overview-card-body {
     padding: var(--space-lg);
   }

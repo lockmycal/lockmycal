@@ -104,6 +104,7 @@ msgstr "Доступність у календарі"
 
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/form_view.ex
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/new_venue_component.ex
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/question_editor_component.ex
 #, elixir-autogen, elixir-format
 msgid "Cancel"
@@ -278,11 +279,6 @@ msgstr "Години"
 msgid "Icon"
 msgstr "Піктограма"
 
-#: lib/tymeslot_web/live/dashboard/meeting_settings/components/booking_components.ex
-#, elixir-autogen, elixir-format
-msgid "In-Person"
-msgstr "Особиста зустріч"
-
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/question_editor_component.ex
 #, elixir-autogen, elixir-format
@@ -346,6 +342,7 @@ msgid "Multiple choice"
 msgstr "Вибір із кількох варіантів"
 
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/form_view.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/new_venue_component.ex
 #, elixir-autogen, elixir-format
 msgid "Name"
 msgstr "Назва"
@@ -370,7 +367,6 @@ msgstr "Поки немає власних запитань"
 msgid "No reminders configured."
 msgstr "Нагадування не налаштовано."
 
-#: lib/tymeslot_web/live/dashboard/meeting_settings/components/booking_components.ex
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
 #, elixir-autogen, elixir-format
 msgid "No video integrations configured."
@@ -480,17 +476,11 @@ msgstr "Зберегти запитання"
 msgid "Saving..."
 msgstr "Збереження..."
 
-#: lib/tymeslot_web/live/dashboard/meeting_settings/components/booking_components.ex
-#, elixir-autogen, elixir-format
-msgid "Select Video Provider"
-msgstr "Вибрати відеосервіс"
-
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/validation.ex
 #, elixir-autogen, elixir-format
 msgid "Select a valid reminder unit"
 msgstr "Виберіть коректну одиницю часу для нагадування"
 
-#: lib/tymeslot_web/live/dashboard/meeting_settings/components/booking_components.ex
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
 #, elixir-autogen, elixir-format
 msgid "Set up video integration"
@@ -570,11 +560,6 @@ msgstr "Не вдалося перевірити статус підписки. 
 #, elixir-autogen, elixir-format
 msgid "Unsaved changes"
 msgstr "Незбережені зміни"
-
-#: lib/tymeslot_web/live/dashboard/meeting_settings/components/booking_components.ex
-#, elixir-autogen, elixir-format
-msgid "Video Meeting"
-msgstr "Відеозустріч"
 
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/custom_questions_section.ex
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/question_editor_component.ex
@@ -717,7 +702,6 @@ msgstr "Деталі"
 msgid "Hide from public booking page"
 msgstr "Приховати з публічної сторінки бронювання"
 
-#: lib/tymeslot_web/live/dashboard/meeting_settings/components/booking_components.ex
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/locations_section.ex
 #, elixir-autogen, elixir-format
 msgid "Location"
@@ -812,7 +796,7 @@ msgstr[0] "година"
 msgstr[1] "години"
 msgstr[2] "годин"
 
-#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/form_view.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/slot_interval.ex
 #, elixir-autogen, elixir-format
 msgid "%{minutes} min"
 msgstr "%{minutes} хв"
@@ -822,12 +806,12 @@ msgstr "%{minutes} хв"
 msgid "Booking slot interval"
 msgstr "Інтервал між слотами"
 
-#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/form_view.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/slot_interval.ex
 #, elixir-autogen, elixir-format
 msgid "How far apart booking start times are offered. Leave as default to match the meeting length."
 msgstr "Наскільки далеко один від одного пропонуються часи початку. За замовчуванням — як тривалість зустрічі."
 
-#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/form_view.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/slot_interval.ex
 #, elixir-autogen, elixir-format
 msgid "Same as meeting length"
 msgstr "Як тривалість зустрічі"
@@ -837,17 +821,17 @@ msgstr "Як тривалість зустрічі"
 msgid "Custom interval (minutes)"
 msgstr "Власний інтервал (хвилини)"
 
-#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/form_view.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/slot_interval.ex
 #, elixir-autogen, elixir-format
 msgid "Custom…"
 msgstr "Власний…"
 
-#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/form_view.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/slot_interval.ex
 #, elixir-autogen, elixir-format
 msgid "Matching the meeting length, times will be offered every %{minutes} minutes: %{examples}…"
 msgstr "Відповідно до тривалості зустрічі час початку пропонуватиметься кожні %{minutes} хв: %{examples}…"
 
-#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/form_view.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/slot_interval.ex
 #, elixir-autogen, elixir-format
 msgid "Times will be offered every %{minutes} minutes: %{examples}…"
 msgstr "Час початку пропонуватиметься кожні %{minutes} хв: %{examples}…"
@@ -906,21 +890,17 @@ msgstr "Дозволити запрошеним додавати гостей"
 msgid "Meeting details"
 msgstr "Деталі зустрічі"
 
-#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/new_venue_component.ex
 #, elixir-autogen, elixir-format
 msgid "12 High Street, London EC1A 1BB"
 msgstr "вул. Хрещатик, 12, Київ"
 
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/locations_section.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/new_venue_component.ex
 #, elixir-autogen, elixir-format
 msgid "Add location"
 msgstr "Додати місце"
-
-#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
-#, elixir-autogen, elixir-format
-msgid "Address"
-msgstr "Адреса"
 
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
 #, elixir-autogen, elixir-format
@@ -954,7 +934,6 @@ msgstr "Редагувати місце"
 
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/init.ex
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
-#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/locations_section.ex
 #, elixir-autogen, elixir-format
 msgid "In person"
 msgstr "Особисто"
@@ -1073,3 +1052,111 @@ msgid_plural "%{count} minutes"
 msgstr[0] "%{count} хвилину"
 msgstr[1] "%{count} хвилини"
 msgstr[2] "%{count} хвилин"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/attachments_section.ex
+#, elixir-autogen, elixir-format
+msgid "Allowed: %{types}, up to %{max_mb} MB per file, %{count} file per booking. Your administrator sets these limits."
+msgid_plural "Allowed: %{types}, up to %{max_mb} MB per file, up to %{count} files per booking. Your administrator sets these limits."
+msgstr[0] "Дозволено: %{types}, до %{max_mb} МБ на файл, %{count} файл на бронювання. Ці обмеження встановлює адміністратор."
+msgstr[1] "Дозволено: %{types}, до %{max_mb} МБ на файл, до %{count} файлів на бронювання. Ці обмеження встановлює адміністратор."
+msgstr[2] "Дозволено: %{types}, до %{max_mb} МБ на файл, до %{count} файлів на бронювання. Ці обмеження встановлює адміністратор."
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/attachments_section.ex
+#, elixir-autogen, elixir-format
+msgid "Attachments"
+msgstr "Вкладення"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/attachments_section.ex
+#, elixir-autogen, elixir-format
+msgid "Files are private: you download them from the booking on your dashboard and receive them with the booking email."
+msgstr "Файли приватні: ви завантажуєте їх з бронювання на панелі керування й отримуєте разом із листом про бронювання."
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/attachments_section.ex
+#, elixir-autogen, elixir-format
+msgid "Let invitees attach files"
+msgstr "Дозволити запрошеним додавати файли"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/attachments_section.ex
+#, elixir-autogen, elixir-format
+msgid "Let invitees attach files to their booking"
+msgstr "Запрошені можуть додавати файли до свого бронювання"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/attachments_section.ex
+#, elixir-autogen, elixir-format
+msgid "Your administrator has switched file attachments off for this installation."
+msgstr "Адміністратор вимкнув вкладення файлів для цієї інсталяції."
+
+#: lib/tymeslot/utils/form_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "A selected location is not one of yours"
+msgstr "Одне з вибраних місць вам не належить"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/venue_picker.ex
+#, elixir-autogen, elixir-format
+msgid "+ New location"
+msgstr "+ Нове місце"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/new_venue_component.ex
+#, elixir-autogen, elixir-format
+msgid "Address and directions (optional)"
+msgstr "Адреса та як дістатися (необов’язково)"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/locations_section.ex
+#, elixir-autogen, elixir-format
+msgid "Address arranged after booking"
+msgstr "Адресу погодять після бронювання"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/venue_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Locations"
+msgstr "Місця"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/new_venue_component.ex
+#, elixir-autogen, elixir-format
+msgid "New location"
+msgstr "Нове місце"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/venue_picker.ex
+#, elixir-autogen, elixir-format
+msgid "No address selected: bookers are told it will be arranged after booking."
+msgstr "Адресу не вибрано: тим, хто бронює, повідомлять, що її погодять після бронювання."
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/venue_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Pick one or more. With several, the booker chooses where to meet."
+msgstr "Виберіть одне або кілька. Якщо їх кілька, той, хто бронює, вибере, де зустрітися."
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/venue_picker.ex
+#, elixir-autogen, elixir-format
+msgid "You have no saved locations yet. Add one here, or leave this empty to arrange the address after booking."
+msgstr "У вас ще немає збережених місць. Додайте місце тут або залиште порожнім, щоб погодити адресу після бронювання."
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/new_venue_component.ex
+#, elixir-autogen, elixir-format
+msgid "e.g., Berlin office"
+msgstr "напр., Офіс у Києві"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/contact_sharing_section.ex
+#, elixir-autogen, elixir-format
+msgid "A booker signed in to their account gets this meeting in their own calendar and dashboard, under your name. Choose what else they see."
+msgstr "Особа, що бронює з власного облікового запису, отримає цю зустріч у своєму календарі та панелі під вашим ім'ям. Виберіть, що ще вона побачить."
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/contact_sharing_section.ex
+#, elixir-autogen, elixir-format
+msgid "Show my email to signed-in bookers"
+msgstr "Показувати мою електронну пошту авторизованим особам, що бронюють"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/contact_sharing_section.ex
+#, elixir-autogen, elixir-format
+msgid "Show my phone to signed-in bookers"
+msgstr "Показувати мій телефон авторизованим особам, що бронюють"
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/contact_sharing_section.ex
+#, elixir-autogen, elixir-format
+msgid "The phone number from your profile."
+msgstr "Номер телефону з вашого профілю."
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/contact_sharing_section.ex
+#, elixir-autogen, elixir-format
+msgid "Your contact details"
+msgstr "Ваші контактні дані"

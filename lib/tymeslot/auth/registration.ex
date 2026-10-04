@@ -20,6 +20,7 @@ defmodule Tymeslot.Auth.Registration do
 
   alias Tymeslot.Emails.EmailScheduler
   alias Tymeslot.Infrastructure.{Config, PubSub}
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Profiles
   alias Tymeslot.Repo
   alias Tymeslot.Security.{InputProcessor, Password, RateLimiter}
@@ -254,7 +255,7 @@ defmodule Tymeslot.Auth.Registration do
       {:error, reason} ->
         Logger.error("Failed to schedule sign-up attempt notice",
           user_id: existing.id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
     end
   end
@@ -280,7 +281,7 @@ defmodule Tymeslot.Auth.Registration do
         Logger.warning("Verification email rate limited during signup", user_id: user.id)
 
       {:error, reason} ->
-        Logger.error("Verification failed", user_id: user.id, reason: inspect(reason))
+        Logger.error("Verification failed", user_id: user.id, reason: LogFormat.reason(reason))
     end
 
     {:ok, user}
@@ -313,7 +314,9 @@ defmodule Tymeslot.Auth.Registration do
         {:ok, user}
 
       {:error, {:profile_creation, reason}} ->
-        Logger.error("Profile creation failed, registration rolled back", reason: inspect(reason))
+        Logger.error("Profile creation failed, registration rolled back",
+          reason: LogFormat.reason(reason)
+        )
 
         {:error, :profile_creation,
          dgettext("auth", "Failed to create user account. Please try again.")}
@@ -346,7 +349,11 @@ defmodule Tymeslot.Auth.Registration do
   defp creation_failed(changeset) do
     # Log only the constraint errors without sensitive data
     constraint_errors = extract_constraint_errors(changeset)
-    Logger.error("User creation failed with constraints", errors: inspect(constraint_errors))
+
+    Logger.error("User creation failed with constraints",
+      errors: LogFormat.reason(constraint_errors)
+    )
+
     {:error, :auth, ErrorFormatter.format_changeset_errors(changeset)}
   end
 

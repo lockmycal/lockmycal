@@ -5,10 +5,15 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
   use Phoenix.Component
   use Gettext, backend: TymeslotWeb.Gettext
   import TymeslotWeb.Components.PaymentHelpers, only: [format_amount: 2]
+  alias Tymeslot.Availability.Schedules
+  alias Tymeslot.Bookings.AttendeeAttachments
   alias Tymeslot.Integrations.Calendar.DisplayHelpers
+  alias Tymeslot.Meetings.Approval
   alias Tymeslot.MeetingTypes
+  alias Tymeslot.MeetingTypes.LocationOption
   alias Tymeslot.ShareLinks
   alias TymeslotWeb.Components.CoreComponents.Icons
+  alias TymeslotWeb.Components.Dashboard.Availability.ScheduleAccents
   alias TymeslotWeb.Components.Icons.ProviderIcon
   alias TymeslotWeb.Components.UI.StatusSwitch
 
@@ -18,7 +23,13 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
   attr :type, :map, required: true
   attr :myself, :any, required: true
   attr :currency, :string, default: "eur"
+
+  attr :schedules, :list,
+    default: [],
+    doc: "the profile's availability schedules, default first (`Schedules.list_for_profile/1`)"
+
   attr :icon_size, :string, default: "mini", values: ["compact", "medium", "large", "mini"]
+  attr :venues, :list, default: [], doc: "the organiser's saved venues, to name them"
 
   attr :can_share, :boolean,
     default: false,
@@ -26,6 +37,15 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
 
   @spec meeting_type_card(map()) :: Phoenix.LiveView.Rendered.t()
   def meeting_type_card(assigns) do
+    # The host's own translation for the language the dashboard is shown in,
+    # as the booking page does for a guest.
+    locale = Gettext.get_locale(TymeslotWeb.Gettext)
+
+    assigns =
+      assigns
+      |> assign(:name, MeetingTypes.localized_name(assigns.type, locale))
+      |> assign(:description, MeetingTypes.localized_description(assigns.type, locale))
+
     ~H"""
     <div class={[
       "card-glass py-3 px-4",
@@ -55,7 +75,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 min-w-0">
             <h3 class="text-token-base font-medium text-neutral-800 dark:text-neutral-100 truncate">
-              {@type.name}
+              {@name}
             </h3>
             <span
               :if={@type.is_private}
@@ -74,10 +94,10 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
             </span>
           </div>
           <p
-            :if={described?(@type)}
+            :if={described?(@description)}
             class="mt-0.5 text-token-xs text-neutral-500 dark:text-twilight-indigo-200 leading-relaxed line-clamp-2"
           >
-            {@type.description}
+            {@description}
           </p>
           <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-token-xs text-neutral-600 dark:text-twilight-indigo-300">
             <span class="flex items-center shrink-0">
@@ -97,7 +117,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
                 {format_amount(@type.price_cents, @currency)}
               </span>
             <% end %>
-            <.location_summary type={@type} icon_size={@icon_size} />
+            <.location_summary type={@type} icon_size={@icon_size} venues={@venues} />
             <%= if @type.calendar_integration do %>
               <span class="flex items-center min-w-0">
                 <span class="mr-1.5 shrink-0">
@@ -115,6 +135,23 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
                 <.target_calendar_warning type={@type} />
               </span>
             <% end %>
+            <.schedule_summary type={@type} schedules={@schedules} />
+            <span
+              :if={limits_label(@type)}
+              class="flex items-center shrink-0"
+              title={dgettext("dashboard_meeting_types", "Booking limits")}
+            >
+              <Icons.icon name="hero-scale-mini" class="w-3.5 h-3.5 mr-1" />
+              {limits_label(@type)}
+            </span>
+            <span :if={Approval.required?(@type)} class="flex items-center shrink-0">
+              <Icons.icon name="hero-shield-check-mini" class="w-3.5 h-3.5 mr-1" />
+              {dgettext("dashboard_meeting_types", "Requires approval")}
+            </span>
+            <span :if={AttendeeAttachments.enabled_for?(@type)} class="flex items-center shrink-0">
+              <Icons.icon name="hero-paper-clip-mini" class="w-3.5 h-3.5 mr-1" />
+              {dgettext("dashboard_meeting_types", "Attachments")}
+            </span>
             <%= if custom_question_count(@type) > 0 do %>
               <span class="flex items-center shrink-0 text-neutral-500 dark:text-twilight-indigo-400">
                 <Icons.icon name="hero-question-mark-circle-mini" class="w-3.5 h-3.5 mr-1" />
@@ -134,7 +171,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
             target={@myself}
             phx_value_id={to_string(@type.id)}
             aria_label={
-              dgettext("dashboard_meeting_types", "Toggle %{name} availability", name: @type.name)
+              dgettext("dashboard_meeting_types", "Toggle %{name} availability", name: @name)
             }
             show_icon={false}
             class="shrink-0"
@@ -244,14 +281,15 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
   defp paid?(%{payment_required: true, price_cents: cents}) when is_integer(cents), do: true
   defp paid?(_type), do: false
 
-  defp described?(%{description: nil}), do: false
-  defp described?(%{description: description}), do: String.trim(description) != ""
+  defp described?(nil), do: false
+  defp described?(description), do: String.trim(description) != ""
 
   # One location is named; several are counted. Naming them all would push
   # the calendar and question badges off the row on a card that is already a
   # single line of metadata.
   attr :type, :map, required: true
   attr :icon_size, :string, required: true
+  attr :venues, :list, required: true
 
   defp location_summary(assigns) do
     assigns = assign(assigns, :locations, MeetingTypes.location_options(assigns.type))
@@ -284,10 +322,34 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
           class="w-3.5 h-3.5 text-tymeslot-500"
         />
       </span>
-      <span class="truncate max-w-[10rem]">{hd(@locations).label}</span>
+      <span class="truncate max-w-[10rem]">{single_label(hd(@locations), @venues)}</span>
     </span>
     """
   end
+
+  # A single in-person location reads as where the meeting is: its one saved
+  # venue by name, or how many the booker picks between. Venue ids no longer
+  # in the library are ignored, so a deleted venue never shows; with none left
+  # the location's own label stands.
+  defp single_label(%LocationOption{kind: "in_person", venue_ids: ids} = location, venues) do
+    case Enum.filter(venues, &(&1.id in ids)) do
+      [] ->
+        location.label
+
+      [venue] ->
+        venue.name
+
+      several ->
+        dngettext(
+          "dashboard_meeting_types",
+          "%{count} location",
+          "%{count} locations",
+          length(several)
+        )
+    end
+  end
+
+  defp single_label(location, _venues), do: location.label
 
   # The provider whose mark a video location shows, or nil for a location
   # that is not a video call (or whose integration has since been deleted,
@@ -299,6 +361,79 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
   defp kind_icon("phone"), do: "hero-phone-mini"
   defp kind_icon("in_person"), do: "hero-building-office-mini"
   defp kind_icon(_kind), do: "hero-map-pin-mini"
+
+  # The availability schedule the type books against, dotted in the colour the
+  # availability page and the editor's schedule chips give it. A type with no
+  # schedule of its own follows the profile default, named here so the host
+  # sees which hours apply without opening the editor.
+  attr :type, :map, required: true
+  attr :schedules, :list, required: true
+
+  defp schedule_summary(assigns) do
+    assigns = assign(assigns, :schedule, resolve_schedule(assigns.type, assigns.schedules))
+
+    ~H"""
+    <span class="flex items-center min-w-0" title={@schedule.title}>
+      <span :if={@schedule.dot} class={["w-2 h-2 mr-1.5 shrink-0 rounded-full", @schedule.dot]}></span>
+      <Icons.icon :if={!@schedule.dot} name="hero-calendar-days-mini" class="w-3.5 h-3.5 mr-1" />
+      <span class="truncate max-w-[10rem]">{@schedule.name}</span>
+    </span>
+    """
+  end
+
+  defp resolve_schedule(type, schedules) do
+    indexed = Enum.with_index(schedules)
+
+    {found, follows_default?} =
+      case type.availability_schedule_id do
+        nil -> {Enum.find(indexed, fn {schedule, _i} -> schedule.is_default end), true}
+        id -> {Enum.find(indexed, fn {schedule, _i} -> schedule.id == id end), false}
+      end
+
+    {name, dot} =
+      case found do
+        {schedule, index} -> {schedule.name, ScheduleAccents.at(index)}
+        nil -> {Schedules.default_schedule_name(), nil}
+      end
+
+    title =
+      if follows_default? do
+        dgettext("dashboard_meeting_types", "Availability schedule: %{name} (default)",
+          name: name
+        )
+      else
+        dgettext("dashboard_meeting_types", "Availability schedule: %{name}", name: name)
+      end
+
+    %{name: name, dot: dot, title: title}
+  end
+
+  # "2/day · 5/week", from whichever of the three caps are set; nil when none
+  # is, so an unlimited type shows nothing.
+  defp limits_label(type) do
+    parts =
+      Enum.reject(
+        [
+          limit_part(type.max_bookings_per_day, :day),
+          limit_part(type.max_bookings_per_week, :week),
+          limit_part(type.max_bookings_per_month, :month)
+        ],
+        &is_nil/1
+      )
+
+    if parts == [], do: nil, else: Enum.join(parts, " · ")
+  end
+
+  defp limit_part(count, :day) when is_integer(count),
+    do: dgettext("dashboard_meeting_types", "%{count}/day", count: count)
+
+  defp limit_part(count, :week) when is_integer(count),
+    do: dgettext("dashboard_meeting_types", "%{count}/week", count: count)
+
+  defp limit_part(count, :month) when is_integer(count),
+    do: dgettext("dashboard_meeting_types", "%{count}/month", count: count)
+
+  defp limit_part(_no_limit, _period), do: nil
 
   defp custom_question_count(%{custom_fields: fields}) when is_list(fields), do: length(fields)
   defp custom_question_count(_type), do: 0

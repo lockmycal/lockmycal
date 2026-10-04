@@ -51,15 +51,11 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Helpers.PreferenceHelpers do
   end
 
   def period_label(%{view: :day, date: date}) do
-    locale = Gettext.get_locale(TymeslotWeb.Gettext)
-    weekday = LocaleFormat.format_weekday_name(Date.day_of_week(date), locale, :full)
-    month = LocaleFormat.format_month_name(date.month, locale)
-    "#{weekday}, #{LocaleFormat.order_date_parts(date.day, month, date.year, locale)}"
+    LocaleFormat.format_weekday_date(date, Gettext.get_locale(TymeslotWeb.Gettext))
   end
 
   def period_label(%{view: :month, date: date}) do
-    locale = Gettext.get_locale(TymeslotWeb.Gettext)
-    "#{LocaleFormat.format_month_name(date.month, locale)} #{date.year}"
+    LocaleFormat.format_month_year(date.month, date.year, Gettext.get_locale(TymeslotWeb.Gettext))
   end
 
   def period_label(%{view: :agenda, date: date} = assigns) do
@@ -104,12 +100,30 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Helpers.PreferenceHelpers do
     Enum.map(0..41, &Date.add(grid_start, &1))
   end
 
+  # The current day is tinted as a whole: its cell in the month view, its
+  # column (header, all-day cell and time column) in the week and 3-day views.
+  @today_tint "bg-primary-100 dark:bg-primary-800/50"
+
   @spec month_cell_class(Date.t(), map()) :: String.t()
   def month_cell_class(day, assigns) do
-    if day.month != assigns.date.month,
-      do: "bg-neutral-50 dark:bg-black/20",
-      else: "bg-white dark:bg-twilight-indigo-950/40"
+    cond do
+      Date.compare(day, today(assigns.user_timezone)) == :eq -> @today_tint
+      day.month != assigns.date.month -> "bg-neutral-50 dark:bg-black/20"
+      true -> "bg-white dark:bg-twilight-indigo-950/40"
+    end
   end
+
+  @doc """
+  The tint for `day`'s column in the week and 3-day views when it is today, else
+  nothing. The day view is a single column, so there is nothing to set apart.
+  """
+  @spec day_column_class(Date.t(), map()) :: String.t()
+  def day_column_class(day, %{view: view, user_timezone: timezone})
+      when view in [:week, :three_day] do
+    if Date.compare(day, today(timezone)) == :eq, do: @today_tint, else: ""
+  end
+
+  def day_column_class(_day, _assigns), do: ""
 
   @spec week_start_atom(map()) :: :monday | :sunday
   def week_start_atom(%{preferences: %{week_start_day: "sunday"}}), do: :sunday

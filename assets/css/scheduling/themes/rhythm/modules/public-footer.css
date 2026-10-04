@@ -1,0 +1,74 @@
+/* Public footer — the bottom counterpart of the public top bar, rendered by
+   TymeslotWeb.Components.PublicFooter in the theme grid's second row. Same
+   flat, full-width solid surface as `.public-top-bar` (public-top-bar.css),
+   mirrored: the themed border runs along its top edge instead of its bottom.
+   See the Quill theme's own modules/public-footer.css for that theme's skin. */
+
+/* The grid wrapper keeps a bottom inset (base.css) for the booking box;
+   drop it when the footer is there so the bar sits flush with the viewport's
+   bottom edge, as the top bar does with the top one. */
+.video-background-theme.theme-grid:has(.public-footer) {
+  padding-bottom: 0;
+}
+
+/* Three columns: "Powered by" centred, the bug link on the right (like the
+   dashboard footer, under the top bar's actions). Centred rather than on the
+   left, where a video background's fixed motion toggle sits. */
+.public-footer {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-lg);
+  background: rgba(0, 0, 0, 0.6);
+  border-top: var(--border-width-thin) solid var(--theme-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.public-footer-powered {
+  grid-column: 2;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.public-footer-link {
+  grid-column: 3;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8125rem;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.public-footer-link:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* Phones: no room for three columns — stack both, centred. */
+@media (max-width: 640px) {
+  .public-footer {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: var(--space-xs);
+  }
+
+  .public-footer-powered,
+  .public-footer-link {
+    grid-column: 1;
+    justify-self: center;
+  }
+}
+
+/* Short windows (landscape phones): the booking content needs the height more
+   than the footer does, so the footer steps aside. */
+@media (max-height: 480px) {
+  .public-footer {
+    display: none;
+  }
+}

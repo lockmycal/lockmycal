@@ -11,7 +11,7 @@ defmodule Tymeslot.Integrations.Video.ProviderConfig do
 
   alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Integrations.Providers.Families
-  alias Tymeslot.Integrations.Shared.{ProviderConfigHelper, ProviderToggle}
+  alias Tymeslot.Integrations.Shared.{ProviderConfigHelper, ProviderToggle, ZoomConfig}
 
   @providers [:mirotalk, :google_meet, :teams, :zoom, :kmeet, :jitsi, :nextcloud_talk, :custom]
   @dev_only_providers []
@@ -146,6 +146,19 @@ defmodule Tymeslot.Integrations.Video.ProviderConfig do
   """
   @spec all_providers_with_dev() :: list(atom())
   def all_providers_with_dev, do: effective_providers(true)
+
+  @doc """
+  Whether the provider picker may offer this provider for a new connection.
+
+  Deliberately separate from `provider_enabled?/1`: that toggle also feeds
+  compile-time lists (`VideoCircuitBreaker`), so an env-dependent check there
+  would bake the build machine's credentials into the release. Zoom is only
+  offered once this deployment has a Zoom Marketplace app (`ZOOM_CLIENT_ID`);
+  without it the OAuth flow can only fail. Existing integrations are unaffected.
+  """
+  @spec offerable?(atom()) :: boolean()
+  def offerable?(:zoom), do: match?({:ok, _client_id}, ZoomConfig.fetch_client_id())
+  def offerable?(_provider), do: true
 
   @doc """
   Checks if a provider is valid.

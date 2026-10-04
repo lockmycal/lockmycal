@@ -71,6 +71,7 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Live do
       organizer_user_id={@organizer_user_id}
       owner_preview={assigns[:owner_preview]}
       current_user={assigns[:current_user]}
+      username_context={assigns[:username_context]}
       embedded={assigns[:embedded] == true}
       should_show_branding={assigns[:should_show_branding]}
     >

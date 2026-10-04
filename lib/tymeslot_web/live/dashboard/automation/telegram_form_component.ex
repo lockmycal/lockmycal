@@ -112,6 +112,7 @@ defmodule TymeslotWeb.Dashboard.Automation.TelegramFormComponent do
           }
           phx-target={@parent_component}
           class="space-y-8"
+          novalidate
         >
           <%!-- Name & Details --%>
           <div class="card-glass">
@@ -241,7 +242,7 @@ defmodule TymeslotWeb.Dashboard.Automation.TelegramFormComponent do
 
             <div class="space-y-3">
               <%= for event <- @available_events do %>
-                <label class="flex items-start gap-3 p-4 rounded-token-xl border-2 border-neutral-300 dark:border-twilight-indigo-700 hover:border-primary-200 dark:hover:border-primary-700 cursor-pointer transition-colors">
+                <label class="flex items-start gap-3 p-4 rounded-token-xl border-2 border-neutral-300 dark:border-twilight-indigo-800 hover:border-primary-200 dark:hover:border-primary-700 cursor-pointer transition-colors">
                   <.input
                     type="checkbox"
                     name="telegram[events][]"
@@ -372,7 +373,7 @@ defmodule TymeslotWeb.Dashboard.Automation.TelegramFormComponent do
             )}</span>
           </div>
 
-          <div class="mt-6 p-4 rounded-token-xl bg-neutral-50 dark:bg-twilight-indigo-900/60 border border-neutral-300 dark:border-twilight-indigo-700 text-left max-w-md mx-auto">
+          <div class="mt-6 p-4 rounded-token-xl bg-neutral-50 dark:bg-twilight-indigo-900/60 border border-neutral-300 dark:border-twilight-indigo-800 text-left max-w-md mx-auto">
             <p class="text-token-xs font-black text-neutral-700 dark:text-neutral-200 mb-2 uppercase tracking-wide">
               {dgettext(
                 "dashboard_automation_chat",

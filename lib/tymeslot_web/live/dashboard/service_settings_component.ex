@@ -5,7 +5,9 @@ defmodule TymeslotWeb.Dashboard.ServiceSettingsComponent do
   use TymeslotWeb, :live_component
   use Gettext, backend: TymeslotWeb.Gettext
 
+  alias Tymeslot.Availability.Schedules
   alias Tymeslot.Dashboard.DashboardContext
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.MeetingPayments
   alias Tymeslot.MeetingTypes
   alias Tymeslot.Security.RateLimiter
@@ -19,12 +21,14 @@ defmodule TymeslotWeb.Dashboard.ServiceSettingsComponent do
     {:ok,
      socket
      |> assign(:meeting_types, [])
+     |> assign(:schedules, [])
      |> assign(:show_add_form, false)
      |> assign(:editing_type, nil)
      |> assign(:show_edit_overlay, false)
      |> assign(:form_errors, %{})
      |> assign(:saving, false)
      |> assign(:video_integrations, [])
+     |> assign(:venues, [])
      |> assign(:toggling_type_id, nil)
      |> assign(:custom_questions_allowed, true)
      |> assign(:custom_booking_link_allowed, true)
@@ -50,12 +54,34 @@ defmodule TymeslotWeb.Dashboard.ServiceSettingsComponent do
     socket =
       socket
       |> assign(:meeting_types, data.meeting_types)
+      |> refresh_editing_type(data.meeting_types)
       |> assign(:video_integrations, data.video_integrations)
+      |> assign(:venues, data.venues)
       |> assign(:calendar_integrations, data.calendar_integrations)
       |> assign(:payment_currency, host_currency(data.meeting_types, user_id))
+      |> assign(:schedules, list_schedules(socket.assigns[:profile]))
 
     {:ok, socket}
   end
+
+  # The profile's availability schedules, default first, so each meeting type
+  # card can name the schedule it books against (and the default one for a
+  # type that follows it) in the colour the availability page gives it.
+  defp list_schedules(%{id: profile_id}), do: Schedules.list_for_profile(profile_id)
+  defp list_schedules(_no_profile), do: []
+
+  # The open editor is handed `editing_type` on every render, and it saves
+  # against whatever it was handed last. A reload must therefore hand it the
+  # type as now stored, or its next save would diff against the version from
+  # when the editor opened and skip a change back to that version's value.
+  defp refresh_editing_type(%{assigns: %{editing_type: %{id: id}}} = socket, meeting_types) do
+    case Enum.find(meeting_types, &(&1.id == id)) do
+      nil -> socket
+      fresh -> assign(socket, :editing_type, fresh)
+    end
+  end
+
+  defp refresh_editing_type(socket, _meeting_types), do: socket
 
   # The host's pricing currency, used only to format the price token on paid
   # meeting type cards. Resolved only when at least one meeting type is
@@ -280,7 +306,7 @@ defmodule TymeslotWeb.Dashboard.ServiceSettingsComponent do
           {:noreply, socket}
 
         {:error, reason} ->
-          Logger.error("Failed to reorder meeting types", reason: inspect(reason))
+          Logger.error("Failed to reorder meeting types", reason: LogFormat.reason(reason))
           Flash.error(dgettext("dashboard_integrations", "Failed to reorder meeting types"))
           {:noreply, socket}
       end

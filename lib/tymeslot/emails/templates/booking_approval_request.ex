@@ -36,6 +36,7 @@ defmodule Tymeslot.Emails.Templates.BookingApprovalRequest do
   }
 
   alias Tymeslot.Emails.Shared.BookingRequestLocation
+  alias Tymeslot.Emails.Shared.Meeting.AttendeeAttachments
   alias Tymeslot.Meetings.MeetingSchema, as: Meeting
   alias Tymeslot.Profiles
 
@@ -71,6 +72,7 @@ defmodule Tymeslot.Emails.Templates.BookingApprovalRequest do
       </mj-text>
 
       #{MeetingComponents.custom_answers_section(meeting)}
+      #{MeetingComponents.attendee_attachments_section(meeting.attendee_attachments)}
 
       <mj-text font-size="14px" color="#{Styles.ink_muted()}" line-height="20px" padding="8px 0 16px 0">
         #{Sanitise.sanitize_for_email(deadline_text)}
@@ -112,6 +114,9 @@ defmodule Tymeslot.Emails.Templates.BookingApprovalRequest do
           locale
         )
       )
+      # The nudge carries them again too: it is what the host is most likely
+      # to decide from, and the body says the files are attached.
+      |> AttendeeAttachments.attach(meeting.attendee_attachments)
     end)
   end
 
@@ -242,7 +247,8 @@ defmodule Tymeslot.Emails.Templates.BookingApprovalRequest do
       location: meeting.location,
       location_type: BookingRequestLocation.type(meeting),
       meeting_type: meeting.meeting_type || dgettext("emails_booking_requests", "Meeting"),
-      timezone: host_tz
+      timezone: host_tz,
+      audience: :host
     }
   end
 
@@ -298,12 +304,12 @@ defmodule Tymeslot.Emails.Templates.BookingApprovalRequest do
     #{dgettext("emails_booking_requests", "Date:")} #{Formatting.format_date_short(details.date, locale)}
     #{dgettext("emails_booking_requests", "Time:")} #{Formatting.format_time(details.start_time, locale)}
     #{dgettext("emails_booking_requests", "Duration:")} #{Formatting.format_duration(details.duration, locale)}
-    #{dgettext("emails_booking_requests", "Location:")} #{Formatting.format_location(details)}
+    #{dgettext("emails_booking_requests", "Location:")} #{Formatting.format_location(details)}#{TextBodyHelper.location_note_line(details)}
     #{dgettext("emails_booking_requests", "Timezone:")} #{details.timezone}
     #{previous || ""}
 
     #{attendee_time_sentence(meeting, attendee_time, locale)}
-    #{TextBodyHelper.format_custom_answers(meeting, locale)}
+    #{TextBodyHelper.format_custom_answers(meeting, locale)}#{AttendeeAttachments.text_section(meeting.attendee_attachments)}
     #{deadline_text}
 
     #{dgettext("emails_booking_requests", "Approve:")}

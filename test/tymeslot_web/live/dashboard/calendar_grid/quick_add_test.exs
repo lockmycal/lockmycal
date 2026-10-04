@@ -47,9 +47,47 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.QuickAddTest do
         |> render_click()
 
       assert html =~ ~s(id="create-event-modal")
-      assert html =~ "New Event"
+      assert html =~ "Event title"
       # A blank draft — no pre-filled title.
       refute html =~ ~s(value="Lunch")
+    end
+  end
+
+  describe "repeat end condition" do
+    defp open_repeating_draft(conn) do
+      {:ok, lv, _html} = live(conn, ~p"/dashboard/calendar")
+
+      lv
+      |> element("#calendar-grid-header button[phx-click='show_create_form']", "Quick add")
+      |> render_click()
+
+      lv
+      |> form("#recurrence-editor-form-update_create_recurrence", %{"freq" => "weekly"})
+      |> render_change()
+
+      lv
+    end
+
+    test "picking “After” keeps the choice and shows the number of occurrences", %{conn: conn} do
+      lv = open_repeating_draft(conn)
+
+      lv
+      |> form("#recurrence-editor-form-update_create_recurrence", %{"end_type" => "count"})
+      |> render_change()
+
+      assert has_element?(lv, ~s|select[name="end_type"] option[value="count"][selected]|)
+      assert has_element?(lv, ~s|input[name="count"][value="10"]|)
+    end
+
+    test "picking “On date” keeps the choice and shows the end date", %{conn: conn} do
+      lv = open_repeating_draft(conn)
+
+      lv
+      |> form("#recurrence-editor-form-update_create_recurrence", %{"end_type" => "until"})
+      |> render_change()
+
+      assert has_element?(lv, ~s|select[name="end_type"] option[value="until"][selected]|)
+      assert has_element?(lv, ~s|input[type="date"][name="until"]|)
     end
   end
 end

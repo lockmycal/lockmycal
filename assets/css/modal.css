@@ -17,7 +17,7 @@
    content. The height is capped at the viewport less the container's own
    padding, so the dialog keeps its margins. */
 .modal-content {
-  @apply relative flex w-full flex-col overflow-hidden bg-white dark:bg-twilight-indigo-900 rounded-[2.5rem] border-2 border-slate-50 dark:border-twilight-indigo-700 shadow-2xl transform transition-all duration-500;
+  @apply relative flex w-full flex-col overflow-hidden bg-white dark:bg-twilight-indigo-900 rounded-4xl border-2 border-slate-50 dark:border-twilight-indigo-800 shadow-2xl transform transition-all duration-500;
   max-height: calc(100vh - 3rem);
   animation: modalScaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -35,11 +35,21 @@
 
 /* Modal Header */
 .modal-header {
-  @apply flex items-center justify-between px-10 py-8 border-b-2 border-slate-50 dark:border-twilight-indigo-700;
+  @apply flex items-center justify-between px-10 py-8 border-b-2 border-slate-50 dark:border-twilight-indigo-800;
 }
 
 .modal-title {
   @apply text-3xl font-black text-slate-900 dark:text-neutral-100 tracking-tight;
+}
+
+/* A header with a subheader strip under it: the divider moves from the title
+   row to the bottom of the strip, so title and strip read as one block. */
+.modal-header--with-subheader {
+  @apply border-b-0 pb-4;
+}
+
+.modal-subheader {
+  @apply px-10 pb-6 border-b-2 border-slate-50 dark:border-twilight-indigo-800;
 }
 
 /* Modal Body */
@@ -53,7 +63,7 @@
 
 /* Modal Footer */
 .modal-footer {
-  @apply flex items-center justify-end gap-4 px-10 py-8 bg-slate-50/50 dark:bg-twilight-indigo-950/50 border-t-2 border-slate-50 dark:border-twilight-indigo-700;
+  @apply flex items-center justify-end gap-4 px-10 py-8 bg-slate-50/50 dark:bg-twilight-indigo-950/50 border-t-2 border-slate-50 dark:border-twilight-indigo-800;
 }
 
 /* Size Variants */
@@ -95,7 +105,7 @@
      viewport so what is behind it stays visible. The scrolling itself is
      inherited from `.modal-content` above. */
   .modal-content {
-    @apply rounded-t-[2.5rem] rounded-b-none;
+    @apply rounded-t-4xl rounded-b-none;
     max-height: 85vh;
     animation: modalSlideUp 0.5s cubic-bezier(0.32, 0.72, 0, 1);
   }

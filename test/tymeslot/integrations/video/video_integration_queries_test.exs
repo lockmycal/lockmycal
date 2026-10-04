@@ -6,6 +6,7 @@ defmodule Tymeslot.Integrations.Video.VideoIntegrationQueriesTest do
 
   alias Ecto.Changeset
   alias Tymeslot.Integrations.Video.VideoIntegrationQueries
+  alias Tymeslot.Integrations.Video.VideoRoomErrorQueries
 
   describe "get_by_provider_for_user/2" do
     test "returns active integration for user+provider" do
@@ -425,7 +426,7 @@ defmodule Tymeslot.Integrations.Video.VideoIntegrationQueriesTest do
       integration = insert(:video_integration, provider: "nextcloud_talk")
 
       assert :ok =
-               VideoIntegrationQueries.record_room_creation_error(
+               VideoRoomErrorQueries.record_room_creation_error(
                  integration.id,
                  :password_required
                )
@@ -438,16 +439,16 @@ defmodule Tymeslot.Integrations.Video.VideoIntegrationQueriesTest do
         Changeset.change(recorded, room_creation_error_since: ~U[2026-01-01 00:00:00Z])
       )
 
-      VideoIntegrationQueries.record_room_creation_error(integration.id, :password_required)
+      VideoRoomErrorQueries.record_room_creation_error(integration.id, :password_required)
       assert Repo.reload!(integration).room_creation_error_since == ~U[2026-01-01 00:00:00Z]
 
-      VideoIntegrationQueries.record_room_creation_error(integration.id, :talk_not_allowed)
+      VideoRoomErrorQueries.record_room_creation_error(integration.id, :talk_not_allowed)
       changed = Repo.reload!(integration)
       assert changed.room_creation_error == :talk_not_allowed
       refute changed.room_creation_error_since == ~U[2026-01-01 00:00:00Z]
       assert DateTime.compare(changed.room_creation_error_since, since) != :lt
 
-      assert :ok = VideoIntegrationQueries.clear_room_creation_error(integration.id)
+      assert :ok = VideoRoomErrorQueries.clear_room_creation_error(integration.id)
 
       assert %{room_creation_error: nil, room_creation_error_since: nil} =
                Repo.reload!(integration)
@@ -465,7 +466,7 @@ defmodule Tymeslot.Integrations.Video.VideoIntegrationQueriesTest do
       assert claim(other, :password_required)
 
       # Clearing the refusal keeps the record of what the owner was told.
-      VideoIntegrationQueries.clear_room_creation_error(integration.id)
+      VideoRoomErrorQueries.clear_room_creation_error(integration.id)
       refute claim(integration, :password_required)
 
       assert %{"password_required" => _told_at, "talk_not_allowed" => _also_told_at} =
@@ -494,7 +495,7 @@ defmodule Tymeslot.Integrations.Video.VideoIntegrationQueriesTest do
       assert claim(integration, :talk_not_allowed)
 
       assert :ok =
-               VideoIntegrationQueries.release_room_creation_error_notice(
+               VideoRoomErrorQueries.release_room_creation_error_notice(
                  integration.id,
                  :password_required
                )
@@ -510,7 +511,7 @@ defmodule Tymeslot.Integrations.Video.VideoIntegrationQueriesTest do
     defp claim(integration, code) do
       now = DateTime.utc_now(:second)
 
-      VideoIntegrationQueries.claim_room_creation_error_notice(
+      VideoRoomErrorQueries.claim_room_creation_error_notice(
         integration.id,
         code,
         now,

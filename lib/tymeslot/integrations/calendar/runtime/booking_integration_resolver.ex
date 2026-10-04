@@ -1,7 +1,9 @@
 defmodule Tymeslot.Integrations.Calendar.Runtime.BookingIntegrationResolver do
   @moduledoc """
   Resolves which calendar integration owns a booking, given a `Meeting`,
-  `MeetingType`, `{integration_id, user_id}` tuple, or bare user id.
+  `MeetingType`, `{integration_id, user_id}` tuple, an
+  `{integration_id, user_id, calendar_id}` tuple naming one calendar of that
+  integration, or bare user id.
 
   The resolver implements a fallback chain:
 
@@ -34,6 +36,7 @@ defmodule Tymeslot.Integrations.Calendar.Runtime.BookingIntegrationResolver do
   @type integration :: map()
   @type user_id :: pos_integer()
   @type integration_id :: pos_integer()
+  @type calendar_id :: String.t()
 
   @doc """
   Resolves a booking integration from the given context. Returns the
@@ -44,6 +47,7 @@ defmodule Tymeslot.Integrations.Calendar.Runtime.BookingIntegrationResolver do
           nil
           | user_id()
           | {integration_id(), user_id()}
+          | {integration_id(), user_id(), calendar_id()}
           | MeetingSchema.t()
           | MeetingTypeSchema.t()
         ) :: integration() | nil
@@ -52,6 +56,11 @@ defmodule Tymeslot.Integrations.Calendar.Runtime.BookingIntegrationResolver do
   def resolve({integration_id, user_id})
       when is_integer(integration_id) and is_integer(user_id) do
     explicit_target(integration_id, user_id) || resolve(user_id)
+  end
+
+  def resolve({integration_id, user_id, calendar_id})
+      when is_integer(integration_id) and is_integer(user_id) and is_binary(calendar_id) do
+    stored_target(integration_id, user_id, calendar_id) || resolve(user_id)
   end
 
   def resolve(%MeetingSchema{calendar_integration_id: integration_id} = meeting)

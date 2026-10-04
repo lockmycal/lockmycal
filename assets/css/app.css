@@ -3,6 +3,7 @@
 /* Import design tokens */
 @import "./base/variables.css";
 @import "./base/dark-tokens.css";
+@import "./base/fonts.css";
 @import "./base/typography.css";
 @import "./base/base.css";
 
@@ -39,26 +40,11 @@
 @import "./recaptcha.css";
 
 /* ===========================================================================
-   Tailwind v4 CSS-first configuration
-   ---------------------------------------------------------------------------
-   The standalone v4 CLI cannot load a legacy JS config via @config (it fails
-   transpiling it), so the former tailwind.config.js theme.extend / plugins /
-   content / safelist are expressed here in CSS instead. All @import statements
-   must precede every at-rule below.
+   Tailwind v4 CSS-first configuration - LockMyCal Design System
    =========================================================================== */
 
-/* Plugins. @tailwindcss/forms is bundled inside the v4 standalone binary.
-   Heroicons are no longer a Tailwind plugin: they render as inline SVG from
-   TymeslotWeb.Components.CoreComponents.Heroicons, so there is no .hero-* mask
-   utility to compile and no hero-* safelist to maintain. */
 @plugin "@tailwindcss/forms";
 
-/* LiveView state variants (formerly addVariant() plugins in tailwind.config.js).
-   Lets classes like `phx-submit-loading:opacity-50` apply while the parent
-   carries the matching LiveView class. The block form with @slot is required:
-   the inline array form `([".sel&", ".sel &"])` is emitted verbatim as a literal
-   selector by the v4 standalone CLI instead of being expanded, so the variant
-   never matches. */
 @custom-variant phx-click-loading {
   .phx-click-loading& { @slot; }
   .phx-click-loading & { @slot; }
@@ -72,122 +58,134 @@
   .phx-change-loading & { @slot; }
 }
 
-/* Dashboard dark mode. Explicit opt-in via a `.dark` class on <html> (or an
-   ancestor) — never a bare `prefers-color-scheme` media variant, so an
-   explicit Light choice always wins over the OS setting. "System" mode is
-   resolved server-side (AppAppearanceHook) or, when the server can't yet know
-   the OS preference, by a tiny inline bootstrap script — see root.html.heex. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Content sources (formerly the `content` globs). v4 auto-detects file
-   extensions; paths are relative to this file. */
+/* Content sources */
 @source "../js";
 @source "../../lib/tymeslot_web.ex";
 @source "../../lib/tymeslot_web";
 
-/* Safelist (formerly `safelist`). These classes are produced by runtime string
-   interpolation or live only in SaaS templates, so static scanning misses them. */
+/* Safelist */
 @source inline("display-xl display-lg display-md");
 @source inline("bg-calendar-{1,2,3,4,5,6,7,8} bg-calendar-fallback");
 @source inline("bg-calendar-{tomato,tangerine,banana,sage,peacock,blueberry,grape,graphite}");
 @source inline("w-6 h-6 w-8 h-8 w-10 h-10 h-16 h-20 box-border");
-/* Poll response-bar segments. These are returned as bare strings from
-   `PollResults.bar_segment_class/1` rather than written into a template, and the
-   scanner does not extract class names from Elixir string literals — three of
-   the four only resolved because unrelated templates happened to use the same
-   shades. Listed here so the bar owns its own colours. */
 @source inline("bg-green-500 bg-amber-400 bg-red-400 bg-neutral-200");
 
 @theme {
-  /* --- Brand + extended palette (formerly theme.extend.colors) --- */
-  --color-brand: #f18805;
+  /* --- Brand + LockMyCal Accent Scale --- */
+  --color-brand: #F08A3C;
 
-  --color-primary-50: #fef3e6;
-  --color-primary-100: #fee8cd;
-  --color-primary-200: #fdd19b;
-  --color-primary-300: #fcba69;
-  --color-primary-400: #fba337;
-  --color-primary-500: #fa8c05;
-  --color-primary-600: #c87004;
-  --color-primary-700: #965403;
-  --color-primary-800: #643802;
-  --color-primary-900: #321c01;
-  --color-primary-950: #231401;
+  --color-primary-50: #FFF6EE;
+  --color-primary-100: #FFE9D6;
+  --color-primary-200: #FCD0AC;
+  --color-primary-300: #F8B27C;
+  --color-primary-400: #F49C5A;
+  --color-primary-500: #F08A3C;
+  --color-primary-600: #D9762B;
+  --color-primary-700: #B4581A;
+  --color-primary-800: #7A3E10;
+  --color-primary-900: #4A260B;
+  --color-primary-950: #2E1807;
 
-  --color-secondary-50: #fbedea;
-  --color-secondary-100: #f7dcd4;
-  --color-secondary-200: #efb8a9;
-  --color-secondary-300: #e7957e;
-  --color-secondary-400: #de7254;
-  --color-secondary-500: #d64e29;
-  --color-secondary-600: #ab3f21;
-  --color-secondary-700: #812f18;
-  --color-secondary-800: #561f10;
-  --color-secondary-900: #2b1008;
-  --color-secondary-950: #1e0b06;
+  /* Single-accent design: secondary scale aligns with warm brand accents */
+  --color-secondary-50: #FFF6EE;
+  --color-secondary-100: #FFE9D6;
+  --color-secondary-200: #FCD0AC;
+  --color-secondary-300: #F8B27C;
+  --color-secondary-400: #F49C5A;
+  --color-secondary-500: #F08A3C;
+  --color-secondary-600: #D9762B;
+  --color-secondary-700: #B4581A;
+  --color-secondary-800: #7A3E10;
+  --color-secondary-900: #4A260B;
+  --color-secondary-950: #2E1807;
 
-  --color-tertiary-50: #eceff8;
-  --color-tertiary-100: #d9dff2;
-  --color-tertiary-200: #b3c0e5;
-  --color-tertiary-300: #8da0d8;
-  --color-tertiary-400: #6780cb;
-  --color-tertiary-500: #4160be;
-  --color-tertiary-600: #344d98;
-  --color-tertiary-700: #273a72;
-  --color-tertiary-800: #1a274c;
-  --color-tertiary-900: #0d1326;
-  --color-tertiary-950: #090d1b;
+  /* Tertiary scale: neutral ink tints */
+  --color-tertiary-50: #FAFAF7;
+  --color-tertiary-100: #F2F2EE;
+  --color-tertiary-200: #E2E1DB;
+  --color-tertiary-300: #CFCEC6;
+  --color-tertiary-400: #8C919B;
+  --color-tertiary-500: #646A76;
+  --color-tertiary-600: #555B68;
+  --color-tertiary-700: #444A57;
+  --color-tertiary-800: #2E3340;
+  --color-tertiary-900: #1C2029;
+  --color-tertiary-950: #14161B;
 
-  /* --- Dark-mode surface scales (docs/DESIGN_GUIDE.md "DESIGN NOTE - used
-     colors" section) — twilight-indigo is the mid-tone dark surface,
-     prussian-blue the near-black base, golden-orange a reserved distinct
-     highlight accent not yet used by any component. twilight-indigo and
-     prussian-blue land on nearly identical dark ends (#0d1326/#090d1x) —
-     that's a genuine quirk of the source palette, not a transcription bug;
-     both are kept as separate tokens (twilight-indigo for a slightly
-     lighter, elevated surface such as card hover; prussian-blue as the base
-     `.dark` background). --- */
-  --color-twilight-indigo-50: #eceff8;
-  --color-twilight-indigo-100: #d9dff2;
-  --color-twilight-indigo-200: #b3c0e5;
-  --color-twilight-indigo-300: #8da0d8;
-  --color-twilight-indigo-400: #6780cb;
-  --color-twilight-indigo-500: #4160be;
-  --color-twilight-indigo-600: #344d98;
-  --color-twilight-indigo-700: #273a72;
-  --color-twilight-indigo-800: #1a274c;
-  --color-twilight-indigo-900: #0d1326;
-  --color-twilight-indigo-950: #090d1b;
+  /* --- Dark-mode surface scales aligned with LockMyCal Dark Palette --- */
+  --color-twilight-indigo-50: #FAFAF7;
+  --color-twilight-indigo-100: #ECEAE4;
+  --color-twilight-indigo-200: #C9C8C1;
+  --color-twilight-indigo-300: #B4B3AC;
+  --color-twilight-indigo-400: #8E8D86;
+  --color-twilight-indigo-500: #6F6E68;
+  --color-twilight-indigo-600: #55554F;
+  --color-twilight-indigo-700: #3A3B36;
+  --color-twilight-indigo-800: #2A2B27;
+  --color-twilight-indigo-900: #171C26;
+  --color-twilight-indigo-950: #0E1116;
 
-  --color-prussian-blue-50: #eceff8;
-  --color-prussian-blue-100: #d9dff2;
-  --color-prussian-blue-200: #b4bfe4;
-  --color-prussian-blue-300: #8e9fd7;
-  --color-prussian-blue-400: #687fca;
-  --color-prussian-blue-500: #425fbd;
-  --color-prussian-blue-600: #354c97;
-  --color-prussian-blue-700: #283971;
-  --color-prussian-blue-800: #1b264b;
-  --color-prussian-blue-900: #0d1326;
-  --color-prussian-blue-950: #090d1a;
+  --color-prussian-blue-50: #FAFAF7;
+  --color-prussian-blue-100: #ECEAE4;
+  --color-prussian-blue-200: #C9C8C1;
+  --color-prussian-blue-300: #B4B3AC;
+  --color-prussian-blue-400: #8E8D86;
+  --color-prussian-blue-500: #55554F;
+  --color-prussian-blue-600: #3A3B36;
+  --color-prussian-blue-700: #2A2B27;
+  --color-prussian-blue-800: #171C26;
+  --color-prussian-blue-900: #121620;
+  --color-prussian-blue-950: #0E1116;
 
-  --color-golden-orange-50: #fff6e6;
-  --color-golden-orange-100: #feeecd;
-  --color-golden-orange-200: #fedd9a;
-  --color-golden-orange-300: #fdcb68;
-  --color-golden-orange-400: #fdba35;
-  --color-golden-orange-500: #fca903;
-  --color-golden-orange-600: #ca8702;
-  --color-golden-orange-700: #976502;
-  --color-golden-orange-800: #654401;
-  --color-golden-orange-900: #322201;
-  --color-golden-orange-950: #231800;
+  --color-golden-orange-50: #FFF6EE;
+  --color-golden-orange-100: #FFE9D6;
+  --color-golden-orange-200: #FCD0AC;
+  --color-golden-orange-300: #F8B27C;
+  --color-golden-orange-400: #F49C5A;
+  --color-golden-orange-500: #F08A3C;
+  --color-golden-orange-600: #D9762B;
+  --color-golden-orange-700: #B4581A;
+  --color-golden-orange-800: #7A3E10;
+  --color-golden-orange-900: #4A260B;
+  --color-golden-orange-950: #2E1807;
 
-  /* Gray scale: Tailwind's built-in --color-neutral-* is used directly (see
-     dev_support/credo_checks/use_color_scale.ex), no custom registration needed. */
+  /* --- LockMyCal Semantic Tokens for Tailwind v4 (from tokens.json) --- */
+  --color-lmc-bg: var(--lmc-bg);
+  --color-lmc-bg-alt: var(--lmc-bg-alt);
+  --color-lmc-bg-code: var(--lmc-bg-code);
+  --color-lmc-surface: var(--lmc-surface);
+  --color-lmc-surface-raised: var(--lmc-surface-raised);
+  --color-lmc-line: var(--lmc-line);
+  --color-lmc-line-strong: var(--lmc-line-strong);
+  --color-lmc-ink: var(--lmc-ink);
+  --color-lmc-ink-2: var(--lmc-ink-2);
+  --color-lmc-ink-3: var(--lmc-ink-3);
+  --color-lmc-muted: var(--lmc-muted);
+  --color-lmc-subtle: var(--lmc-subtle);
+  --color-lmc-faint: var(--lmc-faint);
+  --color-lmc-disabled: var(--lmc-disabled);
+  --color-lmc-ink-dim: var(--lmc-ink-dim);
+  --color-lmc-accent: var(--lmc-accent);
+  --color-lmc-accent-ink: var(--lmc-accent-ink);
+  --color-lmc-on-accent: var(--lmc-on-accent);
+  --color-lmc-conflict-bg: var(--lmc-conflict-bg);
+  --color-lmc-conflict-ink: var(--lmc-conflict-ink);
+  --color-lmc-protected-ink: var(--lmc-protected-ink);
+  --font-lmc-sans: "Schibsted Grotesk", system-ui, sans-serif;
+  --font-lmc-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius-lmc-xs: 3px;
+  --radius-lmc-sm: 4px;
+  --radius-lmc-md: 6px;
+  --radius-lmc-lg: 12px;
+  --radius-lmc-full: 9999px;
 
-  /* Glass background colours reference the design tokens (distinct names, so no
-     self-reference). Enables bg-glass-light, bg-glass-card, etc. */
+  /* --- Typography --- */
+  --font-sans: "Schibsted Grotesk", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Glass background colours */
   --color-glass-light: var(--color-glass-bg-light);
   --color-glass-medium: var(--color-glass-bg-medium);
   --color-glass-strong: var(--color-glass-bg-strong);
@@ -196,31 +194,28 @@
   --color-glass-overlay: var(--color-glass-bg-overlay);
   --color-glass-overlay-enhanced: var(--color-glass-bg-overlay-enhanced);
 
-  /* Calendar integration colours. The v4 utility var name collides with the
-     design token of the same name, so the values are inlined here (kept in sync
-     with base/variables.css) to avoid a circular reference. */
-  --color-calendar-1: #14b8a6;
-  --color-calendar-2: #3b82f6;
-  --color-calendar-3: #a855f7;
-  --color-calendar-4: #0d9488;
-  --color-calendar-5: #06b6d4;
-  --color-calendar-6: #6366f1;
-  --color-calendar-7: #f43f5e;
-  --color-calendar-8: #f59e0b;
-  --color-calendar-fallback: #a1a1aa;
+  /* Calendar integration colours */
+  --color-calendar-1: #0f766e;
+  --color-calendar-2: #2563eb;
+  --color-calendar-3: #9333ea;
+  --color-calendar-4: #115e59;
+  --color-calendar-5: #0e7490;
+  --color-calendar-6: #4f46e5;
+  --color-calendar-7: #e11d48;
+  --color-calendar-8: #b45309;
+  --color-calendar-fallback: #646A76;
 
-  /* Calendar palette colours — the pickable ones, named rather than numbered.
-     Same inlining rationale as the rotation above. */
-  --color-calendar-tomato: #f43f5e;
-  --color-calendar-tangerine: #f97316;
-  --color-calendar-banana: #eab308;
-  --color-calendar-sage: #65a30d;
-  --color-calendar-peacock: #06b6d4;
-  --color-calendar-blueberry: #3b82f6;
-  --color-calendar-grape: #a855f7;
-  --color-calendar-graphite: #71717a;
+  /* Calendar palette colours */
+  --color-calendar-tomato: #e11d48;
+  --color-calendar-tangerine: #c2410c;
+  --color-calendar-banana: #a16207;
+  --color-calendar-sage: #4d7c0f;
+  --color-calendar-peacock: #0e7490;
+  --color-calendar-blueberry: #2563eb;
+  --color-calendar-grape: #9333ea;
+  --color-calendar-graphite: #3f3f46;
 
-  /* --- Token font sizes → text-token-* (formerly theme.extend.fontSize) --- */
+  /* --- Token font sizes → text-token-* --- */
   --text-token-2xs: var(--font-size-2xs);
   --text-token-xs: var(--font-size-xs);
   --text-token-sm: var(--font-size-sm);
@@ -234,7 +229,7 @@
   --text-token-6xl: var(--font-size-6xl);
   --text-token-7xl: var(--font-size-7xl);
 
-  /* --- Token radii → rounded-token-* (formerly theme.extend.borderRadius) --- */
+  /* --- Token radii → rounded-token-* --- */
   --radius-token-sm: var(--radius-sm);
   --radius-token-md: var(--radius-md);
   --radius-token-lg: var(--radius-lg);
@@ -243,39 +238,33 @@
   --radius-token-3xl: var(--radius-3xl);
   --radius-token-full: var(--radius-full);
 
-  /* --- Glass shadows → shadow-glass-* (values inlined to avoid the
-     self-referential collision with the --shadow-glass-* design tokens) --- */
-  --shadow-glass-sm: 0 4px 16px rgba(0, 0, 0, 0.2);
-  --shadow-glass-md: 0 6px 20px rgba(0, 0, 0, 0.3);
-  --shadow-glass-lg: 0 8px 24px rgba(20, 20, 40, 0.4);
-  --shadow-glass-xl: 0 8px 32px rgba(0, 0, 0, 0.4);
+  /* --- Refined shadows --- */
+  --shadow-glass-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-glass-md: 0 2px 6px rgba(0, 0, 0, 0.06);
+  --shadow-glass-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-glass-xl: 0 8px 24px rgba(0, 0, 0, 0.1);
   --shadow-glass-card: var(--shadow-glass-card-enhanced);
 
-  /* --- Glass backdrop blur → backdrop-blur-glass-* (raw lengths; v4 wraps
-     them in blur()) --- */
-  --blur-glass-light: 10px;
-  --blur-glass-medium: 15px;
-  --blur-glass-strong: 20px;
-  --blur-glass-heavy: 25px;
+  /* --- Backdrop blur --- */
+  --blur-glass-light: 8px;
+  --blur-glass-medium: 12px;
+  --blur-glass-strong: 16px;
+  --blur-glass-heavy: 20px;
 
-  /* --- Glass transition property → transition-glass --- */
+  /* --- Transition --- */
   --transition-property-glass: var(--transition-glass);
 
-  /* v4 compatibility: restore v3's 3px blue-500 default ring (v4 defaults to
-     1px currentColor). */
-  --default-ring-width: 3px;
-  --default-ring-color: var(--color-blue-500);
+  /* Focus ring */
+  --default-ring-width: 2px;
+  --default-ring-color: var(--color-primary-500);
 }
 
-/* v4 compatibility: v4 changed the default border colour from gray-200 to
-   currentColor. Restore the v3 default so existing un-coloured borders render
-   unchanged. */
 @layer base {
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentColor);
+    border-color: var(--color-border-light, currentColor);
   }
 }

@@ -106,6 +106,19 @@ defmodule TymeslotWeb.Dashboard.BookingsManagementTest do
       assert render(view) =~ "Completed"
     end
 
+    test "renders the meeting type that was booked", %{conn: conn, user: user} do
+      insert(:meeting,
+        organizer_user: user,
+        organizer_email: user.email,
+        meeting_type: "Kitchen consultation"
+      )
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meetings")
+
+      assert render(view) =~ "Meeting Type"
+      assert render(view) =~ "Kitchen consultation"
+    end
+
     test "renders attendee company when present", %{conn: conn, user: user} do
       insert(:meeting,
         organizer_user: user,

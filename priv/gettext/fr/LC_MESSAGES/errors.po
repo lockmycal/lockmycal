@@ -592,3 +592,13 @@ msgstr "L'URL est requise"
 #, elixir-autogen, elixir-format
 msgid "URL must be text"
 msgstr "L'URL doit être du texte"
+
+#: lib/tymeslot_web/helpers/image_upload_errors.ex
+#, elixir-autogen, elixir-format
+msgid "This image is too large (%{size} megapixels). Please upload an image of at most %{limit} megapixels."
+msgstr "Cette image est trop grande (%{size} mégapixels). Veuillez téléverser une image de %{limit} mégapixels au maximum."
+
+#: lib/tymeslot_web/helpers/image_upload_errors.ex
+#, elixir-autogen, elixir-format
+msgid "We are busy processing other uploads. Please try again in a moment."
+msgstr "Nous traitons actuellement d’autres envois. Veuillez réessayer dans un instant."

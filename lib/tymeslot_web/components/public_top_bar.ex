@@ -7,6 +7,7 @@ defmodule TymeslotWeb.Components.PublicTopBar do
   switcher on the right — structurally mirroring the dashboard's
   `top_navigation/1` (logo left, single action right) but skinned with each
   booking theme's dark glass palette instead of the dashboard's light one.
+  Given the organizer's `username`, the logo links to their booking page.
   The logo uses `variant: :dark` (a light-coloured wordmark) so it stays
   legible against that dark background.
 
@@ -20,7 +21,9 @@ defmodule TymeslotWeb.Components.PublicTopBar do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Infrastructure.Config
+  alias TymeslotWeb.Live.Shared.DocsUrl
 
+  import TymeslotWeb.Components.CoreComponents, only: [icon: 1]
   import TymeslotWeb.Components.CoreComponents.Brand
   import TymeslotWeb.Components.LanguageSwitcher
 
@@ -30,6 +33,7 @@ defmodule TymeslotWeb.Components.PublicTopBar do
   attr :theme, :string, default: "quill"
   attr :current_user, :map, default: nil
   attr :embedded, :boolean, default: false
+  attr :username, :string, default: nil, doc: "organizer whose booking page the logo links to"
 
   @spec public_top_bar(map()) :: Phoenix.LiveView.Rendered.t()
   def public_top_bar(assigns) do
@@ -37,11 +41,34 @@ defmodule TymeslotWeb.Components.PublicTopBar do
     <div class="public-top-bar-wrapper">
       <nav class="public-top-bar">
         <div class="public-top-bar-brand">
-          <.logo mode={:full} variant={:dark} img_class="h-9 sm:h-12" />
+          <%!-- Not linked when embedded: the link would leave the embed's token behind. --%>
+          <%= if @username not in [nil, ""] and not @embedded do %>
+            <.link
+              navigate={~p"/#{@username}"}
+              class="flex"
+              aria-label={dgettext("common", "Booking page")}
+              title={dgettext("common", "Booking page")}
+            >
+              <.logo mode={:full} variant={:dark} img_class="h-9 sm:h-12" />
+            </.link>
+          <% else %>
+            <.logo mode={:full} variant={:dark} img_class="h-9 sm:h-12" />
+          <% end %>
         </div>
 
         <div class="public-top-bar-actions">
           <%= unless @embedded do %>
+            <.top_bar_icon_link
+              href={DocsUrl.home_url()}
+              icon="hero-question-mark-circle"
+              label={dgettext("common", "Documentation")}
+            />
+            <.top_bar_icon_link
+              :if={website_url = Config.website_url()}
+              href={website_url}
+              icon="hero-globe-alt"
+              label={dgettext("common", "Website")}
+            />
             <%= if @current_user do %>
               <.link navigate={~p"/dashboard"} class="public-top-bar-link public-top-bar-link-outline">
                 {dgettext("common", "Dashboard")}
@@ -66,6 +93,25 @@ defmodule TymeslotWeb.Components.PublicTopBar do
         </div>
       </nav>
     </div>
+    """
+  end
+
+  attr :href, :string, required: true
+  attr :icon, :string, required: true
+  attr :label, :string, required: true
+
+  defp top_bar_icon_link(assigns) do
+    ~H"""
+    <a
+      href={@href}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="public-top-bar-link public-top-bar-icon-link"
+      aria-label={@label}
+      title={@label}
+    >
+      <.icon name={@icon} class="w-5 h-5" />
+    </a>
     """
   end
 end

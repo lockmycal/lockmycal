@@ -9,6 +9,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InitialState do
   defaults so the template never reads an unset assign.
   """
 
+  alias Tymeslot.CalendarGrid.WriteQueue
   alias Tymeslot.Timezones
 
   @doc "The default assigns applied in the component's `mount/1`."
@@ -23,6 +24,9 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InitialState do
       loading: false,
       selected_event: nil,
       selected_booking: nil,
+      # Set when an Overview agenda link opened the detail modal, so closing
+      # it returns there (see `EventHandlers.Shared.close_linked_detail/1`).
+      return_to_overview: false,
       agenda_lens: :all,
       current_time: DateTime.utc_now(),
       hidden_integration_ids: [],
@@ -30,7 +34,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InitialState do
       # `load_integrations/1` has run, has the same assign shape as every render
       # after it.
       calendar_colors: %{},
-      calendar_colour_keys: %{},
       hidden_calendar_keys: MapSet.new(),
       preferences: nil,
       show_calendar_list: false,
@@ -41,9 +44,15 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InitialState do
       show_shortcuts_help: false,
       creating_event: nil,
       recurrence_prompt: nil,
+      # A move of a whole series awaiting confirmation; see `SeriesMove`.
+      series_move_prompt: nil,
       confirm_delete_event: nil,
+      confirm_delete_scopes: :single,
       confirm_delete_linked_to_booking: false,
       saving_event: false,
+      # Writes to existing events, serialised per event, and the series
+      # held while written whole or moved; see `EventWrites`.
+      event_writes: WriteQueue.new(),
       deleting_event: false,
       video_integrations: [],
       confirm_remove_attendee: nil,
@@ -52,6 +61,9 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InitialState do
       attendee_input: "",
       notify_prompt: nil,
       pending_notification: false,
+      # Bumped to re-render the detail dialog's title field with the saved
+      # title after a blank one was refused.
+      event_title_rev: 0,
       owned_integration_ids: MapSet.new(),
       visible_events: [],
       guest_rsvp_summaries: %{},

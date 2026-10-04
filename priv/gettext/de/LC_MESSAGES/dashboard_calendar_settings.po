@@ -11,7 +11,7 @@ msgstr ""
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings_component.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/helpers.ex
 #, elixir-autogen, elixir-format
 msgid "%{shown} and %{count} more"
 msgid_plural "%{shown} and %{count} more"
@@ -72,7 +72,7 @@ msgstr "Kalender verbinden"
 #: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
 #, elixir-autogen, elixir-format
 msgid "Connect a calendar so Tymeslot can read your availability and stop meetings being booked when you're already busy."
-msgstr "Verbinden Sie einen Kalender, damit Tymeslot Ihre Verfügbarkeit lesen und verhindern kann, dass Termine gebucht werden, während Sie bereits beschäftigt sind."
+msgstr "Verbinden Sie einen Kalender, damit LockMyCal Ihre Verfügbarkeit lesen und verhindern kann, dass Termine gebucht werden, während Sie bereits beschäftigt sind."
 
 #: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
@@ -114,6 +114,7 @@ msgstr "Frei/Gebucht-Feed"
 msgid "Healthy"
 msgstr "Fehlerfrei"
 
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
 #: lib/tymeslot_web/live/dashboard/calendar_settings_component.ex
 #, elixir-autogen, elixir-format
 msgid "Integration not found"
@@ -336,25 +337,15 @@ msgstr "Verbinden Sie Ihre Kalender, um die Verfügbarkeit zu prüfen und Doppel
 
 #: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
 #, elixir-autogen, elixir-format
-msgid "Disabled"
-msgstr "Deaktiviert"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
-#, elixir-autogen, elixir-format
-msgid "Enabled"
-msgstr "Aktiviert"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
-#, elixir-autogen, elixir-format
 msgid "Set public calendar colors"
 msgstr "Farben des öffentlichen Kalenders festlegen"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings_component.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/helpers.ex
 #, elixir-autogen, elixir-format
 msgid "End time must be after the start time"
 msgstr "Die Endzeit muss nach der Startzeit liegen"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings_component.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/helpers.ex
 #, elixir-autogen, elixir-format
 msgid "Failed to update visible hours"
 msgstr "Sichtbare Stunden konnten nicht aktualisiert werden"
@@ -453,3 +444,119 @@ msgstr "Sichtbarkeit"
 #, elixir-autogen, elixir-format
 msgid "When enabled, anyone with your link can see a month view of when you are busy or free — never event titles or attendees. Your booking page works either way."
 msgstr "Wenn aktiviert, kann jeder mit Ihrem Link in einer Monatsansicht sehen, wann Sie belegt oder frei sind — niemals Titel oder Teilnehmende von Terminen. Ihre Buchungsseite funktioniert in beiden Fällen."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
+#, elixir-autogen, elixir-format
+msgid "Set show weekends"
+msgstr "Anzeige der Wochenenden festlegen"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
+#, elixir-autogen, elixir-format
+msgid "Weekends"
+msgstr "Wochenenden"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
+#, elixir-autogen, elixir-format
+msgid "Off by default: your public calendar shows Monday to Friday only, and your free/busy feed leaves out busy times at weekends. Saturday and Sunday still appear in a month where a weekend day can be booked. Turn this on to always show weekends, busy times included."
+msgstr "Standardmäßig aus: Ihr öffentlicher Kalender zeigt nur Montag bis Freitag, und Ihr Frei/Belegt-Feed lässt belegte Zeiten am Wochenende weg. Samstag und Sonntag erscheinen trotzdem in einem Monat, in dem ein Wochenendtag gebucht werden kann. Schalten Sie dies ein, um Wochenenden immer anzuzeigen, belegte Zeiten eingeschlossen."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
+#, elixir-autogen, elixir-format
+msgid "Show weekends"
+msgstr "Wochenenden anzeigen"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Always"
+msgstr "Immer"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Ask each time"
+msgstr "Jedes Mal fragen"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
+#, elixir-autogen, elixir-format
+msgid "Bookings without a calendar of their own, and your bookings on other pages, go here"
+msgstr "Hierhin gehen Buchungen ohne eigenen Kalender und Ihre Buchungen auf anderen Seiten"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
+#, elixir-autogen, elixir-format
+msgid "Default"
+msgstr "Standard"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Default calendar updated"
+msgstr "Standardkalender aktualisiert"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to save setting"
+msgstr "Einstellung konnte nicht gespeichert werden"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Never"
+msgstr "Nie"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Save to my calendar"
+msgstr "In meinem Kalender speichern"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
+#, elixir-autogen, elixir-format
+msgid "Set as default"
+msgstr "Als Standard festlegen"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Setting saved"
+msgstr "Einstellung gespeichert"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "This calendar cannot take bookings"
+msgstr "Dieser Kalender kann keine Buchungen aufnehmen"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "When you book a meeting on someone else's booking page while signed in, it can also be saved to your default calendar."
+msgstr "Wenn Sie angemeldet einen Termin auf der Buchungsseite einer anderen Person buchen, kann er auch in Ihrem Standardkalender gespeichert werden."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Your bookings on other pages"
+msgstr "Ihre Buchungen auf anderen Seiten"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "%{account} has several calendars. Your bookings on other pages are saved to the one you choose."
+msgstr "%{account} enthält mehrere Kalender. Ihre Buchungen auf anderen Seiten werden in dem gespeichert, den Sie auswählen."
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
+#, elixir-autogen, elixir-format
+msgid "Change default calendar"
+msgstr "Standardkalender ändern"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Choose your default calendar"
+msgstr "Standardkalender auswählen"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Default calendar"
+msgstr "Standardkalender"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
+#, elixir-autogen, elixir-format
+msgid "Default: %{calendar}"
+msgstr "Standard: %{calendar}"

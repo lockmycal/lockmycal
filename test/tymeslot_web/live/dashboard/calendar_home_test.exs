@@ -42,6 +42,14 @@ defmodule TymeslotWeb.Dashboard.CalendarHomeTest do
       assert class =~ "dashboard-nav-link--active"
     end
 
+    test "?create=1 opens the create-event modal, a plain visit doesn't", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard")
+      refute has_element?(view, "#create-event-modal")
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard?create=1")
+      assert has_element?(view, "#create-event-modal")
+    end
+
     test "the calendar keeps the standard sidebar rather than a rail", %{conn: conn} do
       {:ok, _lv, html} = live(conn, ~p"/dashboard")
 
@@ -82,6 +90,7 @@ defmodule TymeslotWeb.Dashboard.CalendarHomeTest do
         organizer_user: user,
         organizer_email: user.email,
         title: "Strategy sync",
+        attendee_message: nil,
         attendee_name: "Grace Hopper",
         start_time: start_time,
         end_time: DateTime.add(start_time, 1800, :second),

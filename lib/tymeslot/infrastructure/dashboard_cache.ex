@@ -12,4 +12,7 @@ defmodule Tymeslot.Infrastructure.DashboardCache do
   """
   @spec integration_status_key(integer()) :: {atom(), integer()}
   def integration_status_key(user_id), do: {:integration_status, user_id}
+
+  @spec integration_attention_key(integer()) :: {atom(), integer()}
+  def integration_attention_key(user_id), do: {:integration_attention, user_id}
 end

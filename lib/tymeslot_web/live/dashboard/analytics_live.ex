@@ -365,18 +365,7 @@ defmodule TymeslotWeb.Dashboard.AnalyticsLive do
     # Collapse the ~7 aggregate queries into one cached bundle per
     # {organizer, range}. MetricsCache keys on user.id, so one organizer can
     # never be served another's metrics.
-    data =
-      MetricsCache.fetch(user.id, range, fn ->
-        %{
-          visits: Analytics.count_visits(user.id, from, to),
-          unique_visitors: Analytics.count_unique_visitors(user.id, from, to),
-          bookings: Analytics.count_bookings(user.id, from, to),
-          converting_visitors: Analytics.count_converting_visitors(user.id, from, to),
-          visits_by_day: Analytics.visits_by_day(user.id, from, to, time_zone),
-          sources: Analytics.attribution_table(user.id, from, to),
-          devices: Analytics.device_breakdown(user.id, from, to)
-        }
-      end)
+    data = Analytics.cached_metrics(user.id, range, from, to, time_zone)
 
     socket
     |> assign(Map.to_list(data))

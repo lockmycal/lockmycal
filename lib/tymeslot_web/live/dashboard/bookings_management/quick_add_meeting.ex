@@ -102,6 +102,30 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.QuickAddMeeting do
     to: CreateFormState,
     as: :handle_update_create_guest_email
 
+  defdelegate toggle_create_note(params, socket),
+    to: CreateFormState,
+    as: :handle_toggle_create_note
+
+  defdelegate update_create_note(params, socket),
+    to: CreateFormState,
+    as: :handle_update_create_note
+
+  defdelegate add_create_guest(params, socket),
+    to: CreateFormState,
+    as: :handle_add_create_guest
+
+  defdelegate remove_create_guest(params, socket),
+    to: CreateFormState,
+    as: :handle_remove_create_guest
+
+  defdelegate update_create_guest_input(params, socket),
+    to: CreateFormState,
+    as: :handle_update_create_guest_input
+
+  defdelegate update_create_locale(params, socket),
+    to: CreateFormState,
+    as: :handle_update_create_locale
+
   defdelegate toggle_create_all_day(params, socket),
     to: CreateFormState,
     as: :handle_toggle_create_all_day

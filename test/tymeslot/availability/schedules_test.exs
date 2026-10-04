@@ -29,6 +29,15 @@ defmodule Tymeslot.Availability.SchedulesTest do
       assert schedule.name == "Working hours"
       assert length(WeeklyAvailabilityQueries.get_weekly_schedule_with_breaks(schedule.id)) == 7
     end
+
+    test "names the default schedule in the user's language", %{profile: profile} do
+      # The locale is per process, so this doesn't leak into other tests.
+      Gettext.put_locale(TymeslotWeb.Gettext, "cs")
+
+      {:ok, schedule} = Schedules.create_default(profile.id)
+
+      assert schedule.name == "Pracovní doba"
+    end
   end
 
   describe "create/2" do

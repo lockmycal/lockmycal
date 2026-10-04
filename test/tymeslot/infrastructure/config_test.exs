@@ -27,6 +27,10 @@ defmodule Tymeslot.Infrastructure.ConfigTest.SingleFlagStub do
   @spec site_home_path() :: String.t()
   def site_home_path, do: "/stub-home"
 
+  @impl Tymeslot.Infrastructure.AppConfigBehaviour
+  @spec app_name() :: String.t()
+  def app_name, do: "Stub App"
+
   defp on?(flag), do: Application.get_env(:tymeslot, :stub_flag) == flag
 end
 
@@ -123,6 +127,31 @@ defmodule Tymeslot.Infrastructure.ConfigTest do
       with_key(:source_code_url, "https://git.example.com/me/fork/", fn ->
         assert Config.source_code_url() == "https://git.example.com/me/fork"
         assert Config.issues_url() == "https://git.example.com/me/fork/issues"
+      end)
+    end
+  end
+
+  describe "website_url/0" do
+    test "is nil while WEB_HOST is unset or blank" do
+      without_key(:web_host, fn -> assert Config.website_url() == nil end)
+      with_key(:web_host, "", fn -> assert Config.website_url() == nil end)
+    end
+
+    test "is the configured host, trailing slash trimmed" do
+      with_key(:web_host, "https://example.com/", fn ->
+        assert Config.website_url() == "https://example.com"
+      end)
+    end
+  end
+
+  describe "bug_report_url/0" do
+    test "is nil while WEB_HOST is unset" do
+      without_key(:web_host, fn -> assert Config.bug_report_url() == nil end)
+    end
+
+    test "is the website's bug forum category" do
+      with_key(:web_host, "https://example.com/", fn ->
+        assert Config.bug_report_url() == "https://example.com/forum/bugs"
       end)
     end
   end

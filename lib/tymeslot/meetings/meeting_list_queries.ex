@@ -97,20 +97,33 @@ defmodule Tymeslot.Meetings.MeetingListQueries do
 
   @doc """
   Meetings awaiting approval for `organizer_user_id` that overlap
-  `[range_start, range_end]`, as plain `%{start_time:, end_time:}` maps.
+  `[range_start, range_end]`, as plain `%{start_time:, end_time:, uid:,
+  provider_event_id:}` maps.
 
-  Used by `Tymeslot.Meetings.PendingApprovalEvents` to synthesize blocking
-  calendar events for meetings that have no external calendar event yet.
+  Used by the public calendar page to show held requests as their own chips.
   """
   @spec pending_approval_time_ranges(integer(), DateTime.t(), DateTime.t()) :: [
-          %{start_time: DateTime.t(), end_time: DateTime.t()}
+          %{
+            start_time: DateTime.t(),
+            end_time: DateTime.t(),
+            uid: String.t() | nil,
+            provider_event_id: String.t() | nil
+          }
         ]
   def pending_approval_time_ranges(organizer_user_id, range_start, range_end) do
     Meeting
     |> where([m], m.organizer_user_id == ^organizer_user_id)
     |> where([m], m.status == "awaiting_approval")
     |> where([m], m.start_time < ^range_end and m.end_time > ^range_start)
-    |> select([m], %{start_time: m.start_time, end_time: m.end_time})
+    # `uid` here is the event-shaped identity `Meetings.CalendarEventLink`
+    # matches on, i.e. the meeting's `calendar_uid` — never the booking's
+    # own `uid`, which is a bearer capability.
+    |> select([m], %{
+      start_time: m.start_time,
+      end_time: m.end_time,
+      uid: m.calendar_uid,
+      provider_event_id: m.provider_event_id
+    })
     |> Repo.all()
   end
 
@@ -263,6 +276,49 @@ defmodule Tymeslot.Meetings.MeetingListQueries do
   end
 
   @doc """
+  Like `upcoming_meetings_for_user/2`, but also includes requests awaiting
+  approval. Backs the dashboard agenda, which shows those marked as pending.
+  """
+  @spec upcoming_agenda_meetings_for_user(String.t(), non_neg_integer()) :: [Meeting.t()]
+  def upcoming_agenda_meetings_for_user(user_email, limit) do
+    now = DateTime.utc_now()
+
+    Meeting
+    |> MeetingState.where_live_booking_or_awaiting_approval()
+    |> upcoming(now)
+    |> for_user_email(user_email)
+    |> order_by_start_asc()
+    |> apply_limit(limit)
+    |> Repo.all()
+  end
+
+  @doc """
+  Returns the calendar identities (`uid` — the meeting's `calendar_uid` —,
+  `provider_event_id`) of every meeting
+  organised by `organizer_email` overlapping `[from_utc, to_utc)`, in any status.
+
+  Backs the agenda's recognition of provider events that mirror a booking it
+  does not itself list (e.g. one awaiting approval): only the identifiers are
+  selected, since nothing else of these meetings is shown.
+  """
+  @spec list_calendar_identities_for_organizer(String.t(), DateTime.t(), DateTime.t()) :: [
+          %{uid: String.t() | nil, provider_event_id: String.t() | nil}
+        ]
+  def list_calendar_identities_for_organizer(
+        organizer_email,
+        %DateTime{} = from_utc,
+        %DateTime{} = to_utc
+      ) do
+    Meeting
+    |> where([m], m.organizer_email == ^organizer_email)
+    |> where([m], m.end_time > ^from_utc and m.start_time < ^to_utc)
+    # Event-shaped for `Meetings.CalendarEventLink`: the event UID is the
+    # meeting's `calendar_uid`, not its `uid`.
+    |> select([m], %{uid: m.calendar_uid, provider_event_id: m.provider_event_id})
+    |> Repo.all()
+  end
+
+  @doc """
   Returns the organiser's live bookings overlapping the `[from_utc, to_utc)`
   window, ordered by start time.
 
@@ -279,6 +335,25 @@ defmodule Tymeslot.Meetings.MeetingListQueries do
     |> where([m], m.start_time < ^to_utc and m.end_time > ^from_utc)
     |> order_by_start_asc()
     |> Repo.all()
+  end
+
+  @doc """
+  Counts an organizer's slot-occupying bookings (same filter as
+  `MeetingQueries.list_live_booking_starts/4`) whose `start_time` falls in `[from_utc, to_utc)`.
+  Unlike `count_bookings/3`, which windows on when a booking was *made*, this
+  windows on when the meeting *happens*.
+  """
+  @spec count_live_bookings_starting(integer(), DateTime.t(), DateTime.t()) :: non_neg_integer()
+  def count_live_bookings_starting(
+        organizer_user_id,
+        %DateTime{} = from_utc,
+        %DateTime{} = to_utc
+      ) do
+    Meeting
+    |> MeetingState.where_slot_live()
+    |> where([m], m.organizer_user_id == ^organizer_user_id)
+    |> where([m], m.start_time >= ^from_utc and m.start_time < ^to_utc)
+    |> Repo.aggregate(:count, :id)
   end
 
   @doc """

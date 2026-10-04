@@ -4,6 +4,7 @@ defmodule Tymeslot.Integrations.Calendar.CalendarPreferencesSchema do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Tymeslot.Meetings.DisplayTitle
   alias Tymeslot.Utils.DateTimeUtils.TimeFormat
 
   @type t :: %__MODULE__{
@@ -16,6 +17,7 @@ defmodule Tymeslot.Integrations.Calendar.CalendarPreferencesSchema do
           show_week_numbers: boolean(),
           show_weekends: boolean(),
           desktop_reminders_enabled: boolean(),
+          booking_title_source: String.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -31,6 +33,8 @@ defmodule Tymeslot.Integrations.Calendar.CalendarPreferencesSchema do
     field :show_week_numbers, :boolean, default: false
     field :show_weekends, :boolean, default: true
     field :desktop_reminders_enabled, :boolean, default: false
+    # See `Tymeslot.Meetings.DisplayTitle` for what each value shows.
+    field :booking_title_source, :string, default: "meeting_info"
 
     timestamps(type: :utc_datetime)
   end
@@ -38,6 +42,7 @@ defmodule Tymeslot.Integrations.Calendar.CalendarPreferencesSchema do
   @valid_views ~w(week day month agenda)
   @valid_week_starts ~w(monday sunday)
   @valid_time_formats TimeFormat.formats()
+  @valid_booking_title_sources DisplayTitle.sources()
 
   @castable_fields [
     :user_id,
@@ -47,7 +52,8 @@ defmodule Tymeslot.Integrations.Calendar.CalendarPreferencesSchema do
     :time_format,
     :show_week_numbers,
     :show_weekends,
-    :desktop_reminders_enabled
+    :desktop_reminders_enabled,
+    :booking_title_source
   ]
 
   @spec changeset(%__MODULE__{}, map()) :: Ecto.Changeset.t()
@@ -58,6 +64,7 @@ defmodule Tymeslot.Integrations.Calendar.CalendarPreferencesSchema do
     |> validate_inclusion(:default_view, @valid_views)
     |> validate_inclusion(:week_start_day, @valid_week_starts)
     |> validate_inclusion(:time_format, @valid_time_formats)
+    |> validate_inclusion(:booking_title_source, @valid_booking_title_sources)
     |> unique_constraint(:user_id)
     |> foreign_key_constraint(:user_id)
   end

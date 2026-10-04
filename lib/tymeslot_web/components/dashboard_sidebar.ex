@@ -18,6 +18,8 @@ defmodule TymeslotWeb.Components.DashboardSidebar do
   # is correct even mid-redirect.
   @calendars_actions [:calendar_integration, :integrations]
 
+  @admin_actions [:admin, :admin_users, :admin_audit]
+
   @doc """
   Renders the left sidebar navigation.
   """
@@ -106,7 +108,7 @@ defmodule TymeslotWeb.Components.DashboardSidebar do
             :for={icon <- ["hero-arrow-top-right-on-square", "hero-clipboard", "hero-envelope"]}
             type="button"
             disabled
-            class="flex-1 flex items-center justify-center px-4 py-4 rounded-2xl bg-neutral-200 dark:bg-twilight-indigo-800 text-neutral-500 dark:text-twilight-indigo-300 cursor-not-allowed opacity-60 border-2 border-neutral-300 dark:border-twilight-indigo-700"
+            class="flex-1 flex items-center justify-center px-4 py-4 rounded-2xl bg-neutral-200 dark:bg-twilight-indigo-800 text-neutral-500 dark:text-twilight-indigo-300 cursor-not-allowed opacity-60 border border-neutral-200 dark:border-twilight-indigo-800"
             title={LinkAccessPolicy.disabled_tooltip(@profile, @integration_status)}
           >
             <.icon name={icon} class="w-5 h-5" />
@@ -184,6 +186,15 @@ defmodule TymeslotWeb.Components.DashboardSidebar do
               >
                 <.icon name="hero-squares-2x2" class="w-5 h-5" />
                 <span>{dgettext("dashboard_common", "Meeting Types")}</span>
+              </.nav_link>
+
+              <.nav_link
+                patch={~p"/dashboard/locations"}
+                current={@current_action}
+                action={:locations}
+              >
+                <.icon name="hero-map-pin" class="w-5 h-5" />
+                <span>{dgettext("dashboard_common", "Locations")}</span>
               </.nav_link>
 
               <.nav_link
@@ -311,10 +322,24 @@ defmodule TymeslotWeb.Components.DashboardSidebar do
             </div>
           </div>
 
-          <div :if={@current_user && @current_user.is_admin && AdminRoles.admin_ui_enabled?()}>
-            <div class="dashboard-nav-section-title">
+          <%!-- Rarely used, so collapsed by default; rendered open only when an
+               admin page is the current one so its active item stays visible.
+               `ignore_attributes` keeps a user-toggled `open` from being reset
+               by later sidebar re-renders. --%>
+          <details
+            :if={@current_user && @current_user.is_admin && AdminRoles.admin_ui_enabled?()}
+            id="dashboard-sidebar-admin-section"
+            class="group"
+            open={admin_action?(@current_action)}
+            phx-mounted={JS.ignore_attributes(["open"])}
+          >
+            <summary class="dashboard-nav-section-title cursor-pointer list-none hover:text-primary-600 [&::-webkit-details-marker]:hidden">
               {dgettext("dashboard_common", "Administration")}
-            </div>
+              <.icon
+                name="hero-chevron-down"
+                class="order-last ml-2 w-4 h-4 shrink-0 transition-transform group-open:rotate-180"
+              />
+            </summary>
             <div class="space-y-2">
               <.nav_link patch={~p"/dashboard/admin"} current={@current_action} action={:admin}>
                 <.icon name="hero-shield-check" class="w-5 h-5" />
@@ -339,7 +364,7 @@ defmodule TymeslotWeb.Components.DashboardSidebar do
                 <span>{dgettext("dashboard_common", "Audit log")}</span>
               </.nav_link>
             </div>
-          </div>
+          </details>
         </nav>
 
         <%!-- AGPL section 13: offer the running version's source to every user --%>
@@ -381,6 +406,8 @@ defmodule TymeslotWeb.Components.DashboardSidebar do
   defp calendars_current(action) when action in @calendars_actions, do: :calendar_integration
   defp calendars_current(action), do: action
 
+  defp admin_action?(action), do: action in @admin_actions
+
   # Extensions with no :section (Tymeslot.Dashboard.ExtensionSchema's own
   # moduledoc documents it as optional) render inside the built-in "Workflow"
   # section, next to Automation — today's behaviour, unchanged.
@@ -405,7 +432,7 @@ defmodule TymeslotWeb.Components.DashboardSidebar do
   end
 
   defp sidebar_link_button_class do
-    "dashboard-nav-link flex-1 flex items-center justify-center px-4 py-4 rounded-2xl transition-all duration-300 bg-white dark:bg-twilight-indigo-950 border-2 border-neutral-300 text-neutral-700 dark:text-neutral-200 hover:border-primary-400 cursor-pointer hover:text-primary-700 hover:translate-x-0 group"
+    "dashboard-nav-link flex-1 flex items-center justify-center px-4 py-4 rounded-2xl transition-all duration-300 bg-white dark:bg-twilight-indigo-950 border border-neutral-200 dark:border-twilight-indigo-800 text-neutral-700 dark:text-neutral-200 hover:border-primary-400 cursor-pointer hover:text-primary-700 hover:translate-x-0 group"
   end
 
   defp close_sidebar_js do

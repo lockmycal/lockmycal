@@ -7,30 +7,23 @@
 
 :root {
   /* Radius scale — themes override these; kept here as safe fallback defaults */
+  /* Two steps below the original scale, as the dashboard's (base/variables.css). */
   --radius-none: 0;
-  --radius-sm: 0.25rem;
-  --radius-base: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
-  --radius-3xl: 2rem;
+  --radius-xs: 0.0625rem;
+  --radius-sm: 0.125rem;
+  --radius-base: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 1rem;
+  --radius-4xl: 1rem;
   --radius-full: 9999px;
 }
 
 /* Hide reCAPTCHA v3 badge as per Google's terms (must include disclaimer) */
 .grecaptcha-badge {
   visibility: hidden;
-}
-
-/* Honeypot security field - visually hidden from humans, accessible to bots */
-.honeypot-field {
-  position: absolute !important;
-  left: -9999px !important;
-  top: auto !important;
-  width: 1px !important;
-  height: 1px !important;
-  overflow: hidden !important;
 }
 
 /* Awaiting-payment view — used by embedded paid bookings while Stripe

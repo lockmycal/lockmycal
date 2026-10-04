@@ -296,9 +296,16 @@
 .prev-button:disabled,
 .next-button:disabled,
 .prev-button.disabled,
-.next-button.disabled {
+.next-button.disabled,
+.submit-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
+}
+
+.submit-button:disabled:hover {
+  background: var(--theme-primary-solid);
+  border-color: var(--theme-primary-solid);
   transform: none;
 }
 

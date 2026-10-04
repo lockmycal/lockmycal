@@ -96,6 +96,32 @@ defmodule TymeslotWeb.Themes.Shared.PathHandlers do
     socket.assigns[:theme_preview] || socket.assigns[:owner_preview] || false
   end
 
+  @doc """
+  The booking form's own path with the slot chosen on it, e.g.
+  "/username/30min/book?date=2026-10-05&time=10:00 AM", for coming back to the
+  form after leaving it (to sign in). Falls back to the organizer's page.
+  """
+  @spec booking_form_path(Phoenix.LiveView.Socket.t()) :: String.t()
+  def booking_form_path(socket) do
+    case socket.assigns[:username_context] do
+      nil ->
+        "/"
+
+      username ->
+        query =
+          %{}
+          |> maybe_put_query_param("date", date_param(socket.assigns[:selected_date]))
+          |> maybe_put_query_param("time", socket.assigns[:selected_time])
+          |> maybe_put_query_param("timezone", socket.assigns[:user_timezone])
+
+        path = do_get_base_path(:booking, username, socket)
+        if query == %{}, do: path, else: path <> "?" <> URI.encode_query(query)
+    end
+  end
+
+  defp date_param(%Date{} = date), do: Date.to_iso8601(date)
+  defp date_param(date), do: date
+
   defp get_slug(socket) do
     duration = socket.assigns[:duration] || socket.assigns[:selected_duration]
     MeetingTypes.normalize_duration_slug(duration)

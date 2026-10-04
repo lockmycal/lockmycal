@@ -327,11 +327,6 @@ msgstr "Mandarino"
 msgid "Tomato"
 msgstr "Pomodoro"
 
-#: lib/tymeslot_web/live/dashboard/calendar_grid/header/calendar_list_panel.ex
-#, elixir-autogen, elixir-format
-msgid "Colour for %{calendar}"
-msgstr "Colore per %{calendar}"
-
 #: lib/tymeslot_web/components/dashboard/colour_swatches.ex
 #, elixir-autogen, elixir-format
 msgid "Default colour"
@@ -341,11 +336,6 @@ msgstr "Colore predefinito"
 #, elixir-autogen, elixir-format
 msgid "All"
 msgstr "Tutti"
-
-#: lib/tymeslot_web/live/dashboard/calendar_grid/modals/booking_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Booked through your Tymeslot page"
-msgstr "Prenotata tramite la tua pagina Tymeslot"
 
 #: lib/tymeslot_web/live/dashboard/calendar_grid/views/agenda_view.ex
 #, elixir-autogen, elixir-format
@@ -401,3 +391,8 @@ msgstr "Porta il tuo calendario in %{app_name}"
 #, elixir-autogen, elixir-format
 msgid "Meetings booked through your %{app_name} page will appear here."
 msgstr "Qui appariranno le riunioni prenotate tramite la tua pagina %{app_name}."
+
+#: lib/tymeslot_web/live/dashboard/calendar_grid/modals/booking_detail_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Booked through your %{app_name} booking page"
+msgstr "Prenotata tramite la tua pagina di prenotazione %{app_name}"

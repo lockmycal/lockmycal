@@ -8,6 +8,7 @@ defmodule Tymeslot.Infrastructure.Security.Turnstile do
   """
 
   alias Tymeslot.Infrastructure.Config
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Infrastructure.Security.RemoteIpParam
 
   require Logger
@@ -80,7 +81,7 @@ defmodule Tymeslot.Infrastructure.Security.Turnstile do
         {:error, :turnstile_request_failed}
 
       {:error, exception} ->
-        Logger.error("Turnstile verification request error", error: inspect(exception))
+        Logger.error("Turnstile verification request error", error: LogFormat.reason(exception))
         {:error, :turnstile_network_error}
     end
   end
@@ -100,17 +101,17 @@ defmodule Tymeslot.Infrastructure.Security.Turnstile do
 
       {:ok, %{"success" => false, "error-codes" => error_codes}} ->
         Logger.error("Turnstile verification failed with errors",
-          error_codes: inspect(error_codes)
+          error_codes: LogFormat.reason(error_codes)
         )
 
         {:error, :turnstile_verification_failed}
 
       {:ok, response} ->
-        Logger.error("Unexpected Turnstile response format", response: inspect(response))
+        Logger.error("Unexpected Turnstile response format", response: LogFormat.reason(response))
         {:error, :turnstile_invalid_response}
 
       {:error, reason} ->
-        Logger.error("Failed to parse Turnstile response", reason: inspect(reason))
+        Logger.error("Failed to parse Turnstile response", reason: LogFormat.reason(reason))
         {:error, :turnstile_parse_error}
     end
   end

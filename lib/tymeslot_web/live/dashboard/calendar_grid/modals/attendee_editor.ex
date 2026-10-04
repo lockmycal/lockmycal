@@ -18,6 +18,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.AttendeeEditor do
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
 
+  alias TymeslotWeb.Dashboard.CalendarGrid.Modals.FormParts
+
   attr :editable, :boolean, default: false
   attr :attendees, :list, default: []
   attr :pending_attendees, :list, default: []
@@ -27,27 +29,19 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.AttendeeEditor do
   attr :read_only, :boolean,
     default: false,
     doc:
-      "Disables the add-attendee input and hides the add button, e.g. an existing event's modal that only allows removing attendees."
+      "Leaves out the add-attendee form and its hint, e.g. an existing event's modal that only allows removing attendees."
 
   @spec attendee_editor(map()) :: Phoenix.LiveView.Rendered.t()
   def attendee_editor(assigns) do
     ~H"""
-    <div :if={@editable or not Enum.empty?(@attendees)} class="flex items-start gap-3 mb-3">
-      <svg
-        class="w-4 h-4 text-neutral-400 mt-0.5 shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-        title={dgettext("dashboard_calendar_events", "Attendees")}
+    <div :if={(@editable and not @read_only) or @attendees != [] or @pending_attendees != []}>
+      <FormParts.section_label
+        for={if @editable and not @read_only, do: "edit-attendee-email"}
+        optional={@editable and not @read_only}
       >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-        />
-      </svg>
-      <div class="flex-1">
+        {dgettext("dashboard_calendar_events", "Attendees")}
+      </FormParts.section_label>
+      <div>
         <%!-- Editable attendee tags --%>
         <div :if={@editable}>
           <div
@@ -105,13 +99,16 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.AttendeeEditor do
               </button>
             </span>
           </div>
+          <%!-- Only where attendees can be added: an empty read-only input would
+               show its example address as if it were an attendee. --%>
           <form
+            :if={not @read_only}
             id="event-add-attendee-form"
             phx-submit="add_event_attendee"
             phx-target={@myself}
-            class="flex gap-2"
+            class="flex items-start gap-2"
           >
-            <input
+            <.input
               type="email"
               id="edit-attendee-email"
               name="email"
@@ -119,23 +116,18 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.AttendeeEditor do
               phx-change="update_attendee_input"
               phx-target={@myself}
               placeholder="attendee@example.com"
-              disabled={@read_only}
-              class="flex-1 bg-transparent border-0 border-b border-transparent hover:border-neutral-300 focus:border-primary-500 focus:ring-0 text-token-sm text-neutral-600 dark:text-neutral-300 px-0 py-0 placeholder:text-neutral-400 transition-colors cursor-text disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-transparent"
+              class="flex-1 min-w-0"
             />
-            <button
-              :if={not @read_only}
-              type="submit"
-              class="px-2 py-0.5 rounded-md border border-neutral-300 text-token-xs text-neutral-500 hover:bg-neutral-50 transition-colors"
-            >
+            <.action_button type="submit" variant={:secondary} class="shrink-0">
               {dgettext("dashboard_calendar_events", "Add")}
-            </button>
+            </.action_button>
           </form>
-          <p :if={@pending_attendees == []} class="text-token-xs text-neutral-400 mt-1">
+          <FormParts.hint :if={not @read_only and @pending_attendees == []}>
             {dgettext(
               "dashboard_calendar_events",
               "Each person will receive an invitation from your calendar provider."
             )}
-          </p>
+          </FormParts.hint>
         </div>
         <%!-- Read-only attendee display --%>
         <div :if={!@editable}>

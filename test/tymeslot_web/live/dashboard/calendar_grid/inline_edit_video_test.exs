@@ -60,7 +60,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InlineEditVideoTest do
 
     lv = open_event(conn, event)
 
-    lv |> element(picker_button(video.id)) |> render_click()
+    pick_video(lv, video.id)
 
     assert_receive {:calendar_told, uid, description}, 2_000
     assert uid == event.uid
@@ -91,7 +91,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InlineEditVideoTest do
 
     lv = open_event(conn, event)
 
-    lv |> element(picker_button("")) |> render_click()
+    pick_video(lv, "")
 
     eventually(fn -> assert render(lv) =~ "Video link removed." end)
 
@@ -125,7 +125,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InlineEditVideoTest do
 
     lv = open_event(conn, event)
 
-    lv |> element(picker_button(talk.id)) |> render_click()
+    pick_video(lv, talk.id)
 
     eventually(fn ->
       assert render(lv) =~ "turn off the password requirement for public conversations"
@@ -133,8 +133,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InlineEditVideoTest do
 
     # The picker goes back to the choice the organiser could see before they
     # pressed it, rather than showing a provider the event never got.
-    assert has_element?(lv, picker_button("") <> ".border-primary-400")
-    refute has_element?(lv, picker_button(talk.id) <> ".border-primary-400")
+    assert has_element?(lv, selected_video(""))
+    refute has_element?(lv, selected_video(talk.id))
 
     assert {:ok, %{video_integration_id: nil, video_link: nil, description: "Agenda"}} =
              ProviderCalendarEventQueries.get_by_uid(calendar.id, event.uid)
@@ -163,7 +163,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InlineEditVideoTest do
 
     lv = open_event(conn, event)
 
-    lv |> element(picker_button(talk.id)) |> render_click()
+    pick_video(lv, talk.id)
 
     eventually(fn -> assert render(lv) =~ "Video room created." end)
 
@@ -193,7 +193,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InlineEditVideoTest do
 
     lv = open_event(conn, event)
 
-    html = lv |> element(picker_button(video.id)) |> render_click()
+    html = pick_video(lv, video.id)
 
     refute html =~ "turn off the password requirement"
     refute render(lv) =~ "Video room created."
@@ -208,7 +208,13 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InlineEditVideoTest do
     lv
   end
 
-  defp picker_button(id), do: ~s|button[phx-value-video_integration_id="#{id}"]|
+  defp pick_video(lv, id) do
+    lv
+    |> form("#event-video-form", %{"video_integration_id" => to_string(id)})
+    |> render_change()
+  end
+
+  defp selected_video(id), do: ~s|#event-video option[value="#{id}"][selected]|
 
   defp insert_event(calendar, attrs) do
     today = Date.utc_today()

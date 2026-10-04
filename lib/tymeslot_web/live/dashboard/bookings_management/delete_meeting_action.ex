@@ -15,6 +15,7 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.DeleteMeetingAction do
   import Phoenix.Component, only: [assign: 3]
 
   alias Tymeslot.Bookings.Policy
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Meetings
   alias TymeslotWeb.Dashboard.BookingsManagementComponent
   alias TymeslotWeb.Hooks.ModalHook
@@ -64,7 +65,7 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.DeleteMeetingAction do
 
       {:error, error_reason} ->
         Logger.error("delete_meeting_failed",
-          reason: inspect(error_reason),
+          reason: LogFormat.reason(error_reason),
           meeting_id: meeting.id
         )
 

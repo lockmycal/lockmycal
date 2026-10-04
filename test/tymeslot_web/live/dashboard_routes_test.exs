@@ -78,6 +78,7 @@ defmodule TymeslotWeb.DashboardRoutesTest do
       {"/dashboard/settings", "Profile Settings"},
       {"/dashboard/availability", "Availability"},
       {"/dashboard/meeting-settings", "Meeting Types"},
+      {"/dashboard/locations", "Locations"},
       {"/dashboard/calendar", "calendar-grid"},
       {"/dashboard/calendar-integration", "Calendars"},
       {"/dashboard/video-integration", "Video Integration"},
@@ -170,13 +171,14 @@ defmodule TymeslotWeb.DashboardRoutesTest do
     test "shows empty state when no meetings are scheduled", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/dashboard/overview")
 
-      assert html =~ "Nothing on your plate today or tomorrow."
+      assert html =~ "Nothing on your plate today."
     end
 
     test "shows upcoming meeting title and attendee name", %{conn: conn, user: user} do
       insert(:meeting,
         organizer_email: user.email,
         title: "Strategy Session",
+        attendee_message: nil,
         attendee_name: "Jane Smith"
       )
 
@@ -197,11 +199,12 @@ defmodule TymeslotWeb.DashboardRoutesTest do
 
     test "refreshes meeting list after meeting type is changed", %{conn: conn, user: user} do
       {:ok, view, html} = live(conn, ~p"/dashboard/overview")
-      assert html =~ "Nothing on your plate today or tomorrow."
+      assert html =~ "Nothing on your plate today."
 
       insert(:meeting,
         organizer_email: user.email,
-        title: "Newly Scheduled Meeting"
+        title: "Newly Scheduled Meeting",
+        attendee_message: nil
       )
 
       send(view.pid, {:meeting_type_changed})
@@ -383,6 +386,7 @@ defmodule TymeslotWeb.DashboardRoutesTest do
       insert(:meeting,
         organizer_email: user.email,
         title: "Timeless Meeting",
+        attendee_message: nil,
         attendee_name: "Jane"
       )
 

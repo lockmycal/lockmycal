@@ -47,8 +47,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.MiniMonthPopover do
       position={:bottom_start}
       role="dialog"
       panel_label={dgettext("dashboard_calendar_events", "Pick a date")}
-      trigger_class="flex items-center gap-1 ml-1 md:ml-2 min-w-0 rounded px-1.5 py-1 hover:bg-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-primary-400"
-      class="bg-white border border-neutral-300 rounded-xl shadow-lg p-3 w-72"
+      trigger_class="flex items-center gap-1 ml-1 md:ml-2 min-w-0 rounded px-1.5 py-1 hover:bg-neutral-100 dark:hover:bg-twilight-indigo-900 focus:outline-hidden focus:ring-2 focus:ring-primary-400"
+      class="bg-white dark:bg-twilight-indigo-950 border border-neutral-300 dark:border-twilight-indigo-700 rounded-xl shadow-lg p-3 w-72"
       aria-label={dgettext("dashboard_calendar_events", "Pick a date")}
     >
       <:trigger>
@@ -76,19 +76,19 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.MiniMonthPopover do
             type="button"
             phx-click="mini_month_prev"
             phx-target={@myself}
-            class="min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-neutral-100 text-neutral-600 dark:text-neutral-300 focus:outline-hidden focus:ring-2 focus:ring-primary-400"
+            class="min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-neutral-100 dark:hover:bg-twilight-indigo-900 text-neutral-600 dark:text-neutral-300 focus:outline-hidden focus:ring-2 focus:ring-primary-400"
             aria-label={dgettext("dashboard_calendar_events", "Previous month")}
           >
             <.icon name="hero-chevron-left" class="w-4 h-4" />
           </button>
           <div class="text-token-sm font-semibold text-neutral-800 dark:text-neutral-100">
-            {"#{LocaleFormat.format_month_name(@cursor.month, @locale)} #{@cursor.year}"}
+            {LocaleFormat.format_month_year(@cursor.month, @cursor.year, @locale)}
           </div>
           <button
             type="button"
             phx-click="mini_month_next"
             phx-target={@myself}
-            class="min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-neutral-100 text-neutral-600 dark:text-neutral-300 focus:outline-hidden focus:ring-2 focus:ring-primary-400"
+            class="min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-neutral-100 dark:hover:bg-twilight-indigo-900 text-neutral-600 dark:text-neutral-300 focus:outline-hidden focus:ring-2 focus:ring-primary-400"
             aria-label={dgettext("dashboard_calendar_events", "Next month")}
           >
             <.icon name="hero-chevron-right" class="w-4 h-4" />
@@ -130,7 +130,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.MiniMonthPopover do
               phx-value-date={Date.to_iso8601(day)}
               phx-target={@myself}
               class={day_class(day, @cursor, @date, @today)}
-              aria-label={"#{LocaleFormat.format_weekday_name(Date.day_of_week(day), @locale, :full)}, #{LocaleFormat.format_month_name(day.month, @locale)} #{day.day}, #{day.year}"}
+              aria-label={LocaleFormat.format_weekday_date(day, @locale)}
               aria-current={Date.compare(day, @date) == :eq && "date"}
             >{day.day}</button>
           <% end %>
@@ -152,13 +152,13 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.MiniMonthPopover do
         "#{base} bg-primary-600 text-white font-semibold"
 
       Date.compare(day, today) == :eq ->
-        "#{base} ring-1 ring-primary-400 text-primary-700 font-semibold hover:bg-primary-50"
+        "#{base} ring-1 ring-primary-400 text-primary-700 dark:text-primary-300 font-semibold hover:bg-primary-50 dark:hover:bg-twilight-indigo-900"
 
       day.month != cursor.month ->
-        "#{base} text-neutral-300 hover:bg-neutral-50"
+        "#{base} text-neutral-300 dark:text-neutral-600 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-900"
 
       true ->
-        "#{base} text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50"
+        "#{base} text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-900"
     end
   end
 end

@@ -11,6 +11,7 @@ defmodule TymeslotWeb.Live.Scheduling.AvailabilityHelpers do
   alias Phoenix.Component
   alias Tymeslot.Availability.{Calculate, Offer, Schedules}
   alias Tymeslot.Demo
+  alias Tymeslot.Infrastructure.Tasks
 
   require Logger
 
@@ -166,7 +167,7 @@ defmodule TymeslotWeb.Live.Scheduling.AvailabilityHelpers do
   @spec run_fetch((-> term())) :: {Task.t() | nil, reference()}
   def run_fetch(fetch) do
     if Application.get_env(:tymeslot, :async_availability_fetch, true) do
-      task = Task.async(fetch)
+      task = Tasks.async(fetch)
       {task, task.ref}
     else
       ref = make_ref()

@@ -37,6 +37,7 @@ msgid "Browser Not Supported"
 msgstr "Navigateur non pris en charge"
 
 #: lib/tymeslot_web/components/confirmation_modal.ex
+#: lib/tymeslot_web/components/dashboard/meetings/add_guests_modal.ex
 #: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
 #: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
 #, elixir-autogen, elixir-format
@@ -148,7 +149,7 @@ msgstr "Ce fuseau horaire sera utilisé pour vos disponibilités et votre planif
 #: lib/tymeslot_web/components/core_components/layout.ex
 #, elixir-autogen, elixir-format
 msgid "Tymeslot team"
-msgstr "équipe Tymeslot"
+msgstr "équipe LockMyCal"
 
 #: lib/tymeslot_web/components/layouts.ex
 #, elixir-autogen, elixir-format
@@ -267,3 +268,28 @@ msgstr "Annonce"
 #, elixir-autogen, elixir-format
 msgid "Dismiss announcement"
 msgstr "Masquer l'annonce"
+
+#: lib/tymeslot_web/components/public_top_bar.ex
+#, elixir-autogen, elixir-format
+msgid "Documentation"
+msgstr "Documentation"
+
+#: lib/tymeslot_web/components/public_top_bar.ex
+#, elixir-autogen, elixir-format
+msgid "Website"
+msgstr "Site web"
+
+#: lib/tymeslot_web/components/public_top_bar.ex
+#, elixir-autogen, elixir-format
+msgid "Booking page"
+msgstr "Page de réservation"
+
+#: lib/tymeslot_web/components/public_footer.ex
+#, elixir-autogen, elixir-format
+msgid "Report a bug"
+msgstr "Signaler un bug"
+
+#: lib/tymeslot_web/components/public_footer.ex
+#, elixir-autogen, elixir-format
+msgid "Powered by %{app_name}"
+msgstr "Propulsé par %{app_name}"

@@ -33,6 +33,8 @@ defmodule Tymeslot.Auth.AccountDeletion do
 
   alias Tymeslot.Auth.{AdminUserQueries, Session, UserQueries, UserSchema, UserSessionQueries}
   alias Tymeslot.Auth.Helpers.AccountLogging
+  alias Tymeslot.Bookings.AttendeeAttachments
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Integrations.AccessRevocation
   alias Tymeslot.Integrations.Video
   alias Tymeslot.Integrations.Video.ProviderConfig, as: VideoProviderConfig
@@ -200,7 +202,7 @@ defmodule Tymeslot.Auth.AccountDeletion do
           Logger.warning("Could not schedule video room clean-up for account deletion",
             user_id: user_id,
             integration_id: integration.id,
-            reason: inspect(reason)
+            reason: LogFormat.reason(reason)
           )
 
         {:ok, _outcome} ->
@@ -246,7 +248,7 @@ defmodule Tymeslot.Auth.AccountDeletion do
           user_id: user_id,
           meeting_id: meeting.id,
           booking_payment_id: payment.id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
 
         {:manual_refund, payment.id}
@@ -255,7 +257,7 @@ defmodule Tymeslot.Auth.AccountDeletion do
         Logger.warning("Could not cancel meeting during account deletion",
           user_id: user_id,
           meeting_id: meeting.id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
 
         :failed
@@ -288,7 +290,7 @@ defmodule Tymeslot.Auth.AccountDeletion do
       {:error, reason} ->
         Logger.warning("Could not expire open checkouts during account deletion",
           user_id: user.id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
     end
   end
@@ -380,8 +382,9 @@ defmodule Tymeslot.Auth.AccountDeletion do
   defp log_transaction_failure({:error, reason} = error, user_id) do
     Logger.error(
       "Account deletion DB transaction failed after the external deletion hook already ran " <>
-        "(a subscription may have been cancelled) for user_id=#{user_id}: #{inspect(reason)}. " <>
-        "Manual reconciliation required."
+        "(a subscription may have been cancelled). Manual reconciliation required.",
+      user_id: user_id,
+      reason: LogFormat.reason(reason)
     )
 
     error
@@ -392,7 +395,8 @@ defmodule Tymeslot.Auth.AccountDeletion do
   defp delete_uploaded_files({:ok, deleted} = result, %{id: profile_id}) do
     for {kind, outcome} <- [
           avatars: Profiles.delete_avatar_files(profile_id),
-          theme_backgrounds: ThemeCustomizations.delete_profile_files(profile_id)
+          theme_backgrounds: ThemeCustomizations.delete_profile_files(profile_id),
+          booking_attachments: AttendeeAttachments.delete_user_files(deleted.id)
         ],
         outcome != :ok do
       {:error, reason, path} = outcome
@@ -403,7 +407,7 @@ defmodule Tymeslot.Auth.AccountDeletion do
         profile_id: profile_id,
         files: kind,
         path: path,
-        reason: inspect(reason)
+        reason: LogFormat.reason(reason)
       )
     end
 
@@ -442,6 +446,55 @@ defmodule Tymeslot.Auth.AccountDeletion do
   defp describe_actor(:self, user_id), do: {"self", user_id}
   defp describe_actor({:admin, admin_id}, _user_id), do: {"admin", admin_id}
   defp describe_actor(:system, _user_id), do: {"system", nil}
+
+  # A daily run deletes at most this many, so a sign-up flood cannot turn one
+  # run into an unbounded loop of deletions; the rest go on the following days.
+  @purge_batch_size 500
+
+  @doc """
+  Deletes accounts still unverified `days` after sign-up, through
+  `delete_account/1`, so each goes exactly as an erasure request would.
+
+  An unverified account cannot sign in, so after a month it is an abandoned
+  sign-up, or one made with somebody else's address, holding an email
+  address and the IP it was registered from. An account sent a fresh
+  verification link within the window is spared. At most #{@purge_batch_size}
+  are deleted per call, and none for a `days` below one.
+
+  Returns `{deleted_count, nil}`, the shape `Tymeslot.Workers.DataRetentionWorker`
+  expects of a prune function.
+  """
+  @spec purge_unverified_accounts(integer()) :: {non_neg_integer(), nil}
+  def purge_unverified_accounts(days) when is_integer(days) and days > 0 do
+    cutoff = DateTime.add(DateTime.utc_now(), -days, :day)
+
+    deleted =
+      cutoff
+      |> UserQueries.list_stale_unverified_users(@purge_batch_size)
+      |> Enum.count(&purged?/1)
+
+    {deleted, nil}
+  end
+
+  # A zero or negative window would select every unverified account, however
+  # new: the retention worker passes such values through from job args, and
+  # they must delete nothing.
+  def purge_unverified_accounts(_days), do: {0, nil}
+
+  defp purged?(user) do
+    case delete_account(user) do
+      {:ok, _deleted} ->
+        true
+
+      {:error, reason} ->
+        Logger.error("Could not purge an unverified account",
+          user_id: user.id,
+          reason: LogFormat.reason(reason)
+        )
+
+        false
+    end
+  end
 
   defp run_account_deletion_hook(user_id) do
     case Application.get_env(:tymeslot, :account_deletion_hook) do

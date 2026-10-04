@@ -12,8 +12,8 @@ defmodule Tymeslot.Precommit.Affected do
       nothing relevant moved (gettext and dialyzer skip their own work), and
       xref's input, a new `alias`, `import` or struct reference, is not visible
       from paths alone.
-    * **deps.unlock, deps.audit, sobelow, migrations and workflows** run only
-      when the diff touches the files they read.
+    * **deps.unlock, deps.audit, sobelow, migrations, workflows and the JS
+      suite** run only when the diff touches the files they read.
     * **The suite** is narrowed by `Tymeslot.TestAffected.Selection`, the engine
       behind `mix test.affected`, and inherits its rule of widening to the full
       suite rather than guessing.
@@ -45,6 +45,7 @@ defmodule Tymeslot.Precommit.Affected do
   @dep_files ~w[mix.exs mix.lock]
   @workflow_prefixes ~w[.github/workflows/ .gitea/workflows/]
   @migration_prefixes ~w[priv/repo/migrations/ priv/saas_repo/migrations/]
+  @js_prefixes ~w[assets/js/ assets/package.json assets/package-lock.json assets/vitest.]
 
   # Sobelow reads the web layer, configuration, and anything handling params,
   # uploads or auth. The last group has no single home, so it is matched by
@@ -60,7 +61,8 @@ defmodule Tymeslot.Precommit.Affected do
     "deps.audit" => {:deps, "mix.exs and mix.lock unchanged"},
     "sobelow" => {:security, "no web, config, auth or upload code changed"},
     "excellent_migrations.check_safety" => {:migrations, "no migration changed"},
-    "actionlint" => {:workflows, "no workflow changed"}
+    "actionlint" => {:workflows, "no workflow changed"},
+    "test.js" => {:js, "no JavaScript changed"}
   }
 
   @doc """
@@ -173,6 +175,7 @@ defmodule Tymeslot.Precommit.Affected do
   defp touches?(:deps, path), do: path in @dep_files
   defp touches?(:workflows, path), do: String.starts_with?(path, @workflow_prefixes)
   defp touches?(:migrations, path), do: String.starts_with?(path, @migration_prefixes)
+  defp touches?(:js, path), do: String.starts_with?(path, @js_prefixes)
 
   defp touches?(:security, path),
     do: String.starts_with?(path, @security_prefixes) or path =~ @security_names

@@ -1,84 +1,92 @@
-/* ===================================
-   CSS CUSTOM PROPERTIES (Design Tokens)
-   =================================== */
+/* ===========================================================================
+   CSS CUSTOM PROPERTIES (Design Tokens) - LockMyCal Redesign
+   =========================================================================== */
 
 :root {
-  /* Color Palette - Glass Morphism Theme */
+  /* --- LockMyCal Core Design Tokens (Light Mode) --- */
+  --lmc-bg: #FAFAF7;
+  --lmc-bg-alt: #F2F2EE;
+  --lmc-bg-code: #F4F4F0;
+  --lmc-surface: #FFFFFF;
+  --lmc-surface-raised: #EDEDE8;
+  --lmc-line: #E2E1DB;
+  --lmc-line-strong: #CFCEC6;
+  --lmc-ink: #14161B;
+  --lmc-ink-2: #2E3340;
+  --lmc-ink-3: #444A57;
+  --lmc-muted: #555B68;
+  --lmc-subtle: #646A76;
+  --lmc-faint: #8C919B;
+  --lmc-disabled: #B5B8BF;
+  --lmc-ink-dim: #7A7F8A;
+  --lmc-accent: #F08A3C;
+  --lmc-accent-ink: #B4581A;
+  --lmc-on-accent: #111210;
+  --lmc-conflict-bg: #FCE3CF;
+  --lmc-conflict-ink: #7A3510;
+  --lmc-protected-ink: #9A4A10;
+  --lmc-font-sans: "Schibsted Grotesk", system-ui, sans-serif;
+  --lmc-font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  /* Primary/secondary/tertiary scales are registered once, in app.css's
-     Tailwind `@theme` block — that's the only place Tailwind's build-time
-     utility-class generator reads colour tokens from, so they have to live
-     there for `bg-primary-500`/`to-tertiary-600`/etc. to compile at all.
-     Duplicating the same literal values here (a plain :root rule) would
-     either drift out of sync (as secondary once did) or — if written as
-     `var(--color-primary-500)` — create a same-name self-reference, which
-     CSS treats as a cyclic/invalid value. Anything below needing one of
-     these colours at runtime reads `var(--color-primary-500)` etc. exactly
-     as before; it now resolves against the `@theme`-emitted custom
-     property instead of a second copy declared here. */
-
-  /* Glass Theme Dark Colors */
-  --color-glass-dark-light: rgba(20, 20, 40, 0.7);
-  --color-glass-dark-medium: rgba(20, 20, 40, 0.9);
-  --color-glass-dark-strong: rgba(20, 20, 40, 1);
-  --color-glass-dark-variant: rgba(40, 40, 80, 1);
-
-  /* Gray scale: Tailwind's built-in --color-neutral-* is used directly (see
-     dev_support/credo_checks/use_color_scale.ex), no custom registration needed. */
+  /* Glass Theme Dark Colors (Legacy mapping aligned with neutral ink) */
+  --color-glass-dark-light: rgba(20, 22, 27, 0.7);
+  --color-glass-dark-medium: rgba(20, 22, 27, 0.9);
+  --color-glass-dark-strong: rgba(20, 22, 27, 1);
+  --color-glass-dark-variant: rgba(30, 34, 43, 1);
 
   /* Accent Colors */
-  --color-accent-blue: #3b82f6;
-  --color-accent-green: #10b981;
-  --color-accent-amber: #f59e0b;
-  --color-accent-red: #ef4444;
+  --color-accent-blue: #2F6FD0;
+  --color-accent-green: #1E8A5A;
+  --color-accent-amber: #F08A3C;
+  --color-accent-red: #C2382F;
   --color-accent-primary: var(--color-primary-500);
   
   /* Semantic Colors */
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-  --color-error-bg: #fef2f2;
-  --color-info: #3b82f6;
+  --color-success: #1E8A5A;
+  --color-warning: #B4581A;
+  --color-error: #C2382F;
+  --color-error-bg: #FDF2F0;
+  --color-info: #2F6FD0;
   
-  /* Background Colors - Glass Theme */
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #fafafa;
-  --color-bg-tertiary: #f4f4f5;
-  --color-bg-inverse: #18181b;
+  /* Background Colors - Aligned with LockMyCal Light Palette */
+  --color-bg-primary: #FAFAF7;
+  --color-bg-secondary: #F2F2EE;
+  --color-bg-tertiary: #FFFFFF;
+  --color-bg-inverse: #0E1116;
   
-  /* Glass Morphism Backgrounds - Enhanced */
-  --color-glass-bg-light: rgba(255, 255, 255, 0.4);
-  --color-glass-bg-medium: rgba(255, 255, 255, 0.2);
-  --color-glass-bg-strong: rgba(255, 255, 255, 0.3);
-  --color-glass-bg-card: rgba(255, 255, 255, 0.7);
-  --color-glass-bg-card-enhanced: rgba(255, 255, 255, 0.72);
-  --color-glass-bg-overlay: rgba(255, 255, 255, 0.15);
-  --color-glass-bg-overlay-enhanced: rgba(255, 255, 255, 0.25);
+  /* Glass / Card Backgrounds */
+  --color-glass-bg-light: rgba(250, 250, 247, 0.6);
+  --color-glass-bg-medium: rgba(242, 242, 238, 0.8);
+  --color-glass-bg-strong: rgba(255, 255, 255, 0.95);
+  --color-glass-bg-card: #FFFFFF;
+  --color-glass-bg-card-enhanced: #FFFFFF;
+  --color-glass-bg-overlay: rgba(20, 22, 27, 0.2);
+  --color-glass-bg-overlay-enhanced: rgba(20, 22, 27, 0.4);
   
-  /* Text Colors - Glass Theme */
-  --color-text-primary: #18181b;
-  --color-text-secondary: #52525b;
-  --color-text-tertiary: #71717a;
-  --color-text-inverse: #fafafa;
+  /* Text Colors - Aligned with LockMyCal Ink Scale */
+  --color-text-primary: #14161B;
+  --color-text-secondary: #444A57;
+  --color-text-tertiary: #646A76;
+  --color-text-inverse: #FAFAF7;
   
   /* Glass Theme Text Colors */
-  --color-text-glass-primary: rgba(20, 20, 40, 1);
-  --color-text-glass-secondary: rgba(20, 20, 40, 0.8);
-  --color-text-glass-light: rgba(20, 20, 40, 0.7);
-  --color-text-on-glass: white;
+  --color-text-glass-primary: #14161B;
+  --color-text-glass-secondary: #444A57;
+  --color-text-glass-light: #646A76;
+  --color-text-on-glass: #14161B;
   
-  /* Border Colors - Glass Theme */
-  --color-border-light: #e4e4e7;
-  --color-border-default: #d4d4d8;
-  --color-border-dark: #a1a1aa;
+  /* Border Colors - Aligned with LockMyCal 1px Lines */
+  --color-border-light: #E2E1DB;
+  --color-border-default: #CFCEC6;
+  --color-border-dark: #8C919B;
   
   /* Glass Morphism Borders */
-  --color-border-glass-light: rgba(255, 255, 255, 0.3);
-  --color-border-glass-medium: rgba(255, 255, 255, 0.4);
-  --color-border-glass-strong: rgba(255, 255, 255, 0.5);
-  --color-border-glass-dark: rgba(20, 20, 40, 0.3);
-  --color-border-glass-dark-medium: rgba(20, 20, 40, 0.4);
-  --color-border-glass-dark-strong: rgba(20, 20, 40, 0.6);
+  --color-border-glass-light: #E2E1DB;
+  --color-border-glass-medium: #CFCEC6;
+  --color-border-glass-strong: #8C919B;
+  --color-border-glass-dark: rgba(20, 22, 27, 0.2);
+  --color-border-glass-dark-medium: rgba(20, 22, 27, 0.35);
+  --color-border-glass-dark-strong: rgba(20, 22, 27, 0.5);
   
   /* Typography Scale */
   --font-size-2xs: 0.625rem;   /* 10px */
@@ -95,9 +103,9 @@
   --font-size-7xl: 4.5rem;     /* 72px */
   
   /* Font Families */
-  --font-family-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-family-sans: "Schibsted Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-family-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-family-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 
   /* Font Weights */
   --font-weight-light: 300;
@@ -148,52 +156,50 @@
   --spacing-28: 7rem;          /* 112px */
   --spacing-32: 8rem;          /* 128px */
   
-  /* Border Radius */
+  /* Border Radius — LockMyCal Design System */
   --radius-none: 0;
-  --radius-sm: 0.125rem;       /* 2px */
-  --radius-default: 0.25rem;   /* 4px */
-  --radius-md: 0.375rem;       /* 6px */
-  --radius-lg: 0.5rem;         /* 8px */
-  --radius-xl: 0.75rem;        /* 12px */
-  --radius-2xl: 1rem;          /* 16px */
-  --radius-3xl: 1.5rem;        /* 24px */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-default: 6px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+  --radius-3xl: 16px;
+  --radius-4xl: 20px;
   --radius-full: 9999px;
   
-  /* Shadows - Glass Theme Enhanced */
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-default: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.35);
-  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  /* Shadows - Minimal & refined, lines instead of heavy shadows */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+  --shadow-default: 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 8px 16px -4px rgb(0 0 0 / 0.08);
+  --shadow-xl: 0 12px 24px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 20px 32px -8px rgb(0 0 0 / 0.12);
+  --shadow-inner: inset 0 1px 2px 0 rgb(0 0 0 / 0.05);
   
-  /* Glass Morphism Shadows - Enhanced with subtle glow */
-  --shadow-glass-sm: 0 4px 16px rgba(0, 0, 0, 0.2);
-  --shadow-glass-md: 0 6px 20px rgba(0, 0, 0, 0.3);
-  --shadow-glass-lg: 0 8px 24px rgba(20, 20, 40, 0.4);
-  --shadow-glass-xl: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --shadow-glass-button: 0 6px 20px rgba(0, 0, 0, 0.3);
-  --shadow-glass-card: 0 8px 16px rgba(0, 0, 0, 0.4);
-  --shadow-glass-card-enhanced: 
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    0 0 8px rgba(250, 140, 5, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  /* Glass Morphism Shadows - Subdued */
+  --shadow-glass-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow-glass-md: 0 4px 12px rgba(0, 0, 0, 0.07);
+  --shadow-glass-lg: 0 6px 16px rgba(0, 0, 0, 0.09);
+  --shadow-glass-xl: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-glass-button: 0 2px 6px rgba(0, 0, 0, 0.08);
+  --shadow-glass-card: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-glass-card-enhanced: 0 1px 3px rgba(0, 0, 0, 0.05);
   
-  /* Transitions - Glass Theme Enhanced */
+  /* Transitions */
   --transition-all: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-colors: background-color, border-color, color, fill, stroke 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-opacity: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-shadow: box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-transform: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
   
-  /* Glass Morphism Transitions - Enhanced */
-  --transition-glass: all 0.3s ease;
-  --transition-glass-fast: all 0.2s ease;
-  --transition-glass-slow: all 0.4s ease;
-  --transition-glass-transform: transform 0.3s ease, box-shadow 0.3s ease;
-  --transition-glass-smooth: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  --transition-glass: all 0.2s ease;
+  --transition-glass-fast: all 0.15s ease;
+  --transition-glass-slow: all 0.3s ease;
+  --transition-glass-transform: transform 0.2s ease, box-shadow 0.2s ease;
+  --transition-glass-smooth: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
   
   /* Animation Durations */
   --duration-75: 75ms;
@@ -222,84 +228,66 @@
   --breakpoint-2xl: 1536px;
   
   /* Glass Morphism Specific Properties */
-  --glass-blur-light: blur(10px);
-  --glass-blur-medium: blur(15px);
-  --glass-blur-strong: blur(20px);
-  --glass-blur-heavy: blur(25px);
+  --glass-blur-light: blur(8px);
+  --glass-blur-medium: blur(12px);
+  --glass-blur-strong: blur(16px);
+  --glass-blur-heavy: blur(20px);
   
-  /* Glass Background Gradients */
-  --glass-gradient-primary: linear-gradient(135deg, rgba(200, 112, 4, 0.9) 0%, rgba(250, 140, 5, 0.9) 100%);
-  --glass-gradient-secondary: linear-gradient(135deg, rgba(150, 84, 3, 0.9) 0%, rgba(251, 163, 55, 0.9) 100%);
+  /* Background Accents */
+  --glass-gradient-primary: linear-gradient(135deg, #F08A3C 0%, #D9762B 100%);
+  --glass-gradient-secondary: linear-gradient(135deg, #F49C5A 0%, #B4581A 100%);
   --glass-gradient-overlay: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-600) 100%);
   --glass-gradient-fallback: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-600) 100%);
 
   /* Notification Badge Gradients */
-  --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  --gradient-amber: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  --gradient-gray: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-  --gradient-primary: linear-gradient(135deg, #fa8c05 0%, #c87004 100%);
+  --gradient-blue: linear-gradient(135deg, #2F6FD0 0%, #2055A8 100%);
+  --gradient-amber: linear-gradient(135deg, #F08A3C 0%, #B4581A 100%);
+  --gradient-gray: linear-gradient(135deg, #646A76 0%, #444A57 100%);
+  --gradient-primary: linear-gradient(135deg, #F08A3C 0%, #D9762B 100%);
 
   /* OAuth/Authentication Button Properties */
   --oauth-button-height: 2.75rem;
   --oauth-button-gap: 0.75rem;
   --oauth-icon-size: 1.25rem;
-  --oauth-divider-color: rgba(255, 255, 255, 0.15);
-  --oauth-button-bg: rgba(255, 255, 255, 0.08);
-  --oauth-button-bg-hover: rgba(255, 255, 255, 0.12);
-  --oauth-button-border: rgba(255, 255, 255, 0.18);
-  --oauth-button-border-hover: rgba(255, 255, 255, 0.25);
-  --oauth-button-text: rgba(255, 255, 255, 0.95);
+  --oauth-divider-color: rgba(20, 22, 27, 0.1);
+  --oauth-button-bg: #FFFFFF;
+  --oauth-button-bg-hover: #F2F2EE;
+  --oauth-button-border: #CFCEC6;
+  --oauth-button-border-hover: #8C919B;
+  --oauth-button-text: #14161B;
 
-  /* Calendar Integration Colors
-     8-color palette for distinguishing calendar integrations in the grid.
-     Mapped to Tailwind as bg-calendar-1 … bg-calendar-8. */
-  --color-calendar-1: #14b8a6;   /* turquoise — brand primary */
-  --color-calendar-2: #3b82f6;   /* blue */
-  --color-calendar-3: #a855f7;   /* purple */
-  --color-calendar-4: #0d9488;   /* teal */
-  --color-calendar-5: #06b6d4;   /* cyan — brand secondary */
-  --color-calendar-6: #6366f1;   /* indigo */
-  --color-calendar-7: #f43f5e;   /* rose */
-  --color-calendar-8: #f59e0b;   /* amber */
-  --color-calendar-fallback: #a1a1aa;  /* neutral — unmatched integrations */
+  /* Calendar Integration Colors */
+  --color-calendar-1: #0f766e;
+  --color-calendar-2: #2563eb;
+  --color-calendar-3: #9333ea;
+  --color-calendar-4: #115e59;
+  --color-calendar-5: #0e7490;
+  --color-calendar-6: #4f46e5;
+  --color-calendar-7: #e11d48;
+  --color-calendar-8: #b45309;
+  --color-calendar-fallback: #646A76;
 
-  /* Calendar Palette Colors
-     The colour a person picks for one calendar or one event, keyed by palette
-     name (see Tymeslot.Integrations.Calendar.EventColour).
-     Mapped to Tailwind as bg-calendar-tomato … bg-calendar-graphite.
-
-     Deliberately separate from the numbered rotation above. The rotation only
-     has to keep adjacent calendars apart, so any eight distinct hues will do;
-     these have to look like what they are called, because the name is the
-     swatch's accessible label and a "Banana" that paints teal misdescribes the
-     control it labels. Each hue follows that key's CSS3 anchor in EventColour
-     (gold, yellowgreen, teal, …) held at the rotation's lightness, so white
-     event text stays as legible over these as it is over the rotation. */
-  --color-calendar-tomato: #f43f5e;     /* rose */
-  --color-calendar-tangerine: #f97316;  /* orange */
-  --color-calendar-banana: #eab308;     /* yellow */
-  --color-calendar-sage: #65a30d;       /* yellow-green */
-  --color-calendar-peacock: #06b6d4;    /* cyan */
-  --color-calendar-blueberry: #3b82f6;  /* blue */
-  --color-calendar-grape: #a855f7;      /* purple */
-  --color-calendar-graphite: #71717a;   /* neutral — darker than the unmatched fallback */
+  /* Calendar Palette Colors */
+  --color-calendar-tomato: #e11d48;
+  --color-calendar-tangerine: #c2410c;
+  --color-calendar-banana: #a16207;
+  --color-calendar-sage: #4d7c0f;
+  --color-calendar-peacock: #0e7490;
+  --color-calendar-blueberry: #2563eb;
+  --color-calendar-grape: #9333ea;
+  --color-calendar-graphite: #3f3f46;
 
   /* Dropdown Component */
-  --dropdown-bg: var(--color-bg-primary);
+  --dropdown-bg: var(--color-bg-tertiary);
   --dropdown-border: var(--color-border-default);
   --dropdown-shadow: var(--shadow-md);
   --dropdown-radius: var(--radius-xl);
   --dropdown-item-px: var(--spacing-4);
   --dropdown-item-py: var(--spacing-2-5);
   --dropdown-item-radius: var(--radius-md);
-  --dropdown-item-hover-bg: var(--color-bg-tertiary);
+  --dropdown-item-hover-bg: var(--color-bg-secondary);
   --dropdown-item-hover-text: var(--color-text-primary);
   --dropdown-item-danger-text: var(--color-error);
   --dropdown-item-danger-hover-bg: var(--color-error-bg);
   --dropdown-divider: var(--color-border-light);
 }
-
-/* Dark mode overrides used to live here as a bare `@media
-   (prefers-color-scheme: dark)` block, disconnected from any `.dark`-class
-   mechanism — a media query can't be excluded by an explicit "Light"
-   choice. Superseded by ./dark-tokens.css, scoped under `html.dark`. */

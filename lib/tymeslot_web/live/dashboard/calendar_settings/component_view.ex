@@ -15,13 +15,16 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.ComponentView do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Phoenix.LiveView.JS
+  alias Tymeslot.Dashboard.CalendarSettingsSection
   alias TymeslotWeb.Components.Dashboard.Integrations.Calendar.CaldavReconnectModal
   alias TymeslotWeb.Components.Dashboard.Integrations.Calendar.CalendarSelectionModal
   alias TymeslotWeb.Components.Dashboard.Integrations.Calendar.ConnectionLimit
+  alias TymeslotWeb.Components.Dashboard.Integrations.Calendar.DefaultCalendarModal
   alias TymeslotWeb.Components.Dashboard.Integrations.Shared.DeleteIntegrationModal
   alias TymeslotWeb.Components.Dashboard.Integrations.Shared.ProviderPickerModal
   alias TymeslotWeb.Dashboard.CalendarSettings.Components
   alias TymeslotWeb.Dashboard.CalendarSettings.ConfigViewComponent
+  alias TymeslotWeb.Dashboard.CalendarSettings.OwnBookingsSection
   alias TymeslotWeb.Dashboard.CalendarSettings.ProviderPicker
   alias TymeslotWeb.Dashboard.CalendarSettings.PublicCalendarSection
 
@@ -56,6 +59,20 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.ComponentView do
               activation_reached={@connection_limit.activation_reached?}
             />
           <% end %>
+        </div>
+
+        <.live_component
+          module={OwnBookingsSection}
+          id="own-bookings-section"
+          current_user={@current_user}
+        />
+
+        <div
+          :for={section <- CalendarSettingsSection.registered()}
+          id={"calendar-settings-section-#{section.id()}"}
+          class="contents"
+        >
+          {section.render(@current_user, @integrations)}
         </div>
 
         <Components.freebusy_section
@@ -107,6 +124,12 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.ComponentView do
         module={DeleteIntegrationModal}
         id="delete-calendar-modal"
         integration_type={:calendar}
+        current_user={@current_user}
+      />
+
+      <.live_component
+        module={DefaultCalendarModal}
+        id="default-calendar-modal"
         current_user={@current_user}
       />
 

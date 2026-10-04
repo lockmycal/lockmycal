@@ -91,14 +91,47 @@
   border-color: var(--border-medium);
 }
 
+/* A square icon-only link (docs, website), at every width. */
+.public-top-bar-link.public-top-bar-icon-link {
+  justify-content: center;
+  width: 2.75rem;
+  padding: 0;
+}
+
 .public-top-bar-link-primary {
   background: var(--theme-primary);
   border-color: var(--theme-primary);
 }
 
 @media (max-width: 640px) {
+  /* The logo needs the room; docs and website stay a desktop extra. */
+  .public-top-bar-link.public-top-bar-icon-link {
+    display: none;
+  }
+
   .public-top-bar-link {
     padding: 0 var(--space-sm);
     font-size: 0.8125rem;
+  }
+}
+
+/* Short windows (landscape phones): a slimmer bar leaves the booking content
+   its height. */
+@media (max-height: 480px) {
+  .public-top-bar {
+    padding-block: var(--space-xs);
+  }
+
+  .public-top-bar-brand img {
+    height: 1.75rem;
+  }
+
+  .public-top-bar-link,
+  .public-top-bar [class*="language-switcher-button-"] {
+    min-height: 2rem;
+  }
+
+  .public-top-bar-link.public-top-bar-icon-link {
+    width: 2rem;
   }
 }

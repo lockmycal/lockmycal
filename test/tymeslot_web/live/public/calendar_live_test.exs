@@ -7,6 +7,10 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
   v1.7.0 → v1.8.1 rebase, see `CalendarGrid.get_user_time_format/2`) reached
   production undetected: `KeyError: key :time_format not found`, crashing
   the page for any organiser who links to it.
+
+  Profiles opt into `public_calendar_show_weekends` unless a test is about
+  weekends: most tests place events relative to today, which would otherwise
+  vanish whenever the suite runs on a Saturday or Sunday.
   """
   use TymeslotWeb.LiveCase, async: false
 
@@ -21,7 +25,8 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
       insert(:profile,
         user: user,
         username: "public-cal-organiser",
-        timezone: "Etc/UTC"
+        timezone: "Etc/UTC",
+        public_calendar_show_weekends: true
       )
 
     integration = insert(:calendar_integration, user: user, is_active: true)
@@ -47,12 +52,22 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
       insert(:profile,
         user: user,
         username: "public-cal-quiet",
-        timezone: "Etc/UTC"
+        timezone: "Etc/UTC",
+        public_calendar_show_weekends: true
       )
 
     {:ok, _view, html} = live(conn, ~p"/#{profile.username}/calendar")
 
     assert html =~ "public-calendar-container"
+  end
+
+  test "loads Quill's stylesheet even for an organiser booking with Rhythm", %{conn: conn} do
+    profile = insert(:profile, username: "public-cal-rhythm", booking_theme: "2")
+
+    html = conn |> get(~p"/#{profile.username}/calendar") |> html_response(200)
+
+    assert html =~ "scheduling-theme-quill.css"
+    refute html =~ "scheduling-theme-rhythm.css"
   end
 
   test "shows the not-found state for an unknown username", %{conn: conn} do
@@ -80,7 +95,8 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
         insert(:profile,
           user: user,
           username: "public-cal-locale",
-          timezone: "Etc/UTC"
+          timezone: "Etc/UTC",
+          public_calendar_show_weekends: true
         )
 
       {:ok, view, html} = live(conn, ~p"/#{profile.username}/calendar")
@@ -113,7 +129,12 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
       user = insert(:user)
 
       profile =
-        insert(:profile, user: user, username: "public-cal-free", timezone: "Etc/UTC")
+        insert(:profile,
+          user: user,
+          username: "public-cal-free",
+          timezone: "Etc/UTC",
+          public_calendar_show_weekends: true
+        )
 
       integration = insert(:calendar_integration, user: user, is_active: true)
       %{profile: profile, integration: integration}
@@ -173,7 +194,8 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
         insert(:profile,
           user: user,
           username: "public-cal-pending",
-          timezone: "Etc/UTC"
+          timezone: "Etc/UTC",
+          public_calendar_show_weekends: true
         )
 
       now = DateTime.utc_now(:microsecond)
@@ -196,6 +218,44 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
       assert has_element?(view, ".public-calendar-legend-pending")
     end
 
+    test "show once, not also as Busy, after the tentative hold has synced", %{conn: conn} do
+      user = insert(:user)
+
+      profile =
+        insert(:profile,
+          user: user,
+          username: "public-cal-pending-hold",
+          timezone: "Etc/UTC",
+          public_calendar_show_weekends: true
+        )
+
+      integration = insert(:calendar_integration, user: user, is_active: true)
+      now = DateTime.utc_now(:microsecond)
+      end_time = DateTime.add(now, 3600, :second)
+
+      insert(:meeting,
+        organizer_user_id: user.id,
+        status: "awaiting_approval",
+        provider_event_id: "google-held-event",
+        start_time: now,
+        end_time: end_time
+      )
+
+      # The booking's own tentative hold, as sync brings it back.
+      insert(:provider_calendar_event,
+        calendar_integration: integration,
+        provider_event_id: "google-held-event",
+        status: "tentative",
+        start_at: now,
+        end_at: end_time
+      )
+
+      {:ok, _view, html} = live(conn, ~p"/#{profile.username}/calendar")
+
+      assert html =~ "Pending approval ("
+      refute html =~ "Busy ("
+    end
+
     test "don't render a Pending approval chip/legend when there are none", %{conn: conn} do
       user = insert(:user)
 
@@ -203,7 +263,8 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
         insert(:profile,
           user: user,
           username: "public-cal-no-pending",
-          timezone: "Etc/UTC"
+          timezone: "Etc/UTC",
+          public_calendar_show_weekends: true
         )
 
       {:ok, view, html} = live(conn, ~p"/#{profile.username}/calendar")
@@ -222,7 +283,8 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
         insert(:profile,
           user: user,
           username: "public-cal-sorted",
-          timezone: "Etc/UTC"
+          timezone: "Etc/UTC",
+          public_calendar_show_weekends: true
         )
 
       integration = insert(:calendar_integration, user: user, is_active: true)
@@ -256,7 +318,8 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
         insert(:profile,
           user: user,
           username: "public-cal-overflow",
-          timezone: "Etc/UTC"
+          timezone: "Etc/UTC",
+          public_calendar_show_weekends: true
         )
 
       integration = insert(:calendar_integration, user: user, is_active: true)
@@ -294,6 +357,7 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
           user: user,
           username: "public-cal-visible-hours",
           timezone: "Etc/UTC",
+          public_calendar_show_weekends: true,
           public_calendar_visible_from: ~T[07:00:00],
           public_calendar_visible_to: ~T[18:00:00]
         )
@@ -341,7 +405,8 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
         insert(:profile,
           user: user,
           username: "public-cal-no-window",
-          timezone: "Etc/UTC"
+          timezone: "Etc/UTC",
+          public_calendar_show_weekends: true
         )
 
       integration = insert(:calendar_integration, user: user, is_active: true)
@@ -360,6 +425,153 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
     end
   end
 
+  describe "weekends" do
+    # Next month's first Saturday and the Monday after it: always in the
+    # future (so historical filtering can't interfere) and fixed weekdays.
+    defp next_month_weekend_and_monday do
+      first = Date.utc_today() |> Date.beginning_of_month() |> Date.shift(month: 1)
+      saturday = Date.add(first, rem(6 - Date.day_of_week(first) + 7, 7))
+      {saturday, Date.add(saturday, 2)}
+    end
+
+    defp weekend_profile(user, username, attrs) do
+      insert(
+        :profile,
+        [user: user, username: username, timezone: "Etc/UTC"] ++ attrs
+      )
+    end
+
+    defp insert_busy(integration, date, time) do
+      start_at = DateTime.new!(date, time, "Etc/UTC")
+
+      insert(:provider_calendar_event,
+        calendar_integration: integration,
+        start_at: start_at,
+        end_at: DateTime.add(start_at, 3600, :second)
+      )
+    end
+
+    test "hides weekend busy chips by default, keeping weekday ones", %{conn: conn} do
+      user = insert(:user)
+      profile = weekend_profile(user, "public-cal-no-weekends", [])
+      integration = insert(:calendar_integration, user: user, is_active: true)
+      {saturday, monday} = next_month_weekend_and_monday()
+
+      insert_busy(integration, saturday, ~T[10:00:00])
+      insert_busy(integration, monday, ~T[14:00:00])
+
+      {:ok, _view, html} =
+        live(conn, ~p"/#{profile.username}/calendar?month=#{month_param(saturday)}")
+
+      refute html =~ "10:00 AM"
+      assert html =~ "2:00 PM"
+    end
+
+    test "shows weekend busy chips once the organiser opts in", %{conn: conn} do
+      user = insert(:user)
+
+      profile =
+        weekend_profile(user, "public-cal-weekends", public_calendar_show_weekends: true)
+
+      integration = insert(:calendar_integration, user: user, is_active: true)
+      {saturday, _monday} = next_month_weekend_and_monday()
+
+      insert_busy(integration, saturday, ~T[10:00:00])
+
+      {:ok, _view, html} =
+        live(conn, ~p"/#{profile.username}/calendar?month=#{month_param(saturday)}")
+
+      assert html =~ "10:00 AM"
+    end
+
+    test "shows Monday to Friday only by default", %{conn: conn} do
+      user = insert(:user)
+      profile = weekend_profile(user, "public-cal-weekdays", [])
+      {saturday, _monday} = next_month_weekend_and_monday()
+
+      {:ok, view, _html} =
+        live(conn, ~p"/#{profile.username}/calendar?month=#{month_param(saturday)}")
+
+      assert has_element?(view, ".public-calendar-grid--weekdays")
+      assert weekday_headers(view) == 5
+      refute has_element?(view, ~s(a[href="/#{profile.username}?date=#{saturday}"]))
+      refute render(view) =~ ~s(aria-label="Book #{saturday}")
+    end
+
+    test "shows the whole week once the organiser opts in", %{conn: conn} do
+      user = insert(:user)
+
+      profile =
+        weekend_profile(user, "public-cal-full-week", public_calendar_show_weekends: true)
+
+      {saturday, _monday} = next_month_weekend_and_monday()
+
+      {:ok, view, _html} =
+        live(conn, ~p"/#{profile.username}/calendar?month=#{month_param(saturday)}")
+
+      refute has_element?(view, ".public-calendar-grid--weekdays")
+      assert weekday_headers(view) == 7
+    end
+
+    test "keeps the weekend in a month where a weekend day can be booked", %{conn: conn} do
+      user = insert(:user)
+      profile = weekend_profile(user, "public-cal-open-saturday", [])
+      schedule = insert(:availability_schedule, profile: profile, is_default: true)
+
+      insert(:weekly_availability,
+        schedule: schedule,
+        day_of_week: 6,
+        is_available: true,
+        start_time: ~T[09:00:00],
+        end_time: ~T[12:00:00]
+      )
+
+      {saturday, _monday} = next_month_weekend_and_monday()
+
+      {:ok, view, html} =
+        live(conn, ~p"/#{profile.username}/calendar?month=#{month_param(saturday)}")
+
+      refute has_element?(view, ".public-calendar-grid--weekdays")
+      assert weekday_headers(view) == 7
+      assert html =~ ~s(aria-label="Book #{saturday}")
+    end
+
+    test "hides a weekend that is open but outside the booking window", %{conn: conn} do
+      user = insert(:user)
+      profile = weekend_profile(user, "public-cal-far-saturday", [])
+
+      schedule =
+        insert(:availability_schedule,
+          profile: profile,
+          is_default: true,
+          advance_booking_days: 1
+        )
+
+      insert(:weekly_availability,
+        schedule: schedule,
+        day_of_week: 6,
+        is_available: true,
+        start_time: ~T[09:00:00],
+        end_time: ~T[12:00:00]
+      )
+
+      {saturday, _monday} = next_month_weekend_and_monday()
+
+      {:ok, view, _html} =
+        live(conn, ~p"/#{profile.username}/calendar?month=#{month_param(saturday)}")
+
+      assert has_element?(view, ".public-calendar-grid--weekdays")
+    end
+
+    defp weekday_headers(view) do
+      view
+      |> render()
+      |> Floki.parse_document!()
+      |> Floki.find(".public-calendar-weekday")
+      |> length()
+    end
+  end
+
   describe "historical events" do
     test "hides a past busy chip by default but still shows today's", %{conn: conn} do
       user = insert(:user)
@@ -368,7 +580,8 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
         insert(:profile,
           user: user,
           username: "public-cal-no-history",
-          timezone: "Etc/UTC"
+          timezone: "Etc/UTC",
+          public_calendar_show_weekends: true
         )
 
       integration = insert(:calendar_integration, user: user, is_active: true)
@@ -406,6 +619,7 @@ defmodule TymeslotWeb.Public.CalendarLiveTest do
           user: user,
           username: "public-cal-with-history",
           timezone: "Etc/UTC",
+          public_calendar_show_weekends: true,
           public_calendar_show_historical_events: true
         )
 

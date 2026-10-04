@@ -47,7 +47,7 @@ defmodule TymeslotWeb.Components.Dashboard.SearchInput do
         aria-label={@placeholder}
         phx-debounce={@debounce}
         class={[
-          "pl-8 pr-2 py-1.5 text-token-sm text-neutral-700 dark:text-neutral-200 placeholder:text-neutral-400 bg-white dark:bg-twilight-indigo-950 border border-neutral-300 dark:border-twilight-indigo-700 rounded-md focus:outline-hidden focus:ring-2 focus:ring-primary-400 focus:border-primary-400",
+          "pl-8 pr-2 py-1.5 text-token-sm text-neutral-700 dark:text-neutral-200 placeholder:text-neutral-400 bg-white dark:bg-twilight-indigo-950 border border-neutral-300 dark:border-neutral-600 dark:hover:border-neutral-500 rounded-md focus:outline-hidden focus:ring-2 focus:ring-primary-400 focus:border-primary-400",
           @input_class
         ]}
       />

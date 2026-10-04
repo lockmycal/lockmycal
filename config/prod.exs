@@ -15,6 +15,10 @@ config :tymeslot, TymeslotWeb.Endpoint,
 # Upload directory
 config :tymeslot, :upload_directory, "/app/data/uploads"
 
+# Private files (a booker's attachments). Deliberately outside
+# :upload_directory, which is served publicly under /uploads.
+config :tymeslot, :private_upload_directory, "/app/data/private_uploads"
+
 # Enable secure cookies in production
 config :tymeslot, :secure_cookies, true
 
@@ -27,7 +31,3 @@ config :swoosh, local: false
 # Analytics contract validation logs-and-drops in prod instead of raising, so a
 # malformed event never crashes a live user flow (it raises in dev/test).
 config :tymeslot, :analytics_strict, false
-
-# Warn in the logs when IANA publishes a time zone release newer than the
-# pinned one, so a deployment doesn't silently drift behind a DST rule change.
-config :tymeslot, :tz_watch_enabled, true

@@ -24,6 +24,11 @@ config :tymeslot,
   enable_admin_ui: true,
   # Controls whether users must accept T&C/Privacy during registration
   enforce_legal_agreements: false,
+  # Extra `{path_pattern, level}` request log rules for routes an overlay adds,
+  # appended to the endpoint's own. A pattern is a list of path segments, `:_`
+  # matching any one, matched as a prefix; `false` keeps the request out of the
+  # log entirely (routes carrying a capability token in the path).
+  extra_request_log_suppressed_paths: [],
   # Whether meeting payments (booker pays at booking time) is enabled.
   # Self-hosters opt in by setting :meeting_payments_enabled to true.
   # A downstream overlay may override this in its own config.
@@ -49,10 +54,11 @@ config :tymeslot,
   enterprise_url: nil,
   privacy_policy_url: nil,
   terms_and_conditions_url: nil,
-  # Public marketing/docs host. Self-hosted instances can point this at their own
-  # docs/branding via the WEB_HOST env var (see config/runtime.exs) instead of the
-  # public SaaS domain.
-  web_host: web_host,
+  # Public marketing site, linked from the top bars
+  # (`Tymeslot.Infrastructure.Config.website_url/0`). Unset (nil) unless the
+  # WEB_HOST env var names one (see config/runtime.exs): a placeholder would be
+  # a link to nowhere, so without it the link is left out.
+  web_host: nil,
   # Base URL for documentation articles. Self-hosted instances link to the public SaaS docs.
   docs_article_base_url: "#{web_host}/docs",
 
@@ -102,6 +108,11 @@ config :tymeslot,
   # succeed before a user is deleted. See delete_user/1.
   account_deletion_hook: nil,
 
+  # Optional module run after a user deletes a calendar integration, so an
+  # external layer can remove what it created with it. See
+  # Tymeslot.Integrations.Calendar.IntegrationDeletionHook.
+  calendar_integration_deletion_hook: nil,
+
   # Admin alerts — disabled by default. Self-hosters can enable via the
   # ADMIN_ALERTS_ENABLED env var (set true) plus a valid ADMIN_ALERT_EMAIL.
   # A downstream overlay may override admin_alerts_enabled in its own config.
@@ -109,20 +120,9 @@ config :tymeslot,
   admin_alerts_enabled: false,
   admin_alert_email: nil,
 
-  # Crashes whose exception maps to a client (4xx) error are routine request
-  # noise, not operator-actionable — never raise an admin alert for them.
-  crash_reporter_ignored_exceptions: [
-    Phoenix.Router.NoRouteError,
-    Ecto.NoResultsError,
-    Plug.Parsers.UnsupportedMediaTypeError,
-    Plug.Parsers.RequestTooLargeError,
-    Plug.BadRequestError,
-    Plug.CSRFProtectionError
-  ],
-  # Global cap on crash alerts to survive a crash storm without flooding the
-  # logging subsystem or the email queue. Tune per deployment traffic.
-  crash_reporter_rate_limit_max: 20,
-  crash_reporter_rate_limit_window_ms: 60_000,
+  # Repos whose connection pool `PoolPressureMonitor` watches. A downstream
+  # overlay with its own repo adds it here.
+  pool_pressure_repos: [Tymeslot.Repo],
 
   # Dashboard Extensions
   dashboard_sidebar_extensions: [],
@@ -247,7 +247,8 @@ config :tymeslot, :locales,
     %{code: "de", name: "Deutsch", country_code: :deu},
     %{code: "fr", name: "Français", country_code: :fra},
     %{code: "it", name: "Italiano", country_code: :ita},
-    %{code: "uk", name: "Українська", country_code: :ukr}
+    %{code: "uk", name: "Українська", country_code: :ukr},
+    %{code: "pl", name: "Polski", country_code: :pol}
   ],
   default: "en"
 
@@ -396,14 +397,12 @@ config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 #
 #     mix tz.download <version> && mix deps.compile tz --force
 #
-# then bump :iana_version to match. Tz.WatchPeriodically logs when a newer
-# release appears upstream; see Tymeslot.Application.
+# then bump :iana_version to match. Running instances never contact IANA, so
+# new rules reach users only through a release: the nightly `tz_freshness`
+# suite (test/tymeslot/timezones/iana_freshness_test.exs, run by the Excluded
+# suites workflow) fails once IANA publishes a release newer than this pin.
 config :tz, :data_dir, Path.expand("../priv/tz", __DIR__)
-config :tz, :iana_version, "2026c"
-
-# Watch data.iana.org for time zone releases newer than the pinned one. Logs
-# only; enabled in prod.exs so dev and test make no outbound calls.
-config :tymeslot, :tz_watch_enabled, false
+config :tz, :iana_version, "2026e"
 
 # Authentication configuration
 config :tymeslot, :auth,
@@ -523,7 +522,15 @@ config :tymeslot, :payments,
     outgoing_webhook_days: 60,
     stripe_event_days: 90,
     analytics_event_days: 90,
-    payload_days: 30
+    payload_days: 30,
+    # Statutory retention for financial records (booking payments, payment
+    # transactions, subscription invoices), in years counted from the end of
+    # the financial year a record belongs to. Ten is the longest period common
+    # in EU and Swiss commercial law; set the period your jurisdiction
+    # requires. See Tymeslot.MeetingPayments.DataRetention.
+    financial_record_years: 10,
+    # The month the financial year starts in (1 = the calendar year).
+    financial_year_start_month: 1
   ]
 
 # HSTS directives sent by TymeslotWeb.Plugs.SecurityHeadersPlug, read via
@@ -576,10 +583,6 @@ config :tymeslot, :booking_analytics_enabled, false
 # SaaS sets its go-live date.
 config :tymeslot, :booking_analytics_launch_date, nil
 
-# Analytics — secret used to derive the daily-rotated visitor fingerprint salt.
-# Required in production; dev/test override with fixed values for repeatability.
-config :tymeslot, :analytics_salt_secret, nil
-
 # Migration safety analysis (excellent_migrations, run as its own gate step
 # rather than a Credo check: migrations are deliberately outside .credo.exs's
 # included paths, so that they do not attract ModuleDoc, Specs and the rest).
@@ -587,6 +590,45 @@ config :tymeslot, :analytics_salt_secret, nil
 # already shipped and run against real databases, so re-litigating them would
 # be noise rather than safety. Anything strictly after this timestamp is checked.
 config :excellent_migrations, start_after: "20260716094322"
+
+# ErrorTracker stores every exception in the application database, grouped by
+# fingerprint. Occurrence context passes through the Filter (credential and
+# email redaction) before it is written; the Ignorer drops client-error noise.
+# `enabled` is read on every report, so a test can switch it on locally;
+# `ERROR_TRACKING_ENABLED` overrides it at boot (config/runtime.exs).
+config :error_tracker,
+  repo: Tymeslot.Repo,
+  otp_app: :tymeslot,
+  enabled: true,
+  filter: Tymeslot.Infrastructure.ErrorTracking.Filter,
+  ignorer: Tymeslot.Infrastructure.ErrorTracking.Ignorer
+
+# New-error and regression alerts: the first `immediate_per_window` of a
+# rolling window are emailed at once; the rest wait for one roll-up email at
+# the end of the window, listing the newest `listed` of them
+# (`Tymeslot.Infrastructure.AdminAlerts.ErrorBurst`). Read on every alert.
+config :tymeslot, :error_alert_burst,
+  immediate_per_window: 3,
+  window_seconds: 3_600,
+  listed: 10
+
+# ErrorTracker housekeeping, run daily by
+# `Tymeslot.Workers.ErrorTrackerMaintenanceWorker`: an error not seen for
+# this many days is marked resolved, deleted a further window later, and an
+# unresolved error's occurrences older than the window are trimmed down to
+# the newest `occurrences_kept`. Inside the window an error keeps at most its
+# newest `occurrences_max`. Read at run time, so runtime.exs may set them.
+config :tymeslot, :error_tracking_resolve_after_days, 30
+config :tymeslot, :error_tracking_occurrences_kept, 50
+config :tymeslot, :error_tracking_occurrences_max, 1_000
+
+# At most this many occurrences of one error are stored per window on each
+# node; the rest are dropped and their count logged
+# (`Tymeslot.Infrastructure.ErrorTracking.Throttle`). Crash reports are
+# recorded by at most `error_tracking_max_concurrent_reports` tasks at once;
+# a crash arriving while all are busy is dropped.
+config :tymeslot, :error_tracking_throttle, max_per_window: 10, window_seconds: 60
+config :tymeslot, :error_tracking_max_concurrent_reports, 10
 
 # Import environment specific config
 import_config "#{config_env()}.exs"

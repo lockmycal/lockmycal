@@ -4,7 +4,6 @@ defmodule TymeslotWeb.AdminLiveSettingRowTest do
   @moduletag :live
   @moduletag :infrastructure
 
-  import Phoenix.LiveViewTest
   import Tymeslot.AdminPageHelpers
   import Tymeslot.AppSettingsEnvHelpers
 

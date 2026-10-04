@@ -382,6 +382,22 @@ defmodule Tymeslot.Availability.Calculate do
     }
   end
 
+  @doc """
+  Whether any of `dates` is a business day of the schedule: open in its weekly
+  hours or by a date override, and not taken whole by time off (see
+  `BusinessHours.business_day?/3`). The schedule data is read once for the
+  span of `dates`. A nil schedule falls back to Monday to Friday.
+  """
+  @spec any_business_day?([Date.t()], integer() | nil) :: boolean()
+  def any_business_day?([], _schedule_id), do: false
+
+  def any_business_day?(dates, schedule_id) do
+    {first, last} = Enum.min_max_by(dates, & &1, Date)
+    config = prefetch_schedule_data(%{}, schedule_id, first, last)
+
+    Enum.any?(dates, &BusinessHours.business_day?(&1, schedule_id, config))
+  end
+
   # Private functions
 
   @doc """

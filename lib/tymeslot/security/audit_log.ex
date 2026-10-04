@@ -23,6 +23,7 @@ defmodule Tymeslot.Security.AuditLog do
   require Logger
 
   alias Tymeslot.AppSettings
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Pagination.OffsetPage
   alias Tymeslot.Security.AuditLog.{AuditEventQueries, AuditEventSchema, Catalog}
   alias Tymeslot.Security.RateLimiter
@@ -110,7 +111,7 @@ defmodule Tymeslot.Security.AuditLog do
       {:error, changeset} ->
         Logger.warning("Could not store security audit event",
           event_type: event_type,
-          errors: inspect(changeset.errors)
+          errors: LogFormat.reason(changeset.errors)
         )
     end
   rescue

@@ -13,10 +13,9 @@ defmodule TymeslotWeb.E2E.ProfilePasswordChangeTest do
       |> visit("/dashboard/settings")
       |> wait_for_live()
 
-    # Open the password change form
+    # The password change form is always open on the Profile page
     session =
       session
-      |> click(css("button[phx-click='toggle_password_form']"))
       |> fill_in(css("input[name='password_form[current_password]']"), with: default_password())
       |> fill_in(css("input[name='password_form[new_password]']"), with: new_password)
       |> fill_in(
@@ -50,9 +49,9 @@ defmodule TymeslotWeb.E2E.ProfilePasswordChangeTest do
     # rather than paying for another login.
     session
     |> resize_to_mobile()
-    |> visit("/dashboard/account")
+    |> visit("/dashboard/settings")
     |> wait_for_live()
-    |> assert_has(css("button[phx-click='toggle_password_form']"))
-    |> assert_no_horizontal_overflow("account settings at 320px")
+    |> assert_has(css("#account-password-form"))
+    |> assert_no_horizontal_overflow("profile settings at 320px")
   end
 end

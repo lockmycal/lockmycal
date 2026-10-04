@@ -13,6 +13,7 @@ defmodule TymeslotWeb.Dashboard.ComponentDispatch do
 
   alias Phoenix.Naming
   alias Tymeslot.Agenda.Day
+  alias Tymeslot.Dashboard.OverviewStats
   alias Tymeslot.Profiles
   alias TymeslotWeb.Dashboard.Admin.HubComponent, as: AdminHubComponent
   alias TymeslotWeb.Dashboard.AutomationSettingsComponent
@@ -21,6 +22,7 @@ defmodule TymeslotWeb.Dashboard.ComponentDispatch do
   alias TymeslotWeb.Dashboard.CalendarSettingsComponent
   alias TymeslotWeb.Dashboard.Contacts.HubComponent, as: ContactsHubComponent
   alias TymeslotWeb.Dashboard.DashboardOverviewComponent
+  alias TymeslotWeb.Dashboard.Locations.LocationsComponent
   alias TymeslotWeb.Dashboard.PaymentsSettingsComponent
   alias TymeslotWeb.Dashboard.Polls.PollsComponent
   alias TymeslotWeb.Dashboard.ProfileSettingsComponent
@@ -53,6 +55,7 @@ defmodule TymeslotWeb.Dashboard.ComponentDispatch do
   def component_for_action(:settings, _components), do: ProfileSettingsComponent
   def component_for_action(:availability, _components), do: ScheduleSettingsComponent
   def component_for_action(:meeting_settings, _components), do: ServiceSettingsComponent
+  def component_for_action(:locations, _components), do: LocationsComponent
   def component_for_action(:calendar, _components), do: CalendarGridComponent
   def component_for_action(:calendar_integration, _components), do: CalendarSettingsComponent
   def component_for_action(:video_integration, _components), do: VideoSettingsComponent
@@ -80,7 +83,12 @@ defmodule TymeslotWeb.Dashboard.ComponentDispatch do
   """
   @spec props_for_action(map()) :: map()
   def props_for_action(%{live_action: :overview} = assigns) do
-    %{shared_data: %{agenda: assigns[:agenda] || %Day{}}}
+    %{
+      shared_data: %{
+        agenda: assigns[:agenda] || %Day{},
+        overview_stats: assigns[:overview_stats] || %OverviewStats{}
+      }
+    }
   end
 
   def props_for_action(%{live_action: action} = assigns)

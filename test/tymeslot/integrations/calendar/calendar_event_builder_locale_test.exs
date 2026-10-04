@@ -15,6 +15,7 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilderLocaleTest do
 
   @meeting %{
     uid: "abc-123",
+    calendar_uid: "calendar-abc-123",
     title: "Team Sync",
     description: "Quarterly review",
     start_time: ~U[2026-05-01 10:00:00Z],
@@ -85,8 +86,9 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilderLocaleTest do
         |> CalendarEventBuilder.build_event_data()
 
       assert event.description =~ "Teilnehmer: Alice <alice@example.com>"
-      # The summary is the host's own title and is never translated.
-      assert event.summary == "Team Sync"
+      # The summary is the booking's own text (by default the attendee's
+      # meeting information, see `DisplayTitle`) and is never translated.
+      assert event.summary == "Please bring slides."
     end
   end
 end

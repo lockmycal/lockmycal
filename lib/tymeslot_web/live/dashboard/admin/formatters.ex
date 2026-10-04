@@ -48,6 +48,14 @@ defmodule TymeslotWeb.Dashboard.Admin.Formatters do
   def humanise(:max_video_upload_size_mb),
     do: dgettext("dashboard_admin", "Max background video size")
 
+  def humanise(:booking_attachment_types), do: dgettext("dashboard_admin", "Allowed file types")
+
+  def humanise(:max_booking_attachment_size_mb),
+    do: dgettext("dashboard_admin", "Max size per file")
+
+  def humanise(:max_booking_attachments),
+    do: dgettext("dashboard_admin", "Max files per booking")
+
   def humanise(:audit_log_retention_days),
     do: dgettext("dashboard_admin", "Keep audit events for")
 
@@ -228,6 +236,27 @@ defmodule TymeslotWeb.Dashboard.Admin.Formatters do
     )
   end
 
+  def describe(:booking_attachment_types) do
+    dgettext(
+      "dashboard_admin",
+      "File types a booker may attach on the booking page, for meeting types where the host has switched attachments on. Each file's content is checked against its type. Deselect every type to switch attachments off for the whole install."
+    )
+  end
+
+  def describe(:max_booking_attachment_size_mb) do
+    dgettext(
+      "dashboard_admin",
+      "Maximum size, in megabytes, of each attached file (at most 100). The files are also attached to the host's booking email when together they stay under 15 MB; larger ones are only downloadable from the dashboard."
+    )
+  end
+
+  def describe(:max_booking_attachments) do
+    dgettext(
+      "dashboard_admin",
+      "How many files one booking may carry (at most 10)."
+    )
+  end
+
   def describe(:audit_log_retention_days) do
     dgettext(
       "dashboard_admin",
@@ -332,6 +361,12 @@ defmodule TymeslotWeb.Dashboard.Admin.Formatters do
       meaning "no override".
     * `:size_mb` — whole-number input, in megabytes (upload size limits).
     * `:days` — whole-number input, in days (audit log retention).
+    * `:attachment_size_mb` — whole-number input, in megabytes, with the
+      lower ceiling booker attachments allow.
+    * `:file_count` — whole-number input, a number of files.
+    * `:attachment_types` — one pill per supported file type, rendered by
+      `TymeslotWeb.Dashboard.Admin.BookingAttachmentRows` rather than the
+      generic row.
     * `:audit_events` — per-category on/off switches, rendered by
       `TymeslotWeb.Dashboard.Admin.AuditEventRows` rather than one row.
     * `:provider` — three-state Off/Google/Cloudflare pill selector
@@ -349,6 +384,9 @@ defmodule TymeslotWeb.Dashboard.Admin.Formatters do
           | :locale
           | :size_mb
           | :days
+          | :attachment_size_mb
+          | :file_count
+          | :attachment_types
           | :audit_events
           | :provider
   def kind(:recaptcha_signup_provider), do: :provider
@@ -363,6 +401,9 @@ defmodule TymeslotWeb.Dashboard.Admin.Formatters do
   def kind(:booking_default_locale), do: :locale
   def kind(:max_image_upload_size_mb), do: :size_mb
   def kind(:max_video_upload_size_mb), do: :size_mb
+  def kind(:booking_attachment_types), do: :attachment_types
+  def kind(:max_booking_attachment_size_mb), do: :attachment_size_mb
+  def kind(:max_booking_attachments), do: :file_count
   def kind(:audit_log_retention_days), do: :days
   def kind(:audit_log_events), do: :audit_events
   def kind(:site_banner_message), do: :html
@@ -380,6 +421,7 @@ defmodule TymeslotWeb.Dashboard.Admin.Formatters do
           | :payments
           | :analytics
           | :uploads
+          | :booking_attachments
           | :audit_log
           | :audit_events
           | :admin_alerts
@@ -400,6 +442,9 @@ defmodule TymeslotWeb.Dashboard.Admin.Formatters do
   def section(:booking_analytics_enabled), do: :analytics
   def section(:max_image_upload_size_mb), do: :uploads
   def section(:max_video_upload_size_mb), do: :uploads
+  def section(:booking_attachment_types), do: :booking_attachments
+  def section(:max_booking_attachment_size_mb), do: :booking_attachments
+  def section(:max_booking_attachments), do: :booking_attachments
   def section(:audit_log_retention_days), do: :audit_log
   def section(:audit_log_events), do: :audit_events
   def section(:admin_alerts_enabled), do: :admin_alerts
@@ -423,6 +468,10 @@ defmodule TymeslotWeb.Dashboard.Admin.Formatters do
   def section_label(:payments), do: dgettext("dashboard_admin", "Payments")
   def section_label(:analytics), do: dgettext("dashboard_admin", "Analytics")
   def section_label(:uploads), do: dgettext("dashboard_admin", "Uploads")
+
+  def section_label(:booking_attachments),
+    do: dgettext("dashboard_admin", "Booking attachments")
+
   def section_label(:audit_log), do: dgettext("dashboard_admin", "Retention")
   def section_label(:audit_events), do: dgettext("dashboard_admin", "Logged events")
   def section_label(:admin_alerts), do: dgettext("dashboard_admin", "Admin alerts")

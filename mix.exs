@@ -4,7 +4,7 @@ defmodule Tymeslot.MixProject do
   def project do
     [
       app: :tymeslot,
-      version: "1.18.1",
+      version: "1.22.0",
       elixir: "~> 1.20",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -150,11 +150,16 @@ defmodule Tymeslot.MixProject do
       {:mjml, "~> 6.0"},
       {:nodejs, "~> 3.0"},
       {:oban, "~> 2.20"},
+      {:error_tracker, "~> 0.9"},
       {:logger_json, "~> 7.0"},
       {:ecto_sql, "~> 3.13"},
       {:postgrex, "~> 0.22"},
       {:nimble_parsec, "~> 1.4"},
       {:ex_image_info, "~> 1.0"},
+      # libvips through vix, which ships prebuilt binaries: re-encodes uploaded
+      # images so their metadata (EXIF location, capture time, device) is never
+      # published.
+      {:image, "~> 0.72"},
       {:sweet_xml, "~> 0.7"},
       {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
@@ -211,6 +216,13 @@ defmodule Tymeslot.MixProject do
         "ecto.create --quiet",
         "ecto.migrate --quiet",
         "test --color --preload-modules --only e2e"
+      ],
+      # The JS hooks' vitest suite (`assets/js/__tests__`). Node is the only
+      # thing it needs beyond the checkout; `npm ci` installs the exact
+      # dev dependencies from the lockfile on every run.
+      "test.js": [
+        "cmd --cd assets npm ci --no-audit --no-fund --silent",
+        "cmd --cd assets npx vitest run"
       ],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": [

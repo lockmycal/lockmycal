@@ -1,6 +1,6 @@
-/* ===================================
-   BASE STYLES & RESET
-   =================================== */
+/* ===========================================================================
+   BASE STYLES & RESET - LockMyCal Design System
+   =========================================================================== */
 
 /* Reset */
 *, *::before, *::after {
@@ -12,11 +12,6 @@ html, body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
-}
-
-/* Prevent horizontal overflow globally */
-* {
-  box-sizing: border-box;
 }
 
 html {
@@ -32,16 +27,34 @@ body {
   font-family: var(--font-family-sans);
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Selection */
 ::selection {
-  @apply bg-primary-100 text-primary-900;
+  @apply bg-primary-100 text-primary-950;
 }
 
 /* Focus Visible */
 :focus-visible {
   @apply outline-hidden ring-2 ring-primary-500 ring-offset-2;
+}
+
+/* Form field focus */
+input:not(
+    [type="checkbox"],
+    [type="radio"],
+    [type="range"],
+    [type="color"],
+    [type="file"],
+    [type="button"],
+    [type="submit"],
+    [type="reset"]
+  ):focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  @apply ring-1 ring-primary-500 ring-offset-0;
 }
 
 /* Scrollbar Styling */
@@ -50,49 +63,47 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-slate-50;
+  @apply bg-neutral-100 dark:bg-neutral-900;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full transition-colors;
+  @apply bg-neutral-300 dark:bg-neutral-700 rounded-full transition-colors;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-400;
+  @apply bg-neutral-400 dark:bg-neutral-600;
 }
 
-/* Branded scrollbar for the body and explicitly scrollable panels — a
-   higher-specificity override of the global greyscale scrollbar above. */
+/* Branded scrollbar for the body and explicitly scrollable panels */
 body::-webkit-scrollbar,
 .scrollable::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 body::-webkit-scrollbar-track,
 .scrollable::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.4);
-  border-radius: 4px;
-  margin: 4px;
+  background: var(--color-bg-secondary);
+  border-radius: 3px;
 }
 
 body::-webkit-scrollbar-thumb,
 .scrollable::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(59, 130, 246, 0.5), rgba(247, 37, 133, 0.5));
-  border-radius: 4px;
+  background: var(--color-border-dark);
+  border-radius: 3px;
   transition: all 0.2s ease;
 }
 
 body::-webkit-scrollbar-thumb:hover,
 .scrollable::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(59, 130, 246, 0.7), rgba(247, 37, 133, 0.7));
+  background: var(--color-text-tertiary);
 }
 
-/* Firefox scrollbar styling — body and main scrollable areas */
+/* Firefox scrollbar styling */
 body,
 .scrollable {
   scrollbar-width: thin;
-  scrollbar-color: rgba(59, 130, 246, 0.5) rgba(255, 255, 255, 0.4);
+  scrollbar-color: var(--color-border-dark) var(--color-bg-secondary);
 }
 
 /* Print Utilities */
@@ -114,13 +125,9 @@ body,
   border-width: 0;
 }
 
-/* ===================================
-   BRAND BASE STYLES
-   =================================== */
-
 /* Main Layout Containers */
 .brand-container {
-  @apply min-h-screen bg-slate-50 flex flex-col;
+  @apply min-h-screen bg-neutral-50 dark:bg-prussian-blue-950 flex flex-col;
 }
 
 .content-card-layout {

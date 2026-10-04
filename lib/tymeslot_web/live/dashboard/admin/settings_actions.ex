@@ -23,8 +23,10 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsActions do
   require Logger
 
   alias Tymeslot.AppSettings
+  alias Tymeslot.AppSettings.AppSettingsSchema
   alias Tymeslot.AppSettings.SiteBannerTranslation
   alias Tymeslot.Emails.Branding
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Locales
   alias Tymeslot.Security.SiteBannerScrubber
   alias TymeslotWeb.Dashboard.Admin.Formatters
@@ -176,7 +178,7 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsActions do
         )
 
       {:error, reason} ->
-        Logger.warning("Failed to store email logo", reason: inspect(reason))
+        Logger.warning("Failed to store email logo", reason: LogFormat.reason(reason))
         Flash.put_flash(socket, :error, dgettext("dashboard_admin", "Could not save the logo."))
     end
   end
@@ -244,15 +246,38 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsActions do
   @spec parse_typed_value(atom(), String.t()) :: {:ok, term()} | :invalid
   def parse_typed_value(key, raw) do
     case Formatters.kind(key) do
-      :score -> parse_score(raw)
-      :email -> parse_email(raw)
-      :colour -> parse_colour(raw)
-      :text -> parse_text(raw)
-      :html -> parse_html(raw)
-      :locale -> parse_locale(raw)
-      :size_mb -> parse_size_mb(raw)
-      :days -> parse_days(raw)
-      kind when kind in [:boolean, :logo, :translations, :audit_events] -> :invalid
+      :score ->
+        parse_score(raw)
+
+      :email ->
+        parse_email(raw)
+
+      :colour ->
+        parse_colour(raw)
+
+      :text ->
+        parse_text(raw)
+
+      :html ->
+        parse_html(raw)
+
+      :locale ->
+        parse_locale(raw)
+
+      :size_mb ->
+        parse_size_mb(raw)
+
+      :days ->
+        parse_days(raw)
+
+      :attachment_size_mb ->
+        parse_bounded_integer(raw, 100)
+
+      :file_count ->
+        parse_bounded_integer(raw, 10)
+
+      kind when kind in [:boolean, :logo, :translations, :audit_events, :attachment_types] ->
+        :invalid
     end
   end
 
@@ -356,6 +381,40 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsActions do
 
   defp parse_days(_other), do: :invalid
 
+  defp parse_bounded_integer(value, max) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {number, ""} when number > 0 and number <= max -> {:ok, number}
+      _other -> :invalid
+    end
+  end
+
+  defp parse_bounded_integer(_other, _max), do: :invalid
+
+  @doc """
+  Adds `type` to, or removes it from, the file types a booker may attach,
+  keeping the supported types' display order. Removing the last one switches
+  booking attachments off for the install.
+  """
+  @spec toggle_booking_attachment_type(Phoenix.LiveView.Socket.t(), String.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def toggle_booking_attachment_type(socket, type) do
+    supported = AppSettingsSchema.booking_attachment_types()
+
+    if type in supported do
+      current = AppSettings.get(:booking_attachment_types)
+
+      selected =
+        Enum.filter(supported, fn candidate ->
+          if candidate == type, do: candidate not in current, else: candidate in current
+        end)
+
+      handle_typed_setting_update(socket, :booking_attachment_types, selected)
+    else
+      {:noreply,
+       Flash.put_flash(socket, :error, dgettext("dashboard_admin", "Could not update setting."))}
+    end
+  end
+
   @spec value_invalid_message(String.t()) :: String.t()
   def value_invalid_message(key) do
     case parse_setting_key(key) do
@@ -384,6 +443,12 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsActions do
 
           :days ->
             dgettext("dashboard_admin", "Enter a whole number of days (1-3650).")
+
+          :attachment_size_mb ->
+            dgettext("dashboard_admin", "Enter a whole number of megabytes (1-100).")
+
+          :file_count ->
+            dgettext("dashboard_admin", "Enter a whole number of files (1-10).")
 
           _other ->
             dgettext("dashboard_admin", "Could not update setting.")

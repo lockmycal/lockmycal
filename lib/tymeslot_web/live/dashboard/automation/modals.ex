@@ -359,7 +359,7 @@ defmodule TymeslotWeb.Dashboard.Automation.Modals do
     ~H"""
     <%= if @stats do %>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-2xl p-4 border border-neutral-300 dark:border-twilight-indigo-700">
+        <div class="bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-2xl p-4 border border-neutral-300 dark:border-twilight-indigo-800">
           <div class="text-token-xs font-black text-neutral-600 dark:text-neutral-300 uppercase tracking-wider">
             {dgettext("dashboard_automation", "Total")}
           </div>
@@ -408,7 +408,7 @@ defmodule TymeslotWeb.Dashboard.Automation.Modals do
   defp delivery_list(assigns) do
     ~H"""
     <%= if @deliveries == [] do %>
-      <div class="text-center py-12 bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-2xl border-2 border-dashed border-neutral-300 dark:border-twilight-indigo-700">
+      <div class="text-center py-12 bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-2xl border-2 border-dashed border-neutral-300 dark:border-twilight-indigo-800">
         <p class="text-neutral-600 dark:text-neutral-300 font-medium">
           {dgettext("dashboard_automation", "No deliveries yet")}
         </p>
@@ -416,7 +416,7 @@ defmodule TymeslotWeb.Dashboard.Automation.Modals do
     <% else %>
       <div class="space-y-3">
         <%= for delivery <- @deliveries do %>
-          <div class="border-2 border-neutral-300 dark:border-twilight-indigo-700 rounded-token-2xl p-4 hover:border-primary-100 dark:hover:border-primary-800 hover:bg-primary-50/10 dark:hover:bg-primary-950/10 transition-colors">
+          <div class="border-2 border-neutral-300 dark:border-twilight-indigo-800 rounded-token-2xl p-4 hover:border-primary-100 dark:hover:border-primary-800 hover:bg-primary-50/10 dark:hover:bg-primary-950/10 transition-colors">
             <div class="flex items-start justify-between">
               <div class="flex-1">
                 <div class="flex flex-wrap items-center gap-3 mb-2">

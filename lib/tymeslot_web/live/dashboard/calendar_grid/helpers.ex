@@ -56,6 +56,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Helpers do
   defdelegate view_label(view), to: PreferenceHelpers
   defdelegate navigate_month(date, delta), to: PreferenceHelpers
   defdelegate month_cell_class(day, assigns), to: PreferenceHelpers
+  defdelegate day_column_class(day, assigns), to: PreferenceHelpers
   defdelegate week_start_atom(assigns), to: PreferenceHelpers
   defdelegate show_week_numbers?(assigns), to: PreferenceHelpers
   defdelegate time_format(assigns), to: PreferenceHelpers

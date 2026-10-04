@@ -2,11 +2,12 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.PublicCalendarSection do
   @moduledoc """
   The calendar settings page's "Public calendar" block: every setting of the
   host's public busy/free calendar (`/:username/calendar`) as rows of one
-  card — whether it is shown at all, colours, the visible-hours window and
-  historical events.
+  card — whether it is shown at all, colours, the visible-hours window,
+  weekends and historical events.
 
-  The visible-hours and historical-events rows live in their own modules
-  (`VisibleHoursSection`, `HistoricalEventsSection`) to keep each file within
+  The visible-hours, weekends and historical-events rows live in their own
+  modules (`VisibleHoursSection`, `WeekendsSection`, `HistoricalEventsSection`)
+  to keep each file within
   the project's line-count budget; `row_heading/1` gives all rows the same
   heading.
   """
@@ -16,6 +17,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.PublicCalendarSection do
   alias Tymeslot.Profiles
   alias TymeslotWeb.Dashboard.CalendarSettings.HistoricalEventsSection
   alias TymeslotWeb.Dashboard.CalendarSettings.VisibleHoursSection
+  alias TymeslotWeb.Dashboard.CalendarSettings.WeekendsSection
 
   @doc "Renders the whole block for the host's `profile` (may be `nil` while loading)."
   attr :profile, :any, required: true
@@ -36,6 +38,10 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.PublicCalendarSection do
         <VisibleHoursSection.visible_hours_row
           visible_from={@profile && @profile.public_calendar_visible_from}
           visible_to={@profile && @profile.public_calendar_visible_to}
+          myself={@myself}
+        />
+        <WeekendsSection.weekends_row
+          enabled={!!(@profile && @profile.public_calendar_show_weekends)}
           myself={@myself}
         />
         <HistoricalEventsSection.historical_events_row
@@ -117,35 +123,14 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.PublicCalendarSection do
             )}
           </p>
         </div>
-        <div
-          role="group"
-          aria-label={dgettext("dashboard_calendar_settings", "Set public calendar colors")}
-          class="inline-flex p-1 bg-white dark:bg-twilight-indigo-950 border-2 border-neutral-300 dark:border-twilight-indigo-700 rounded-token-xl shadow-sm gap-1 shrink-0"
-        >
-          <button
-            :for={{active?, label} <- [{true, :enabled}, {false, :disabled}]}
-            type="button"
-            phx-click="toggle_public_calendar_colors"
-            phx-target={@myself}
-            disabled={@enabled == active?}
-            aria-pressed={@enabled == active?}
-            class={[
-              "px-3 py-1.5 rounded-token-lg text-token-xs font-black uppercase tracking-wider transition-all",
-              if(@enabled == active?,
-                do: "bg-primary-600 text-white cursor-default",
-                else:
-                  "text-neutral-500 dark:text-neutral-50 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-800 hover:text-neutral-900 dark:hover:text-neutral-50 cursor-pointer"
-              )
-            ]}
-          >
-            {toggle_label(label)}
-          </button>
-        </div>
+        <.enabled_toggle
+          active={@enabled}
+          click_event="toggle_public_calendar_colors"
+          target={@myself}
+          aria_label={dgettext("dashboard_calendar_settings", "Set public calendar colors")}
+        />
       </div>
     </div>
     """
   end
-
-  defp toggle_label(:enabled), do: dgettext("dashboard_calendar_settings", "Enabled")
-  defp toggle_label(:disabled), do: dgettext("dashboard_calendar_settings", "Disabled")
 end

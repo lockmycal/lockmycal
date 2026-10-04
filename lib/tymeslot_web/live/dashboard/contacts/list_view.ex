@@ -32,8 +32,20 @@ defmodule TymeslotWeb.Dashboard.Contacts.ListView do
         count={@total}
       />
 
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
         <.search_box search_term={@search_term} target={@target} />
+
+        <%!-- Exports what the search matches, across all pages. --%>
+        <a
+          :if={@total > 0}
+          id="contacts-export-csv"
+          href={export_path(@search_term)}
+          class="btn btn-secondary"
+          download
+        >
+          <.icon name="hero-arrow-down-tray" class="w-5 h-5" />
+          {dgettext("dashboard_contacts", "Export CSV")}
+        </a>
 
         <button
           type="button"
@@ -214,6 +226,9 @@ defmodule TymeslotWeb.Dashboard.Contacts.ListView do
     </th>
     """
   end
+
+  defp export_path(""), do: ~p"/dashboard/contacts/export"
+  defp export_path(search_term), do: ~p"/dashboard/contacts/export?#{[search: search_term]}"
 
   defp present?(nil), do: false
   defp present?(""), do: false

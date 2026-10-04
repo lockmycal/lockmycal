@@ -1,78 +1,71 @@
 /* ===================================
-   DESIGN TOKEN COMPONENTS
-   
-   These classes provide semantic component patterns
-   using the design tokens mapped through Tailwind.
+   DESIGN TOKEN COMPONENTS - LockMyCal Design System
    =================================== */
 
 @layer components {
-  /* Animated gradient overlays */
+  /* Hero Overlays */
   .hero-overlay-tl {
     @apply absolute inset-0;
-    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.15), transparent 50%);
+    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.08), transparent 50%);
   }
 
   .hero-overlay-br {
     @apply absolute inset-0;
-    background: radial-gradient(circle at 70% 80%, rgba(252,169,3,0.3), transparent 50%);
+    background: radial-gradient(circle at 70% 80%, rgba(240,138,60,0.15), transparent 50%);
   }
 
-  /* Token-based Typography - Use prefix to avoid conflicts */
+  /* Token-based Typography */
   .display-xl {
-    @apply text-token-5xl sm:text-token-6xl lg:text-token-7xl font-black tracking-tight leading-[1.05];
+    @apply text-token-5xl sm:text-token-6xl lg:text-token-7xl font-semibold tracking-tight leading-[1.05];
+    letter-spacing: -0.035em;
   }
 
   .display-lg {
-    @apply text-token-4xl md:text-token-5xl font-black tracking-tight;
+    @apply text-token-4xl md:text-token-5xl font-semibold tracking-tight;
+    letter-spacing: -0.025em;
   }
 
   .display-md {
-    @apply text-token-3xl md:text-token-4xl font-black tracking-tight;
+    @apply text-token-3xl md:text-token-4xl font-semibold tracking-tight;
+    letter-spacing: -0.02em;
   }
 
   /* Semantic Tag Components */
   .tag-semantic {
-    @apply inline-flex items-center gap-2 px-3 py-1 rounded-token-xl border-2 font-semibold text-token-sm transition-all duration-300;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-token-md border font-mono font-medium text-token-xs transition-all;
   }
 
   .tag-semantic-primary {
-    @apply bg-primary-50 border-primary-200 text-primary-700;
-    @apply dark:bg-primary-900 dark:text-primary-300 dark:border-primary-800;
+    @apply bg-primary-50 border-primary-200 text-primary-800;
+    @apply dark:bg-primary-950/40 dark:text-primary-300 dark:border-primary-800;
   }
 
-  /* Tag Selector Buttons (Quick selection patterns) */
+  /* Tag Selector Buttons */
   .btn-tag-selector {
-    @apply inline-flex items-center px-4 py-2 rounded-token-xl text-token-sm font-black transition-all duration-300 border-2 bg-white text-neutral-500 border-neutral-300;
+    @apply inline-flex items-center px-3.5 py-1.5 rounded-token-md text-token-sm font-medium transition-all border bg-white dark:bg-twilight-indigo-900 text-neutral-700 dark:text-neutral-200 border-neutral-300 dark:border-twilight-indigo-700;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
-  /* Semantic Variants
-   * Mapping:
-   * - primary -> the app's brand primary colour (main interactive elements)
-   * - secondary -> the app's brand secondary colour (alternative actions)
-   * - tertiary -> blue (tertiary/informational actions)
-   */
   .btn-tag-selector-primary {
-    @apply hover:border-primary-100 hover:text-primary-600 hover:bg-neutral-50;
+    @apply hover:border-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:bg-primary-50/20;
   }
   .btn-tag-selector-primary--active {
-    @apply bg-primary-50 text-primary-700 border-primary-200;
-    @apply dark:bg-primary-900 dark:text-primary-300 dark:border-primary-800;
+    @apply bg-primary-50 text-primary-800 border-primary-500 font-semibold;
+    @apply dark:bg-primary-950/50 dark:text-primary-200 dark:border-primary-500;
   }
 
   .btn-tag-selector-secondary {
-    @apply hover:border-secondary-100 hover:text-secondary-600 hover:bg-neutral-50;
+    @apply hover:border-neutral-400 hover:text-neutral-900 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-800;
   }
   .btn-tag-selector-secondary--active {
-    @apply bg-secondary-50 text-secondary-700 border-secondary-200;
-    @apply dark:bg-secondary-900 dark:text-secondary-300 dark:border-secondary-800;
+    @apply bg-neutral-100 text-neutral-900 border-neutral-400 font-semibold dark:bg-twilight-indigo-800 dark:text-white dark:border-twilight-indigo-600;
   }
 
   .btn-tag-selector-tertiary {
-    @apply hover:border-blue-100 hover:text-blue-600 hover:bg-neutral-50;
+    @apply hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50/20;
   }
   .btn-tag-selector-tertiary--active {
-    @apply bg-blue-50 text-blue-700 border-blue-200;
-    @apply dark:bg-blue-900 dark:text-blue-300 dark:border-blue-800;
+    @apply bg-blue-50 text-blue-800 border-blue-400 font-semibold;
+    @apply dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700;
   }
 }

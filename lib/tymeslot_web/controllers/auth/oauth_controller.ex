@@ -11,6 +11,7 @@ defmodule TymeslotWeb.OAuthController do
   alias Tymeslot.Auth
   alias Tymeslot.Auth.OAuth.Providers
   alias Tymeslot.Infrastructure.Config
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias TymeslotWeb.AuthControllerHelpers
   alias TymeslotWeb.EmailLinkConfirmHTML
   alias TymeslotWeb.Helpers.{ClientIP, RedirectSanitizer}
@@ -26,7 +27,9 @@ defmodule TymeslotWeb.OAuthController do
   def request(conn, %{"provider" => provider}) do
     case validate_oauth_provider(provider) do
       {:ok, provider_atom} ->
-        dispatch_request(conn, provider_atom)
+        conn
+        |> remember_return_to(conn.params["return_to"])
+        |> dispatch_request(provider_atom)
 
       {:error, :unsupported_oauth_provider} ->
         unsupported_provider(conn, provider, ~p"/auth/login")
@@ -37,6 +40,16 @@ defmodule TymeslotWeb.OAuthController do
     conn
     |> put_flash(:error, dgettext("auth", "OAuth authentication failed - missing provider."))
     |> redirect(to: ~p"/auth/login")
+  end
+
+  # The provider's callback carries no parameters of ours, so where to land
+  # after signing in waits in the session for the round trip. Only a
+  # same-origin path is kept, and a flow started without one clears any left
+  # over from an abandoned flow.
+  defp remember_return_to(conn, path) do
+    if RedirectSanitizer.sanitize(path, "") == "",
+      do: delete_session(conn, :oauth_return_to),
+      else: put_session(conn, :oauth_return_to, path)
   end
 
   defp dispatch_request(conn, provider) do
@@ -162,6 +175,7 @@ defmodule TymeslotWeb.OAuthController do
     paths = get_redirect_paths(conn)
 
     conn
+    |> delete_session(:oauth_return_to)
     |> OAuthFlow.handle_oauth_callback(%{
       code: code,
       state: state,
@@ -364,7 +378,7 @@ defmodule TymeslotWeb.OAuthController do
 
   @spec handle_oauth_creation_error(Plug.Conn.t(), any()) :: Plug.Conn.t()
   defp handle_oauth_creation_error(conn, reason) do
-    Logger.error("Failed to create user from OAuth completion", reason: inspect(reason))
+    Logger.error("Failed to create user from OAuth completion", reason: LogFormat.reason(reason))
 
     # If this is a validation error, redirect back to registration with the data
     case reason do
@@ -509,7 +523,10 @@ defmodule TymeslotWeb.OAuthController do
     configured_success_path = Config.success_redirect_path()
 
     success_path =
-      RedirectSanitizer.sanitize(conn.params["success_path"], configured_success_path)
+      RedirectSanitizer.sanitize(
+        conn.params["success_path"],
+        RedirectSanitizer.sanitize(get_session(conn, :oauth_return_to), configured_success_path)
+      )
 
     login_path = ~p"/?auth=login"
 

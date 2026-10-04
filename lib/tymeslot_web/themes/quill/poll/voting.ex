@@ -33,6 +33,7 @@ defmodule TymeslotWeb.Themes.Quill.Poll.Voting do
       language_dropdown_open={@language_dropdown_open}
       show_language_switcher={true}
       current_user={assigns[:current_user]}
+      username_context={assigns[:username_context]}
     >
       <div class="poll-voting-page quill-poll-voting min-h-screen flex items-center justify-center px-4 py-8">
         <div class="w-full max-w-2xl">
