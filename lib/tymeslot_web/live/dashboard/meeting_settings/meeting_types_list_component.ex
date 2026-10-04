@@ -9,9 +9,11 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypesListComponent do
   alias TymeslotWeb.Dashboard.MeetingSettings.Card
 
   attr :meeting_types, :list, required: true
+  attr :schedules, :list, default: []
   attr :show_add_form, :boolean, default: false
   attr :editing_type, :any, default: nil
   attr :currency, :string, default: "eur"
+  attr :venues, :list, default: []
   attr :parent_myself, :any, required: true
   attr :can_share, :boolean, default: false
 
@@ -80,7 +82,9 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypesListComponent do
             <div draggable="true" data-meeting-type-id={type.id} class="cursor-move">
               <Card.meeting_type_card
                 type={type}
+                schedules={@schedules}
                 currency={@currency}
+                venues={@venues}
                 myself={@parent_myself}
                 can_share={@can_share}
               />

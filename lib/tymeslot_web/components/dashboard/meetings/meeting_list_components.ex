@@ -19,7 +19,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingListComponents do
   @spec filter_tabs(map()) :: Phoenix.LiveView.Rendered.t()
   def filter_tabs(assigns) do
     ~H"""
-    <div class="flex bg-white dark:bg-twilight-indigo-950 border-2 border-neutral-300 dark:border-twilight-indigo-800 rounded-[1.25rem] p-1.5 shadow-sm max-w-fit">
+    <div class="flex bg-white dark:bg-twilight-indigo-950 border-2 border-neutral-300 dark:border-twilight-indigo-800 rounded-2xl p-1.5 shadow-sm max-w-fit">
       <.filter_tab_button
         active={@active == "upcoming"}
         filter="upcoming"
@@ -103,6 +103,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingListComponents do
   attr :sending_reschedule, :any, required: false
   attr :answering_request, :any, default: nil
   attr :deleting_meeting, :any, required: false
+  attr :current_user_email, :string, default: nil
   attr :target, :any, required: true
   attr :meetings_stream, :any, required: true
 
@@ -122,10 +123,44 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingListComponents do
             sending_reschedule={@sending_reschedule}
             answering_request={@answering_request}
             deleting_meeting={@deleting_meeting}
+            current_user_email={@current_user_email}
             target={@target}
           />
         </div>
       </div>
+    </div>
+    """
+  end
+
+  attr :has_more, :boolean, required: true
+  attr :loading_more, :boolean, required: true
+  attr :target, :any, required: true
+
+  @doc """
+  The button that pages further into the list.
+
+  Lives here rather than in the dashboard component's own `render/1` so that
+  everything the meetings list draws is in one module — and so that module
+  stays inside the project's size limit.
+  """
+  @spec load_more(map()) :: Phoenix.LiveView.Rendered.t()
+  def load_more(assigns) do
+    ~H"""
+    <div :if={@has_more} class="mt-10 text-center">
+      <button
+        class="btn btn-secondary px-10 py-4"
+        phx-click="load_more"
+        phx-target={@target}
+        disabled={@loading_more}
+      >
+        <span :if={@loading_more}>
+          <CoreComponents.spinner class="h-5 w-5 mr-3 inline-block" /> {dgettext(
+            "dashboard_bookings",
+            "Loading..."
+          )}
+        </span>
+        <span :if={!@loading_more}>{dgettext("dashboard_bookings", "Load more meetings")}</span>
+      </button>
     </div>
     """
   end
@@ -246,7 +281,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingListComponents do
 
   defp info_card(assigns) do
     ~H"""
-    <div class="p-5 rounded-token-2xl bg-white dark:bg-twilight-indigo-950 border-2 border-neutral-300 dark:border-twilight-indigo-700 shadow-sm hover:border-primary-100 dark:hover:border-primary-700 transition-all hover:shadow-md group/item">
+    <div class="p-5 rounded-token-2xl bg-white dark:bg-twilight-indigo-950 border-2 border-neutral-300 dark:border-twilight-indigo-800 shadow-sm hover:border-primary-100 dark:hover:border-primary-700 transition-all hover:shadow-md group/item">
       <div class="flex items-center gap-4">
         <div class={[
           "w-10 h-10 rounded-token-xl flex items-center justify-center transition-colors",

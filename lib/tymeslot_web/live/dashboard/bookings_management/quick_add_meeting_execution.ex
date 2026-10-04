@@ -35,10 +35,14 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.QuickAddMeetingExecution do
 
   alias Tymeslot.Bookings.CreateAdHoc
   alias Tymeslot.CalendarGrid.EventCreation
+  alias Tymeslot.Infrastructure.Logging.LogFormat
+  alias Tymeslot.Infrastructure.Tasks
+  alias Tymeslot.Meetings.Guests
   alias Tymeslot.Utils.ReminderUtils
   alias TymeslotWeb.Components.Dashboard.Meetings.Helpers, as: MeetingsHelpers
   alias TymeslotWeb.Dashboard.BookingsManagementComponent
   alias TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.CreateExecution
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared, as: CalendarGridShared
   alias TymeslotWeb.Dashboard.Shared.ContactPickerHandlers
   alias TymeslotWeb.Live.Shared.Flash
@@ -62,11 +66,17 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.QuickAddMeetingExecution do
            CalendarGridShared.authorize_optional_integration(socket, creating[:integration_id]),
          :ok <-
            CalendarGridShared.validate_meeting_fields(creating, socket.assigns.current_user.email),
-         {:ok, start_at, end_at} <- resolve_timed_range(creating, timezone) do
-      execute_meeting(socket, creating, timezone, start_at, end_at)
+         {:ok, start_at, end_at} <- resolve_timed_range(creating, timezone),
+         {:ok, guest_emails} <- CreateExecution.extra_guest_emails(creating),
+         :ok <- CalendarGridShared.check_quick_add_meeting_rate_limit(socket) do
+      execute_meeting(socket, creating, timezone, start_at, end_at, guest_emails)
     else
       {:error, :unauthorized} ->
         Flash.error(dgettext("dashboard_calendar_events", "Invalid calendar selected"))
+        {:noreply, socket}
+
+      {:error, :rate_limited, message} ->
+        Flash.error(message)
         {:noreply, socket}
 
       {:error, message} ->
@@ -100,18 +110,12 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.QuickAddMeetingExecution do
     end
   end
 
-  defp execute_meeting(socket, creating, timezone, start_at, end_at) do
+  defp execute_meeting(socket, creating, timezone, start_at, end_at, guest_emails) do
     current_user = socket.assigns.current_user
     guest_name = String.trim(creating.guest_name)
 
-    title =
-      case String.trim(creating.title || "") do
-        "" -> dgettext("dashboard_calendar_events", "Meeting with %{name}", name: guest_name)
-        custom -> custom
-      end
-
     params = %{
-      title: title,
+      title: String.trim(creating.title),
       start_time: start_at,
       end_time: end_at,
       attendee_name: guest_name,
@@ -121,7 +125,12 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.QuickAddMeetingExecution do
       calendar_integration_id: creating[:integration_id],
       calendar_path: creating[:calendar_id],
       video_integration_id: creating[:video_integration_id],
-      reminders: ReminderUtils.from_calendar_reminders(creating[:reminders] || [])
+      reminders: ReminderUtils.from_calendar_reminders(creating[:reminders] || []),
+      organizer_note: creating[:organizer_note],
+      attendee_locale: creating[:locale],
+      # `CreateAdHoc` expects a pre-validated list; the main guest can still be
+      # typed in after being added as an extra one.
+      guest_emails: Guests.sanitize_emails(guest_emails, creating.guest_email)
     }
 
     case CreateAdHoc.execute(params) do
@@ -131,7 +140,7 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.QuickAddMeetingExecution do
 
       {:error, reason} ->
         Logger.error("quick_add_meeting_failed",
-          reason: inspect(reason),
+          reason: LogFormat.reason(reason),
           organizer_user_id: current_user.id
         )
 
@@ -150,7 +159,8 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.QuickAddMeetingExecution do
         {:noreply, socket}
 
       :ok ->
-        with {:ok, start_date} <- CalendarGridShared.parse_date(creating.date),
+        with :ok <- CalendarGridShared.validate_event_title(creating),
+             {:ok, start_date} <- CalendarGridShared.parse_date(creating.date),
              {:ok, end_date} <- CalendarGridShared.parse_date(creating.end_date) do
           save_event_resolved(socket, creating, start_date, end_date)
         else
@@ -221,7 +231,7 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.QuickAddMeetingExecution do
   defp execute_event(socket, payload) do
     lv_pid = self()
 
-    Task.Supervisor.start_child(Tymeslot.TaskSupervisor, fn ->
+    Tasks.start_child(Tymeslot.TaskSupervisor, fn ->
       send(lv_pid, {:quick_add_event_created, EventCreation.run_create_event(payload)})
     end)
 

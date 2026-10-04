@@ -4,6 +4,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.Helpers do
   """
 
   alias Tymeslot.Bookings.Policy
+  alias Tymeslot.Meetings.Guests
   alias Tymeslot.Utils.DateTimeUtils
   alias Tymeslot.Utils.DateTimeUtils.TimeFormat
   alias TymeslotWeb.Helpers.LocaleFormat
@@ -22,6 +23,23 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.Helpers do
       {:error, _reason} -> false
     end
   end
+
+  @doc """
+  Whether the host may still add guests to this booking: the meeting takes
+  guests (`Guests.invitations_open?/1`) and has room for another.
+
+  The meeting type's `allow_guests` is deliberately not consulted — it governs
+  what the person booking may do on the public form, not whom the host may
+  invite to their own meeting afterwards.
+
+  Counted from the guests preloaded onto the card, so a list of bookings does
+  not turn into one query per row.
+  """
+  @spec can_add_guests?(Ecto.Schema.t() | map()) :: boolean()
+  def can_add_guests?(%{guests: guests} = meeting) when is_list(guests),
+    do: Guests.invitations_open?(meeting) and length(guests) < Guests.max_guests()
+
+  def can_add_guests?(meeting), do: Guests.invitations_open?(meeting)
 
   @spec can_reschedule?(Ecto.Schema.t()) :: boolean()
   def can_reschedule?(meeting) do
@@ -81,4 +99,31 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.Helpers do
     local_time = DateTimeUtils.convert_to_timezone(meeting.cancelled_at, timezone)
     LocaleFormat.format_date(local_time, locale)
   end
+
+  @doc """
+  The date after which the organiser's cancelled-meeting cleanup
+  (`Tymeslot.Workers.DeleteCancelledMeetingsWorker`) deletes `meeting`, or
+  `nil` when `profile` has the cleanup off or the meeting has no cancellation
+  time. `profile` must be the meeting's organiser's — the cleanup runs on
+  their setting.
+  """
+  @spec format_auto_delete_date(map(), map() | nil, String.t()) :: String.t() | nil
+  def format_auto_delete_date(
+        %{cancelled_at: %DateTime{} = cancelled_at},
+        %{
+          auto_delete_cancelled_meetings_enabled: true,
+          auto_delete_cancelled_meetings_after_days: days
+        },
+        timezone
+      )
+      when is_integer(days) do
+    locale = Gettext.get_locale(TymeslotWeb.Gettext)
+
+    cancelled_at
+    |> DateTime.add(days, :day)
+    |> DateTimeUtils.convert_to_timezone(timezone)
+    |> LocaleFormat.format_date(locale)
+  end
+
+  def format_auto_delete_date(_meeting, _profile, _timezone), do: nil
 end

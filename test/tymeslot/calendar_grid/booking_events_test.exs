@@ -14,6 +14,7 @@ defmodule Tymeslot.CalendarGrid.BookingEventsTest do
 
   alias Tymeslot.CalendarGrid
   alias Tymeslot.CalendarGrid.BookingEvent
+  alias Tymeslot.CalendarGrid.BookingEvents
 
   defp window do
     start_dt = DateTime.new!(Date.utc_today(), ~T[00:00:00], "Etc/UTC")
@@ -50,7 +51,9 @@ defmodule Tymeslot.CalendarGrid.BookingEventsTest do
       insert_meeting(user, %{
         title: "Discovery call",
         attendee_name: "Ada Lovelace",
-        location: "Video call"
+        location: "Video call",
+        description: "We should cover everything",
+        attendee_message: "Looking forward to it"
       })
 
     {start_dt, end_dt} = window()
@@ -60,10 +63,13 @@ defmodule Tymeslot.CalendarGrid.BookingEventsTest do
 
     assert event.id == "booking-#{meeting.id}"
     assert event.meeting_id == meeting.id
-    assert event.uid == meeting.uid
+    assert event.uid == meeting.calendar_uid
+    refute event.uid == meeting.uid
     assert event.summary == "Discovery call"
     assert event.attendee_name == "Ada Lovelace"
     assert event.location == "Video call"
+    assert event.description == "We should cover everything"
+    assert event.attendee_message == "Looking forward to it"
     assert event.start_at == meeting.start_time
     assert event.end_at == meeting.end_time
     assert event.all_day == false
@@ -121,14 +127,47 @@ defmodule Tymeslot.CalendarGrid.BookingEventsTest do
     refute Enum.any?(events, &(&1.meeting_id == synced.id))
   end
 
+  test "keeps a booking awaiting approval in place of its synced tentative hold" do
+    user = insert(:user)
+    meeting = insert_meeting(user, %{status: "awaiting_approval", provider_event_id: "held"})
+    {start_dt, end_dt} = window()
+
+    hold =
+      cached_event(
+        provider_event_id: "held",
+        calendar_integration_id: 42,
+        provider_calendar_id: "work"
+      )
+
+    assert [%BookingEvent{} = event] =
+             CalendarGrid.list_booking_events_for_range(user.id, start_dt, end_dt, [hold])
+
+    assert event.meeting_id == meeting.id
+    assert event.status == "awaiting_approval"
+    # Takes the hold's calendar, so the grid's visibility filters apply to it.
+    assert event.calendar_integration_id == 42
+    assert event.provider_calendar_id == "work"
+    assert BookingEvents.stands_in_for_hold?(event)
+  end
+
+  test "an unsynced booking awaiting approval does not stand in for a hold" do
+    user = insert(:user)
+    insert_meeting(user, %{status: "awaiting_approval"})
+    {start_dt, end_dt} = window()
+
+    assert [event] = CalendarGrid.list_booking_events_for_range(user.id, start_dt, end_dt)
+    refute BookingEvents.stands_in_for_hold?(event)
+  end
+
   test "drops a CalDAV booking whose synced copy is keyed by href, not provider event id" do
     user = insert(:user)
 
-    # The CalDAV write path persists its caller-supplied UID and never sets
+    # The CalDAV write path persists its caller-supplied UID (the meeting's
+    # calendar_uid) and never sets
     # provider_event_id, while the synced copy carries the server's href
     # there. The only identifier the two sides share is the UID.
-    synced = insert_meeting(user, %{uid: "abc123@tymeslot.com", provider_event_id: nil})
-    unsynced = insert_meeting(user, %{title: "Unsynced", uid: "def456@tymeslot.com"})
+    synced = insert_meeting(user, %{calendar_uid: "abc123@tymeslot.com", provider_event_id: nil})
+    unsynced = insert_meeting(user, %{title: "Unsynced", calendar_uid: "def456@tymeslot.com"})
 
     {start_dt, end_dt} = window()
 
@@ -147,7 +186,7 @@ defmodule Tymeslot.CalendarGrid.BookingEventsTest do
 
   test "keeps a booking whose UID merely resembles an unrelated cached event" do
     user = insert(:user)
-    booking = insert_meeting(user, %{uid: "abc123@tymeslot.com", provider_event_id: nil})
+    booking = insert_meeting(user, %{calendar_uid: "abc123@tymeslot.com", provider_event_id: nil})
 
     {start_dt, end_dt} = window()
     cached = [cached_event(provider_event_id: "/calendars/x/other.ics", uid: "other@example.com")]
@@ -165,6 +204,106 @@ defmodule Tymeslot.CalendarGrid.BookingEventsTest do
     {start_dt, end_dt} = window()
 
     assert CalendarGrid.list_booking_events_for_range(user.id, start_dt, end_dt) == []
+  end
+
+  describe "title source" do
+    test "titles a projection by the booking's meeting information when asked" do
+      user = insert(:user)
+      insert_meeting(user, %{title: "Discovery call", attendee_message: "Budget review"})
+      {start_dt, end_dt} = window()
+
+      assert [%{summary: "Budget review"}] =
+               BookingEvents.list_for_range(user.id, start_dt, end_dt, [], "meeting_info")
+
+      assert [%{summary: "Discovery call"}] =
+               BookingEvents.list_for_range(user.id, start_dt, end_dt, [], "meeting_type")
+    end
+
+    test "load_for_range/4 renames only the synced copies of bookings" do
+      user = insert(:user)
+
+      insert_meeting(user, %{
+        title: "Discovery call",
+        attendee_message: "Budget review",
+        provider_event_id: "prov-event-1"
+      })
+
+      {start_dt, end_dt} = window()
+
+      cached = [
+        cached_event(provider_event_id: "prov-event-1", summary: "Discovery call"),
+        cached_event(provider_event_id: "unrelated", summary: "Dentist")
+      ]
+
+      assert {[], retitled} =
+               BookingEvents.load_for_range(
+                 user.id,
+                 {start_dt, end_dt},
+                 cached,
+                 "meeting_info"
+               )
+
+      assert Enum.map(retitled, & &1.summary) == ["Budget review", "Dentist"]
+    end
+
+    test "load_for_range/4 leaves synced copies alone under \"meeting_type\"" do
+      user = insert(:user)
+
+      insert_meeting(user, %{
+        title: "Discovery call",
+        attendee_message: "Budget review",
+        provider_event_id: "prov-event-1"
+      })
+
+      {start_dt, end_dt} = window()
+      cached = [cached_event(provider_event_id: "prov-event-1", summary: "Renamed in Google")]
+
+      assert {[], [%{summary: "Renamed in Google"}]} =
+               BookingEvents.load_for_range(
+                 user.id,
+                 {start_dt, end_dt},
+                 cached,
+                 "meeting_type"
+               )
+    end
+  end
+
+  describe "booker attachments" do
+    @attachment %{"id" => "a1", "filename" => "Brief.pdf", "byte_size" => 10}
+
+    test "a projection carries the booking's attachments" do
+      user = insert(:user)
+      insert_meeting(user, %{attendee_attachments: [@attachment]})
+      {start_dt, end_dt} = window()
+
+      assert [%BookingEvent{attendee_attachments: [@attachment]}] =
+               BookingEvents.list_for_range(user.id, start_dt, end_dt)
+    end
+
+    test "a synced copy is marked with its booking's attachments, even under \"meeting_type\"" do
+      user = insert(:user)
+
+      meeting =
+        insert_meeting(user, %{
+          provider_event_id: "prov-event-1",
+          attendee_attachments: [@attachment]
+        })
+
+      {start_dt, end_dt} = window()
+
+      cached = [
+        cached_event(provider_event_id: "prov-event-1", summary: "Renamed in Google"),
+        cached_event(provider_event_id: "unrelated", summary: "Dentist")
+      ]
+
+      assert {[], [synced, unrelated]} =
+               BookingEvents.load_for_range(user.id, {start_dt, end_dt}, cached, "meeting_type")
+
+      assert synced.summary == "Renamed in Google"
+      assert synced.attendee_attachments == [@attachment]
+      assert synced.booking_meeting_id == meeting.id
+      refute Map.has_key?(unrelated, :attendee_attachments)
+    end
   end
 
   test "falls back to a generic title when the booking title is blank" do

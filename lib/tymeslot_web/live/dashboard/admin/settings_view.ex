@@ -33,6 +33,7 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
   alias TymeslotWeb.AdminLive.Components.LocaleSetting
   alias TymeslotWeb.AdminLive.Tabs
   alias TymeslotWeb.Dashboard.Admin.AuditEventRows
+  alias TymeslotWeb.Dashboard.Admin.BookingAttachmentRows
   alias TymeslotWeb.Dashboard.Admin.EmailBrandingRows
   alias TymeslotWeb.Dashboard.Admin.Formatters
   alias TymeslotWeb.Dashboard.Admin.SiteBannerRows
@@ -106,6 +107,11 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
               <SiteBannerRows.site_banner_section
                 effective_values={@effective_values}
                 locale={@site_banner_locale}
+                target={@target}
+              />
+            <% :booking_attachments -> %>
+              <BookingAttachmentRows.booking_attachments_section
+                effective_values={@effective_values}
                 target={@target}
               />
             <% :audit_events -> %>
@@ -411,7 +417,8 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
     """
   end
 
-  defp setting_control(%{kind: kind} = assigns) when kind in [:size_mb, :days] do
+  defp setting_control(%{kind: kind} = assigns)
+       when kind in [:size_mb, :days, :attachment_size_mb, :file_count] do
     assigns = assign(assigns, number_bounds(kind))
 
     ~H"""
@@ -580,6 +587,11 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
 
   defp number_bounds(:size_mb), do: %{max: 2000, unit: dgettext("dashboard_admin", "MB")}
   defp number_bounds(:days), do: %{max: 3650, unit: dgettext("dashboard_admin", "days")}
+
+  defp number_bounds(:attachment_size_mb),
+    do: %{max: 100, unit: dgettext("dashboard_admin", "MB")}
+
+  defp number_bounds(:file_count), do: %{max: 10, unit: dgettext("dashboard_admin", "files")}
 
   # Renders a float as a fixed two-decimal string so the input value stays
   # human-readable (0.30 instead of 0.3000000000000001).

@@ -32,6 +32,10 @@ config :tymeslot,
        :upload_directory,
        Path.join(System.tmp_dir!(), "tymeslot_test_uploads#{test_run_suffix}")
 
+config :tymeslot,
+       :private_upload_directory,
+       Path.join(System.tmp_dir!(), "tymeslot_test_private_uploads#{test_run_suffix}")
+
 config :tymeslot, TymeslotWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("TEST_PORT") || "4002")],
   url: [
@@ -102,6 +106,14 @@ config :tymeslot, Oban,
   pruner: [max_age: {1, :hour}],
   testing: :manual
 
+# ErrorTracker stays off in tests: a test that exercises it switches it on
+# for itself (and must then be async: false).
+config :error_tracker, enabled: false
+
+# The per-fingerprint throttle's counters are global, so they would carry a
+# count from one test into the next; tests that exercise it switch it on.
+config :tymeslot, :error_tracking_throttle, max_per_window: nil
+
 # In test we don't send emails
 config :tymeslot, Tymeslot.Mailer, adapter: Swoosh.Adapters.Test
 
@@ -132,6 +144,9 @@ config :tymeslot, :google_calendar_oauth_helper, Tymeslot.GoogleOAuthHelperMock
 config :tymeslot, :outlook_calendar_oauth_helper, Tymeslot.OutlookOAuthHelperMock
 config :tymeslot, :teams_oauth_helper, Tymeslot.TeamsOAuthHelperMock
 config :tymeslot, :zoom_oauth_helper, Tymeslot.ZoomOAuthHelperMock
+# The video provider picker only offers Zoom when a client ID is configured
+# (`ProviderConfig.offerable?/1`), so tests get a placeholder one.
+config :tymeslot, :zoom_oauth, client_id: "test-zoom-client-id"
 config :tymeslot, :http_client_module, Tymeslot.HTTPClientMock
 config :tymeslot, :req_test_plug, {Req.Test, :tymeslot_http}
 config :tymeslot, :email_service, Tymeslot.EmailServiceMock
@@ -166,10 +181,6 @@ config :tymeslot, :radicale,
 # these configs to pass them through, so they must be present.
 config :tymeslot, :google_oauth, state_secret: "test-google-state-secret"
 config :tymeslot, :outlook_oauth, state_secret: "test-outlook-state-secret"
-
-# Analytics fingerprint salt secret — fixed value so fingerprint hashes are
-# stable across test runs on the same day.
-config :tymeslot, :analytics_salt_secret, "test_analytics_salt_secret_fixed_for_repeatability"
 
 # Booking analytics is enabled by default in the test suite so the analytics
 # tests exercise the live path. Tests covering the disabled path override this
@@ -257,6 +268,9 @@ config :tymeslot, :payment_retry, base_delay_ms: 1
 # they are disposable artefacts of a failed run, and writing them under test/
 # left untracked PNGs behind after every red e2e run. Wallaby mkdir_p's the
 # directory itself, so nothing has to create it.
+# CHROME_BINARY names the browser on machines without the snap, as in SaaS.
+# Wallaby's own lookup of google-chrome on PATH does not help: a configured
+# binary replaces whatever it found, even when the path does not exist.
 config :wallaby,
   otp_app: :tymeslot,
   ecto_repos: [Tymeslot.Repo],
@@ -268,9 +282,14 @@ config :wallaby,
     # Overridable per environment: the Docker dev image installs the apt
     # `chromium` package (see Dockerfile.dev) and points this at
     # /usr/bin/chromium via WALLABY_CHROME_BINARY in docker-compose.dev.yml.
-    # The snap path below is a host-machine default for running `mix test
-    # --include e2e` outside Docker.
+    # CHROME_BINARY is upstream's name for the same override. The snap path
+    # below is a host-machine default for running `mix test --include e2e`
+    # outside Docker.
     binary:
-      System.get_env("WALLABY_CHROME_BINARY") ||
+      System.get_env("WALLABY_CHROME_BINARY") || System.get_env("CHROME_BINARY") ||
         "/snap/chromium/current/usr/lib/chromium-browser/chrome"
   ]
+
+# A calendar grid write guardian left driving after its test's LiveView has
+# gone gives up on writes that never answer within seconds, not minutes.
+config :tymeslot, Tymeslot.CalendarGrid.WriteGuardian, drain_timeout: 3_000

@@ -12,6 +12,7 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Wrapper do
   import TymeslotWeb.Themes.Shared.Customization.Helpers
   import TymeslotWeb.Themes.Shared.VideoSources, only: [video_sources: 1]
   import TymeslotWeb.Components.PublicTopBar
+  import TymeslotWeb.Components.PublicFooter
   import TymeslotWeb.Themes.Shared.Components.PreviewNotice, only: [banner: 1]
 
   attr :theme_customization, :map, default: nil
@@ -25,6 +26,7 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Wrapper do
   attr :owner_preview, :boolean, default: false
   attr :current_user, :map, default: nil
   attr :embedded, :boolean, default: false
+  attr :username_context, :string, default: nil
   slot :inner_block, required: true
 
   @doc """
@@ -93,11 +95,14 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Wrapper do
               theme="quill"
               current_user={@current_user}
               embedded={@embedded}
+              username={@username_context}
             />
           <% end %>
 
           {render_slot(@inner_block)}
         </div>
+
+        <.public_footer embedded={@embedded} />
 
         {TymeslotWeb.Layouts.render_theme_extensions(assigns)}
       </div>

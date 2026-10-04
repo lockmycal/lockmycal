@@ -6,6 +6,8 @@ defmodule Tymeslot.Infrastructure.Security.RemoteIpParam do
   this validation lives in one place rather than duplicated per provider.
   """
 
+  alias Tymeslot.Infrastructure.Logging.LogFormat
+
   require Logger
 
   @doc """
@@ -61,8 +63,8 @@ defmodule Tymeslot.Infrastructure.Security.RemoteIpParam do
     e in ArgumentError ->
       # Handle string encoding errors (rare but possible with malformed input)
       Logger.debug("Failed to validate IP address",
-        ip: inspect(ip_string),
-        error: inspect(e)
+        ip: LogFormat.reason(ip_string),
+        error: LogFormat.reason(e)
       )
 
       false

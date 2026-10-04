@@ -12,6 +12,8 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
 
   alias Tymeslot.CustomFields.AnswerRenderer
   alias Tymeslot.Emails.RecipientLocale
+  alias Tymeslot.Integrations.CalendarManagement
+  alias Tymeslot.Meetings.DisplayTitle
   alias Tymeslot.Meetings.MeetingState
   alias Tymeslot.Utils.MapKeys
   alias Tymeslot.Utils.ReminderUtils
@@ -36,12 +38,21 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
   them, scheduling-aware CalDAV servers (Zimbra, Nextcloud/Sabre, Apple
   iCloud) inject their own ORGANIZER and fire the iTIP pipeline, which
   duplicates the invitation email Tymeslot already sends.
+
+  The summary follows the organiser's "Meeting Titles" preference
+  (`Tymeslot.Meetings.DisplayTitle`), so a booking is titled the same in
+  their own calendar as on their dashboard. Whatever the title leaves out is
+  still in the description.
+
+  The event's `:uid` is the meeting's `calendar_uid`, never its `uid`: the
+  `uid` is the bearer capability behind the cancel and reschedule links, and
+  anyone able to read the organiser's calendar would otherwise hold it.
   """
   @spec build_event_data(map()) :: map()
   def build_event_data(meeting) do
     %{
-      uid: meeting.uid,
-      summary: meeting.title,
+      uid: meeting.calendar_uid,
+      summary: DisplayTitle.title(meeting, title_source(meeting)),
       description: build_event_description(meeting),
       start_time: meeting.start_time,
       end_time: meeting.end_time,
@@ -57,6 +68,18 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
       attendee_email: meeting.attendee_email,
       reminders: build_reminders(meeting)
     }
+  end
+
+  # The event lands in the organiser's calendar, so their own preference
+  # decides; a meeting with no organiser account behind it gets the default.
+  defp title_source(meeting) do
+    case Map.get(meeting, :organizer_user_id) do
+      user_id when is_integer(user_id) ->
+        CalendarManagement.get_or_create_preferences(user_id).booking_title_source
+
+      _no_organizer_account ->
+        DisplayTitle.default_source()
+    end
   end
 
   # A booking held for the host's manual approval is written to their calendar
@@ -114,6 +137,11 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
   Custom question answers are appended directly after the attendee message
   so the organiser sees what was asked at booking time alongside the rest
   of the attendee's input, without having to open the email or dashboard.
+
+  It carries everything the dashboard's booking detail shows — the meeting
+  type, the attendee's contact details, their whole message, answers, files
+  and the video link — because the event title may be just the first line of
+  the attendee's message (see `build_event_data/1`).
   """
   @spec build_event_description(map()) :: String.t()
   def build_event_description(meeting) do
@@ -125,11 +153,13 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
     # is how a German host ends up with an "Attendee:" line.
     RecipientLocale.with_user_id_locale(Map.get(meeting, :organizer_user_id), fn ->
       parts = [
-        attendee_identity_line(meeting),
+        header_section(meeting),
         meeting.description,
+        organizer_note_section(meeting),
         attendee_message_section(meeting),
         custom_answers_section(meeting),
         attachments_section(meeting),
+        attendee_attachments_section(meeting),
         video_meeting_section(meeting)
       ]
 
@@ -176,6 +206,27 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
     end
   end
 
+  # The booker's own files are private, so unlike the host's attachments above
+  # they get no public URL and no ATTACH line: each link points at the
+  # dashboard download, which serves the signed-in organiser only. This
+  # description goes into the organiser's own calendar; the attendee's copy is
+  # built elsewhere (`ICSGenerator`) and never carries these links.
+  defp attendee_attachments_section(%{
+         id: meeting_id,
+         attendee_attachments: [_first | _rest] = files
+       })
+       when is_binary(meeting_id) do
+    links =
+      Enum.map_join(files, "\n", fn file ->
+        "#{file["filename"]}: #{Endpoint.url()}/dashboard/meetings/#{meeting_id}/attachments/#{file["id"]}"
+      end)
+
+    "\n\n" <>
+      dgettext("emails", "Files from the attendee (sign in to download):") <> "\n" <> links
+  end
+
+  defp attendee_attachments_section(_meeting), do: nil
+
   defp custom_answers_section(meeting) do
     snapshot = Map.get(meeting, :custom_fields_snapshot) || []
     answers = Map.get(meeting, :custom_field_answers) || %{}
@@ -196,6 +247,27 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
     end
   end
 
+  # Who the booking is with and what kind of meeting it is, one fact per line,
+  # as a single block ahead of the free-text sections.
+  defp header_section(meeting) do
+    lines =
+      Enum.reject(
+        [
+          attendee_identity_line(meeting),
+          labelled(meeting, :attendee_phone, &dgettext("emails", "Phone: %{phone}", phone: &1)),
+          labelled(
+            meeting,
+            :attendee_company,
+            &dgettext("emails", "Company: %{company}", company: &1)
+          ),
+          labelled(meeting, :meeting_type, &dgettext("emails", "Meeting type: %{type}", type: &1))
+        ],
+        &is_nil/1
+      )
+
+    if lines == [], do: nil, else: Enum.join(lines, "\n") <> "\n\n"
+  end
+
   defp attendee_identity_line(%{attendee_email: email} = meeting)
        when is_binary(email) and email != "" do
     identity =
@@ -204,10 +276,30 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
         _missing -> email
       end
 
-    dgettext("emails", "Attendee: %{attendee}", attendee: identity) <> "\n\n"
+    dgettext("emails", "Attendee: %{attendee}", attendee: identity)
   end
 
   defp attendee_identity_line(_meeting), do: nil
+
+  defp labelled(meeting, key, line) do
+    value = Map.get(meeting, key)
+    if present?(value), do: line.(value), else: nil
+  end
+
+  defp present?(value), do: is_binary(value) and String.trim(value) != ""
+
+  # `Map.get/2`: the builder is also handed plain maps that predate the field.
+  defp organizer_note_section(meeting) do
+    case Map.get(meeting, :organizer_note) do
+      note when is_binary(note) and note != "" ->
+        "\n\n" <>
+          dgettext("emails", "Message from %{name}:", name: meeting.organizer_name) <>
+          "\n#{note}"
+
+      _none ->
+        nil
+    end
+  end
 
   defp attendee_message_section(meeting) do
     case meeting.attendee_message do

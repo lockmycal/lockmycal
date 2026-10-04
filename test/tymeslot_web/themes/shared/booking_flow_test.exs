@@ -2,6 +2,7 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlowTest do
   use TymeslotWeb.ConnCase, async: true
   @moduletag :utils
 
+  alias Phoenix.Component
   alias Phoenix.LiveView.Socket
   alias TymeslotWeb.Live.Shared.FormValidationHelpers
   alias TymeslotWeb.Themes.Shared.BookingFlow
@@ -110,5 +111,37 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlowTest do
 
     assert updated.assigns.form_touched == true
     assert map_size(updated.assigns.validation_errors) > 0
+  end
+
+  describe "handle_field_blur/2" do
+    defp blur_socket(form_params, touched) do
+      %Socket{
+        assigns: %{
+          __changed__: %{},
+          touched_fields: MapSet.new(touched),
+          form: Component.to_form(form_params)
+        }
+      }
+    end
+
+    test "shows the error of a field left empty without waiting for a change event" do
+      socket = blur_socket(%{"name" => "", "email" => "", "message" => ""}, [])
+
+      updated = BookingFlow.handle_field_blur(socket, "name")
+
+      assert MapSet.member?(updated.assigns.touched_fields, "name")
+      assert updated.assigns.form_touched == true
+      assert FormValidationHelpers.field_errors(updated.assigns.validation_errors, :name) != []
+      # Fields the booker has not left yet stay quiet.
+      assert FormValidationHelpers.field_errors(updated.assigns.validation_errors, :email) == []
+    end
+
+    test "shows no error for a valid field" do
+      socket = blur_socket(%{"name" => "Jane Doe", "email" => ""}, [])
+
+      updated = BookingFlow.handle_field_blur(socket, "name")
+
+      assert FormValidationHelpers.field_errors(updated.assigns.validation_errors, :name) == []
+    end
   end
 end

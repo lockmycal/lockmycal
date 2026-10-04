@@ -26,6 +26,16 @@ defmodule Tymeslot.MeetingTypes.FormMapperTest do
     %{meeting_mode: "personal", selected_icon: "hero-bolt", selected_video_integration_id: nil}
   end
 
+  describe "build_attrs/2 with the \"show as free\" switch" do
+    test "carries it, so the meeting type saves it" do
+      assert {:ok, %{show_as_free: true}} =
+               FormMapper.build_attrs(base_params(%{"show_as_free" => "true"}), ui_state())
+
+      assert {:ok, %{show_as_free: false}} =
+               FormMapper.build_attrs(base_params(%{}), ui_state())
+    end
+  end
+
   describe "build_attrs/2 with translations" do
     test "omits translations entirely when the params do not carry the key" do
       assert {:ok, attrs} = FormMapper.build_attrs(base_params(%{}), ui_state())

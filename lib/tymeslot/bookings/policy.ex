@@ -5,15 +5,17 @@ defmodule Tymeslot.Bookings.Policy do
   None of the functions here are pure. The attribute assembly performs
   database reads: `scheduling_config/2` resolves the organiser's profile and
   schedule; `build_meeting_attributes/1` additionally resolves the video
-  integration and meeting type. The verdict predicates `can_cancel_meeting?/1`
-  and `can_reschedule_meeting?/1` read the system clock (`Tymeslot.Clock`) and
-  emit `Logger.info` on their blocked branches. `meeting_is_current?/1` and
-  `meeting_is_past?/1` also read the clock but do no database access and no
-  logging.
+  integration and meeting type. The verdict predicates (`can_cancel_meeting?/1`
+  and friends) delegate to `Tymeslot.Bookings.MeetingPermissions`: they read
+  the system clock (`Tymeslot.Clock`), the blocked branches of the first two
+  emit `Logger.info`, and none of them touch the database.
   """
   alias Tymeslot.Availability.Schedules
+  alias Tymeslot.Bookings.BookingTitle
   alias Tymeslot.Bookings.BuildParams
+  alias Tymeslot.Bookings.MeetingPermissions
   alias Tymeslot.Clock
+  alias Tymeslot.Emails.RecipientLocale
   alias Tymeslot.I18n.Resolve
   alias Tymeslot.Integrations.Calendar.Events, as: CalendarEvents
   alias Tymeslot.Integrations.Video
@@ -25,8 +27,6 @@ defmodule Tymeslot.Bookings.Policy do
   alias Tymeslot.Timezones
   alias Tymeslot.Utils.ReminderUtils
   alias Tymeslot.Utils.UrlBuilder
-
-  require Logger
 
   @doc """
   Scheduling policy for a booking: buffer, minimum notice, advance window and
@@ -98,6 +98,8 @@ defmodule Tymeslot.Bookings.Policy do
           required(:calendar_integration_id) => integer() | nil,
           required(:calendar_path) => String.t() | nil,
           required(:video_integration_id) => integer() | nil,
+          required(:venue_id) => integer() | nil,
+          required(:address_to_arrange) => boolean(),
           required(:attendee_name) => String.t(),
           required(:attendee_email) => String.t(),
           required(:attendee_message) => String.t() | nil,
@@ -110,7 +112,10 @@ defmodule Tymeslot.Bookings.Policy do
           required(:approval_deadline_at) => DateTime.t() | nil,
           required(:reminders) => [reminder()],
           required(:show_as_free) => boolean(),
+          required(:share_organizer_email) => boolean(),
+          required(:organizer_phone) => String.t() | nil,
           required(:attachments_snapshot) => [map()],
+          required(:attendee_attachments) => [map()],
           required(:view_url) => String.t(),
           required(:reschedule_url) => String.t(),
           required(:cancel_url) => String.t(),
@@ -124,17 +129,12 @@ defmodule Tymeslot.Bookings.Policy do
           required(:utm_term) => String.t() | nil,
           required(:referrer_host) => String.t() | nil,
           required(:tracking_params) => map(),
-          required(:visitor_hash) => String.t() | nil
+          required(:visitor_hash) => String.t() | nil,
+          required(:booker_user_id) => integer() | nil
         }
 
   @typedoc "A meeting record with the fields required by the policy checks."
-  @type meeting_record :: %{
-          required(:status) => String.t(),
-          required(:uid) => String.t(),
-          required(:start_time) => DateTime.t(),
-          required(:end_time) => DateTime.t(),
-          optional(atom()) => term()
-        }
+  @type meeting_record :: MeetingPermissions.meeting_record()
 
   @doc """
   Builds meeting attributes from parameters and form data.
@@ -151,7 +151,7 @@ defmodule Tymeslot.Bookings.Policy do
       resolve_meeting_type_record(params.meeting_type_id, organizer_user_id)
 
     # Get organizer details from profile if available
-    {org_name, org_email, org_username} = get_organizer_details(organizer_user_id)
+    {org_name, org_email, org_username, org_phone} = get_organizer_details(organizer_user_id)
 
     # Resolve attendee timezone
     config = scheduling_config(organizer_user_id, meeting_type_record)
@@ -176,6 +176,7 @@ defmodule Tymeslot.Bookings.Policy do
       resolved_meeting_type_id: resolved_meeting_type_id,
       org_name: org_name,
       org_email: org_email,
+      org_phone: org_phone,
       org_username: org_username,
       calendar_integration_id: calendar_integration_id,
       calendar_path: calendar_path,
@@ -195,7 +196,6 @@ defmodule Tymeslot.Bookings.Policy do
   # steps above.
   defp build_attributes_map(params, resolved) do
     meeting_uid = params.meeting_uid
-    form_data = params.form_data
 
     # A meeting type requiring manual approval holds its bookings instead of
     # confirming them. The deadline is stamped here, at request time, rather
@@ -207,8 +207,6 @@ defmodule Tymeslot.Bookings.Policy do
 
     %{
       uid: meeting_uid,
-      title: "#{resolved.meeting_type_name} with #{form_data["name"]}",
-      summary: "#{resolved.meeting_type_name} with #{form_data["name"]}",
       description:
         (resolved.meeting_type_record &&
            Resolve.text(
@@ -234,16 +232,48 @@ defmodule Tymeslot.Bookings.Policy do
       reminders: resolved.reminders,
       show_as_free:
         (resolved.meeting_type_record && resolved.meeting_type_record.show_as_free) || false,
+      share_organizer_email: shares?(resolved.meeting_type_record, :show_email_to_bookers),
+      organizer_phone:
+        if(shares?(resolved.meeting_type_record, :show_phone_to_bookers),
+          do: resolved.org_phone
+        ),
       attachments_snapshot: attachments_snapshot(resolved.meeting_type_record),
+      attendee_attachments:
+        attendee_attachments(resolved.meeting_type_record, params.attendee_attachments),
       custom_fields_snapshot: params.custom_fields_snapshot,
-      custom_field_answers: params.custom_field_answers
+      custom_field_answers: params.custom_field_answers,
+      booker_user_id: booker_user_id(params)
     }
+    |> Map.merge(title_attributes(params, resolved.meeting_type_name))
     |> Map.merge(attendee_attributes(params, resolved.user_timezone))
     |> Map.merge(
       location_attributes(resolved.meeting_type_record, params, resolved.video_integration_id)
     )
     |> Map.merge(source_attribution(params))
     |> Map.merge(build_meeting_action_urls(meeting_uid, resolved.org_username))
+  end
+
+  # The host's contact details reach the booker only as the meeting type
+  # allows, decided once at booking time.
+  defp shares?(nil, _setting), do: false
+  defp shares?(meeting_type, setting), do: Map.get(meeting_type, setting) == true
+
+  # An organiser booking on their own page already has the meeting in their
+  # calendar; a copy would only duplicate it.
+  defp booker_user_id(%BuildParams{booker_user_id: id, organizer_user_id: id}), do: nil
+  defp booker_user_id(%BuildParams{booker_user_id: id}), do: id
+
+  # The title is stored once and becomes the organiser's calendar event and
+  # dashboard entry, so it is rendered in the organiser's language, matching
+  # the event description `CalendarEventBuilder` writes alongside it. Mail to
+  # the booker renders it again in theirs (`BookingTitle.localise/1`).
+  defp title_attributes(%BuildParams{} = params, meeting_type_name) do
+    title =
+      RecipientLocale.with_user_id_locale(params.organizer_user_id, fn ->
+        BookingTitle.render(meeting_type_name, params.form_data["name"])
+      end)
+
+    %{title: title, summary: title}
   end
 
   # Who the booking is for, as they gave it. `attendee_phone` is absent here:
@@ -261,28 +291,31 @@ defmodule Tymeslot.Bookings.Policy do
   end
 
   # Where the meeting is held, and everything that follows from it: the
-  # display string, the kind, and the video integration a room would be
-  # created on.
+  # display string, the kind, the video integration a room would be created
+  # on, and the saved venue an in-person booking is at.
   #
   # The booker submitted only an option id, and within a video option the
-  # provider they picked. The rest is re-derived here from the host's own
-  # meeting type, so a forged or stale id can only ever select a location,
-  # or a provider, the host already offers.
+  # provider they picked, or within an in-person option the venue. The rest
+  # is re-derived here from the host's own meeting type, so a forged or stale
+  # id can only ever select a location, a provider or a venue the host
+  # already offers.
   defp location_attributes(meeting_type_record, %BuildParams{} = params, fallback_video_id) do
     location =
-      MeetingTypes.resolve_location(
-        meeting_type_record,
-        params.location_option_id,
-        params.location_phone,
-        params.location_video_integration_id
-      )
+      MeetingTypes.resolve_location(meeting_type_record, %{
+        option_id: params.location_option_id,
+        phone: params.location_phone,
+        video_integration_id: params.location_video_integration_id,
+        venue_id: params.location_venue_id
+      })
 
     %{
       location: location.location,
       location_kind: location.location_kind,
       location_option_id: location.location_option_id,
       attendee_phone: location.attendee_phone || params.form_data["phone"],
-      video_integration_id: video_integration_for(location, fallback_video_id)
+      video_integration_id: video_integration_for(location, fallback_video_id),
+      venue_id: location.venue_id,
+      address_to_arrange: location.address_to_arrange
     }
   end
 
@@ -323,7 +356,7 @@ defmodule Tymeslot.Bookings.Policy do
 
   # Snapshots host-uploaded meeting-type attachments as plain maps so the
   # calendar event and confirmation email reference a stable file set.
-  defp attachments_snapshot(%{attachments: attachments}) when is_list(attachments) do
+  defp attachments_snapshot(%{attachments: attachments}) do
     Enum.map(attachments, fn a ->
       %{
         "id" => a.id,
@@ -336,6 +369,11 @@ defmodule Tymeslot.Bookings.Policy do
   end
 
   defp attachments_snapshot(_meeting_type), do: []
+
+  # The booker's own files, kept only when the meeting type offers the field,
+  # the same server-side gate guests get in `Tymeslot.Bookings.Create`.
+  defp attendee_attachments(%{allow_attachments: true}, attachments), do: attachments
+  defp attendee_attachments(_meeting_type, _attachments), do: []
 
   # Resolves the meeting type record if available and active
   defp resolve_meeting_type_record(meeting_type_id, organizer_user_id) do
@@ -403,140 +441,46 @@ defmodule Tymeslot.Bookings.Policy do
   end
 
   @doc """
-  Determines if a meeting can be cancelled.
-  Checks both status and time constraints.
+  Determines if a meeting can be cancelled (status and time constraints).
   """
   @spec can_cancel_meeting?(meeting_record()) :: :ok | {:error, String.t()}
-  def can_cancel_meeting?(meeting) do
-    cond do
-      meeting.status == "cancelled" ->
-        {:error, "Meeting is already cancelled"}
-
-      meeting.status == "completed" ->
-        {:error, "Cannot cancel a completed meeting"}
-
-      # An expired meeting (a lapsed approval request or an abandoned paid
-      # checkout) has already been released: its slot was freed, the attendee
-      # was told the request lapsed, and `Meetings.Approval` has already
-      # refunded whatever was paid for it. Cancelling would overwrite that
-      # outcome with `"cancelled"` and run the whole cancellation pipeline
-      # over it — a second pair of emails contradicting the expiry notice, a
-      # `meeting.cancelled` webhook for a meeting that never happened, and a
-      # calendar delete for an event already removed. The request-received
-      # email's withdraw link stays live in the invitee's inbox after the
-      # deadline, so this is a reachable click, not a theoretical one.
-      meeting.status == "expired" ->
-        {:error, "Cannot cancel an expired meeting"}
-
-      meeting_is_current?(meeting) ->
-        Logger.info("Blocked cancellation: meeting has already started",
-          meeting_uid: meeting.uid
-        )
-
-        {:error, "Cannot cancel a meeting that has already started"}
-
-      meeting_is_past?(meeting) ->
-        Logger.info("Blocked cancellation: meeting has already occurred",
-          meeting_uid: meeting.uid
-        )
-
-        {:error, "Cannot cancel a meeting that has already occurred"}
-
-      true ->
-        :ok
-    end
-  end
+  defdelegate can_cancel_meeting?(meeting), to: MeetingPermissions
 
   @doc """
-  Determines if a meeting can be rescheduled.
-  Checks both status and time constraints.
+  Determines if a meeting can be rescheduled (status and time constraints).
   """
   @spec can_reschedule_meeting?(meeting_record()) :: :ok | {:error, String.t()}
-  def can_reschedule_meeting?(meeting) do
-    cond do
-      meeting.status == "cancelled" ->
-        {:error, "Cannot reschedule a cancelled meeting"}
-
-      meeting.status == "completed" ->
-        {:error, "Cannot reschedule a completed meeting"}
-
-      # An expired meeting (a lapsed approval request or an abandoned paid
-      # checkout) has already released its slot: `MeetingState`'s
-      # `@occupying_statuses` excludes "expired", so conflict detection ignores
-      # it. Rescheduling would move it to a new time it does not reserve, and
-      # the attendee would be told about a booking anyone else can still take.
-      meeting.status == "expired" ->
-        {:error, "Cannot reschedule an expired meeting"}
-
-      meeting_is_current?(meeting) ->
-        Logger.info("Blocked reschedule: meeting has already started", meeting_uid: meeting.uid)
-        {:error, "Cannot reschedule a meeting that has already started"}
-
-      meeting_is_past?(meeting) ->
-        Logger.info("Blocked reschedule: meeting has already occurred", meeting_uid: meeting.uid)
-        {:error, "Cannot reschedule a meeting that has already occurred"}
-
-      true ->
-        :ok
-    end
-  end
+  defdelegate can_reschedule_meeting?(meeting), to: MeetingPermissions
 
   @doc """
-  Determines if the organiser may ask the attendee to pick a new time
-  (`Tymeslot.Bookings.RescheduleRequest`, the host-initiated flow that voids
-  the current slot and waits on the attendee).
-
-  Distinct from `can_reschedule_meeting?/1`: that one also gates the
-  attendee moving their own booking, including a still-held request, which
-  is allowed. This one refuses a held request outright, because the host
-  has no reschedule action until they have approved it — voiding the slot
-  here would leave a request that still reads as approvable pointing at
-  time that no longer holds.
+  Determines if the organiser may ask the attendee to pick a new time. See
+  `Tymeslot.Bookings.MeetingPermissions.can_request_reschedule?/1`.
   """
   @spec can_request_reschedule?(meeting_record()) :: :ok | {:error, String.t()}
-  def can_request_reschedule?(%{status: "awaiting_approval"}) do
-    {:error, "Cannot request a reschedule while the booking awaits approval"}
-  end
-
-  def can_request_reschedule?(meeting), do: can_reschedule_meeting?(meeting)
+  defdelegate can_request_reschedule?(meeting), to: MeetingPermissions
 
   @doc """
-  Determines if a meeting can be manually (hard) deleted. Only already-
-  cancelled meetings can be deleted this way — live, past, or pending
-  meetings need their own status change first.
+  Determines if a meeting can be manually (hard) deleted: only cancelled ones.
   """
   @spec can_delete_meeting?(meeting_record()) :: :ok | {:error, String.t()}
-  def can_delete_meeting?(meeting) do
-    if meeting.status == "cancelled" do
-      :ok
-    else
-      {:error, "Only cancelled meetings can be deleted"}
-    end
-  end
+  defdelegate can_delete_meeting?(meeting), to: MeetingPermissions
 
   @doc """
   Checks if a meeting is currently happening.
-  Pure function that compares meeting times with current UTC time.
   """
   @spec meeting_is_current?(%{
           required(:start_time) => DateTime.t(),
           required(:end_time) => DateTime.t(),
           optional(atom()) => term()
         }) :: boolean()
-  def meeting_is_current?(%{start_time: start_time, end_time: end_time}) do
-    now = Clock.utc_now()
-    DateTime.compare(start_time, now) != :gt && DateTime.compare(end_time, now) == :gt
-  end
+  defdelegate meeting_is_current?(meeting), to: MeetingPermissions
 
   @doc """
   Checks if a meeting is in the past.
-  Pure function that compares meeting end time with current UTC time.
   """
   @spec meeting_is_past?(%{required(:end_time) => DateTime.t(), optional(atom()) => term()}) ::
           boolean()
-  def meeting_is_past?(%{end_time: end_time}) do
-    DateTime.compare(end_time, Clock.utc_now()) == :lt
-  end
+  defdelegate meeting_is_past?(meeting), to: MeetingPermissions
 
   # Private functions
 
@@ -550,19 +494,19 @@ defmodule Tymeslot.Bookings.Policy do
   end
 
   # Private helper to get organizer details from profile or fallback to config
-  defp get_organizer_details(nil), do: {organizer_name(), organizer_email(), nil}
+  defp get_organizer_details(nil), do: {organizer_name(), organizer_email(), nil, nil}
 
   defp get_organizer_details(user_id) do
     case ProfileQueries.get_by_user_id(user_id) do
       {:error, :not_found} ->
-        {organizer_name(), organizer_email(), nil}
+        {organizer_name(), organizer_email(), nil, nil}
 
       {:ok, profile} ->
         profile = ProfileQueries.preload_user(profile)
         name = profile.full_name || profile.user.name || organizer_name()
         email = profile.user.email || organizer_email()
         username = profile.username
-        {name, email, username}
+        {name, email, username, profile.phone}
     end
   end
 

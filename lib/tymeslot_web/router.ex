@@ -356,6 +356,7 @@ defmodule TymeslotWeb.Router do
       live "/dashboard/settings", DashboardLive, :settings
       live "/dashboard/availability", DashboardLive, :availability
       live "/dashboard/meeting-settings", DashboardLive, :meeting_settings
+      live "/dashboard/locations", DashboardLive, :locations
       live "/dashboard/calendar", DashboardLive, :calendar
       live "/dashboard/calendar-integration", DashboardLive, :calendar_integration
       live "/dashboard/video-integration", DashboardLive, :video_integration
@@ -382,6 +383,12 @@ defmodule TymeslotWeb.Router do
 
     post "/dashboard/payments/connect", Dashboard.PaymentsController, :connect
     post "/dashboard/settings/delete-account", AccountDeletionController, :delete
+
+    get "/dashboard/contacts/export", ContactsExportController, :show
+
+    get "/dashboard/meetings/:meeting_id/attachments/:attachment_id",
+        MeetingAttachmentController,
+        :show
   end
 
   # Onboarding routes. The deployment's additional dashboard gates (plugs and

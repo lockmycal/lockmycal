@@ -3,6 +3,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.BookingDetail do
 
   import Phoenix.Component, only: [assign: 3]
 
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
 
   @spec handle_show_booking(map(), Phoenix.LiveView.Socket.t()) ::
@@ -22,6 +23,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.BookingDetail do
   @spec handle_close_booking_detail(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_close_booking_detail(_params, socket) do
-    {:noreply, assign(socket, :selected_booking, nil)}
+    {:noreply, socket |> assign(:selected_booking, nil) |> Shared.close_linked_detail()}
   end
 end

@@ -42,6 +42,9 @@ defmodule Tymeslot.AppSettings.AppSettingsSchema do
           booking_default_locale: String.t() | nil,
           max_image_upload_size_mb: integer() | nil,
           max_video_upload_size_mb: integer() | nil,
+          booking_attachment_types: [String.t()] | nil,
+          max_booking_attachment_size_mb: integer() | nil,
+          max_booking_attachments: integer() | nil,
           audit_log_retention_days: integer() | nil,
           audit_log_events: map() | nil,
           site_banner_app_enabled: boolean() | nil,
@@ -77,6 +80,9 @@ defmodule Tymeslot.AppSettings.AppSettingsSchema do
     :booking_default_locale,
     :max_image_upload_size_mb,
     :max_video_upload_size_mb,
+    :booking_attachment_types,
+    :max_booking_attachment_size_mb,
+    :max_booking_attachments,
     :audit_log_retention_days,
     :audit_log_events,
     :site_banner_app_enabled,
@@ -95,6 +101,22 @@ defmodule Tymeslot.AppSettings.AppSettingsSchema do
 
   @score_fields [:recaptcha_signup_min_score, :recaptcha_booking_min_score]
   @upload_size_fields [:max_image_upload_size_mb, :max_video_upload_size_mb]
+
+  # The only file types a booker may ever attach, in the order the admin sees
+  # them (alphabetical); the admin picks a subset. Every type here needs a
+  # content check in `Tymeslot.Utils.DocumentValidator` and a content type in
+  # `Tymeslot.Bookings.AttendeeAttachments`, so a renamed file cannot pass as
+  # one of them. Nothing executable; SVG only in its script-free form.
+  @booking_attachment_types ~w(csv docx jpeg jpg md ods odt pdf png pptx svg txt webp xlsx zip)
+
+  # Off until an admin opts in: an SVG is markup, and even the script-free
+  # form the validator accepts is a riskier file to hand around than a bitmap.
+  @booking_attachment_types_off_by_default ~w(svg)
+
+  # A booker's attachment travels through the organiser's email too, so the
+  # ceiling stays well below what mail servers accept in one message.
+  @max_booking_attachment_size_mb 100
+  @max_booking_attachments 10
 
   # Ten years: bounded so a typo can't store a value the prune arithmetic
   # overflows on, while leaving any real retention policy possible.
@@ -157,6 +179,11 @@ defmodule Tymeslot.AppSettings.AppSettingsSchema do
     field(:booking_default_locale, :string)
     field(:max_image_upload_size_mb, :integer)
     field(:max_video_upload_size_mb, :integer)
+    # `nil` = built-in default (every supported type); `[]` = attachments off
+    # for the whole instance.
+    field(:booking_attachment_types, {:array, :string})
+    field(:max_booking_attachment_size_mb, :integer)
+    field(:max_booking_attachments, :integer)
     field(:audit_log_retention_days, :integer)
     # Per-category overrides, `%{category_key => boolean}`; a category
     # without one uses its default (`Tymeslot.Security.AuditLog.Catalog`).
@@ -183,6 +210,18 @@ defmodule Tymeslot.AppSettings.AppSettingsSchema do
   def editable_fields, do: @editable_fields
 
   @doc """
+  Every file type a booker attachment can be, in display order. The admin's
+  `:booking_attachment_types` setting is always a subset of this.
+  """
+  @spec booking_attachment_types() :: [String.t()]
+  def booking_attachment_types, do: @booking_attachment_types
+
+  @doc "The file types allowed until an admin sets their own list: all but SVG."
+  @spec default_booking_attachment_types() :: [String.t()]
+  def default_booking_attachment_types,
+    do: @booking_attachment_types -- @booking_attachment_types_off_by_default
+
+  @doc """
   Changeset for updating one or more admin-editable settings.
   Each cast value may be `nil` to clear the override and fall back to the
   application config default.
@@ -200,6 +239,7 @@ defmodule Tymeslot.AppSettings.AppSettingsSchema do
     |> validate_logo_path()
     |> validate_locales()
     |> validate_upload_sizes()
+    |> validate_booking_attachments()
     |> validate_number(:audit_log_retention_days,
       greater_than: 0,
       less_than_or_equal_to: @max_audit_log_retention_days
@@ -263,6 +303,19 @@ defmodule Tymeslot.AppSettings.AppSettingsSchema do
     Enum.reduce(@upload_size_fields, changeset, fn field, acc ->
       validate_number(acc, field, greater_than: 0, less_than_or_equal_to: 2000)
     end)
+  end
+
+  defp validate_booking_attachments(changeset) do
+    changeset
+    |> validate_subset(:booking_attachment_types, @booking_attachment_types)
+    |> validate_number(:max_booking_attachment_size_mb,
+      greater_than: 0,
+      less_than_or_equal_to: @max_booking_attachment_size_mb
+    )
+    |> validate_number(:max_booking_attachments,
+      greater_than: 0,
+      less_than_or_equal_to: @max_booking_attachments
+    )
   end
 
   defp validate_audit_log_events(changeset) do

@@ -20,7 +20,13 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.AccountSecurityForms do
   @spec email_form(map()) :: Phoenix.LiveView.Rendered.t()
   def email_form(assigns) do
     ~H"""
-    <form id="account-email-form" phx-submit="update_email" phx-target={@myself} class="space-y-4">
+    <form
+      id="account-email-form"
+      phx-submit="update_email"
+      phx-target={@myself}
+      class="space-y-4"
+      novalidate
+    >
       <div class="flex flex-col sm:flex-row items-stretch gap-4">
         <div class="flex-1">
           <.input
@@ -81,6 +87,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.AccountSecurityForms do
       phx-submit="update_password"
       phx-target={@myself}
       class="space-y-4"
+      novalidate
     >
       <.input
         name="password_form[current_password]"

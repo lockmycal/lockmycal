@@ -4,10 +4,25 @@
 // Flash message hook for auto-dismiss functionality
 export const Flash = {
   mounted() {
+    // A flash sits outside any open modal, so a click on it would reach
+    // LiveView's window listener as a click away from the modal and close the
+    // dialog the flash is reporting on. The flash handles its own clicks
+    // instead: stopped here, before they bubble to the window, then dismissed
+    // with its own phx-click commands.
+    this.dismiss = () => {
+      const commands = this.el.getAttribute("phx-click");
+      if (commands) this.js().exec(commands);
+    };
+    this.onClick = (e) => {
+      e.stopPropagation();
+      this.dismiss();
+    };
+    this.el.addEventListener("click", this.onClick);
+
     // Auto-dismiss after 6 seconds
     this.timer = setTimeout(() => {
       if (this.el.dataset.close !== "false") {
-        this.el.click();
+        this.dismiss();
       }
     }, 6000);
     
@@ -19,6 +34,7 @@ export const Flash = {
   
   destroyed() {
     clearTimeout(this.timer);
+    this.el.removeEventListener("click", this.onClick);
   }
 };
 

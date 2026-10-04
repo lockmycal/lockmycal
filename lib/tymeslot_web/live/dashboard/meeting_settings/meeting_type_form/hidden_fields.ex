@@ -12,9 +12,12 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.HiddenFields do
 
   use TymeslotWeb, :html
 
+  alias TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.Submission
+
   attr :type, :any, default: nil
   attr :selected_icon, :string, required: true
   attr :locations, :list, required: true
+  attr :venues, :list, required: true, doc: "the organiser's saved venues"
   attr :selected_calendar_integration_id, :any, default: nil
   attr :selected_target_calendar_id, :any, default: nil
   attr :selected_availability_schedule_id, :any, default: nil
@@ -27,9 +30,12 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.HiddenFields do
   attr :payment_required, :boolean, required: true
   attr :payment_price, :string, required: true
   attr :allow_guests, :boolean, required: true
+  attr :allow_attachments, :boolean, required: true
   attr :requires_approval, :boolean, default: false
   attr :approval_window_hours, :any, default: nil
   attr :show_as_free, :boolean, required: true
+  attr :show_email_to_bookers, :boolean, default: false
+  attr :show_phone_to_bookers, :boolean, default: false
 
   @spec hidden_fields(map()) :: Phoenix.LiveView.Rendered.t()
   def hidden_fields(assigns) do
@@ -201,6 +207,15 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.HiddenFields do
           name={"meeting_type[locations][#{li}][video_integration_ids][]"}
           value={video_id}
         />
+        <%!-- No input at all for an empty list is fine: `LocationOption` has
+              `@primary_key false`, so each posted location is cast onto a
+              fresh struct and a missing key takes the default `[]`. --%>
+        <input
+          :for={venue_id <- Submission.venue_ids_param(location, @venues)}
+          type="hidden"
+          name={"meeting_type[locations][#{li}][venue_ids][]"}
+          value={venue_id}
+        />
         <input
           type="hidden"
           name={"meeting_type[locations][#{li}][position]"}
@@ -230,6 +245,11 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.HiddenFields do
       />
       <input
         type="hidden"
+        name="meeting_type[allow_attachments]"
+        value={to_string(@allow_attachments)}
+      />
+      <input
+        type="hidden"
         name="meeting_type[requires_approval]"
         value={to_string(@requires_approval)}
       />
@@ -249,6 +269,16 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.HiddenFields do
         type="hidden"
         name="meeting_type[show_as_free]"
         value={to_string(@show_as_free)}
+      />
+      <input
+        type="hidden"
+        name="meeting_type[show_email_to_bookers]"
+        value={to_string(@show_email_to_bookers)}
+      />
+      <input
+        type="hidden"
+        name="meeting_type[show_phone_to_bookers]"
+        value={to_string(@show_phone_to_bookers)}
       />
       <%!-- Payment fields are mirrored from socket state so the section's
            toggle/price controls survive re-render and post on submit. They

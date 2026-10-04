@@ -22,6 +22,7 @@ defmodule Tymeslot.MeetingPayments.Webhooks.CheckoutSessionCompleted do
   alias Tymeslot.Bookings.CalendarJobs
   alias Tymeslot.Clock
   alias Tymeslot.Infrastructure.AvailabilityCache
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.MeetingPayments.AuditTrail
   alias Tymeslot.MeetingPayments.BookingPaymentQueries
   alias Tymeslot.MeetingPayments.BookingPaymentSchema
@@ -130,7 +131,7 @@ defmodule Tymeslot.MeetingPayments.Webhooks.CheckoutSessionCompleted do
       {:error, reason} ->
         Logger.error("checkout.session.completed handler failed",
           event_id: event_id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
 
         {:error, reason}
@@ -155,7 +156,7 @@ defmodule Tymeslot.MeetingPayments.Webhooks.CheckoutSessionCompleted do
         {:error, reason} ->
           Logger.error("checkout.session.completed: failed to persist stripe_charge_id",
             payment_id: payment.id,
-            reason: inspect(reason)
+            reason: LogFormat.reason(reason)
           )
       end
     else
@@ -168,7 +169,7 @@ defmodule Tymeslot.MeetingPayments.Webhooks.CheckoutSessionCompleted do
         Logger.error(
           "checkout.session.completed: failed to retrieve payment intent for charge id",
           payment_id: payment.id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
     end
   end
@@ -251,7 +252,7 @@ defmodule Tymeslot.MeetingPayments.Webhooks.CheckoutSessionCompleted do
       {:error, reason} ->
         Logger.error("checkout.session.completed: failed to schedule calendar job",
           meeting_id: meeting.id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
 
         {:error, reason}

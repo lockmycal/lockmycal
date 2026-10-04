@@ -475,6 +475,13 @@ defmodule Tymeslot.Auth do
   end
 
   @doc """
+  Deletes accounts still unverified `days` after sign-up. See
+  `Tymeslot.Auth.AccountDeletion.purge_unverified_accounts/1`.
+  """
+  @spec purge_unverified_accounts(integer()) :: {non_neg_integer(), nil}
+  defdelegate purge_unverified_accounts(days), to: AccountDeletion
+
+  @doc """
   Schedules a user's account for hard deletion, with all of their data.
 
   The account is disabled and all its sessions revoked at once; the upcoming

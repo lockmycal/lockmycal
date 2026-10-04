@@ -21,7 +21,9 @@ defmodule Tymeslot.Bookings.CancelExternalCascadeTest do
 
   alias Tymeslot.Bookings.Cancel
   alias Tymeslot.Emails.EmailScheduler
+  alias Tymeslot.Meetings.MeetingQueries
   alias Tymeslot.TestMocks
+  alias Tymeslot.Workers.BookerCalendarEventWorker
   alias Tymeslot.Workers.CalendarEventWorker
   alias Tymeslot.Workers.EmailWorker
   alias Tymeslot.Workers.TelegramWorker
@@ -87,6 +89,31 @@ defmodule Tymeslot.Bookings.CancelExternalCascadeTest do
       assert {:ok, _cancelled} = Cancel.execute_external(meeting)
 
       assert all_enqueued(worker: CalendarEventWorker) == []
+    end
+
+    test "removes the booker's own copy of the meeting, which the deletion did not touch" do
+      {_user, meeting} = setup_user_meeting_with_automations()
+      booker = insert(:user)
+      integration = insert(:calendar_integration, user: booker)
+
+      {:ok, meeting} =
+        MeetingQueries.update_meeting(meeting, %{
+          booker_user_id: booker.id,
+          booker_calendar_integration_id: integration.id,
+          booker_calendar_event_id: "copy-uid-booker"
+        })
+
+      assert {:ok, _cancelled} = Cancel.execute_external(meeting)
+
+      assert_enqueued(worker: BookerCalendarEventWorker, args: %{"meeting_id" => meeting.id})
+    end
+
+    test "leaves alone a meeting with no booker copy" do
+      {_user, meeting} = setup_user_meeting_with_automations()
+
+      assert {:ok, _cancelled} = Cancel.execute_external(meeting)
+
+      assert all_enqueued(worker: BookerCalendarEventWorker) == []
     end
 
     test "deletes pending reminder email jobs" do

@@ -89,7 +89,7 @@ defmodule TymeslotWeb.Dashboard.Contacts.Modals do
       </:header>
 
       <%= if @meetings == [] do %>
-        <div class="text-center py-12 bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-2xl border-2 border-dashed border-neutral-300 dark:border-twilight-indigo-700">
+        <div class="text-center py-12 bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-2xl border-2 border-dashed border-neutral-300 dark:border-twilight-indigo-800">
           <p class="text-neutral-600 dark:text-neutral-300 font-medium">
             {dgettext("dashboard_contacts", "No meetings yet")}
           </p>
@@ -98,7 +98,7 @@ defmodule TymeslotWeb.Dashboard.Contacts.Modals do
         <div class="space-y-3">
           <div
             :for={meeting <- @meetings}
-            class="border-2 border-neutral-300 dark:border-twilight-indigo-700 rounded-token-2xl p-4"
+            class="border-2 border-neutral-300 dark:border-twilight-indigo-800 rounded-token-2xl p-4"
           >
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">

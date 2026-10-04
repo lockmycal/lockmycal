@@ -31,6 +31,7 @@ defmodule TymeslotWeb.Session.LoginComponent do
       |> Map.put_new(:errors, %{})
       |> Map.put_new(:loading, false)
       |> Map.put_new(:form_data, %{})
+      |> Map.put_new(:return_to, nil)
       |> Map.put_new(:password_auth_enabled, Config.password_auth_enabled?())
       |> Map.put_new(:registration_enabled, Config.registration_enabled?())
 
@@ -46,11 +47,13 @@ defmodule TymeslotWeb.Session.LoginComponent do
         <:form>
           <.auth_form
             id="login-form"
+            novalidate
             action="/auth/session"
             method="POST"
             loading={@loading}
             csrf_token={@csrf_token}
           >
+            <input :if={@return_to} type="hidden" name="redirect_to" value={@return_to} />
             <div class="space-y-4 sm:space-y-5">
               <.input
                 name="email"
@@ -118,7 +121,7 @@ defmodule TymeslotWeb.Session.LoginComponent do
           </.auth_form>
         </:form>
         <:social :if={any_enabled?()}>
-          <.social_auth_buttons />
+          <.social_auth_buttons return_to={@return_to} />
         </:social>
         <:footer>
           <%= if @registration_enabled do %>
@@ -140,7 +143,7 @@ defmodule TymeslotWeb.Session.LoginComponent do
         </:heading>
 
         <:form>
-          <.social_auth_buttons />
+          <.social_auth_buttons return_to={@return_to} />
         </:form>
       </.auth_card_layout>
     <% end %>

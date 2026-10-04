@@ -39,6 +39,53 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventEditLiveViewTest do
     {:ok, conn: conn, user: user, integration: integration}
   end
 
+  describe "clearing an event's title" do
+    test "is skipped while typing and refused on leaving the field, keeping the saved title",
+         %{conn: conn, integration: integration} do
+      event = insert_timed_event(integration)
+      # No provider write is expected: Mox fails the test if one happens.
+
+      {:ok, lv, _html} = live(conn, ~p"/dashboard/calendar")
+      html = lv |> element("[id^='event-#{event.id}-']") |> render_click()
+      assert html =~ ~s(id="event-title-form-0")
+
+      html =
+        lv
+        |> element("#calendar-grid")
+        |> render_hook("update_event_title", %{"value" => "  "})
+
+      refute html =~ "Event title is required"
+
+      lv
+      |> element("#calendar-grid")
+      |> render_hook("commit_event_title", %{"value" => ""})
+
+      html = render(lv)
+      assert html =~ "Event title is required"
+      # The title form is re-keyed, so the field shows the saved title again.
+      assert html =~ ~s(id="event-title-form-1")
+      assert html =~ ~s(value="Weekly sync")
+      assert html =~ ~s(id="event-detail-modal")
+    end
+
+    test "a title confirmed on leaving the field is saved", %{
+      conn: conn,
+      integration: integration
+    } do
+      event = insert_timed_event(integration)
+      expect_provider_update(:ok)
+
+      {:ok, lv, _html} = live(conn, ~p"/dashboard/calendar")
+      lv |> element("[id^='event-#{event.id}-']") |> render_click()
+
+      lv
+      |> element("#calendar-grid")
+      |> render_hook("commit_event_title", %{"value" => "Renamed"})
+
+      assert await_provider_update(lv).summary == "Renamed"
+    end
+  end
+
   describe "renaming an event" do
     test "keeps its attendees, reminders, repeat rule and colour on the calendar", %{
       conn: conn,
@@ -154,8 +201,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventEditLiveViewTest do
       lv |> element("[id^='allday-event-#{event.id}-']") |> render_click()
 
       lv
-      |> element("form[phx-submit=add_event_attendee]")
-      |> render_submit(%{"email" => "colleague@example.com"})
+      |> element("#calendar-grid")
+      |> render_hook("add_event_attendee", %{"email" => "colleague@example.com"})
 
       payload = await_provider_update(lv)
       assert payload.start_time == today
@@ -198,8 +245,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventEditLiveViewTest do
       lv |> element("[id^='event-#{event.id}-']") |> render_click()
 
       lv
-      |> element("form[phx-submit=add_event_attendee]")
-      |> render_submit(%{"email" => "grace@example.com"})
+      |> element("#calendar-grid")
+      |> render_hook("add_event_attendee", %{"email" => "grace@example.com"})
 
       payload = await_provider_update(lv)
 
@@ -223,8 +270,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventEditLiveViewTest do
       lv |> element("[id^='event-#{event.id}-']") |> render_click()
 
       lv
-      |> element("form[phx-submit=add_event_attendee]")
-      |> render_submit(%{"email" => "grace@example.com"})
+      |> element("#calendar-grid")
+      |> render_hook("add_event_attendee", %{"email" => "grace@example.com"})
 
       await_provider_update(lv)
 

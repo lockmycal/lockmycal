@@ -63,11 +63,17 @@ defmodule Tymeslot.Integrations.Calendar.ICalBuilder.LineFolder do
     retreat_to_boundary(binary, pos)
   end
 
+  # A cut is torn when the byte right after it continues a character, so that
+  # byte is the one to test. Testing the byte before the cut instead let a
+  # lead byte end a chunk, splitting e.g. "ř" (C5 99) across two lines: an
+  # invalid UTF-8 document, which a server such as Radicale then reads as
+  # Latin-1, garbling every non-ASCII character in the event.
   defp retreat_to_boundary(_binary, 0), do: 0
 
   defp retreat_to_boundary(binary, pos) do
-    byte = :binary.at(binary, pos - 1)
-    if continuation_byte?(byte), do: retreat_to_boundary(binary, pos - 1), else: pos
+    if pos < byte_size(binary) and continuation_byte?(:binary.at(binary, pos)),
+      do: retreat_to_boundary(binary, pos - 1),
+      else: pos
   end
 
   defp continuation_byte?(byte), do: byte >= 0x80 and byte <= 0xBF

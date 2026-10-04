@@ -6,7 +6,8 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilderTest do
   alias Tymeslot.Integrations.Calendar.CalendarEventBuilder
 
   @base_meeting %{
-    uid: "abc-123",
+    uid: "booking-capability-uid",
+    calendar_uid: "abc-123",
     title: "Team Sync",
     description: "Quarterly review",
     start_time: ~U[2026-05-01 10:00:00Z],
@@ -50,6 +51,17 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilderTest do
   end
 
   defp held_meeting, do: Map.put(@base_meeting, :status, "awaiting_approval")
+
+  describe "build_event_data/1 event identity" do
+    # The meeting's uid authorises cancelling and rescheduling the booking, so
+    # it must not reach a calendar anyone else can read.
+    test "keys the event by the meeting's calendar uid, never its uid" do
+      event = CalendarEventBuilder.build_event_data(@base_meeting)
+
+      assert event.uid == "abc-123"
+      refute event |> inspect(limit: :infinity) |> String.contains?("booking-capability-uid")
+    end
+  end
 
   describe "build_event_data/1" do
     test "maps all standard fields from the meeting" do
@@ -103,6 +115,21 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilderTest do
 
       assert result.description =~ "Quarterly review"
       assert result.description =~ "Looking forward to it!"
+    end
+
+    test "credits the organiser's note to the organiser by name" do
+      meeting = Map.put(@base_meeting, :organizer_note, "Bring the Q3 numbers.")
+
+      description = CalendarEventBuilder.build_event_description(meeting)
+
+      assert description =~ "Message from Bob:\nBring the Q3 numbers."
+      refute description =~ "Message from attendee:"
+    end
+
+    test "writes no note section for a meeting without one" do
+      for meeting <- [@base_meeting, Map.put(@base_meeting, :organizer_note, nil)] do
+        refute CalendarEventBuilder.build_event_description(meeting) =~ "Message from Bob:"
+      end
     end
 
     test "carries the meeting_url through as conference_url" do
@@ -306,6 +333,40 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilderTest do
   end
 
   describe "build_event_description/1" do
+    test "lists the attendee's files as sign-in download links, never as ATTACH" do
+      meeting =
+        Map.merge(@base_meeting, %{
+          id: "9c4f8a3e-0000-4000-8000-000000000001",
+          attendee_attachments: [
+            %{
+              "id" => "f1",
+              "filename" => "Brief.pdf",
+              "stored_path" => "booking_attachments/1/b/f1.pdf"
+            }
+          ]
+        })
+
+      result = CalendarEventBuilder.build_event_description(meeting)
+
+      assert result =~ "Files from the attendee (sign in to download):"
+
+      assert result =~
+               "Brief.pdf: http://localhost:4002/dashboard/meetings/9c4f8a3e-0000-4000-8000-000000000001/attachments/f1"
+
+      refute result =~ "/uploads/"
+      assert CalendarEventBuilder.build_attachments(meeting) == []
+    end
+
+    test "adds no attendee-files section without attachments" do
+      meeting =
+        Map.merge(@base_meeting, %{
+          id: "9c4f8a3e-0000-4000-8000-000000000001",
+          attendee_attachments: []
+        })
+
+      refute CalendarEventBuilder.build_event_description(meeting) =~ "Files from the attendee"
+    end
+
     test "prepends attendee identity and returns only the base description otherwise" do
       meeting = %{@base_meeting | attendee_message: nil, meeting_url: nil}
 

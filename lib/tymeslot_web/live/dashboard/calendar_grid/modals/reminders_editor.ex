@@ -2,13 +2,20 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RemindersEditor do
   @moduledoc """
   Reusable reminders editor for the calendar create/detail modals.
 
-  Renders the current reminders as removable rows plus an "Add reminder" control
-  offering preset lead times and a method (popup/email). The lead times offered
-  are exactly `Shared.reminder_minutes_presets/0`, the list `Shared.parse_reminder/1`
-  validates an added reminder against, labelled through `reminder_label/1`'s own
-  `minutes_label/1`; there is no second copy of the values to fall out of step.
+  A select of preset lead times with a "+" button that adds the chosen one,
+  and the reminders already set as removable tags under it. The lead times
+  offered are exactly `Shared.reminder_minutes_presets/0`, the list
+  `Shared.parse_reminder/1` validates an added reminder against, labelled
+  through `reminder_label/1`'s own `minutes_label/1`; there is no second copy
+  of the values to fall out of step.
+
+  An added reminder is a notification (`method: popup`): the form offers no
+  choice of method. A reminder that is an email — set elsewhere, or before the
+  choice went away — still shows as a tag and can be removed.
+
   Reminders are synced to the calendar provider, which fires the alert on the
-  user's own devices — Tymeslot does not fire them itself.
+  user's own devices — Tymeslot does not fire them itself. The line saying so
+  belongs to the dialog (`hint/1`), which places it under its own layout.
 
   Add/remove actions dispatch `add_event` / `remove_event` back to the owning
   LiveComponent via `phx-target`, carrying `method` + `minutes` (add) or `index`
@@ -21,6 +28,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RemindersEditor do
 
   alias Tymeslot.Integrations.Calendar.Reminder
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared
+  alias TymeslotWeb.Dashboard.CalendarGrid.Modals.FormParts
 
   attr :reminders, :list, default: []
   attr :myself, :any, required: true
@@ -30,83 +38,84 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RemindersEditor do
   attr :read_only, :boolean,
     default: false,
     doc:
-      "Disables the preset selects and hides the add button, e.g. an existing event's modal that only allows removing reminders."
+      "Leaves out the add control and lists the reminders only, e.g. an existing event's modal that only allows removing reminders."
 
   @spec reminders_editor(map()) :: Phoenix.LiveView.Rendered.t()
   def reminders_editor(assigns) do
     assigns = assign(assigns, :presets, presets())
 
     ~H"""
-    <div class="flex items-start gap-3 mb-3">
-      <.icon
-        name="hero-bell"
-        class="w-4 h-4 text-neutral-400 dark:text-twilight-indigo-300 mt-0.5 shrink-0"
-      />
-      <div class="flex-1">
-        <p class="text-token-xs font-medium text-neutral-400 dark:text-twilight-indigo-300 mb-1.5">
-          {dgettext("dashboard_calendar_events", "Reminders")}
-        </p>
-
-        <div :if={@reminders != []} class="flex flex-wrap gap-1.5 mb-2">
-          <span
-            :for={{reminder, index} <- Enum.with_index(@reminders)}
-            class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-primary-50 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-700 text-token-xs text-primary-800 dark:text-primary-300"
-          >
-            {reminder_label(reminder)}
-            <button
-              type="button"
-              phx-click={@remove_event}
-              phx-value-index={index}
-              phx-target={@myself}
-              class="w-4 h-4 rounded-full hover:bg-red-100 flex items-center justify-center transition-colors"
-              aria-label={
-                dgettext("dashboard_calendar_events", "Remove reminder %{label}",
-                  label: reminder_label(reminder)
-                )
-              }
-            >
-              <.icon name="hero-x-mark-micro" class="w-2.5 h-2.5" />
-            </button>
-          </span>
-        </div>
-
-        <form
-          id="add-reminder-form"
-          phx-submit={@add_event}
-          phx-target={@myself}
-          class="flex flex-wrap items-center gap-2"
+    <div>
+      <FormParts.section_label for={if not @read_only, do: "add-reminder-minutes"}>
+        {dgettext("dashboard_calendar_events", "Reminder")}
+      </FormParts.section_label>
+      <form
+        :if={not @read_only}
+        id="add-reminder-form"
+        phx-submit={@add_event}
+        phx-target={@myself}
+        class="flex items-start gap-2"
+      >
+        <input type="hidden" name="method" value="popup" />
+        <.input
+          type="select"
+          id="add-reminder-minutes"
+          name="minutes"
+          options={@presets}
+          class="flex-1 min-w-0"
+        />
+        <.action_button
+          type="submit"
+          variant={:secondary}
+          class="shrink-0 px-3.5!"
+          aria-label={dgettext("dashboard_calendar_events", "Add reminder")}
+          title={dgettext("dashboard_calendar_events", "Add reminder")}
         >
-          <select
-            name="minutes"
-            disabled={@read_only}
-            class="rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <option :for={{minutes, label} <- @presets} value={minutes}>{label}</option>
-          </select>
-          <select
-            name="method"
-            disabled={@read_only}
-            class="rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <option value="popup">{dgettext("dashboard_calendar_events", "Notification")}</option>
-            <option value="email">{dgettext("dashboard_calendar_events", "Email")}</option>
-          </select>
+          <.icon name="hero-plus" class="w-5 h-5" />
+        </.action_button>
+      </form>
+      <p
+        :if={@read_only and @reminders == []}
+        class="text-token-sm text-neutral-500 dark:text-twilight-indigo-300"
+      >
+        {dgettext("dashboard_calendar_events", "None")}
+      </p>
+      <div :if={@reminders != []} class={["flex flex-wrap gap-1.5", not @read_only && "mt-2"]}>
+        <span
+          :for={{reminder, index} <- Enum.with_index(@reminders)}
+          class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-primary-50 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-700 text-token-xs text-primary-800 dark:text-primary-300"
+        >
+          {reminder_label(reminder)}
           <button
-            :if={not @read_only}
-            type="submit"
-            class="px-2.5 py-1 rounded-md border border-neutral-300 dark:border-twilight-indigo-700 text-token-xs text-neutral-600 dark:text-twilight-indigo-200 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-900 transition-colors"
+            type="button"
+            phx-click={@remove_event}
+            phx-value-index={index}
+            phx-target={@myself}
+            class="w-4 h-4 rounded-full hover:bg-red-100 flex items-center justify-center transition-colors"
+            aria-label={
+              dgettext("dashboard_calendar_events", "Remove reminder %{label}",
+                label: reminder_label(reminder)
+              )
+            }
           >
-            {dgettext("dashboard_calendar_events", "Add reminder")}
+            <.icon name="hero-x-mark-micro" class="w-2.5 h-2.5" />
           </button>
-        </form>
-        <p class="text-token-xs text-neutral-400 dark:text-twilight-indigo-300 mt-1">
-          {dgettext(
-            "dashboard_calendar_events",
-            "Reminders are synced to your calendar so it can alert you on your own devices."
-          )}
-        </p>
+        </span>
       </div>
     </div>
+    """
+  end
+
+  @doc "The line explaining where reminders go off, for the dialog to place."
+  @spec hint(map()) :: Phoenix.LiveView.Rendered.t()
+  def hint(assigns) do
+    ~H"""
+    <FormParts.hint>
+      {dgettext(
+        "dashboard_calendar_events",
+        "Reminders are synced to your calendar so it can alert you on your own devices."
+      )}
+    </FormParts.hint>
     """
   end
 
@@ -159,6 +168,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RemindersEditor do
   # function that labels a saved reminder. A value added to the whitelist shows
   # up here with a label already; one removed stops being offered.
   defp presets do
-    Enum.map(Shared.reminder_minutes_presets(), &{&1, minutes_label(&1)})
+    Enum.map(Shared.reminder_minutes_presets(), &{minutes_label(&1), &1})
   end
 end

@@ -331,11 +331,6 @@ msgstr "Мандарин"
 msgid "Tomato"
 msgstr "Помідор"
 
-#: lib/tymeslot_web/live/dashboard/calendar_grid/header/calendar_list_panel.ex
-#, elixir-autogen, elixir-format
-msgid "Colour for %{calendar}"
-msgstr "Колір для %{calendar}"
-
 #: lib/tymeslot_web/components/dashboard/colour_swatches.ex
 #, elixir-autogen, elixir-format
 msgid "Default colour"
@@ -345,11 +340,6 @@ msgstr "Типовий колір"
 #, elixir-autogen, elixir-format
 msgid "All"
 msgstr "Усі"
-
-#: lib/tymeslot_web/live/dashboard/calendar_grid/modals/booking_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Booked through your Tymeslot page"
-msgstr "Заброньовано через вашу сторінку Tymeslot"
 
 #: lib/tymeslot_web/live/dashboard/calendar_grid/views/agenda_view.ex
 #, elixir-autogen, elixir-format
@@ -405,3 +395,8 @@ msgstr "Підключіть свій календар до %{app_name}"
 #, elixir-autogen, elixir-format
 msgid "Meetings booked through your %{app_name} page will appear here."
 msgstr "Тут з'являтимуться зустрічі, заброньовані через вашу сторінку %{app_name}."
+
+#: lib/tymeslot_web/live/dashboard/calendar_grid/modals/booking_detail_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Booked through your %{app_name} booking page"
+msgstr "Заброньовано через вашу сторінку бронювання %{app_name}"

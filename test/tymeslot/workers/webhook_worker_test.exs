@@ -81,8 +81,8 @@ defmodule Tymeslot.Workers.WebhookWorkerTest do
       expected_id = Integer.to_string(job.id)
 
       expect(Tymeslot.HTTPClientMock, :post, 1, fn _url, _body, headers, _opts ->
-        assert {"X-Tymeslot-Delivery-Id", ^expected_id} =
-                 List.keyfind(headers, "X-Tymeslot-Delivery-Id", 0)
+        assert {"X-Lockmycal-Delivery-Id", ^expected_id} =
+                 List.keyfind(headers, "X-Lockmycal-Delivery-Id", 0)
 
         {:ok, %Req.Response{status: 200, body: "OK"}}
       end)
@@ -104,14 +104,14 @@ defmodule Tymeslot.Workers.WebhookWorkerTest do
         })
 
       expect(Tymeslot.HTTPClientMock, :post, 2, fn _url, _body, headers, _opts ->
-        send(test_pid, {:delivery_id, List.keyfind(headers, "X-Tymeslot-Delivery-Id", 0)})
+        send(test_pid, {:delivery_id, List.keyfind(headers, "X-Lockmycal-Delivery-Id", 0)})
         {:ok, %Req.Response{status: 503, body: "busy"}}
       end)
 
       assert {:error, {:http_error, 503}} = WebhookWorker.perform(job)
       assert {:error, {:http_error, 503}} = WebhookWorker.perform(%{job | attempt: 2})
 
-      expected = {"X-Tymeslot-Delivery-Id", Integer.to_string(job.id)}
+      expected = {"X-Lockmycal-Delivery-Id", Integer.to_string(job.id)}
       assert_received {:delivery_id, ^expected}
       assert_received {:delivery_id, ^expected}
     end
@@ -385,11 +385,11 @@ defmodule Tymeslot.Workers.WebhookWorkerTest do
   end
 
   # A subscriber's endpoint that is gone or rejects our credentials returns the
-  # same status on every attempt. Retrying it burns the job's five tries and
-  # ends in `Oban.PerformError`, which `ObanFailureAlerter` turns into an admin
-  # email — paging an operator about a subscriber's own misconfiguration. Only
-  # `{:discard, _}` avoids that, because an intentional discard emits `job:stop`
-  # rather than the `job:exception` the alerter listens for.
+  # same status on every attempt. Retrying it burns the job's five tries, each
+  # recorded by error tracking as an `Oban.PerformError` that can alert an
+  # operator about a subscriber's own misconfiguration. Only `{:discard, _}`
+  # avoids that, because an intentional discard emits `job:stop` rather than
+  # the `job:exception` error tracking records.
   describe "perform/1 - retryability of HTTP failures" do
     setup do
       %{meeting: insert(:meeting), webhook: insert(:webhook, failure_count: 0)}

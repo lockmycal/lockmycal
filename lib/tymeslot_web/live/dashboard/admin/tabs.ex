@@ -24,7 +24,7 @@ defmodule TymeslotWeb.AdminLive.Tabs do
   # Order matters twice over: tabs render left to right, and each tab's
   # sections render top to bottom.
   @settings_tabs [
-    general: [:payments, :analytics, :uploads, :localisation, :site_banner],
+    general: [:payments, :analytics, :uploads, :booking_attachments, :localisation, :site_banner],
     authentication: [:authentication, :recaptcha],
     email: [:admin_alerts, :email_branding],
     audit_log: [:audit_log, :audit_events]

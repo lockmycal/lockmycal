@@ -25,7 +25,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.AttendeeManagement do
 
         with true <- Shared.valid_email?(email),
              false <- already_present,
-             :ok <- EditWorkflow.assert_event_editable(socket, event),
+             :ok <- EditWorkflow.assert_event_writable(socket, event),
              :ok <- Shared.check_edit_rate_limit(socket) do
           new_attendee = Attendee.new(email: email)
           new_attendees = attendees ++ [new_attendee]
@@ -51,7 +51,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.AttendeeManagement do
 
           {:noreply, socket}
         else
-          {:error, reason} = error when reason in [:unauthorized, :read_only, :recurring_event] ->
+          {:error, reason} = error when reason in [:unauthorized, :read_only] ->
             Shared.flash_guard_error(socket, error)
 
           {:error, :rate_limited, _message} = error ->
@@ -105,12 +105,12 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.AttendeeManagement do
         {:noreply, socket}
 
       event ->
-        case EditWorkflow.assert_event_editable(socket, event) do
+        case EditWorkflow.assert_event_writable(socket, event) do
           :ok ->
             {:noreply,
              assign(socket, :confirm_remove_attendee, %{email: email, event_id: event.id})}
 
-          {:error, reason} = error when reason in [:unauthorized, :read_only, :recurring_event] ->
+          {:error, reason} = error when reason in [:unauthorized, :read_only] ->
             Shared.flash_guard_error(socket, error)
         end
     end
@@ -170,7 +170,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.AttendeeManagement do
          |> assign(:pending_attendees, [])
          |> assign(:confirm_discard_attendees, false)
          |> assign(:selected_event, nil)
-         |> assign(:attendee_input, "")}
+         |> assign(:attendee_input, "")
+         |> Shared.close_linked_detail()}
 
       socket.assigns.creating_event != nil ->
         {:noreply,

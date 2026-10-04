@@ -10,6 +10,7 @@ defmodule TymeslotWeb.BookingRecaptchaTest do
   @moduletag :bookings
   @moduletag :security
 
+  alias Tymeslot.HTTPClientMock
   alias Tymeslot.Infrastructure.Security.RecaptchaHelpers
   alias Tymeslot.Meetings.MeetingSchema
   alias Tymeslot.Repo
@@ -233,21 +234,13 @@ defmodule TymeslotWeb.BookingRecaptchaTest do
     event_type: event_type
   } do
     enable_recaptcha()
+    # Google answers, and refuses the marker as it refuses any non-token.
+    google_rejects_tokens()
     view = navigate_to_booking_form(conn, profile, event_type)
 
     # Simulate the client-side Recaptcha hook sending the special marker when the reCAPTCHA
     # script failed to load. We need to call the event handler directly.
-    send(
-      view.pid,
-      {:step_event, :booking, :submit,
-       %{
-         "name" => "Test User",
-         "email" => "test@example.com",
-         "phone" => "+1 555 500 4000",
-         "message" => "Test message",
-         "g-recaptcha-response" => "RECAPTCHA_SCRIPT_BLOCKED"
-       }}
-    )
+    submit_booking_with_token(view, "RECAPTCHA_SCRIPT_BLOCKED")
 
     # Poll until the async error state is rendered, rather than guessing a sleep.
     eventually(fn ->
@@ -258,6 +251,78 @@ defmodule TymeslotWeb.BookingRecaptchaTest do
 
     # No booking should be created
     assert Repo.aggregate(MeetingSchema, :count, :id) == 0
+  end
+
+  describe "Google outage" do
+    test "booking goes through when siteverify cannot be reached", %{
+      conn: conn,
+      profile: profile,
+      event_type: event_type
+    } do
+      enable_recaptcha()
+      stub_siteverify({:error, %Req.TransportError{reason: :timeout}})
+      view = navigate_to_booking_form(conn, profile, event_type)
+
+      submit_booking_with_token(view, "some-token")
+
+      wait_until(fn -> render(view) =~ "Meeting Confirmed!" end)
+      assert Repo.aggregate(MeetingSchema, :count, :id) == 1
+    end
+
+    test "booking goes through when siteverify answers with a 5xx", %{
+      conn: conn,
+      profile: profile,
+      event_type: event_type
+    } do
+      enable_recaptcha()
+      stub_siteverify({:ok, %Req.Response{status: 503, body: ""}})
+      view = navigate_to_booking_form(conn, profile, event_type)
+
+      submit_booking_with_token(view, "RECAPTCHA_SCRIPT_BLOCKED")
+
+      wait_until(fn -> render(view) =~ "Meeting Confirmed!" end)
+      assert Repo.aggregate(MeetingSchema, :count, :id) == 1
+    end
+
+    test "a token Google refuses still blocks the booking", %{
+      conn: conn,
+      profile: profile,
+      event_type: event_type
+    } do
+      enable_recaptcha()
+      google_rejects_tokens()
+      view = navigate_to_booking_form(conn, profile, event_type)
+
+      submit_booking_with_token(view, "forged-token")
+
+      eventually(fn -> assert render(view) =~ "Security verification failed" end)
+      assert Repo.aggregate(MeetingSchema, :count, :id) == 0
+    end
+  end
+
+  # Sends the submission as the RecaptchaV3 hook does, token included: the form
+  # helper cannot set the hidden token input, which renders with `value=""`.
+  defp submit_booking_with_token(view, token) do
+    send(
+      view.pid,
+      {:step_event, :booking, :submit,
+       %{
+         "name" => "Test User",
+         "email" => "test@example.com",
+         "phone" => "+1 555 500 4000",
+         "message" => "Test message",
+         "g-recaptcha-response" => token
+       }}
+    )
+  end
+
+  defp google_rejects_tokens do
+    body = Jason.encode!(%{"success" => false, "error-codes" => ["invalid-input-response"]})
+    stub_siteverify({:ok, %Req.Response{status: 200, body: body}})
+  end
+
+  defp stub_siteverify(response) do
+    stub(HTTPClientMock, :post, fn _url, _body, _headers, _opts -> response end)
   end
 
   test "rate limiter is checked before reCAPTCHA verification (hybrid gate)", %{
@@ -372,8 +437,14 @@ defmodule TymeslotWeb.BookingRecaptchaTest do
     # Should include the hidden token field and widget container
     assert html =~ "booking[cf-turnstile-response]"
     assert html =~ "booking-cf-turnstile"
+    # Cloudflare injects the widget into this container; without phx-update="ignore"
+    # every phx-change re-render wipes it before it can hand over a token.
+    assert has_element?(view, ~s(#booking-cf-turnstile[phx-update="ignore"]))
     # Should include the Cloudflare privacy notice, not Google's
     assert html =~ "protected by Cloudflare Turnstile"
     refute html =~ "protected by reCAPTCHA"
+    # ...placed below the action buttons, not between the form and them
+    [before_notice, _after] = String.split(html, "protected by Cloudflare Turnstile", parts: 2)
+    assert before_notice =~ ~s(data-testid="submit-booking")
   end
 end

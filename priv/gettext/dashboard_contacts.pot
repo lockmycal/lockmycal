@@ -48,6 +48,7 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
@@ -124,6 +125,7 @@ msgstr ""
 msgid "Edit contact"
 msgstr ""
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
@@ -140,6 +142,7 @@ msgstr ""
 msgid "Keep track of the people who book with you."
 msgstr ""
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
@@ -161,6 +164,7 @@ msgstr ""
 msgid "No meetings yet"
 msgstr ""
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Note"
@@ -171,6 +175,7 @@ msgstr ""
 msgid "People who booked with you, captured automatically from new bookings."
 msgstr ""
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
@@ -210,4 +215,9 @@ msgstr ""
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
 msgid "Contact List"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Export CSV"
 msgstr ""

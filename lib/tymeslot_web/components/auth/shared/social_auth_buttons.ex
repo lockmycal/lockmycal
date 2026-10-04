@@ -16,6 +16,10 @@ defmodule TymeslotWeb.Shared.SocialAuthButtons do
   Usage:
     <.social_auth_buttons /> # For signup or login page
   """
+  attr :return_to, :string,
+    default: nil,
+    doc: "a same-origin path to land on after signing in, carried through the provider round trip"
+
   @spec social_auth_buttons(map()) :: Phoenix.LiveView.Rendered.t()
   def social_auth_buttons(assigns) do
     providers = Providers.enabled()
@@ -30,7 +34,7 @@ defmodule TymeslotWeb.Shared.SocialAuthButtons do
           :for={provider <- @providers}
           provider={provider.slug}
           label={provider.name}
-          href={~p"/auth/#{provider.slug}"}
+          href={provider_path(provider.slug, @return_to)}
         />
       </div>
     </div>
@@ -44,6 +48,9 @@ defmodule TymeslotWeb.Shared.SocialAuthButtons do
   """
   @spec any_enabled?() :: boolean()
   def any_enabled?, do: Providers.enabled() != []
+
+  defp provider_path(slug, nil), do: ~p"/auth/#{slug}"
+  defp provider_path(slug, return_to), do: ~p"/auth/#{slug}?#{[return_to: return_to]}"
 
   defp determine_grid_cols(3), do: "sm:grid-cols-3"
   defp determine_grid_cols(2), do: "sm:grid-cols-2"
@@ -64,7 +71,7 @@ defmodule TymeslotWeb.Shared.SocialAuthButtons do
       aria-label={@label}
       data-tymeslot-suppress-lv-disconnect="oauth"
     >
-      <div class="w-6 h-6">
+      <div class="w-6 h-6 shrink-0">
         <ProviderIcon.provider_icon provider={@provider} type="oauth" size={@icon_size} />
       </div>
       <span>{@label}</span>

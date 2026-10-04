@@ -72,6 +72,9 @@ defmodule Tymeslot.Integrations.Calendar.Exchange.BookingWriteBackTest do
       insert(:meeting,
         organizer_user_id: user.id,
         title: "Intro call",
+        # No meeting information, so the subject is the booking's own title
+        # under the default "Meeting Titles" preference.
+        attendee_message: nil,
         start_time: ~U[2026-10-05 09:00:00Z],
         end_time: ~U[2026-10-05 09:30:00Z]
       )

@@ -46,7 +46,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventsAttendeesTest do
           "end-minute" => "0"
         })
 
-      assert html =~ "New Event"
+      assert html =~ "Event title"
     end
 
     test "closes create form on close_create_form", %{conn: conn} do
@@ -64,7 +64,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventsAttendeesTest do
       })
 
       html = lv |> element("#create-event-modal button", "Cancel") |> render_click()
-      refute html =~ "New Event"
+      refute html =~ "Event title"
     end
 
     test "shows separate start and end date fields", %{conn: conn} do
@@ -163,7 +163,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventsAttendeesTest do
   end
 
   describe "attendee management" do
-    test "adding an attendee persists immediately and clears input", %{conn: conn, user: user} do
+    test "adding an attendee persists immediately", %{conn: conn, user: user} do
       integration = insert(:calendar_integration, user: user, is_active: true)
 
       event =
@@ -180,14 +180,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventsAttendeesTest do
       # Open event detail modal
       lv |> element("[id^='event-#{event.id}-']") |> render_click()
 
-      # Submit attendee form
+      # The detail modal only lets attendees be removed, so there is no add
+      # form to submit; drive the handler directly.
       html =
         lv
-        |> element("form[phx-submit=add_event_attendee]")
-        |> render_submit(%{"email" => "colleague@example.com"})
+        |> element("#calendar-grid")
+        |> render_hook("add_event_attendee", %{"email" => "colleague@example.com"})
 
       assert html =~ "colleague@example.com"
-      assert html =~ ~s(id="edit-attendee-email")
     end
 
     test "shows a synced attendee by the name their calendar gave them", %{
@@ -237,8 +237,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventsAttendeesTest do
 
       html =
         lv
-        |> element("form[phx-submit=add_event_attendee]")
-        |> render_submit(%{"email" => "existing@example.com"})
+        |> element("#calendar-grid")
+        |> render_hook("add_event_attendee", %{"email" => "existing@example.com"})
 
       # Should still have only one attendee entry (not duplicated)
       assert html =~ "existing@example.com"
@@ -265,8 +265,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventsAttendeesTest do
 
       html =
         lv
-        |> element("form[phx-submit=add_event_attendee]")
-        |> render_submit(%{"email" => "not-an-email"})
+        |> element("#calendar-grid")
+        |> render_hook("add_event_attendee", %{"email" => "not-an-email"})
 
       refute html =~ "not-an-email"
     end
@@ -431,7 +431,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventsAttendeesTest do
         |> render_hook("discard_pending_attendees", %{})
 
       refute html =~ "discard-me@example.com"
-      refute html =~ "New Event"
+      refute html =~ "Event title"
     end
   end
 

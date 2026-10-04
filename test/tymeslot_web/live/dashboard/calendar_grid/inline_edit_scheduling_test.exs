@@ -78,7 +78,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InlineEditSchedulingTest do
         |> render_hook("toggle_event_all_day", %{})
 
       assert html =~ ~s(id="event-all-day-form")
-      assert html =~ ~s(id="event-all-day-start")
+      assert html =~ ~s(id="event-all-day-start-date")
       refute html =~ ~s(id="event-time-form")
     end
 
@@ -124,7 +124,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.InlineEditSchedulingTest do
       {:ok, lv, _html} = live(conn, ~p"/dashboard/calendar")
       html = lv |> element("[id^='event-#{event.id}-']") |> render_click()
 
-      assert html =~ "Reminders"
+      assert html =~ "Reminder"
       refute html =~ "Add reminder"
     end
 

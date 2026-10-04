@@ -5,6 +5,7 @@ defmodule Tymeslot.Integrations.Calendar.Deletion do
   """
 
   alias Tymeslot.Integrations.Calendar.BookingEligibility
+  alias Tymeslot.Integrations.Calendar.IntegrationDeletionHook
   alias Tymeslot.Integrations.CalendarManagement
   alias Tymeslot.Integrations.CalendarPrimary
   alias Tymeslot.MeetingTypes.MeetingTypeQueries
@@ -15,7 +16,8 @@ defmodule Tymeslot.Integrations.Calendar.Deletion do
 
   @doc """
   Delete an integration. If it is the primary one, promote another if available,
-  otherwise clear primary.
+  otherwise clear primary. Once deleted, runs the configured
+  `IntegrationDeletionHook`.
 
   Returns:
     {:ok, :deleted}
@@ -32,6 +34,8 @@ defmodule Tymeslot.Integrations.Calendar.Deletion do
            CalendarManagement.get_calendar_integration(integration_id, user_id),
          promoted_result <- maybe_handle_primary(user_id, integration),
          {:ok, _result} <- clear_references_and_delete(integration) do
+      IntegrationDeletionHook.run(integration)
+
       case promoted_result do
         {:promoted, next_id} -> {:ok, {:deleted_promoted, next_id}}
         :cleared -> {:ok, {:deleted_cleared_primary}}

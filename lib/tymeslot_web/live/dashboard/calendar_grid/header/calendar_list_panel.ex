@@ -5,22 +5,21 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Header.CalendarListPanel do
 
   The integration row keeps the coarse toggle, because hiding a whole account in
   one click stays the common case. The rows below it are the fine control, each
-  with its own toggle and its own swatch picker.
+  with its own toggle. Colours are not picked here: an account's colour is set
+  under Calendars (Manage calendars), which is where it is looked for.
 
   Only calendars marked `selected` in the integration's `calendar_list` appear.
   An unselected calendar is not synced at all, so it has no events to show,
-  hide, or colour, and listing it would offer a control that does nothing.
+  hide, and listing it would offer a control that does nothing.
   """
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Integrations.Calendar.CalendarEntry
-  alias TymeslotWeb.Components.Dashboard.ColourSwatches
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
 
   attr :integrations, :list, required: true
   attr :integration_colors, :map, required: true
-  attr :calendar_colour_keys, :map, required: true
   attr :hidden_integration_ids, :list, required: true
   attr :hidden_calendar_keys, :any, required: true
   attr :myself, :any, required: true
@@ -68,22 +67,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Header.CalendarListPanel do
           />
           <span class="text-token-sm text-neutral-600 dark:text-neutral-300 truncate">{calendar.name}</span>
         </label>
-        <div class="pb-1.5 pl-6">
-          <ColourSwatches.colour_swatches
-            selected={colour_key(@calendar_colour_keys, integration.id, calendar.id)}
-            event="set_calendar_colour"
-            target={@myself}
-            group_label={
-              dgettext("dashboard_calendar", "Colour for %{calendar}", calendar: calendar.name)
-            }
-            values={
-              %{
-                "phx-value-integration_id" => integration.id,
-                "phx-value-calendar_id" => calendar.id
-              }
-            }
-          />
-        </div>
       </div>
     </div>
 
@@ -103,10 +86,4 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Header.CalendarListPanel do
 
   defp hidden?(hidden_keys, integration_id, calendar_id),
     do: MapSet.member?(hidden_keys, {integration_id, calendar_id})
-
-  # Reads the stored palette key, not the resolved Tailwind class: the picker
-  # marks a swatch pressed by comparing keys, and inverting a class back to its
-  # key would be a second copy of the palette mapping to keep in step.
-  defp colour_key(colour_keys, integration_id, calendar_id),
-    do: Map.get(colour_keys, {integration_id, calendar_id})
 end

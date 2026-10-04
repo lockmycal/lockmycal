@@ -56,6 +56,98 @@ defmodule Tymeslot.AgendaTest do
       assert synced.calendar == "Work Google"
     end
 
+    test "names the calendar within an account with several in use", %{
+      user: user,
+      tomorrow: tomorrow
+    } do
+      integration =
+        insert(:calendar_integration,
+          user: user,
+          name: "Company account",
+          provider: "caldav",
+          calendar_paths: ["/cal/work/", "/cal/team/"],
+          calendar_list: [
+            %{"id" => "/cal/work/", "path" => "/cal/work/", "name" => "Work", "selected" => true},
+            %{"id" => "/cal/team/", "path" => "/cal/team/", "name" => "Team", "selected" => true}
+          ]
+        )
+
+      insert(:provider_calendar_event,
+        calendar_integration: integration,
+        provider_calendar_id: "/cal/team/",
+        summary: "Standup",
+        start_at: at(tomorrow, ~T[09:00:00]),
+        end_at: at(tomorrow, ~T[09:15:00]),
+        all_day: false
+      )
+
+      # A booking is named after the calendar it was written to.
+      booking(user, at(tomorrow, ~T[12:00:00]),
+        title: "Client call",
+        calendar_integration_id: integration.id,
+        calendar_path: "/cal/work/"
+      )
+
+      day = Agenda.day_agenda(user, "Etc/UTC")
+
+      # Two calendars in use under one account: each is qualified by it.
+      assert Enum.find(entries(day), &(&1.title == "Standup")).calendar ==
+               "Company account - Team"
+
+      assert Enum.find(entries(day), &(&1.title == "Client call")).calendar ==
+               "Company account - Work"
+    end
+
+    test "names an account with a single calendar in use after the account alone", %{
+      user: user,
+      tomorrow: tomorrow
+    } do
+      integration =
+        insert(:calendar_integration,
+          user: user,
+          name: "Itopo",
+          provider: "caldav",
+          calendar_paths: ["/cal/work/"],
+          calendar_list: [
+            %{"id" => "/cal/work/", "path" => "/cal/work/", "name" => "Work", "selected" => true},
+            %{"id" => "/cal/old/", "path" => "/cal/old/", "name" => "Old", "selected" => false}
+          ]
+        )
+
+      insert(:provider_calendar_event,
+        calendar_integration: integration,
+        provider_calendar_id: "/cal/work/",
+        summary: "Standup",
+        start_at: at(tomorrow, ~T[09:00:00]),
+        end_at: at(tomorrow, ~T[09:15:00]),
+        all_day: false
+      )
+
+      day = Agenda.day_agenda(user, "Etc/UTC")
+
+      assert Enum.find(entries(day), &(&1.title == "Standup")).calendar == "Itopo"
+    end
+
+    test "falls back to the integration's name for a calendar it doesn't list", %{
+      user: user,
+      tomorrow: tomorrow
+    } do
+      integration = insert(:calendar_integration, user: user, name: "Work Google")
+
+      insert(:provider_calendar_event,
+        calendar_integration: integration,
+        provider_calendar_id: "unlisted",
+        summary: "Team sync",
+        start_at: at(tomorrow, ~T[13:00:00]),
+        end_at: at(tomorrow, ~T[14:00:00]),
+        all_day: false
+      )
+
+      day = Agenda.day_agenda(user, "Etc/UTC")
+
+      assert Enum.find(entries(day), &(&1.title == "Team sync")).calendar == "Work Google"
+    end
+
     test "surfaces the earliest timed entry as the hero and excludes it from the groups",
          %{user: user, tomorrow: tomorrow} do
       booking(user, at(tomorrow, ~T[14:00:00]), title: "Later")
@@ -70,16 +162,35 @@ defmodule Tymeslot.AgendaTest do
   end
 
   describe "day_agenda/2 deduplication and filtering" do
-    test "drops external events that are our own synced bookings", %{
+    test "drops the synced copy of a booking the agenda doesn't list itself", %{
       user: user,
       tomorrow: tomorrow
     } do
-      external_event(user, at(tomorrow, ~T[12:00:00]),
+      slot = at(tomorrow, ~T[12:00:00])
+      booking(user, slot, status: "cancelled", calendar_uid: "cancelled-1@tymeslot.com")
+
+      external_event(user, slot,
         summary: "Synced copy",
+        uid: "cancelled-1@tymeslot.com",
         created_by_tymeslot: true
       )
 
       assert Day.empty?(Agenda.day_agenda(user, "Etc/UTC"))
+    end
+
+    # The CalDAV queue stamps `created_by_tymeslot` on an event the organiser
+    # created or edited in the dashboard calendar too; with no booking behind
+    # it, it is the organiser's own appointment.
+    test "keeps a Tymeslot-stamped event that no booking stands behind", %{
+      user: user,
+      tomorrow: tomorrow
+    } do
+      external_event(user, at(tomorrow, ~T[09:00:00]),
+        summary: "Sync meeting",
+        created_by_tymeslot: true
+      )
+
+      assert "Sync meeting" in titles(Agenda.day_agenda(user, "Etc/UTC"))
     end
 
     test "drops external events matching a booking's provider_event_id",
@@ -102,7 +213,7 @@ defmodule Tymeslot.AgendaTest do
 
       # A CalDAV booking carries no provider_event_id; its synced copy is keyed
       # by href. Only the UID links the two.
-      booking(user, slot, title: "Real booking", uid: uid, provider_event_id: nil)
+      booking(user, slot, title: "Real booking", calendar_uid: uid, provider_event_id: nil)
 
       external_event(user, slot,
         summary: "Duplicate",
@@ -360,25 +471,27 @@ defmodule Tymeslot.AgendaTest do
     end
   end
 
-  describe "day_agenda/2 per-event colour" do
-    test "external entry carries the provider colour when no override", %{
+  describe "day_agenda/2 per-event colour and source id" do
+    test "an external entry carries the provider colour and its cached-row id", %{
       user: user,
       tomorrow: tomorrow
     } do
-      external_event(user, at(tomorrow, ~T[13:00:00]),
-        summary: "Coloured",
-        uid: "uid-colour-1",
-        colour: "blueberry"
-      )
+      event =
+        external_event(user, at(tomorrow, ~T[13:00:00]),
+          summary: "Coloured",
+          uid: "uid-colour-1",
+          colour: "blueberry"
+        )
 
-      day = Agenda.day_agenda(user, "Etc/UTC")
-      entry = find_entry(day, "Coloured")
+      entry = find_entry(Agenda.day_agenda(user, "Etc/UTC"), "Coloured")
 
       assert entry.colour == "blueberry"
-      assert entry.target == {:external, entry_integration_id(entry, day), "uid-colour-1"}
+      assert entry.source_id == event.id
     end
 
-    test "override wins over the provider colour", %{user: user, tomorrow: tomorrow} do
+    # The calendar grid shows no per-event colour override, so the agenda
+    # doesn't either — the two would otherwise disagree.
+    test "ignores a stored colour override", %{user: user, tomorrow: tomorrow} do
       event =
         external_event(user, at(tomorrow, ~T[13:00:00]),
           summary: "Coloured",
@@ -393,8 +506,14 @@ defmodule Tymeslot.AgendaTest do
           "tomato"
         )
 
-      day = Agenda.day_agenda(user, "Etc/UTC")
-      assert find_entry(day, "Coloured").colour == "tomato"
+      assert find_entry(Agenda.day_agenda(user, "Etc/UTC"), "Coloured").colour == "blueberry"
+    end
+
+    test "a booking entry carries its meeting id", %{user: user, tomorrow: tomorrow} do
+      meeting = booking(user, at(tomorrow, ~T[12:00:00]), title: "Client call")
+
+      assert find_entry(Agenda.day_agenda(user, "Etc/UTC"), "Client call").source_id ==
+               meeting.id
     end
   end
 
@@ -406,10 +525,11 @@ defmodule Tymeslot.AgendaTest do
     |> Enum.find(&(&1.title == title))
   end
 
-  defp entry_integration_id(%Entry{target: {:external, id, _uid}}, _day), do: id
-
+  # No meeting information by default, so an entry is titled by its own title
+  # (what these tests identify it by) under the default title source.
   defp booking(user, start, opts) do
     {status, opts} = Keyword.pop(opts, :status, "confirmed")
+    opts = Keyword.put_new(opts, :attendee_message, nil)
 
     insert(
       :meeting,

@@ -12,8 +12,11 @@ defmodule Tymeslot.Analytics do
   alias Tymeslot.Analytics.EventQueries
   alias Tymeslot.Analytics.EventSchema
   alias Tymeslot.Analytics.Fingerprint
+  alias Tymeslot.Analytics.MetricsCache
+  alias Tymeslot.Analytics.SaltQueries
   alias Tymeslot.Analytics.Telemetry
   alias Tymeslot.Analytics.UtmExtractor
+  alias Tymeslot.Clock
   alias Tymeslot.Meetings
   alias Tymeslot.Security.RateLimiter.Analytics, as: AnalyticsLimiter
 
@@ -186,6 +189,36 @@ defmodule Tymeslot.Analytics do
   defdelegate count_converting_visitors(user_id, from, to), to: Meetings
 
   @doc """
+  The organizer's full metrics bundle for `[from, to]`, cached per
+  `{user_id, range}` in `MetricsCache`. Both the Analytics page and the
+  Overview's 7-day widget read it under the same key, so the bundle is built
+  here, in one place — two callers caching different shapes under one key
+  would hand one of them a map missing the fields it renders.
+  """
+  @spec cached_metrics(integer(), String.t(), DateTime.t(), DateTime.t(), String.t()) :: %{
+          visits: non_neg_integer(),
+          unique_visitors: non_neg_integer(),
+          bookings: non_neg_integer(),
+          converting_visitors: non_neg_integer(),
+          visits_by_day: [map()],
+          sources: [map()],
+          devices: [map()]
+        }
+  def cached_metrics(user_id, range, from, to, time_zone) do
+    MetricsCache.fetch(user_id, range, fn ->
+      %{
+        visits: count_visits(user_id, from, to),
+        unique_visitors: count_unique_visitors(user_id, from, to),
+        bookings: count_bookings(user_id, from, to),
+        converting_visitors: count_converting_visitors(user_id, from, to),
+        visits_by_day: visits_by_day(user_id, from, to, time_zone),
+        sources: attribution_table(user_id, from, to),
+        devices: device_breakdown(user_id, from, to)
+      }
+    end)
+  end
+
+  @doc """
   Prunes analytics events older than `days`. Called by the shared
   `DataRetentionWorker` so the per-page-view event log does not grow unbounded.
   Dashboard aggregates only reflect events within the retention window.
@@ -194,6 +227,17 @@ defmodule Tymeslot.Analytics do
   @spec prune_events(integer()) :: {non_neg_integer(), nil}
   def prune_events(days) do
     EventQueries.delete_events_older_than(days)
+  end
+
+  @doc """
+  Deletes the visitor-hash salts of every UTC day before today. Called by the
+  shared `DataRetentionWorker`: once a day's salt is gone, no hash made with it
+  can be recomputed, so a stored hash can no longer be brute-forced back to an
+  IP address. Returns the `{deleted_count, nil}` tuple from `delete_all`.
+  """
+  @spec prune_expired_salts() :: {non_neg_integer(), nil}
+  def prune_expired_salts do
+    SaltQueries.delete_before(Clock.utc_today())
   end
 
   @doc """

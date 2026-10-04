@@ -171,6 +171,29 @@ defmodule Tymeslot.Infrastructure.Config do
   @spec issues_url() :: String.t()
   def issues_url, do: source_code_url() <> "/issues"
 
+  @doc """
+  Gets the URL of the public website the top bars link to, from `WEB_HOST`.
+
+  Nil when it is not set, so the link is left out rather than pointing at a
+  placeholder. Read at runtime so it can be set on a prebuilt image.
+  """
+  @spec website_url() :: String.t() | nil
+  def website_url do
+    case Application.get_env(:tymeslot, :web_host) do
+      url when is_binary(url) and url != "" -> String.trim_trailing(url, "/")
+      _unset -> nil
+    end
+  end
+
+  @doc """
+  Gets the URL of the bug-report forum category on the public website, linked
+  from the dashboard and public page footers. Nil while `WEB_HOST` is not set.
+  """
+  @spec bug_report_url() :: String.t() | nil
+  def bug_report_url do
+    if website_url = website_url(), do: website_url <> "/forum/bugs"
+  end
+
   # Private Helpers
 
   defp get_module(key, default) do

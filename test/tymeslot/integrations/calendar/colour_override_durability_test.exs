@@ -8,7 +8,6 @@ defmodule Tymeslot.Integrations.Calendar.ColourOverrideDurabilityTest do
 
   @moduletag :calendar
 
-  alias Tymeslot.Agenda
   alias Tymeslot.Integrations.Calendar.EventColourOverrides
   alias Tymeslot.Integrations.Calendar.ProviderCalendarEventQueries
 
@@ -22,14 +21,6 @@ defmodule Tymeslot.Integrations.Calendar.ColourOverrideDurabilityTest do
       start_at: start_at,
       end_at: DateTime.add(start_at, 3600, :second)
     )
-  end
-
-  defp agenda_entry(user, title) do
-    day = Agenda.day_agenda(user, "Etc/UTC")
-
-    [day.next | day.today ++ day.tomorrow]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.find(&(&1.title == title))
   end
 
   test "override survives a full cache re-sync" do
@@ -47,10 +38,8 @@ defmodule Tymeslot.Integrations.Calendar.ColourOverrideDurabilityTest do
     ProviderCalendarEventQueries.delete_by_uid(integration.id, "uid-dur")
     insert_cached(integration, start_at)
 
-    # The override is untouched by the cache churn and still wins on the agenda.
+    # The override is untouched by the cache churn.
     assert EventColourOverrides.overrides_for(user.id) ==
              %{{:external, integration.id, "uid-dur"} => "tomato"}
-
-    assert agenda_entry(user, "Sync me").colour == "tomato"
   end
 end

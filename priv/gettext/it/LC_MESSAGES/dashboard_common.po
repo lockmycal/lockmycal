@@ -120,7 +120,7 @@ msgid "Toggle sidebar"
 msgstr "Attiva/disattiva la barra laterale"
 
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #, elixir-autogen, elixir-format
 msgid "Scheduling link copied to clipboard!"
 msgstr "Link di pianificazione copiato negli appunti!"
@@ -651,19 +651,16 @@ msgid "Users"
 msgstr "Utenti"
 
 #: lib/tymeslot_web/components/core_components/buttons.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
 #, elixir-autogen, elixir-format
 msgid "Disabled"
 msgstr "Disattivato"
 
 #: lib/tymeslot_web/components/core_components/buttons.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
 #, elixir-autogen, elixir-format
 msgid "Enabled"
 msgstr "Attivato"
-
-#: lib/tymeslot_web/components/dashboard_layout.ex
-#, elixir-autogen, elixir-format
-msgid "Toggle light/dark appearance"
-msgstr "Attiva/disattiva aspetto chiaro/scuro"
 
 #: lib/tymeslot_web/components/dashboard/locale_tab_switcher.ex
 #, elixir-autogen, elixir-format
@@ -784,7 +781,7 @@ msgid "Send"
 msgstr "Invia"
 
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
 #, elixir-autogen, elixir-format
 msgid "Send links by email"
@@ -819,3 +816,49 @@ msgstr "name@example.com, other@example.com"
 #, elixir-autogen, elixir-format
 msgid "Source code"
 msgstr "Codice sorgente"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Documentation"
+msgstr "Documentazione"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Website"
+msgstr "Sito web"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Appearance"
+msgstr "Aspetto"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Dark"
+msgstr "Scuro"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Light"
+msgstr "Chiaro"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "System"
+msgstr "Sistema"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Report a bug"
+msgstr "Segnala un bug"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Powered by %{app_name}"
+msgstr "Realizzato con %{app_name}"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Locations"
+msgstr "Sedi"

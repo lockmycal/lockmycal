@@ -82,6 +82,25 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.OverviewComponent do
               </div>
             </div>
 
+            <%!-- Under the intro, on the right: the public read-only month view
+                 (see TymeslotWeb.Public.CalendarLive), as on Quill. --%>
+            <div
+              :if={
+                @username_context not in [nil, ""] and
+                  Profiles.public_calendar_enabled?(@organizer_profile)
+              }
+              class="overview-full-calendar"
+            >
+              <.link
+                navigate={~p"/#{@username_context}/calendar"}
+                class="action-button action-button--secondary overview-full-calendar-link"
+                data-testid="view-full-calendar"
+              >
+                <.icon name="hero-calendar-days" class="calendar-download-icon" />
+                {dgettext("booking", "View full calendar")}
+              </.link>
+            </div>
+
             <%= if @username_context && @meeting_types == [] do %>
               <div class="overview-empty-state">
                 <p class="overview-empty-title">

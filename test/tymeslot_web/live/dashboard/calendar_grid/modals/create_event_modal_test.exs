@@ -54,7 +54,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModalTest do
   test "renders modal with event title" do
     html = render_component(&CreateEventModal.create_event_modal/1, base_assigns())
 
-    assert html =~ "New Event"
+    assert html =~ "Event title"
     assert html =~ "Team Standup"
     assert html =~ "Create"
     assert html =~ "Cancel"
@@ -112,7 +112,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModalTest do
   test "renders attendee section" do
     html = render_component(&CreateEventModal.create_event_modal/1, base_assigns())
 
-    assert html =~ "Invite attendees"
+    assert html =~ "Attendees"
     assert html =~ "attendee@example.com"
   end
 

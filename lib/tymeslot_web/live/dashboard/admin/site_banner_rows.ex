@@ -67,7 +67,7 @@ defmodule TymeslotWeb.Dashboard.Admin.SiteBannerRows do
           <p class="text-token-xs font-black uppercase tracking-wider text-neutral-500 mb-3">
             {dgettext("dashboard_admin", "Preview")}
           </p>
-          <div class="rounded-token-lg overflow-hidden border-2 border-neutral-200 dark:border-twilight-indigo-700">
+          <div class="rounded-token-lg overflow-hidden border-2 border-neutral-200 dark:border-twilight-indigo-800">
             <SiteBannerComponent.site_banner
               :if={@preview}
               banner={@preview}

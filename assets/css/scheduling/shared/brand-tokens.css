@@ -7,7 +7,8 @@
  * these utilities. Hex values match app.css exactly.
  */
 @theme {
-  --color-primary-600: #0d9488;
-  --color-primary-700: #0f766e;
+  --color-primary-500: #F08A3C;
+  --color-primary-600: #D9762B;
+  --color-primary-700: #B4581A;
   --color-neutral-500: #737373;
 }

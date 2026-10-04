@@ -16,6 +16,11 @@
   flex: 1;
 }
 
+/* Bot-protection notice sits below the action buttons, set apart from them */
+.slide-actions + .recaptcha-notice {
+  margin-top: var(--space-md);
+}
+
 .meeting-summary {
   background: var(--surface-light);
   border-radius: var(--radius-md);
@@ -150,7 +155,7 @@
    Breakpoint: 420px on .scheduling-box (container-name: scheduling)
    ============================================================================ */
 
-/* Wide layout — 2-column grid for name + email */
+/* Wide layout — 2-column grid: name + email, phone + company */
 @container scheduling (min-width: 420px) {
   .slide-content.booking-slide {
     max-width: var(--container-xl);
@@ -165,15 +170,12 @@
     flex: 1;
   }
 
-  /* Name and email side by side — nth-child(2) and (3) because the honeypot
-     field is always nth-child(1) in the DOM (even though it's out of flow) */
-  .booking-form .form-field-wrapper:nth-child(2),
-  .booking-form .form-field-wrapper:nth-child(3) {
-    grid-column: span 1;
-  }
-
-  /* Message spans full width */
-  .booking-form .form-field-wrapper:nth-child(4) {
+  /* The single-line fields fill the two columns in DOM order (the honeypot
+     is out of flow); the message and the attachments span the full width.
+     Matched by content rather than position, so adding a field doesn't
+     shift which one spans. */
+  .booking-form .form-field-wrapper:has(textarea),
+  .booking-form .attachment-field {
     grid-column: 1 / -1;
   }
 
@@ -486,6 +488,118 @@
   font-size: var(--theme-font-size-sm);
 }
 
+/* ===== Attachments field ===== */
+/* Lives inside the booking form (a file input only uploads with the form
+   that contains it), below the message; the chosen files are listed as rows
+   rather than chips because names are long and sizes matter. */
+
+.rhythm-theme-wrapper .attachment-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  margin-top: var(--space-xs);
+}
+
+/* Visually hidden: the note under the input already says what may be
+   attached. Kept for screen readers, since it is the file input's label. */
+.rhythm-theme-wrapper .attachment-field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.rhythm-theme-wrapper .attachment-field__input {
+  width: 100%;
+  font-size: var(--theme-font-size-sm);
+  color: var(--theme-text);
+}
+
+.rhythm-theme-wrapper .attachment-field__input::file-selector-button {
+  margin-right: var(--space-xs);
+  padding: var(--space-2xs) var(--space-sm);
+  border: var(--border-width-thin) solid var(--border-medium);
+  border-radius: var(--radius-md);
+  background: var(--surface-light);
+  color: var(--theme-text);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.rhythm-theme-wrapper .attachment-field__note {
+  font-size: var(--theme-font-size-2xs);
+  color: var(--theme-text-secondary);
+}
+
+.rhythm-theme-wrapper .attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rhythm-theme-wrapper .attachment-list__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-3xs) var(--space-2xs);
+  background: var(--surface-light);
+  border: var(--border-width-thin) solid var(--border-medium);
+  border-radius: var(--radius-md);
+}
+
+.rhythm-theme-wrapper .attachment-list__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--theme-font-size-2xs);
+  color: var(--theme-text);
+}
+
+.rhythm-theme-wrapper .attachment-list__size {
+  flex: none;
+  font-size: var(--theme-font-size-2xs);
+  color: var(--theme-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.rhythm-theme-wrapper .attachment-list__remove {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--theme-text-secondary);
+  font-size: var(--theme-font-size-md);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.rhythm-theme-wrapper .attachment-list__remove:hover {
+  color: white;
+  background: var(--theme-danger);
+}
+
+.rhythm-theme-wrapper .attachment-field__error {
+  font-size: var(--theme-font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--theme-error);
+}
+
 /* ===== Location picker ===== */
 /* The radio group the booker chooses a location from, shown only when the
    meeting type offers more than one. Constrained to the same 500px column
@@ -572,6 +686,16 @@
   width: 1rem;
   height: 1rem;
 }
+/* The card parts of the shared markup (see Quill) are not used by this
+   row of toggles: the icon and title sit directly in the toggle. */
+.rhythm-theme-wrapper .location-option__icon-tile,
+.rhythm-theme-wrapper .location-option__text {
+  display: contents;
+}
+.rhythm-theme-wrapper .location-option__hint,
+.rhythm-theme-wrapper .location-option__check {
+  display: none;
+}
 .rhythm-theme-wrapper .location-field__detail {
   margin: var(--space-2xs) 0 0;
   font-size: var(--theme-font-size-sm);
@@ -611,4 +735,82 @@
   margin-top: var(--space-3xs);
   font-size: var(--theme-font-size-sm);
   color: var(--theme-error-light);
+}
+
+/* ===== Saved venues ===== */
+/* The venues an in-person location offers, one per line so each can carry
+   its address beneath its name. The radio inside reuses
+   `.location-option__radio`, and a single venue or the arranged-later note
+   sits where an option's detail would. A venue's address may run over
+   several lines, which `pre-line` keeps. */
+
+.rhythm-theme-wrapper .location-venues {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  margin: 0;
+  padding: var(--space-3xs);
+  background: var(--surface-subtle);
+  border: var(--border-width-thin) solid var(--border-light);
+  border-radius: var(--radius-lg);
+}
+.rhythm-theme-wrapper .location-venue {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  padding: var(--space-2xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.rhythm-theme-wrapper .location-venue:hover {
+  background: var(--surface-light);
+  color: var(--theme-text);
+}
+/* Drawn in the text colour, not the primary: the focused venue is the
+   selected one, filled with the primary. No offset keeps the ring inside the
+   list's padding, clear of its border. */
+.rhythm-theme-wrapper .location-venue:has(.location-option__radio:focus-visible) {
+  outline: var(--border-width-thick) solid var(--theme-text);
+  outline-offset: 0;
+}
+.rhythm-theme-wrapper .location-venue--selected,
+.rhythm-theme-wrapper .location-venue--selected:hover {
+  background: var(--theme-primary-solid);
+  color: var(--theme-on-primary);
+}
+.rhythm-theme-wrapper .location-venue__name {
+  font-size: var(--theme-font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+.rhythm-theme-wrapper .location-venue__description,
+.rhythm-theme-wrapper .location-field__venue-description {
+  font-size: var(--theme-font-size-xs);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.rhythm-theme-wrapper .location-field__venue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+.rhythm-theme-wrapper .location-field__venue-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--theme-text);
+}
+.rhythm-theme-wrapper .location-field__note {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--theme-font-size-sm);
+  color: var(--theme-text-secondary);
+}
+.rhythm-theme-wrapper .location-stated__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin: 0;
+  font-size: var(--theme-font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--theme-text);
 }

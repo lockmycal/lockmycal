@@ -2,51 +2,17 @@ defmodule TymeslotWeb.Themes.Shared.SecurityFields do
   @moduledoc """
   Shared security field components for booking and signup forms.
 
-  Provides honeypot and bot-protection (reCAPTCHA v3 or Cloudflare Turnstile,
+  Provides bot-protection (reCAPTCHA v3 or Cloudflare Turnstile,
   whichever the admin has configured — see
   `Tymeslot.Infrastructure.Security.BotProtection`) fields to prevent spam
-  and bot submissions.
+  and bot submissions. The honeypot these forms also carry is
+  `TymeslotWeb.Components.CoreComponents.honeypot_field/1`, shared with every
+  other public form.
   """
   use Phoenix.Component
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Infrastructure.Security.BotProtection
-
-  @doc """
-  Renders a honeypot field to catch automated bot submissions.
-
-  The field is hidden from real users using absolute positioning (not sr-only)
-  and aria-hidden to prevent screen reader announcement. The field uses:
-  - `tabindex="-1"` to prevent keyboard navigation
-  - `autocomplete="off"` to prevent browser autofill
-
-  Bots that fill this field will be silently rejected with a fake success message.
-
-  ## Parameters
-
-    * `id_prefix` - Prefix for the field ID (e.g., "booking")
-    * `param_root` - Root parameter name (e.g., "booking" for booking[website])
-  """
-  attr :id_prefix, :string, required: true
-  attr :param_root, :string, required: true
-
-  @spec honeypot_field(map()) :: Phoenix.LiveView.Rendered.t()
-  def honeypot_field(assigns) do
-    ~H"""
-    <%!-- Honeypot field (hidden from real users, visible to bots) --%>
-    <div class="honeypot-field" aria-hidden="true">
-      <label for={"#{@id_prefix}-website"}>Website</label>
-      <input
-        id={"#{@id_prefix}-website"}
-        type="text"
-        name={"#{@param_root}[website]"}
-        tabindex="-1"
-        autocomplete="off"
-        value=""
-      />
-    </div>
-    """
-  end
 
   @doc """
   Renders bot-protection fields and privacy notice if a provider is active.
@@ -106,6 +72,7 @@ defmodule TymeslotWeb.Themes.Shared.SecurityFields do
     <div
       :if={@provider == :cloudflare and BotProtection.active?(@scope)}
       id={"#{@id_prefix}-cf-turnstile"}
+      phx-update="ignore"
     />
     """
   end

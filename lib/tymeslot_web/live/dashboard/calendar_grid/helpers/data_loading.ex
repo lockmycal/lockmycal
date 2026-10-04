@@ -4,9 +4,11 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Helpers.DataLoading do
   import Phoenix.Component, only: [assign: 3]
 
   alias Tymeslot.CalendarGrid
+  alias Tymeslot.CalendarGrid.BookingEvents
   alias Tymeslot.Integrations.Calendar.Appearance
   alias Tymeslot.Integrations.Calendar.Selection
   alias Tymeslot.Integrations.Video
+  alias Tymeslot.Meetings
   alias Tymeslot.Timezones
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers.PreferenceHelpers
 
@@ -39,11 +41,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Helpers.DataLoading do
   end
 
   @doc """
-  Assigns the three maps derived from the organiser's per-calendar choices.
+  Assigns the two maps derived from the organiser's per-calendar choices.
 
-  All three move together on purpose. `:calendar_colors` paints the grid,
-  `:calendar_colour_keys` marks the right swatch pressed in the picker, and
-  `:hidden_calendar_keys` filters the events. Refreshing only some of them after
+  Both move together on purpose. `:calendar_colors` paints the grid and
+  `:hidden_calendar_keys` filters the events. Refreshing only one of them after
   a write leaves the grid and the control it was clicked from disagreeing.
   """
   @spec assign_calendar_appearances(Phoenix.LiveView.Socket.t(), integer()) ::
@@ -53,7 +54,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Helpers.DataLoading do
 
     socket
     |> assign(:calendar_colors, CalendarGrid.calendar_colour_classes(appearances))
-    |> assign(:calendar_colour_keys, Appearance.colour_keys(appearances))
     |> assign(:hidden_calendar_keys, Appearance.hidden_keys(appearances))
   end
 
@@ -80,20 +80,40 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Helpers.DataLoading do
 
     # Dedupe against every cached row, not just the selection-visible ones: a
     # booking whose synced copy the user has hidden must stay hidden, not
-    # reappear through its projection.
-    booking_events =
-      CalendarGrid.list_booking_events_for_range(
+    # reappear through its projection. The synced copies come back renamed to
+    # the booking's display title, so a booking reads the same synced or not.
+    {booking_events, cached} =
+      BookingEvents.load_for_range(
         socket.assigns.current_user.id,
-        start_dt,
-        end_dt,
-        cached
+        {start_dt, end_dt},
+        cached,
+        booking_title_source(socket.assigns)
       )
 
-    events = Selection.visible_events(cached, integrations) ++ booking_events
+    events = merge_booking_events(Selection.visible_events(cached, integrations), booking_events)
 
     socket
     |> assign(:events, events)
     |> precompute_derived()
+  end
+
+  defp booking_title_source(%{preferences: %{booking_title_source: source}}), do: source
+  defp booking_title_source(_assigns), do: nil
+
+  # A booking awaiting approval replaces its synced tentative hold, so the grid
+  # shows it as pending rather than as an ordinary event in the hold's calendar
+  # colour. It follows the hold's visibility: when the calendar selection hides
+  # the hold, the booking stays hidden too.
+  defp merge_booking_events(visible_cached, booking_events) do
+    {in_place_of_holds, other_bookings} =
+      Enum.split_with(booking_events, &BookingEvents.stands_in_for_hold?/1)
+
+    visible_ids = Meetings.calendar_identifier_set(visible_cached)
+    held_ids = Meetings.calendar_identifier_set(in_place_of_holds)
+
+    Enum.reject(visible_cached, &Meetings.linked_to_calendar_event?(&1, held_ids)) ++
+      other_bookings ++
+      Enum.filter(in_place_of_holds, &Meetings.linked_to_calendar_event?(&1, visible_ids))
   end
 
   @spec precompute_derived(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()

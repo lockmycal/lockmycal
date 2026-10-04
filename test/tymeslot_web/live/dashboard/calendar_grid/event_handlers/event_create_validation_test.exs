@@ -3,6 +3,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.EventCreateValidation
   Covers the validation arms inside `handle_save_event/2`:
 
     * Submitting with an integration_id that no longer matches → "Invalid calendar selected".
+    * Submitting without a title → "Event title is required".
     * Submitting an unparseable date string → "Invalid date".
     * Submitting an end time at or before the start time → "End time must be after start time".
 
@@ -58,6 +59,18 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.EventCreateValidation
         user_timezone: "Europe/Tallinn"
       }
     }
+  end
+
+  describe "handle_save_event/2 — missing title" do
+    test "flashes when the title is blank" do
+      for title <- ["", "   ", nil] do
+        socket = build_socket(creating_overrides: %{title: title})
+
+        {:noreply, _socket} = CreateExecution.handle_save_event(%{}, socket)
+
+        assert_received {:flash, {:error, "Event title is required"}}
+      end
+    end
   end
 
   describe "handle_save_event/2 — invalid calendar" do

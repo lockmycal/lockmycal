@@ -73,25 +73,15 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.ComponentView do
           sending_reschedule={@sending_reschedule}
           answering_request={@answering_request}
           deleting_meeting={@deleting_meeting}
+          current_user_email={@current_user.email}
           target={@myself}
         />
 
-        <div :if={@has_more} class="mt-10 text-center">
-          <button
-            class="btn btn-secondary px-10 py-4"
-            phx-click="load_more"
-            phx-target={@myself}
-            disabled={@loading_more}
-          >
-            <span :if={@loading_more}>
-              <.spinner class="h-5 w-5 mr-3 inline-block" /> {dgettext(
-                "dashboard_bookings",
-                "Loading..."
-              )}
-            </span>
-            <span :if={!@loading_more}>{dgettext("dashboard_bookings", "Load more meetings")}</span>
-          </button>
-        </div>
+        <MeetingListComponents.load_more
+          has_more={@has_more}
+          loading_more={@loading_more}
+          target={@myself}
+        />
 
         <div :if={@is_empty} class="mt-16">
           <.subsection_header
@@ -138,6 +128,10 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.ComponentView do
         delete_meeting={@delete_meeting_modal_data}
         show_delete={@show_delete_meeting_modal || false}
         deleting={@deleting_meeting != nil}
+        add_guests={@add_guests_modal_data}
+        show_add_guests={@show_add_guests_modal || false}
+        staged_guests={@staged_guests}
+        existing_guests={@add_guests_existing}
         profile={@profile}
         time_format={@time_format}
         target={@myself}

@@ -331,11 +331,6 @@ msgstr "Mandarinka"
 msgid "Tomato"
 msgstr "Rajče"
 
-#: lib/tymeslot_web/live/dashboard/calendar_grid/header/calendar_list_panel.ex
-#, elixir-autogen, elixir-format
-msgid "Colour for %{calendar}"
-msgstr "Barva pro kalendář %{calendar}"
-
 #: lib/tymeslot_web/components/dashboard/colour_swatches.ex
 #, elixir-autogen, elixir-format
 msgid "Default colour"
@@ -345,11 +340,6 @@ msgstr "Výchozí barva"
 #, elixir-autogen, elixir-format
 msgid "All"
 msgstr "Vše"
-
-#: lib/tymeslot_web/live/dashboard/calendar_grid/modals/booking_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Booked through your Tymeslot page"
-msgstr "Zarezervováno přes vaši stránku Tymeslot"
 
 #: lib/tymeslot_web/live/dashboard/calendar_grid/views/agenda_view.ex
 #, elixir-autogen, elixir-format
@@ -405,3 +395,8 @@ msgstr "Připojte svůj kalendář do %{app_name}"
 #, elixir-autogen, elixir-format
 msgid "Meetings booked through your %{app_name} page will appear here."
 msgstr "Zde se zobrazí schůzky rezervované přes vaši stránku %{app_name}."
+
+#: lib/tymeslot_web/live/dashboard/calendar_grid/modals/booking_detail_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Booked through your %{app_name} booking page"
+msgstr "Zarezervováno přes Vaši rezervační stránku %{app_name}"

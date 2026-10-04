@@ -880,6 +880,21 @@ describe('auto-init from data attributes (DOMContentLoaded)', () => {
     expect(iframe.src).toContain('embed=1')
   })
 
+  test('exposes window.LockMyCalBooking and supports #lockmycal-booking container', () => {
+    expect(window.LockMyCalBooking).toBe(window.TymeslotBooking)
+    const container = document.createElement('div')
+    container.id = 'lockmycal-booking'
+    container.setAttribute('data-username', 'lockmycal-user')
+    document.body.appendChild(container)
+
+    window.LockMyCalBooking.embed('#lockmycal-booking', 'lockmycal-user')
+
+    const iframe = container.querySelector('iframe')
+    expect(iframe).not.toBeNull()
+    expect(iframe.src).toContain('lockmycal-user')
+    expect(iframe.src).toContain('embed=1')
+  })
+
   test('iframe URL includes parent-origin param with current page origin', () => {
     const container = document.createElement('div')
     container.id = 'origin-param-test'

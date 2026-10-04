@@ -42,7 +42,7 @@ defmodule TymeslotWeb.Live.Scheduling.OwnerPreviewBookingTest do
     AvailabilityCache.clear_all()
 
     old_cfg = Application.get_env(:tymeslot, :recaptcha, [])
-    Application.put_env(:tymeslot, :recaptcha, Keyword.put(old_cfg, :booking_enabled, false))
+    Application.put_env(:tymeslot, :recaptcha, Keyword.put(old_cfg, :booking_provider, :off))
     on_exit(fn -> Application.put_env(:tymeslot, :recaptcha, old_cfg) end)
 
     TestMocks.setup_calendar_mocks()

@@ -19,7 +19,9 @@ defmodule Tymeslot.Contacts do
 
   alias Tymeslot.Contacts.ContactQueries
   alias Tymeslot.Contacts.ContactSchema
+  alias Tymeslot.Contacts.CsvExport
   alias Tymeslot.Features
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Meetings
   alias Tymeslot.Meetings.MeetingSchema
   alias Tymeslot.Pagination.OffsetPage
@@ -47,6 +49,18 @@ defmodule Tymeslot.Contacts do
     |> OffsetPage.fetch(page, per_page, fn limit, offset ->
       ContactQueries.list_contacts(user_id, search: search, limit: limit, offset: offset)
     end)
+  end
+
+  @doc """
+  Every contact matching `search` (all of them when it is blank), across all
+  pages, as a CSV file (`Tymeslot.Contacts.CsvExport`). Not feature-gated,
+  same as the other reads.
+  """
+  @spec export_csv(integer(), String.t() | nil) :: iodata()
+  def export_csv(user_id, search) do
+    user_id
+    |> ContactQueries.list_contacts(search: search)
+    |> CsvExport.encode()
   end
 
   @doc """
@@ -128,7 +142,7 @@ defmodule Tymeslot.Contacts do
       {:error, reason} ->
         Logger.warning("Contact capture skipped",
           organizer_user_id: organizer_user_id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
 
         :ok

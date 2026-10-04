@@ -31,9 +31,10 @@ defmodule Tymeslot.Integrations.Video.RoomCreationError do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Emails.EmailScheduler
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Integrations.Video.RoomData
-  alias Tymeslot.Integrations.Video.VideoIntegrationQueries
   alias Tymeslot.Integrations.Video.VideoIntegrationSchema
+  alias Tymeslot.Integrations.Video.VideoRoomErrorQueries
   alias Tymeslot.Repo
 
   require Logger
@@ -98,7 +99,7 @@ defmodule Tymeslot.Integrations.Video.RoomCreationError do
   def track(%VideoIntegrationSchema{}, {:ok, %{room_data: %RoomData{adopted: true}}}), do: :ok
 
   def track(%VideoIntegrationSchema{} = integration, {:ok, _room}) do
-    VideoIntegrationQueries.clear_room_creation_error(integration.id)
+    VideoRoomErrorQueries.clear_room_creation_error(integration.id)
 
     Logger.info("Video provider created a room again, clearing the recorded refusal",
       integration_id: integration.id,
@@ -141,7 +142,7 @@ defmodule Tymeslot.Integrations.Video.RoomCreationError do
 
   def clear_proven_by_connection_test(%VideoIntegrationSchema{} = integration) do
     if integration.room_creation_error in capability_codes() do
-      VideoIntegrationQueries.clear_room_creation_error(integration.id)
+      VideoRoomErrorQueries.clear_room_creation_error(integration.id)
     end
 
     :ok
@@ -162,7 +163,7 @@ defmodule Tymeslot.Integrations.Video.RoomCreationError do
       code: code
     )
 
-    VideoIntegrationQueries.release_room_creation_error_notice(integration_id, code)
+    VideoRoomErrorQueries.release_room_creation_error_notice(integration_id, code)
   end
 
   @doc """
@@ -220,7 +221,7 @@ defmodule Tymeslot.Integrations.Video.RoomCreationError do
       code: code
     )
 
-    VideoIntegrationQueries.record_room_creation_error(integration.id, code)
+    VideoRoomErrorQueries.record_room_creation_error(integration.id, code)
     notify_once(integration, code)
   end
 
@@ -233,7 +234,7 @@ defmodule Tymeslot.Integrations.Video.RoomCreationError do
         resend_after = DateTime.add(now, -@resend_after_days, :day)
 
         with true <-
-               VideoIntegrationQueries.claim_room_creation_error_notice(
+               VideoRoomErrorQueries.claim_room_creation_error_notice(
                  integration.id,
                  code,
                  now,
@@ -258,7 +259,7 @@ defmodule Tymeslot.Integrations.Video.RoomCreationError do
     Logger.error("Failed to queue the email about a video room creation refusal",
       integration_id: integration.id,
       code: code,
-      reason: inspect(reason)
+      reason: LogFormat.reason(reason)
     )
 
     :ok

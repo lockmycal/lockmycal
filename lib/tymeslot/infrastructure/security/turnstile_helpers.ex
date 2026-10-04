@@ -80,6 +80,13 @@ defmodule Tymeslot.Infrastructure.Security.TurnstileHelpers do
   end
 
   @doc """
+  Whether this instance uses Turnstile for any form. The Content-Security-Policy
+  allows Cloudflare's origin only while it is true.
+  """
+  @spec any_active?() :: boolean()
+  def any_active?, do: booking_active?() or signup_active?()
+
+  @doc """
   Verify signup token if Cloudflare is the configured provider and configured.
 
   Returns:

@@ -16,6 +16,7 @@ defmodule Tymeslot.Integrations.Calendar.Runtime.ClientManager do
 
   require Logger
 
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Integrations.Calendar.ProviderConfig
   alias Tymeslot.Integrations.Calendar.Providers.ProviderAdapter
   alias Tymeslot.Integrations.Calendar.Runtime.BookingIntegrationResolver
@@ -77,6 +78,7 @@ defmodule Tymeslot.Integrations.Calendar.Runtime.ClientManager do
   @spec booking_client(
           user_id()
           | {integration_id(), user_id()}
+          | {integration_id(), user_id(), String.t()}
           | MeetingSchema.t()
           | MeetingTypeSchema.t()
           | nil
@@ -172,33 +174,37 @@ defmodule Tymeslot.Integrations.Calendar.Runtime.ClientManager do
   stray recreate (update's create-on-404 recovery) — the real event on the
   meeting's actual calendar was never touched.
   """
-  @spec resolve_client(user_id() | MeetingSchema.t() | {integration_id(), user_id()} | nil) ::
+  @spec resolve_client(
+          user_id()
+          | MeetingSchema.t()
+          | {integration_id(), user_id()}
+          | {integration_id(), user_id(), String.t()}
+          | nil
+        ) ::
           client() | nil
-  def resolve_client(context) do
-    case context do
-      %MeetingSchema{calendar_path: path} = meeting when is_binary(path) ->
-        booking_client(meeting)
+  def resolve_client(%MeetingSchema{calendar_path: path} = meeting) when is_binary(path),
+    do: booking_client(meeting)
 
-      # No stored sub-calendar: the meeting sits on the connection's default,
-      # which the raw integration already targets. `booking_client/1` would
-      # overwrite that default with the missing path.
-      %MeetingSchema{calendar_integration_id: integration_id, organizer_user_id: user_id}
-      when is_integer(integration_id) ->
-        get_client_by_integration_id(integration_id, user_id)
+  # No stored sub-calendar: the meeting sits on the connection's default,
+  # which the raw integration already targets. `booking_client/1` would
+  # overwrite that default with the missing path.
+  def resolve_client(%MeetingSchema{calendar_integration_id: integration_id} = meeting)
+      when is_integer(integration_id),
+      do: get_client_by_integration_id(integration_id, meeting.organizer_user_id)
 
-      %MeetingSchema{organizer_user_id: user_id} when is_integer(user_id) ->
-        client(user_id)
+  def resolve_client(%MeetingSchema{organizer_user_id: user_id}) when is_integer(user_id),
+    do: client(user_id)
 
-      {integration_id, user_id} when is_integer(integration_id) and is_integer(user_id) ->
-        get_client_by_integration_id(integration_id, user_id)
+  def resolve_client({integration_id, user_id})
+      when is_integer(integration_id) and is_integer(user_id),
+      do: get_client_by_integration_id(integration_id, user_id)
 
-      user_id when is_integer(user_id) ->
-        client(user_id)
+  def resolve_client({_integration_id, _user_id, calendar_id} = context)
+      when is_binary(calendar_id),
+      do: booking_client(context)
 
-      _other ->
-        client()
-    end
-  end
+  def resolve_client(user_id) when is_integer(user_id), do: client(user_id)
+  def resolve_client(_other), do: client()
 
   # --- Private Implementation ---
 
@@ -227,7 +233,7 @@ defmodule Tymeslot.Integrations.Calendar.Runtime.ClientManager do
     else
       _other ->
         Logger.warning("Unknown or unsupported calendar provider",
-          provider: inspect(integration.provider)
+          provider: LogFormat.reason(integration.provider)
         )
 
         []

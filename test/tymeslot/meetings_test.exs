@@ -269,6 +269,29 @@ defmodule Tymeslot.MeetingsTest do
       refute ics =~ "STATUS:CONFIRMED"
     end
 
+    test "carries the organiser's note to the guest" do
+      meeting =
+        exportable_meeting(status: "confirmed", organizer_note: "Bring the Q3 numbers.")
+
+      assert {:ok, ics} = Meetings.calendar_export(meeting.uid, meeting.organizer_user_id)
+      assert ics =~ "Bring the Q3 numbers."
+    end
+
+    # The guest downloads the file, and it is tagged with their language.
+    test "titles the event in the guest's language, not the organiser's" do
+      meeting =
+        exportable_meeting(
+          status: "confirmed",
+          title: "Consultation mit Jane Doe",
+          meeting_type: "Consultation",
+          attendee_name: "Jane Doe",
+          attendee_locale: "fr"
+        )
+
+      assert {:ok, ics} = Meetings.calendar_export(meeting.uid, meeting.organizer_user_id)
+      assert ics =~ "SUMMARY;LANGUAGE=fr:Consultation avec Jane Doe"
+    end
+
     test "returns not_found for a cancelled meeting" do
       meeting = exportable_meeting(status: "cancelled")
 

@@ -230,6 +230,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
           phx-submit="save"
           phx-target={@myself}
           class="space-y-4"
+          novalidate
         >
           <LocaleTabSwitcher.locale_tab_switcher
             active_value={@active_translation_locale}

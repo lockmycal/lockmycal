@@ -814,7 +814,7 @@ msgstr "Zkuste místo běžného hesla použít heslo pro aplikaci. Vytvoříte 
 #: lib/tymeslot/integrations/calendar/caldav/offline_queue.ex
 #, elixir-autogen, elixir-format
 msgid "Tymeslot could not send this change to the calendar server."
-msgstr "Tymeslot nedokázal odeslat tuto změnu na kalendářový server."
+msgstr "LockMyCal nedokázal odeslat tuto změnu na kalendářový server."
 
 #: lib/tymeslot/integrations/calendar/shared/error_messages.ex
 #, elixir-autogen, elixir-format
@@ -1048,7 +1048,7 @@ msgstr "Barva"
 #: lib/tymeslot_web/components/dashboard/integrations/calendar/calendar_selection_modal.ex
 #, elixir-autogen, elixir-format
 msgid "How this calendar's events are shown in your Tymeslot calendar."
-msgstr "Takto se události z tohoto kalendáře zobrazují ve vašem kalendáři Tymeslot."
+msgstr "Takto se události z tohoto kalendáře zobrazují ve vašem kalendáři LockMyCal."
 
 #: lib/tymeslot_web/components/dashboard/integrations/calendar/calendar_selection_modal.ex
 #, elixir-autogen, elixir-format
@@ -1088,7 +1088,7 @@ msgstr "Exchange nevrátil žádné události kalendáře, ale v mezipaměti ně
 #: lib/tymeslot/workers/sync_exchange_calendar_worker.ex
 #, elixir-autogen, elixir-format
 msgid "The Exchange server answered the free/busy request with nothing Tymeslot could read. Retrying rather than treating your diary as free."
-msgstr "Server Exchange odpověděl na dotaz na volno/obsazeno něčím, co Tymeslot nedokáže přečíst. Pokus bude zopakován, aby se váš diář nepovažoval za volný."
+msgstr "Server Exchange odpověděl na dotaz na volno/obsazeno něčím, co LockMyCal nedokáže přečíst. Pokus bude zopakován, aby se váš diář nepovažoval za volný."
 
 #: lib/tymeslot/workers/sync_exchange_calendar_worker.ex
 #, elixir-autogen, elixir-format
@@ -1103,7 +1103,7 @@ msgstr "Server Exchange odmítl uložené přihlašovací údaje. Připojte pros
 #: lib/tymeslot/workers/sync_exchange_calendar_worker.ex
 #, elixir-autogen, elixir-format
 msgid "Tymeslot needs the mailbox's email address to read its free/busy time. Please reconnect the integration and provide it."
-msgstr "Tymeslot potřebuje e-mailovou adresu poštovní schránky, aby mohl číst její volno/obsazeno. Připojte prosím integraci znovu a adresu zadejte."
+msgstr "LockMyCal potřebuje e-mailovou adresu poštovní schránky, aby mohl číst její volno/obsazeno. Připojte prosím integraci znovu a adresu zadejte."
 
 #: lib/tymeslot/integrations/calendar/shared/error_messages.ex
 #, elixir-autogen, elixir-format
@@ -1318,4 +1318,4 @@ msgstr "Tato změna se týká jednoho opakování opakované události, ale kale
 #: lib/tymeslot/integrations/calendar/caldav/errors.ex
 #, elixir-autogen, elixir-format
 msgid "The calendar server returned more data than Tymeslot can process at once."
-msgstr "Kalendářový server vrátil více dat, než dokáže Tymeslot najednou zpracovat."
+msgstr "Kalendářový server vrátil více dat, než dokáže LockMyCal najednou zpracovat."

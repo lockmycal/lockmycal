@@ -11,19 +11,29 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.BookingComponent do
   alias TymeslotWeb.Live.Scheduling.OrganizerHelpers
   alias TymeslotWeb.Live.Shared.FormValidationHelpers
   alias TymeslotWeb.Themes.Rhythm.Shared.OrganizerHeader
+  alias TymeslotWeb.Themes.Shared.AttendeeAttachmentUpload
   alias TymeslotWeb.Themes.Shared.BookingLabels
   alias TymeslotWeb.Themes.Shared.BookingLocation
   alias TymeslotWeb.Themes.Shared.Components.ApprovalNotice
+  alias TymeslotWeb.Themes.Shared.Components.AttachmentField
   alias TymeslotWeb.Themes.Shared.Components.GuestField
   alias TymeslotWeb.Themes.Shared.Components.LocationField
+  alias TymeslotWeb.Themes.Shared.Components.OwnCalendar
   alias TymeslotWeb.Themes.Shared.GuestBooking
   alias TymeslotWeb.Themes.Shared.LocalizationHelpers
   alias TymeslotWeb.Themes.Shared.SecurityFields
 
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
-    filtered_assigns = Map.drop(assigns, [:flash, :socket])
-    {:ok, assign(socket, filtered_assigns)}
+    # `:uploads` is this component's own (see AttendeeAttachmentUpload),
+    # never the parent's.
+    filtered_assigns = Map.drop(assigns, [:flash, :socket, :uploads])
+
+    {:ok,
+     socket
+     |> assign(filtered_assigns)
+     |> assign_new(:attachment_error, fn -> nil end)
+     |> AttendeeAttachmentUpload.maybe_allow()}
   end
 
   @impl Phoenix.LiveComponent
@@ -40,13 +50,12 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.BookingComponent do
 
   @impl Phoenix.LiveComponent
   def handle_event("submit", %{"booking" => booking_params}, socket) do
-    # Set submitting state immediately for instant UI feedback — but only when
-    # the location picker has an answer the LiveView will accept. An
-    # incomplete one is refused without changing any assign this component
-    # renders, so a flag set here would have nothing to clear it again.
-    socket = assign(socket, :submitting, BookingLocation.complete?(socket.assigns))
-    send(self(), {:step_event, :booking, :submit, booking_params})
-    {:noreply, socket}
+    AttendeeAttachmentUpload.submit(socket, booking_params)
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("cancel_attachment", %{"ref" => ref}, socket) do
+    {:noreply, cancel_upload(socket, :attachments, ref)}
   end
 
   @impl Phoenix.LiveComponent
@@ -64,6 +73,12 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.BookingComponent do
   @impl Phoenix.LiveComponent
   def handle_event("select_video_provider", %{"id" => id}, socket) do
     send(self(), {:step_event, :booking, :select_video_provider, id})
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("select_venue", %{"id" => id}, socket) do
+    send(self(), {:step_event, :booking, :select_venue, id})
     {:noreply, socket}
   end
 
@@ -125,7 +140,8 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.BookingComponent do
                   <div>
                     <div class="summary-value">{LocalizationHelpers.format_date(@selected_date)}</div>
                     <div class="summary-label">
-                      {@selected_time || dgettext("booking", "No time selected")}
+                      {LocalizationHelpers.format_slot_label(@selected_time) ||
+                        dgettext("booking", "No time selected")}
                     </div>
                   </div>
                 </div>
@@ -159,10 +175,19 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.BookingComponent do
               selected_location_id={@selected_location_id}
               video_choices={BookingLocation.video_choices(assigns)}
               selected_video_id={@selected_video_id}
+              venue_choices={BookingLocation.venue_choices(assigns)}
+              selected_venue_id={@selected_venue_id}
+              kept_location={BookingLocation.kept_location(assigns)}
               location_phone={@location_phone}
               location_error={@location_error}
               phone_required={BookingLocation.phone_required?(assigns)}
               target={@myself}
+            />
+
+            <LocationField.stated_location
+              :if={BookingLocation.stated_location?(assigns)}
+              option={BookingLocation.selected(assigns)}
+              venue_choices={BookingLocation.venue_choices(assigns)}
             />
 
             <.form
@@ -176,14 +201,16 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.BookingComponent do
               as={:booking}
               id="booking-form"
               {SecurityFields.recaptcha_form_attrs("booking_form", "booking")}
+              novalidate
             >
-              <SecurityFields.honeypot_field id_prefix="booking" param_root="booking" />
+              <.honeypot_field id="booking-website" param_root="booking" />
 
               <.input
                 field={f[:name]}
                 label={dgettext("booking", "Name")}
                 placeholder={dgettext("booking", "Enter your full name")}
                 errors={FormValidationHelpers.field_errors(@validation_errors, :name)}
+                required
                 phx-debounce="300"
                 phx-blur="field_blur"
                 phx-value-field="name"
@@ -196,6 +223,7 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.BookingComponent do
                 type="email"
                 placeholder={dgettext("booking", "your.email@example.com")}
                 errors={FormValidationHelpers.field_errors(@validation_errors, :email)}
+                required
                 phx-debounce="300"
                 phx-blur="field_blur"
                 phx-value-field="email"
@@ -208,6 +236,7 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.BookingComponent do
                 type="tel"
                 placeholder={dgettext("booking", "Enter your phone number")}
                 errors={FormValidationHelpers.field_errors(@validation_errors, :phone)}
+                required
                 phx-debounce="300"
                 phx-blur="field_blur"
                 phx-value-field="phone"
@@ -231,11 +260,25 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.BookingComponent do
                 label={dgettext("booking", "Meeting Information")}
                 placeholder={dgettext("booking", "Add any details...")}
                 errors={FormValidationHelpers.field_errors(@validation_errors, :message)}
+                required
                 rows={4}
                 phx-debounce="300"
                 phx-blur="field_blur"
                 phx-value-field="message"
                 phx-target={@myself}
+              />
+
+              <AttachmentField.attachment_field
+                :if={assigns[:uploads][:attachments]}
+                upload={@uploads.attachments}
+                error={@attachment_error}
+                target={@myself}
+              />
+
+              <OwnCalendar.field form={f} offer={assigns[:own_calendar_offer]} />
+              <OwnCalendar.signed_out_hint
+                login_path={assigns[:own_calendar_login_path]}
+                embedded={assigns[:embedded] || false}
               />
 
               <SecurityFields.recaptcha_token_field id_prefix="booking" param_root="booking" />
@@ -250,8 +293,6 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.BookingComponent do
               max_guests={@max_guests}
               target={@myself}
             />
-
-            <SecurityFields.recaptcha_notice_block />
 
             <ApprovalNotice.block
               :if={Approval.required?(@meeting_type)}
@@ -307,6 +348,8 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.BookingComponent do
                 <% end %>
               </button>
             </div>
+
+            <SecurityFields.recaptcha_notice_block />
           </div>
         </div>
       </div>

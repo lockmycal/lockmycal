@@ -424,3 +424,8 @@ msgstr "Вашу відповідь надіслано організатору 
 #, elixir-autogen, elixir-format
 msgid "the person who booked"
 msgstr "той, хто бронював"
+
+#: lib/tymeslot_web/live/meeting_request_live/view.ex
+#, elixir-autogen, elixir-format
+msgid "Attachments"
+msgstr "Вкладення"

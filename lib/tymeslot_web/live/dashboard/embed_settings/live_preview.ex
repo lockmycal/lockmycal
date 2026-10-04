@@ -37,8 +37,8 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.LivePreview do
         {dgettext("dashboard_embed", "Try your booking widget in action")}
       </p>
 
-      <div class="bg-linear-to-br from-neutral-50 to-neutral-100 dark:from-twilight-indigo-900/60 dark:to-twilight-indigo-800/60 rounded-token-2xl border-2 border-neutral-300 dark:border-twilight-indigo-700 p-8">
-        <div class="bg-white dark:bg-twilight-indigo-950 rounded-token-xl p-6 border-2 border-neutral-300 dark:border-twilight-indigo-700 shadow-xl">
+      <div class="bg-linear-to-br from-neutral-50 to-neutral-100 dark:from-twilight-indigo-900/60 dark:to-twilight-indigo-800/60 rounded-token-2xl border-2 border-neutral-300 dark:border-twilight-indigo-800 p-8">
+        <div class="bg-white dark:bg-twilight-indigo-950 rounded-token-xl p-6 border-2 border-neutral-300 dark:border-twilight-indigo-800 shadow-xl">
           <div class="text-center text-neutral-600 dark:text-neutral-300 mb-4">
             <p class="font-semibold text-primary-700 dark:text-primary-300">
               {dgettext("dashboard_embed", "Previewing: %{type} Mode",
@@ -105,7 +105,7 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.LivePreview do
               )
             }
             data-iframe-title={dgettext("dashboard_embed", "Booking Preview")}
-            class="min-h-[400px] border-2 border-dashed border-neutral-300 dark:border-twilight-indigo-700 rounded-token-lg flex items-center justify-center bg-neutral-50 dark:bg-twilight-indigo-900/60 overflow-hidden"
+            class="min-h-[400px] border-2 border-dashed border-neutral-300 dark:border-twilight-indigo-800 rounded-token-lg flex items-center justify-center bg-neutral-50 dark:bg-twilight-indigo-900/60 overflow-hidden"
           >
           </div>
         </div>

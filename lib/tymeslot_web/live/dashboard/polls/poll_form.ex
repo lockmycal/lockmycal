@@ -17,6 +17,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollForm do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Ecto.Changeset
+  alias Tymeslot.MeetingTypes
   alias Tymeslot.Polls
   alias Tymeslot.Polls.PollSchema
   alias Tymeslot.Profiles
@@ -72,6 +73,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollForm do
         phx-change="form_change"
         phx-target={@myself}
         class="space-y-4"
+        novalidate
       >
         <.input
           name="poll[title]"
@@ -388,7 +390,8 @@ defmodule TymeslotWeb.Dashboard.Polls.PollForm do
   end
 
   defp meeting_type_options(meeting_types) do
-    Enum.map(meeting_types, &{&1.name, &1.id})
+    locale = Gettext.get_locale(TymeslotWeb.Gettext)
+    Enum.map(meeting_types, &{MeetingTypes.localized_name(&1, locale), &1.id})
   end
 
   defp parse_meeting_type_id(id) when id in [nil, ""], do: nil

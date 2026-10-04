@@ -14,6 +14,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.CreateMeetingModeTest do
   import Tymeslot.Factory
 
   alias Plug.Test
+  alias Tymeslot.Meetings.MeetingSchema
+  alias Tymeslot.Repo
 
   setup %{conn: conn} do
     user = insert(:user, onboarding_completed_at: DateTime.utc_now())
@@ -23,10 +25,16 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.CreateMeetingModeTest do
     {:ok, conn: conn, user: user}
   end
 
+  # A meeting can't be saved without a title, so the form opens with one
+  # already typed; the title's own validation has its own test.
   defp open_create_form(lv) do
     lv
     |> element("#calendar-grid")
     |> render_hook("show_create_form", %{})
+
+    lv
+    |> element("#calendar-grid")
+    |> render_hook("update_create_title", %{"value" => "Kickoff"})
   end
 
   describe "without any calendar integration" do
@@ -36,7 +44,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.CreateMeetingModeTest do
       html = open_create_form(lv)
 
       assert html =~ ~s(id="create-event-modal")
-      assert html =~ "New Meeting"
+      assert html =~ "Meeting title"
       assert html =~ ~s(id="create-meeting-guest-name")
       assert html =~ ~s(id="create-meeting-guest-email")
       # No mode toggle: an event has nowhere to be written.
@@ -48,7 +56,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.CreateMeetingModeTest do
       {:ok, lv, _html} = live(conn, ~p"/dashboard")
       html = open_create_form(lv)
 
-      assert html =~ "Reminders"
+      assert html =~ "Reminder"
 
       html =
         lv
@@ -56,6 +64,32 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.CreateMeetingModeTest do
         |> render_hook("add_create_reminder", %{"method" => "popup", "minutes" => "30"})
 
       assert html =~ "30"
+    end
+
+    test "saving without a title flashes a validation error", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, ~p"/dashboard")
+
+      html =
+        lv
+        |> element("#calendar-grid")
+        |> render_hook("show_create_form", %{})
+
+      assert html =~ ~s(aria-required="true")
+
+      lv
+      |> element("#calendar-grid")
+      |> render_hook("update_create_guest_name", %{"value" => "Ada Lovelace"})
+
+      lv
+      |> element("#calendar-grid")
+      |> render_hook("update_create_guest_email", %{"value" => "ada@example.com"})
+
+      lv |> element("#calendar-grid") |> render_hook("save_event", %{})
+      html = render(lv)
+
+      assert html =~ "Meeting title is required"
+      assert html =~ ~s(id="create-event-modal")
+      refute html =~ "Sending..."
     end
 
     test "saving without guest details flashes a validation error", %{conn: conn} do
@@ -105,7 +139,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.CreateMeetingModeTest do
       assert html =~ "You cannot add yourself as a guest"
       # Modal stays open so the address can be corrected.
       assert html =~ ~s(id="create-event-modal")
-      refute html =~ "Creating..."
+      refute html =~ "Sending..."
     end
 
     test "the self-booking check ignores case", %{conn: conn, user: user} do
@@ -141,7 +175,73 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.CreateMeetingModeTest do
 
       # The save dispatched to the async ad-hoc path and the button shows its
       # loading state while the meeting is created.
-      assert html =~ "Creating..."
+      assert html =~ "Sending..."
+    end
+  end
+
+  describe "the note to the guest" do
+    defp fill_guest(lv) do
+      lv
+      |> element("#calendar-grid")
+      |> render_hook("update_create_guest_name", %{"value" => "Ada Lovelace"})
+
+      lv
+      |> element("#calendar-grid")
+      |> render_hook("update_create_guest_email", %{"value" => "ada@example.com"})
+    end
+
+    test "is hidden until the organiser asks to add one", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, ~p"/dashboard")
+      html = open_create_form(lv)
+
+      assert html =~ ~s(data-testid="create-meeting-add-note")
+      refute html =~ ~s(id="create-meeting-note")
+
+      html = lv |> element(~s([data-testid="create-meeting-add-note"])) |> render_click()
+
+      assert html =~ ~s(id="create-meeting-note")
+      refute html =~ ~s(data-testid="create-meeting-add-note")
+    end
+
+    test "is saved on the meeting the organiser creates", %{conn: conn, user: user} do
+      {:ok, lv, _html} = live(conn, ~p"/dashboard")
+      open_create_form(lv)
+      fill_guest(lv)
+
+      lv |> element(~s([data-testid="create-meeting-add-note"])) |> render_click()
+
+      lv
+      |> element("#calendar-grid")
+      |> render_hook("update_create_note", %{"value" => "Agenda: the Q3 roadmap."})
+
+      lv |> element("#calendar-grid") |> render_hook("save_event", %{})
+
+      # Creation runs in a supervised task; wait for the row it writes.
+      meeting = eventually(fn -> Repo.one(MeetingSchema) end, timeout: 5000)
+      assert meeting.organizer_user_id == user.id
+      assert meeting.organizer_note == "Agenda: the Q3 roadmap."
+      assert meeting.attendee_message == nil
+    end
+
+    test "removing it discards what was typed", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, ~p"/dashboard")
+      open_create_form(lv)
+      fill_guest(lv)
+
+      lv |> element(~s([data-testid="create-meeting-add-note"])) |> render_click()
+
+      lv
+      |> element("#calendar-grid")
+      |> render_hook("update_create_note", %{"value" => "Never mind this."})
+
+      html = lv |> element("button", "Remove note") |> render_click()
+      refute html =~ ~s(id="create-meeting-note")
+
+      lv |> element("#calendar-grid") |> render_hook("save_event", %{})
+
+      # Creation runs in a supervised task; wait for the row it writes.
+      meeting = eventually(fn -> Repo.one(MeetingSchema) end, timeout: 5000)
+      assert meeting.organizer_note == nil
     end
   end
 
@@ -167,7 +267,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.CreateMeetingModeTest do
 
       html = open_create_form(lv)
 
-      assert html =~ "New Meeting"
+      assert html =~ "Meeting title"
       refute html =~ ~s(data-testid="create-mode-meeting")
     end
 
@@ -189,7 +289,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.CreateMeetingModeTest do
       html =
         lv |> element("#calendar-grid") |> render_hook("set_create_mode", %{"mode" => "event"})
 
-      assert html =~ "New Meeting"
+      assert html =~ "Meeting title"
     end
   end
 
@@ -204,7 +304,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.CreateMeetingModeTest do
 
       html = open_create_form(lv)
 
-      assert html =~ "New Event"
+      assert html =~ "Event title"
       assert html =~ ~s(data-testid="create-mode-meeting")
       refute html =~ ~s(id="create-meeting-guest-name")
 
@@ -213,7 +313,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.CreateMeetingModeTest do
         |> element(~s{[data-testid="create-mode-meeting"]})
         |> render_click()
 
-      assert html =~ "New Meeting"
+      assert html =~ "Meeting title"
       assert html =~ ~s(id="create-meeting-guest-name")
     end
   end

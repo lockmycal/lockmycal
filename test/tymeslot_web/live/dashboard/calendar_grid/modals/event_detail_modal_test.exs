@@ -155,7 +155,28 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModalTest do
     html = render_component(&EventDetailModal.event_detail_modal/1, assigns)
 
     assert html =~ "Alice"
-    assert html =~ "attendee@example.com"
+    # Attendees can only be removed here, so there is no add input whose
+    # example address could pass for an attendee.
+    refute html =~ "attendee@example.com"
+    refute html =~ "event-add-attendee-form"
+  end
+
+  test "shows no attendee row for an editable event without attendees" do
+    html =
+      render_component(&EventDetailModal.event_detail_modal/1, base_assigns(%{editable: true}))
+
+    refute html =~ "attendee@example.com"
+    refute html =~ "Each person will receive an invitation"
+  end
+
+  test "edits the description in the app's standard text field" do
+    html =
+      render_component(&EventDetailModal.event_detail_modal/1, base_assigns(%{editable: true}))
+
+    assert [_textarea] =
+             html
+             |> Floki.parse_document!()
+             |> Floki.find("textarea#event-description-input.input")
   end
 
   test "shows delete button in editable mode" do
@@ -251,8 +272,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModalTest do
           })
         )
 
-      # The active button has the primary-400 border class.
-      assert html =~ "border-primary-400"
+      assert html
+             |> Floki.parse_document!()
+             |> Floki.find(~s|#event-video option[value="42"][selected]|)
+             |> length() == 1
     end
   end
 

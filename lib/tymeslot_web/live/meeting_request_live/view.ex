@@ -75,6 +75,13 @@ defmodule TymeslotWeb.MeetingRequestLive.View do
           label={dgettext("booking_manage", "Message")}
           value={@meeting.attendee_message}
         />
+        <%!-- Names only: this page is reached through a token link, while the
+             files themselves are served to the signed-in organiser only. --%>
+        <.detail_row
+          :if={@meeting.attendee_attachments != []}
+          label={dgettext("booking_manage", "Attachments")}
+          value={Enum.map_join(@meeting.attendee_attachments, ", ", & &1["filename"])}
+        />
       </div>
 
       <.info_box :if={@meeting.approval_deadline_at} variant={:warning} class="mt-6">

@@ -37,6 +37,7 @@ msgid "Browser Not Supported"
 msgstr ""
 
 #: lib/tymeslot_web/components/confirmation_modal.ex
+#: lib/tymeslot_web/components/dashboard/meetings/add_guests_modal.ex
 #: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
 #: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
 #, elixir-autogen, elixir-format
@@ -266,4 +267,29 @@ msgstr ""
 #: lib/tymeslot_web/components/site_banner.ex
 #, elixir-autogen, elixir-format
 msgid "Dismiss announcement"
+msgstr ""
+
+#: lib/tymeslot_web/components/public_top_bar.ex
+#, elixir-autogen, elixir-format
+msgid "Documentation"
+msgstr ""
+
+#: lib/tymeslot_web/components/public_top_bar.ex
+#, elixir-autogen, elixir-format
+msgid "Website"
+msgstr ""
+
+#: lib/tymeslot_web/components/public_top_bar.ex
+#, elixir-autogen, elixir-format
+msgid "Booking page"
+msgstr ""
+
+#: lib/tymeslot_web/components/public_footer.ex
+#, elixir-autogen, elixir-format
+msgid "Report a bug"
+msgstr ""
+
+#: lib/tymeslot_web/components/public_footer.ex
+#, elixir-autogen, elixir-format
+msgid "Powered by %{app_name}"
 msgstr ""

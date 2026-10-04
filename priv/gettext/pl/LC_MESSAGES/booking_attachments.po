@@ -1,0 +1,75 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: pl\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10||n%100>=20) ? 1 : 2);\n"
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} is larger than the allowed size."
+msgstr "Plik %{name} przekracza dozwolony rozmiar."
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} is not an allowed file type."
+msgstr "Plik %{name} ma niedozwolony typ."
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "A file could not be uploaded."
+msgstr "Nie udało się przesłać pliku."
+
+#: lib/tymeslot_web/themes/shared/components/attachment_field.ex
+#, elixir-autogen, elixir-format
+msgid "Attachments (optional)"
+msgstr "Załączniki (opcjonalne)"
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "One of your files does not match its file type and was not accepted. Please check it and select it again."
+msgstr "Jeden z plików nie odpowiada swojemu typowi i nie został przyjęty. Sprawdź go i wybierz ponownie."
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "One of your files is not an allowed file type."
+msgstr "Jeden z plików ma niedozwolony typ."
+
+#: lib/tymeslot_web/themes/shared/components/attachment_field.ex
+#, elixir-autogen, elixir-format
+msgid "Remove %{name}"
+msgstr "Usuń plik %{name}"
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "You have selected too many files."
+msgstr "Wybrano za dużo plików."
+
+#: lib/tymeslot_web/themes/shared/components/attachment_field.ex
+#, elixir-autogen, elixir-format
+msgid "Your attachments"
+msgstr "Twoje załączniki"
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "Your files are still uploading. Please wait."
+msgstr "Pliki są jeszcze przesyłane. Zaczekaj chwilę."
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "Your files could not be saved. Please try again."
+msgstr "Nie udało się zapisać plików. Spróbuj ponownie."
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "Allowed file types: %{types}, up to %{max_mb} MB, maximum %{count} file."
+msgid_plural "Allowed file types: %{types}, up to %{max_mb} MB each, maximum %{count} files."
+msgstr[0] "Dozwolone typy plików: %{types}, maks. %{max_mb} MB, najwyżej %{count} plik."
+msgstr[1] "Dozwolone typy plików: %{types}, maks. %{max_mb} MB każdy, najwyżej %{count} pliki."
+msgstr[2] "Dozwolone typy plików: %{types}, maks. %{max_mb} MB każdy, najwyżej %{count} plików."

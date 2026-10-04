@@ -1,3 +1,116 @@
+[1.22.0.1]
+* Merge upstream v1.22.0: saved locations (a new Locations page; in-person meeting locations list saved venues the booker picks from, with the address kept on the meeting, in emails and on reschedule), the CSP narrowed to the origins the app uses, reCAPTCHA loaded only once a visitor starts filling in a form and no longer rejecting bookings and sign-ups while Google is unreachable, metadata (location, device) stripped from uploaded avatars and theme backgrounds, encrypted webhook URLs / custom meeting links / push secrets and hashed poll, RSVP, free/busy and Telegram link tokens, analytics without reversible visitor hashes or ad click identifiers, a shorter retention of IP addresses, unverified accounts and payment records, and calendar grid fixes
+* Cloudflare Turnstile keeps working next to the new reCAPTCHA behaviour: its origin is allowed by the narrowed CSP only while Turnstile is configured for booking or sign-up. Unlike reCAPTCHA, Turnstile still rejects a submission while Cloudflare is unreachable
+* The meeting type's location editor keeps the fork's look and dark mode, including the inline yes/no toggle, in upstream's new shared `ChoiceToggle` component
+* The new Locations page and the saved-location picker use the dashboard's `neutral`/`primary` colours with dark mode, like the rest of the fork's dashboard (upstream's `tymeslot-*` and `turquoise` text classes are gone from them)
+* On short windows (landscape phones, under 480 px high) the public booking pages hide the footer and slim the top bar, so the schedule's action row stays on screen
+* `mix precommit` is green again: the fourteen files over the 650-line limit are split (new `Bookings.MeetingPermissions`, `Meetings.MeetingAttributionQueries`, `Meetings.CalendarEventSync.Mapping`, `Integrations.Video.VideoRoomErrorQueries`, `Themes.Shared.TrackingHelpers`, `MeetingTypeForm.SlotInterval`, helpers moved into `CalendarSettings.Helpers`, seven test modules cut in two); the public functions keep their names through `Policy` and `Meetings` delegates
+* The Wallaby E2E tests match the fork's UI again: error toast on a wrong login, always-open password form on the Profile page, required phone and message fields in the public booking test
+* The `add-announcement` skill points at `docs/Internal/Annoucements/` and translates into Polish too
+* A signed-in visitor booking on someone else's page can have the meeting saved to their own default calendar too: the booking form offers "Save to my default calendar (<name>)" with "Remember for next time". The copy follows the meeting (moved on reschedule, removed on cancellation, also when the host deletes the event in their own calendar), is written in the booker's language (or the one they booked in), named by the booker's own "Name bookings by" (the meeting information they typed, or "<meeting type> with <host>"), names no attendees, and is skipped quietly when the booker has no calendar that can take it; the booker's calendar is synced right after, so the copy shows on their dashboard calendar at once. A visitor who is not signed in is told on the booking form, before booking, that signing in does this; its Sign in link brings them back to the same form and time slot after signing in (password or SSO / social sign-in), and a Create an account link opens in a new tab
+* Meeting type → Booking Rules → "Your contact details": two switches, off by default, decide whether a signed-in booker sees your email and your phone (from your profile) on their copy of the meeting, in their calendar and on their dashboard; otherwise they see only your name. Each booking keeps the choice it was made under
+* A booking you made on someone else's page shows on your dashboard from your side: the Overview names its host (titled like the copy, the host under it, the attendee's join link), lists it once even after its copy synced back from your calendar, opens that copy's detail in the calendar when clicked, and a request still waiting is badged "Awaiting host approval" there and on the Meetings page, which offers you no Approve / Decline for it (only the host answers it). Its card on the Meetings page is named after the host, shows the host's email instead of your own details, joins by the attendee's link and offers only Cancel (no Add guest or Reschedule request, which are the host's); the card's "Attendee Phone" label is translated
+* Calendar events from a calendar with no colour of its own are readable again after the LockMyCal restyle: their grey (`--color-calendar-fallback`) is now `#646A76` (5.4:1 with white text, was `#8C919B` at 3.2:1) and the same on the dashboard and the Quill booking theme
+* The app uses only the restyle's two fonts, Schibsted Grotesk and IBM Plex Mono: the booking pages (Quill, Rhythm) switch from Inter to Schibsted Grotesk, both fonts are declared once in `base/fonts.css` for the dashboard and the booking themes, and Inter is removed (Ukrainian text, which neither font covers, uses the system font)
+* The sign-in page background matches the LockMyCal restyle: graphite with an orange-accented calendar, in place of the indigo artwork
+* Dashboard sidebar: the booking-link Copy and Email buttons have a thin, muted border instead of a bright 2 px one in dark mode
+* Fix the meeting type's "Show these bookings as free on my calendar" switch never being saved (it was off again after a reload, and bookings were always written as busy)
+* Fix Czech and other non-ASCII text turning into garbage (e.g. "StandardnÃ­") in calendar events written to some CalDAV servers such as Radicale: long lines of the event were folded in the middle of a character, which made the whole document invalid UTF-8
+* Calendars page: the default calendar is marked "Default" and any other calendar that can take bookings can be made the default ("Set as default"); a connection with several calendars asks which of them is the default (shown on the badge, changed with "Change default calendar"), and that is where your bookings on other pages are saved; a new "Your bookings on other pages" setting changes the remembered choice (ask each time / always / never)
+
+[1.21.0.1]
+* Merge upstream v1.21.0: Polish translation, booking titles written in the host's language (and re-rendered in the guest's language in their emails), no fonts loaded from Google on booking pages and in emails (the CSP no longer allows `fonts.gstatic.com`), scrubbing of exceptions before they are stored by error tracking and daily re-masking of stored error reasons, queued calendar-grid edits that survive an app shutdown or a closed tab, screen readers announcing required form fields, month headings in each language's own form, a trailing slash in a URL redirecting to the slashless path, and the Cloudron SSO button naming its identity provider
+* Polish is a supported language, fully translated, including everything the fork adds (contacts, attachments, admin, profile, …)
+* The dev and production images are built on Elixir 1.20.4 / Erlang 28.5.0.7 (`hexpm/elixir:1.20.4-erlang-28.5.0.7-debian-trixie-20260918-slim`), the same toolchain as upstream: `BASE_IMAGE` in `.env.example` and the defaults in `Dockerfile.docker` and `Dockerfile.dev`. This moves the images from Erlang/OTP 29 back to 28 — rebuild the dev image (`dev-<APP_VERSION>-<APP_BUILD>`); `_build` and the Dialyzer PLT are recompiled on the first run
+* Fix two compiler warnings in the test suite that made `mix test --warnings-as-errors` (and `mix precommit`) fail after all tests had passed
+* The logo in the top bar of the public booking pages (every booking step, the public calendar, the cancel / reschedule pages and poll voting) links to the organiser's booking page, where the meeting types are listed; not on embedded pages
+* A "Report a bug" link in a new footer of the dashboard and of the public booking pages (booking flow, public calendar) opens the website forum's bug category (`<WEB_HOST>/forum/bugs`) in a new tab; it is left out while `WEB_HOST` is not set, and on embedded pages
+* The footer of the dashboard and of the public booking pages shows "Powered by LockMyCal · v<version>" (the instance's `APP_NAME` and the app version) in the middle, with "Report a bug" on the right; on phones the two are stacked. Not on embedded pages
+* Fix the leftover "Tymeslot" product name in the translations: every `msgstr` in the cs, de, fr, it, pl and uk catalogs now says "LockMyCal" (209 strings, e.g. "Events on it can't be changed from LockMyCal"); the English source strings are unchanged
+
+[1.20.0.1]
+* [BREAKING] The outgoing webhook delivery-id header is renamed from `X-Tymeslot-Delivery-Id` to `X-Lockmycal-Delivery-Id`, in line with `X-Lockmycal-Token`/`X-Lockmycal-Timestamp` — a webhook receiver that de-duplicates deliveries by the old header name must be updated
+* Fix a log file test that failed wherever `/app/data/logs` can be created (e.g. in the `analysis` container): the legacy `DEPLOYMENT_TYPE=main` test now points the Cloudron log path at a temp dir
+* Fix the Delivery ID row of the webhook documentation (Automation → Webhooks) rendering unstyled and staying light in dark mode; it now looks like the token and timestamp rows above it. The "Security token" notice in the new-webhook form gets a dark-mode look too (it was a grey box with dark text)
+* Contacts can be exported to a CSV file (name, email, phone, company, note) with the new "Export CSV" button on the Contacts page; with a search filled in, only the matching contacts are exported
+* Fix the Microsoft logo on the login and signup buttons shrinking to a dot when three sign-in providers are shown side by side; every provider logo now keeps its full size
+* Overview: "Nothing scheduled for tomorrow." is the same size as "Nothing on your plate today." (it was smaller)
+* Fix the public calendar falling apart for an organiser whose booking page uses the Rhythm theme: it now always uses Quill's look
+* Booking page: the "View full calendar" button sits in the top right corner of the Quill card (under the text on phones), and the Rhythm theme has it too, under the intro on the right
+* The dashboard top bar's theme button is now a three-way switch: light, system (follows the device) and dark, with the saved choice highlighted. It also works on the Analytics page, where the old button failed
+* The dashboard top bar and the booking page / public calendar top bar link to the documentation (question-mark icon) and to the website (globe icon), each in a new tab. The website link uses `WEB_HOST` and is left out while it is not set; both icons are hidden on phones
+* The public calendar shows Monday to Friday only while "Show weekends" is off (the default); Saturday and Sunday still appear in a month where a weekend day can be booked. Turned on, it shows the whole week with weekend busy times, as before
+* The current day is tinted as a whole in the calendars: its cell in the month view and its column (date, all-day row and time grid) in the week and 3-day views of the dashboard calendar, and its cell in the public calendar. The circled day number is gone
+* The JavaScript tests (vitest) now run in CI and in `mix precommit`; run them alone with `mix test.js`
+* An existing event's title can no longer be cleared in its detail dialog: an empty title is not saved while typing, and leaving the field (or pressing Enter) says the title is required and puts the saved title back
+* Fix clicking an error or info message closing the dialog it appeared over; the message is dismissed and the dialog stays open
+* Fix a dialog closing by itself when an error message shown over it disappeared after a few seconds (e.g. saving a new event without a title); it now closes only when you close it
+* A new event or meeting can no longer be saved without a title (calendar quick add and the Meetings page's "Add meeting"): the dialog says so and stays open, and the title is marked with a red asterisk. An untitled meeting used to be named "Meeting with <guest>"
+* The calendar's Up next strip uses the same orange-to-red gradient as the Overview's Up next card instead of orange-red-blue
+* Fix the dashboard showing a meeting type's base (untranslated) name and description although it has a translation for the dashboard's language: the meeting types list, the delete confirmation and the poll form's meeting type picker now show the host's own translation, as the booking page does for guests
+* Dark mode: the border of cards, panels and dialogs is one step darker (and a card's hover border with it), so boxes sit quieter on the page; fields, buttons, switches and menus are unchanged
+* A new account's default availability schedule ("Working hours") and default meeting types ("15 Minutes", "30 Minutes" and their descriptions) are named in the user's language instead of always in English; existing ones keep their names and can be renamed
+* Less rounded corners everywhere — dashboard, dialogs, fields, buttons, cards and the public booking pages (Quill, Rhythm): every corner radius is two steps smaller than before (e.g. 16px → 8px, 8px → 4px); circles and pills stay round
+* Form fields across the app have a thin 1px border and a smaller corner radius, as in the new design of the calendar's dialogs (was a 2px border with large rounded corners)
+* Form fields across the app no longer cast a shadow (the soft glow around a focused field, and the drop shadow of dropdowns); a focused field is marked by its border colour alone
+* Fix the Reminders box on a meeting's card (Meetings page) in dark mode: it was a light grey panel with a white border; it now looks like the Attachments box above it
+* Fix choosing when a repeating event ends: picking "Ends after" or "Ends on" jumped back to "Never ends" and the field for the number of occurrences or the end date never appeared. The choice now sticks, starting at 10 occurrences or a month after the event's start
+* A field being typed in (text, e-mail, date, time, dropdown, text area) is now marked by a soft highlight across the app instead of the thick ring with a gap around it; buttons, links and switches keep the full ring for keyboard navigation
+* New look for the calendar's event dialogs (new event / meeting with a guest, the same dialog on the Meetings page, an event's detail and a booking's detail): the name is edited in the header behind a pencil, the Event / Meeting tabs sit under it, start and end are separate date and time fields, and fields are grouped under small section labels — Calendar and Video, Repeat and Reminder side by side, then Attendees. Calendar and video are picked from a dropdown (calendars grouped by account, the account's colour shown in the field); a reminder is added from a list of lead times with "+" and is always a notification. A meeting's primary button reads "Send invitation". In an event's detail, repeat and reminders are shown as text rather than as disabled controls. Example values in empty fields (placeholders) are fainter there, so they no longer look filled in
+* The dashboard calendar's "My Calendars" dropdown no longer shows a colour picker under each calendar; it only shows and hides calendars. An account's colour is set under Calendars → Manage calendars; a colour already chosen for a single calendar keeps painting its events
+* Merge upstream v1.19.0 and v1.20.0: editing and deleting recurring events in the dashboard calendar (this, following or all occurrences; split a series; move a series to another calendar — CalDAV, Google and Outlook), error tracking stored in the app's own database with admin alert emails (`ERROR_TRACKING_ENABLED`, on by default; bursts of new errors rolled into one email, info-severity alerts in a daily digest at 07:00 UTC), redaction of secrets and personal data in logs, adding guests to an existing booking from its card, a booking card listing its reminders, and quick add gaining an organiser note, extra guests and a choice of invitation language
+* The event written to a connected calendar now carries a separate calendar UID instead of the booking's own UID (which is what the cancel and reschedule links are built from); existing meetings keep their current event UID
+* The Meetings page's "Add meeting" dialog gets the same organiser note, extra guests and invitation language as the calendar's quick add, and the same per-user limit on how often it can create meetings
+* Quick add: a meeting created without picking a reminder no longer gets the legacy 30-minute reminder email (its confirmation already said no reminders were scheduled); reminders picked in the dialog are sent as before
+* Meeting cards on the Meetings page: the action buttons (Approve/Decline, Join, Add guest, Reschedule, Cancel, Delete) come from one shared component; Add guest is new
+* Admin alert emails are named after the instance (`APP_NAME`): "[WARNING] LockMyCal: Webhook", sent to "LockMyCal Operator"
+* The Pro badge (`Dashboard.ProBadge`) takes an optional `label` for a feature gated behind something other than the plan itself; the Calendars page's "Enable free/busy feed" button is right-aligned like the section's other buttons
+* A connected-calendar row can carry a type tag from an external application (`config :tymeslot, :calendar_connection_tags`, `Dashboard.CalendarConnectionTag` behaviour), shown in the same place as Core's "Read-only" tag, which still takes precedence. Empty by default
+* An external application can react to a user deleting a calendar integration (`config :tymeslot, :calendar_integration_deletion_hook`, `Integrations.Calendar.IntegrationDeletionHook` behaviour), e.g. to remove what it created with it; runs after the deletion and can't block it. It can also add a warning to the delete confirmation dialog for that integration. `nil` by default
+* Two new extension points for an external application: an extra section on the dashboard's Calendars page, right after the connected calendars (`config :tymeslot, :calendar_settings_extra_sections`, `Dashboard.CalendarSettingsSection` behaviour), and an informational notice on the sign-up form (`config :tymeslot, :signup_extra_notices`, `Auth.SignupNotice` behaviour). Both are empty by default and change nothing until something is registered
+* Fix a dashboard calendar test that failed every day between midnight and 09:00 UTC (its booking was not the signed-in user's, so the Up next strip kept the booking's synced copy)
+
+[1.18.1.2]
+* Fix the outline of the day cards (Availability), meeting type cards (Meeting Settings) and connection rows (Calendars, Video, Automation) disappearing in dark mode; they now have the same light border as the Polls cards
+* Overview is now a dashboard titled "What's ahead": a compact greeting with today's date instead of the large banner, four KPI tiles (today, bookings this week, awaiting approval, open polls — each links to its page), the agenda as the main panel in two blocks — "Your day today" (Up next and today's timeline) and "Coming up tomorrow" (every appointment of the next day, or the next appointment further out when tomorrow is free) — and a side column with Quick actions (create a meeting — opens the calendar's new-event form, also reachable as `/dashboard?create=1` — copy/email booking link, create a poll, meeting types, availability), the state of calendar and video connections (flags ones needing reauthorisation) and — when booking analytics is enabled and allowed — visits, bookings and conversion for the last 7 days with a small chart. An extension can add its own card to the side column (`config :tymeslot, :dashboard_overview_extra_widgets`, `Dashboard.OverviewWidget` behaviour). "Your day" drops its drop shadows, its Up next card uses the orange-to-red brand gradient instead of orange-red-blue, and its timeline rows, badges and rail are readable in dark mode (the next appointment's row used to stay white)
+
+* Fix events created or edited in the dashboard calendar missing from the Overview agenda (and the calendar's Up next strip): they were taken for copies of bookings; now only an event that actually matches a booking is left out
+* Agenda entries on the Overview are coloured like in the calendar: an event's own colour, else the colour chosen for its calendar, else its calendar account's colour (or its automatic one); bookings in the booking colour. Before, only events with a colour of their own had one
+* Agenda rows (Your day today, Coming up tomorrow) and the meeting details name the calendar an appointment is in instead of a generic "Booking"/"Calendar" label: the connected account's name ("Itopo"), qualified by the calendar when the account has several in use ("Pavliks.eu - Tymeslot"); a booking shows the calendar it was written to, or the app's name when it is in none
+* The sidebar's Administration section can be collapsed by clicking its heading and starts collapsed, except on the Administration pages themselves
+* Czech Overview headings address the user formally: "Co Vás čeká" and "Co Vás čeká zítra" (was "Co vás čeká" and "Co mě čeká zítra")
+* The light/dark toggle in the dashboard's top bar shows the pointer (hand) cursor on hover
+* Fix the profile-gated `analysis` service in `docker-compose.dev.yml` building from the production image tag instead of the dev toolchain image (`DEV_IMAGE` now points to `lockmycal:dev-<version>`)
+* Fix booking, sign-up and poll voting always failing with "Security verification failed" when Cloudflare Turnstile is the bot protection: the Turnstile widget never appeared, so the form was sent without a token. The widget is also no longer wiped when the form re-renders while typing
+* On the booking page (Quill and Rhythm) the reCAPTCHA/Turnstile notice ("This site is protected by…") moved below the Back and Book buttons, with a gap above it, instead of sitting between the form and the buttons
+* Fix a booking awaiting approval showing twice on the public calendar, as "Busy" and as "Pending approval" at the same time: the tentative hold it writes to the host's calendar is no longer shown as Busy
+* Fix Meetings offering Delete on a cancelled meeting the user only attended (booked with someone else), which always failed with "Failed to delete meeting"; only the organiser now sees the button
+* The "event was deleted from your external calendar" banner on a cancelled meeting can no longer be dismissed: it stays until the meeting is deleted, and tells the organiser the date after which their cancelled-meeting cleanup deletes it. An attendee sees "The organiser removed this meeting's event from their calendar." instead
+* [BREAKING] Automatic deletion of cancelled meetings (Settings → Cancelled Meetings) is now on by default, for new and existing users alike (30 days after cancellation unless changed): on the first nightly run after upgrading, every user's cancelled meetings older than their window are deleted. Turn it off in Settings to keep them
+* The booking detail in the dashboard calendar says "Booked through your LockMyCal booking page" (the instance's `APP_NAME`) instead of the hardcoded "Booked through your Tymeslot page"; Czech "Zarezervováno přes Vaši rezervační stránku LockMyCal"
+* Fix the event detail in the dashboard calendar: the collapsible Description panel stayed light in dark mode, and an event showed the example address "attendee@example.com" in the attendee row although attendees can't be added there
+* "Manage in Meetings" in the dashboard calendar's booking detail is now a primary (orange) button; in dark mode it used to turn white under its light text on hover. The calendar's date picker (the period label's mini month) also has dark-mode colours now: it was a white panel with light hovers
+* Calendar colours (dashboard calendar and public calendar) are darker shades of the same hues, so the white event text on them is readable: every colour now has at least 4.5:1 contrast with white (WCAG AA); yellow, amber and cyan were below 2.5:1
+* Fix a booking awaiting approval showing on the dashboard calendar as an ordinary event in its calendar's colour once its tentative hold had synced; it now keeps the red "awaiting approval" look and opens the booking detail
+* The booking detail in the dashboard calendar shows the meeting's description and the attendee's notes, as the Meetings page and the calendar event do
+* Fix the synced tentative hold of a booking awaiting approval showing on the Overview agenda (and the calendar's Up next strip) as an ordinary appointment in its calendar's colour; the agenda leaves requests awaiting approval out, as intended
+* The Overview agenda ("Your day today", "Coming up tomorrow") now also lists booking requests awaiting approval, in red with an "Awaiting approval" badge; they are never shown as Up next (nor in the calendar's Up next strip)
+* Bookings on the Overview agenda and in the dashboard calendar are titled by the "Meeting Information" the guest entered when booking instead of "<meeting type> with <name>"; a booking without it keeps its meeting-type title. Settings → Meeting Titles switches back to the meeting type
+* Meetings: each meeting card shows the meeting type that was booked
+* Clicking an appointment on the Overview opens it in the calendar, on its day, in the calendar's own detail dialog (editable for a calendar event, the booking detail for a booking) instead of a separate Overview dialog; closing it returns to the Overview. The per-appointment colour picker that only that dialog had is gone; the Overview shows the same colours as the calendar
+* The booking detail in the dashboard calendar labels the meeting type's description "Meeting Type" (was "Description", with a tag icon), and its Meeting Type and Meeting Notes values sit right under their labels instead of after a blank line
+* Every variant of the calendar's detail dialog has a Cancel button that closes it: the booking detail and the detail of an event in a read-only calendar now too, as the editable event detail already had
+* The detail of an event in a read-only calendar (a subscribed feed, a calendar shared read-only) shows an amber "Calendar is read-only" badge under its title; other events show nothing there
+* Fix the "Send Reschedule Request" dialog in dark mode: the current meeting's date, time and duration were white on a white panel (invisible), and the "What happens next" box stayed light
+* [BREAKING] Public calendar → Weekends: a new setting whether busy times on Saturdays and Sundays are published, off by default — so after upgrading, the public calendar and the free/busy feed leave weekends out for every user until they turn it on (Calendar settings → Public calendar → Weekends)
+* Bookers can attach files on the booking page (Quill and Rhythm, embeds included) when the host switches "Attachments" on for a meeting type. The admin sets the allowed types (csv, docx, jpeg, jpg, md, ods, odt, pdf, png, pptx, svg, txt, webp, xlsx, zip; all but svg on by default), the size per file (default 10 MB, at most 100) and the number of files (default 3, at most 10) under Administration → General → Booking attachments. Each file's content is checked against its type, so a renamed file is refused. Files are private (stored outside `/uploads`, in `/app/data/private_uploads`) and downloadable by the organiser only, from the booking card (with a paperclip badge), the calendar's booking and event details (paperclip on the event), the approval request page (names only), the host's booking and approval emails (attached while together under 15 MB) and the synced calendar event's description (sign-in download links). Webhook payloads carry the files' name, type and size. Files are deleted with their meeting, with the account, and nightly once nothing references them
+* The event written to the connected calendar is titled like the booking on the dashboard (Settings → Meeting Titles: the guest's meeting information, or the meeting type) instead of always "<meeting type> with <name>", and its description now also carries the attendee's phone and company and the meeting type. Existing events change the next time they are written
+* Zoom is only offered in the "Connect video provider" picker when `ZOOM_CLIENT_ID` is set; without it (missing, commented out or empty in `.env`) the OAuth flow could only fail. Existing Zoom connections keep working
+* Booking page (Quill): the "Where shall we meet?" choices are cards — an icon, the option's name, a short line under it (the join link arrives by email, the host calls your number, or the option's own detail such as an address) and a check mark — two to a row, with a divider before the name fields. The question is labelled like the form's other fields, with a required asterisk; the heading and the two lines under it are smaller; the "Attachments (optional)" label is no longer shown (still read by screen readers). Rhythm keeps its row of toggles, now with the required asterisk too
+* Booking page (Rhythm): phone and company sit side by side again, the meeting information and the attachments span the full width, and the "Attachments (optional)" label is no longer shown (still read by screen readers)
+* Fix the booking form showing no error for a required field the booker left empty (both themes): the error now appears as soon as the field is left, instead of only after typing into the form. Rhythm also marks name, email, phone and meeting information with a red asterisk, and its submit button looks disabled while the form can't be sent (it was disabled but looked active)
+* Meeting Settings: each meeting type card also shows its availability schedule (with the schedule's colour; the default one for a type that follows it) and, only when set, its booking limits per day/week/month ("2/day · 5/week"), "Requires approval" and "Attachments" (when the booking form actually offers them)
+
 [1.18.1.1]
 * Merge upstream v1.18.0 and v1.18.1 (meeting locations — in person, phone, video or custom, several per meeting type, with the booker picking one and the video service; a large sign-in/sign-up security hardening; calendar sync and Teams/Outlook fixes; integration health alerts for admins; resumable Stripe Connect onboarding) — from this version on, upstream releases are merged into the fork instead of rebasing it
 * Disabled accounts stay locked out under upstream's reworked sign-in: Google/GitHub/OIDC sign-in refuses them, and password sign-in only says the account is disabled after the correct password was given
@@ -183,6 +296,97 @@
 
 [1.9.0+2]
 * core: Match the calendar's up-next-meeting banner colours to the dashboard's brand gradient and move it below the Calendar heading
+
+[1.22.0]
+* security: Accept bookings and sign-ups when Google cannot be reached
+* uploads: Say when an image is refused for its size
+* uploads: Keep image quality when removing metadata from uploads
+* security: Stop a rollback bringing back replaced links and secrets
+* security: Stop a form submit hanging when the reCAPTCHA check stalls
+* analytics: Keep encrypted link tokens out of logs and analytics
+* timezones: Correct booking times for Manitoba and the Northwest Territories
+* timezones: Stop production instances contacting data.iana.org
+* payments: Delete payment records once their legal retention ends
+* analytics: Stop storing ad click identifiers on bookings
+* privacy: Stop keeping visitors' IP addresses without limit
+* emails: Stop writing email recipients and subjects to the log
+* security: Stop storing poll, RSVP and free/busy link tokens in plain text
+* email: Stop rewriting email links for click tracking
+* security: Narrow the Content-Security-Policy to the origins the app uses
+* privacy: Load reCAPTCHA only once a visitor starts filling in a form
+* analytics: Stop visitor hashes being reversible to an IP address
+* uploads: Stop publishing the location and device details in uploaded media
+* guests: Keep the booker's private details out of guests' calendar files
+* analytics: Keep reset, RSVP, poll and other link tokens out of analytics
+* calendar: Stop a stuck tab holding up the calendar grid's mount
+* calendar: Hold another tab's occurrence edits while a whole series saves
+* caldav: Recreate a booking's event the calendar reports as gone
+* calendar: Stop an edit being written twice after a quick return to the calendar
+* calendar: Stop an occurrence edit overwriting a whole-series change
+* calendar: Stop two calendar grids waiting on each other's edits
+* calendar: Stop an older calendar grid edit overwriting a newer one after reconnecting
+* calendar: Keep CalDAV event details added outside Tymeslot on reschedule
+* Save in-person locations and let bookers pick one
+
+
+[1.21.0]
+* booking: Show the booking title to guests in their own language
+* calendar: Move the iCloud event when a booking is rescheduled
+* booking: Translate the preview booking title into the host's language
+* calendar: Translate booking event titles into the host's language
+* privacy: Stop loading fonts from Google in booking pages and emails
+* calendar: Write dashboard calendar dates in each language's order
+* Redirect URLs with a trailing slash to the slashless path
+* i18n: Capitalise month headings and use the standalone month name
+* booking: Show the chosen time on the visitor's clock after booking
+* accessibility: Announce required form fields to screen readers
+* calendar: Stop mailbox.org adding your login address to bookings
+* booking: Show the booking page error card in the visitor's language
+* embed: Stop an embed URL opened in its own tab from reloading endlessly
+* auth: Name the Cloudron identity provider on the SSO button
+* i18n: Add Polish translation
+
+
+[1.20.0]
+* calendar: Limit how often quick add can create meetings
+* calendar: Delete a removed event's video room despite shared calendars
+* emails: Restore the missing "in" in the attendee reminder subject
+* calendar: Keep a grid event's video room when it moves to another calendar
+* calendar: Save CalDAV grid events to the calendar you picked
+* booking: Stop quick add sending a reminder nobody asked for
+* meetings: Let quick add invite more guests in a chosen language
+* meetings: Let quick add include a note to the guest
+* bookings: Show a booking's reminders on its card
+* meetings: Let the host add guests to a booking
+
+
+[1.19.0]
+* themes: Centre the icons in Quill's booking confirmation rows
+* calendar: Notify attendees of recurring event time changes after saving
+* calendar: Stop exposing booking cancel links in calendar events
+* calendar: Never send a cancellation for someone else's event on delete
+* calendar: Stop showing events already deleted in Google Calendar
+* calendar: Send attendees a cancellation when an event is deleted
+* calendar: Apply quick successive edits of one event in order
+* calendar: Show every occurrence of a Google series changed after setup
+* calendar: Stop a moved CalDAV occurrence also showing at its old time
+* calendar: Keep CalDAV event details the grid does not show when editing
+* calendar: Show every occurrence of a Google recurring event
+* calendar: Address Google recurring instances by their own id
+* calendar: Stop a CalDAV outage alerting once per sync cycle
+* Keep provider logos sharp at every size and screen density
+* alerts: Log an error when admin alerts are on but have no recipient
+* alerts: Keep retrying admin alerts until the mail server recovers
+* alerts: Keep calendar owners' email addresses out of admin alerts
+* alerts: Show the real reason in dispute and calendar sync alerts
+* Keep meeting links and poll tokens out of the request log
+* alerts: Send a burst of new-error alerts as one roll-up email
+* observability: Add ERROR_TRACKING_ENABLED to switch error tracking off
+* calendar: Move a recurring event to another calendar
+* calendar: Edit this, following or all occurrences of a recurring event
+* calendar: Edit one occurrence of a CalDAV recurring event from the grid
+* calendar: Delete one occurrence or a whole recurring series from the grid
+
 
 [1.18.1]
 * calendar: Stop a large CalDAV change from exhausting memory during sync

@@ -5,9 +5,19 @@ defmodule Tymeslot.Meetings do
   calendar integration, and email notifications.
   """
 
+  @behaviour Tymeslot.Security.EncryptedStorage
+
   require Logger
 
-  alias Tymeslot.Bookings.{Cancel, Reschedule, RescheduleRequest}
+  alias Tymeslot.Bookings.{
+    AttendeeAttachments,
+    BookingTitle,
+    Cancel,
+    Reschedule,
+    RescheduleRequest
+  }
+
+  alias Tymeslot.Infrastructure.Logging.LogFormat
 
   alias Tymeslot.Meetings.{
     BusyPeriods,
@@ -16,7 +26,9 @@ defmodule Tymeslot.Meetings do
     Cancellation,
     ExternalCalendarChanges,
     Guests,
+    GuestSchema,
     Listing,
+    MeetingAttributionQueries,
     MeetingCalendarQueries,
     MeetingListQueries,
     MeetingQueries,
@@ -29,6 +41,12 @@ defmodule Tymeslot.Meetings do
   alias Tymeslot.Notifications.ContentBuilder
 
   alias Tymeslot.Pagination.CursorPage
+  alias Tymeslot.Security.EncryptedString
+
+  # The guests' RSVP tokens.
+  @impl Tymeslot.Security.EncryptedStorage
+  def encrypted_storage,
+    do: {GuestSchema.__schema__(:source), EncryptedString.columns(GuestSchema)}
 
   @doc """
   Looks up the open invitation behind a guest's RSVP token, with its meeting
@@ -152,7 +170,11 @@ defmodule Tymeslot.Meetings do
         pending
 
       {:error, reason} = error ->
-        Logger.error("Failed to add video room", meeting_id: meeting_id, reason: inspect(reason))
+        Logger.error("Failed to add video room",
+          meeting_id: meeting_id,
+          reason: LogFormat.reason(reason)
+        )
+
         error
     end
   end
@@ -167,6 +189,15 @@ defmodule Tymeslot.Meetings do
   @spec list_upcoming_meetings_for_user(String.t(), integer()) :: [MeetingSchema.t()]
   def list_upcoming_meetings_for_user(user_email, limit) do
     MeetingListQueries.upcoming_meetings_for_user(user_email, limit)
+  end
+
+  @doc """
+  Lists upcoming meetings for the dashboard agenda: live confirmed bookings plus
+  requests still awaiting approval, soonest first, up to `limit`.
+  """
+  @spec list_upcoming_agenda_meetings_for_user(String.t(), integer()) :: [MeetingSchema.t()]
+  def list_upcoming_agenda_meetings_for_user(user_email, limit) do
+    MeetingListQueries.upcoming_agenda_meetings_for_user(user_email, limit)
   end
 
   @doc """
@@ -202,6 +233,23 @@ defmodule Tymeslot.Meetings do
   @spec count_upcoming_active_for_organizer(integer()) :: non_neg_integer()
   def count_upcoming_active_for_organizer(organizer_user_id),
     do: MeetingQueries.count_upcoming_active_for_organizer(organizer_user_id, DateTime.utc_now())
+
+  @doc """
+  Counts the organizer's slot-occupying bookings that start in `[from, to)`.
+  """
+  @spec count_live_bookings_starting(integer(), DateTime.t(), DateTime.t()) :: non_neg_integer()
+  defdelegate count_live_bookings_starting(organizer_user_id, from, to), to: MeetingListQueries
+
+  @doc """
+  The `uid`/`provider_event_id` of every meeting `organizer_email` organises
+  overlapping `[from, to)`, in any status — for matching provider events back
+  to their booking with `calendar_identifier_set/1`.
+  """
+  @spec list_calendar_identities_for_organizer(String.t(), DateTime.t(), DateTime.t()) :: [
+          %{uid: String.t() | nil, provider_event_id: String.t() | nil}
+        ]
+  defdelegate list_calendar_identities_for_organizer(organizer_email, from, to),
+    to: MeetingListQueries
 
   @doc """
   Sends a reschedule request email for a meeting.
@@ -246,10 +294,16 @@ defmodule Tymeslot.Meetings do
 
   @doc """
   Meetings awaiting approval for `organizer_user_id` that overlap
-  `[range_start, range_end]`, as plain `%{start_time:, end_time:}` maps.
+  `[range_start, range_end]`, as plain `%{start_time:, end_time:, uid:,
+  provider_event_id:}` maps.
   """
   @spec pending_approval_time_ranges(integer(), DateTime.t(), DateTime.t()) :: [
-          %{start_time: DateTime.t(), end_time: DateTime.t()}
+          %{
+            start_time: DateTime.t(),
+            end_time: DateTime.t(),
+            uid: String.t() | nil,
+            provider_event_id: String.t() | nil
+          }
         ]
   def pending_approval_time_ranges(organizer_user_id, range_start, range_end) do
     Listing.pending_approval_time_ranges(organizer_user_id, range_start, range_end)
@@ -301,12 +355,46 @@ defmodule Tymeslot.Meetings do
           {:ok, MeetingSchema.t()} | {:error, :unauthorized | Ecto.Changeset.t()}
   def delete_meeting_for_user(%MeetingSchema{} = meeting, user_email)
       when is_binary(user_email) do
-    if meeting.organizer_email == user_email do
-      MeetingQueries.delete_meeting(meeting)
+    if organized_by?(meeting, user_email) do
+      with {:ok, deleted} <- MeetingQueries.delete_meeting(meeting) do
+        AttendeeAttachments.delete_batch(deleted.attendee_attachments)
+        {:ok, deleted}
+      end
     else
       {:error, :unauthorized}
     end
   end
+
+  @doc """
+  Whether `user_email` is `meeting`'s organiser — the only one who may delete
+  it with `delete_meeting_for_user/2`. The dashboard lists a user's meetings as
+  organiser *and* as attendee, so a card uses this to offer organiser-only
+  actions (Delete) and wording only where they apply.
+  """
+  @spec organized_by?(
+          %{required(:organizer_email) => String.t() | nil, optional(atom()) => any()},
+          String.t() | nil
+        ) :: boolean()
+  def organized_by?(%{organizer_email: organizer_email}, user_email),
+    do: is_binary(user_email) and organizer_email == user_email
+
+  @doc """
+  Whether `user_email` attends `meeting` without organising it: a booking the
+  user made on someone else's page, which their dashboard shows from their
+  side (the host, the attendee's join link) and without the host's actions.
+  """
+  @spec attended_by?(
+          %{
+            required(:organizer_email) => String.t() | nil,
+            required(:attendee_email) => String.t() | nil,
+            optional(atom()) => any()
+          },
+          String.t() | nil
+        ) :: boolean()
+  def attended_by?(%{attendee_email: attendee_email} = meeting, user_email),
+    do:
+      is_binary(user_email) and attendee_email == user_email and
+        not organized_by?(meeting, user_email)
 
   @doc """
   Fetches a meeting by ID only if the given `organizer_user_id` owns it.
@@ -361,7 +449,8 @@ defmodule Tymeslot.Meetings do
   conversion, location, and organizer contact info — carrying over the
   description and custom question answers so the download matches what was
   emailed. The attendee's own video join link is preferred over the generic
-  meeting URL, since the attendee is exporting their own event.
+  meeting URL, and the title is rendered in the attendee's language, since
+  the attendee is exporting their own event.
 
   A held request (`MeetingState.awaiting_approval?/1`) is exportable — it
   occupies its slot — but must not read as a confirmed meeting to whichever
@@ -375,6 +464,7 @@ defmodule Tymeslot.Meetings do
         meeting
         |> ContentBuilder.build_appointment_details()
         |> Map.merge(%{
+          title: BookingTitle.localise(meeting, meeting.attendee_locale),
           description: meeting.description,
           custom_fields_snapshot: meeting.custom_fields_snapshot,
           custom_field_answers: meeting.custom_field_answers,
@@ -508,23 +598,25 @@ defmodule Tymeslot.Meetings do
 
   @doc "Counts all bookings (any status) for an organizer in the window; analytics volume primitive."
   @spec count_bookings(integer(), DateTime.t(), DateTime.t()) :: non_neg_integer()
-  defdelegate count_bookings(organizer_user_id, from, to), to: MeetingQueries
+  defdelegate count_bookings(organizer_user_id, from, to), to: MeetingAttributionQueries
 
   @doc "Booking counts grouped by `utm_source` (set rows only); primitive for `Analytics.attribution_table/3`."
   @spec bookings_by_utm_source(integer(), DateTime.t(), DateTime.t()) :: [
           %{utm_source: String.t(), bookings: non_neg_integer()}
         ]
   defdelegate bookings_by_utm_source(organizer_user_id, from, to),
-    to: MeetingQueries,
+    to: MeetingAttributionQueries,
     as: :count_by_utm_source
 
   @doc "Counts distinct converting visitors (bookings carrying a `visitor_hash`) in the window."
   @spec count_converting_visitors(integer(), DateTime.t(), DateTime.t()) :: non_neg_integer()
-  defdelegate count_converting_visitors(organizer_user_id, from, to), to: MeetingQueries
+  defdelegate count_converting_visitors(organizer_user_id, from, to),
+    to: MeetingAttributionQueries
 
   @doc "Distinct converting-visitor counts grouped by `utm_source`; primitive for `Analytics.attribution_table/3`."
   @spec converting_visitors_by_utm_source(integer(), DateTime.t(), DateTime.t()) :: [
           %{utm_source: String.t(), converting_visitors: non_neg_integer()}
         ]
-  defdelegate converting_visitors_by_utm_source(organizer_user_id, from, to), to: MeetingQueries
+  defdelegate converting_visitors_by_utm_source(organizer_user_id, from, to),
+    to: MeetingAttributionQueries
 end

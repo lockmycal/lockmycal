@@ -62,8 +62,8 @@ defmodule Tymeslot.Workers.DeleteCancelledMeetingsWorkerTest do
     assert Repo.get(MeetingSchema, confirmed.id)
   end
 
-  test "skips users who never enabled auto-delete" do
-    %{user: user} = create_user_with_profile()
+  test "skips users who turned auto-delete off" do
+    %{user: user} = create_user_with_profile(%{auto_delete_cancelled_meetings_enabled: false})
 
     old = insert_cancelled(user, -3, cancelled_ago_days: 365)
 

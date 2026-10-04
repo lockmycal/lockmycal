@@ -30,10 +30,12 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponent do
 
   Parent-to-component messages travel through `send_update/2` with an `:action` key.
   These bypass attr validation and are dispatched in the `update/2` clauses below:
-  `:revert_event`, `:refresh_events`, `:reload_events`, `:ad_hoc_meeting_created`,
-  `:ad_hoc_meeting_failed`, `:event_created`, `:event_create_failed`, `:event_moved`,
-  `:event_deleted`, `:event_delete_failed`, `:events_updated`, `:video_link_updated`,
-  `:integration_synced`.
+  `:revert_event`, `:event_write_settled`, `:event_writes_released`, `:refresh_events`, `:reload_events`,
+  `:ad_hoc_meeting_created`, `:ad_hoc_meeting_failed`, `:event_created`,
+  `:event_create_failed`, `:event_moved`, `:series_moved`, `:series_move_failed`,
+  `:event_deleted`,
+  `:event_delete_failed`,
+  `:events_updated`, `:video_link_updated`, `:integration_synced`.
 
   ## Internal state
 
@@ -57,6 +59,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponent do
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.NotificationFlows
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Preferences
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Search
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SeriesMove
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shortcuts
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Visibility
   alias TymeslotWeb.Dashboard.CalendarGrid.InitialState
@@ -71,6 +74,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponent do
     "show_event" => :handle_show_event,
     "close_event_detail" => :handle_close_event_detail,
     "update_event_title" => :handle_update_event_title,
+    "commit_event_title" => :handle_commit_event_title,
     "update_event_location" => :handle_update_event_location,
     "update_event_description" => :handle_update_event_description,
     "update_event_calendar" => :handle_update_event_calendar,
@@ -105,6 +109,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponent do
     do: UpdateHandlers.handle_revert_event(assigns, socket)
 
   @impl Phoenix.LiveComponent
+  def update(%{action: :event_write_settled} = assigns, socket),
+    do: UpdateHandlers.handle_event_write_settled(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :event_writes_released} = assigns, socket),
+    do: UpdateHandlers.handle_event_writes_released(assigns, socket)
+
+  @impl Phoenix.LiveComponent
   def update(%{action: :refresh_events} = assigns, socket),
     do: UpdateHandlers.handle_refresh_events(assigns, socket)
 
@@ -131,6 +143,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponent do
   @impl Phoenix.LiveComponent
   def update(%{action: :event_moved} = assigns, socket),
     do: UpdateHandlers.handle_event_moved(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :series_moved} = assigns, socket),
+    do: UpdateHandlers.handle_series_moved(assigns, socket)
+
+  @impl Phoenix.LiveComponent
+  def update(%{action: :series_move_failed} = assigns, socket),
+    do: UpdateHandlers.handle_series_move_failed(assigns, socket)
 
   @impl Phoenix.LiveComponent
   def update(%{action: :event_deleted} = assigns, socket),
@@ -268,9 +288,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponent do
   def handle_event("toggle_calendar_visibility", params, socket),
     do: Visibility.handle_toggle_calendar_visibility(params, socket)
 
-  def handle_event("set_calendar_colour", params, socket),
-    do: Preferences.handle_set_calendar_colour(params, socket)
-
   @impl Phoenix.LiveComponent
   def handle_event("refresh", params, socket),
     do: Visibility.handle_refresh(params, socket)
@@ -302,6 +319,30 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponent do
   @impl Phoenix.LiveComponent
   def handle_event("update_create_guest_email", params, socket),
     do: EventCrud.handle_update_create_guest_email(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_create_note", params, socket),
+    do: EventCrud.handle_toggle_create_note(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_create_note", params, socket),
+    do: EventCrud.handle_update_create_note(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("add_create_guest", params, socket),
+    do: EventCrud.handle_add_create_guest(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("remove_create_guest", params, socket),
+    do: EventCrud.handle_remove_create_guest(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_create_guest_input", params, socket),
+    do: EventCrud.handle_update_create_guest_input(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("update_create_locale", params, socket),
+    do: EventCrud.handle_update_create_locale(params, socket)
 
   @impl Phoenix.LiveComponent
   def handle_event("update_create_title", params, socket),
@@ -414,6 +455,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponent do
   @impl Phoenix.LiveComponent
   def handle_event("cancel_recurrence_prompt", params, socket),
     do: EventCrud.handle_cancel_recurrence_prompt(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("confirm_series_move", params, socket),
+    do: SeriesMove.handle_confirm_series_move(params, socket)
+
+  @impl Phoenix.LiveComponent
+  def handle_event("cancel_series_move", params, socket),
+    do: SeriesMove.handle_cancel_series_move(params, socket)
 
   @impl Phoenix.LiveComponent
   def handle_event("toggle_settings", params, socket),

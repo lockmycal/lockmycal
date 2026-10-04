@@ -16,6 +16,8 @@ defmodule TymeslotWeb.Hooks.DashboardInitHook do
   alias Tymeslot.Dashboard.DashboardContext
   alias Tymeslot.Dashboard.ExtensionSchema
   alias Tymeslot.Features
+  alias Tymeslot.Infrastructure.Logging.LogFormat
+  alias Tymeslot.Infrastructure.Tasks
   alias Tymeslot.Meetings
   alias Tymeslot.Onboarding
   alias Tymeslot.Profiles
@@ -114,17 +116,17 @@ defmodule TymeslotWeb.Hooks.DashboardInitHook do
     # Load profile, integration status, and the pending-approval count
     # concurrently — all three are independent.
     profile_task =
-      Task.Supervisor.async_nolink(Tymeslot.TaskSupervisor, fn ->
+      Tasks.async_nolink(Tymeslot.TaskSupervisor, fn ->
         profile_or_placeholder(user)
       end)
 
     integration_task =
-      Task.Supervisor.async_nolink(Tymeslot.TaskSupervisor, fn ->
+      Tasks.async_nolink(Tymeslot.TaskSupervisor, fn ->
         DashboardContext.get_integration_status(user.id)
       end)
 
     pending_approval_task =
-      Task.Supervisor.async_nolink(Tymeslot.TaskSupervisor, fn ->
+      Tasks.async_nolink(Tymeslot.TaskSupervisor, fn ->
         Meetings.count_awaiting_approval_for_organizer(user.id)
       end)
 
@@ -154,7 +156,7 @@ defmodule TymeslotWeb.Hooks.DashboardInitHook do
       {:error, reason} ->
         Logger.error("Could not create missing profile for dashboard",
           user_id: user.id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
 
         %ProfileSchema{user_id: user.id}

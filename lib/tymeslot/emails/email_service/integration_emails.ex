@@ -10,6 +10,7 @@ defmodule Tymeslot.Emails.EmailService.IntegrationEmails do
 
   alias Tymeslot.Emails.Templates.{
     AdminAlert,
+    AdminAlertDigest,
     IntegrationPaused,
     IntegrationReauthRequired,
     IntegrationUnhealthy,
@@ -165,8 +166,7 @@ defmodule Tymeslot.Emails.EmailService.IntegrationEmails do
   def send_admin_alert(recipient, category, severity, message, metadata) do
     Logger.info("Sending admin alert email",
       category: category,
-      severity: severity,
-      recipient: recipient
+      severity: severity
     )
 
     html_body = AdminAlert.render(category, severity, message, metadata)
@@ -175,9 +175,33 @@ defmodule Tymeslot.Emails.EmailService.IntegrationEmails do
     email =
       MjmlEmail.base_email()
       |> Email.to({"#{Config.app_name()} Operator", recipient})
-      |> Email.subject("⚠️ #{Config.app_name()} Admin Alert: #{category}")
+      |> Email.subject(AdminAlert.subject(category, severity))
       |> Email.html_body(html_body)
       |> Email.text_body(text_body)
+
+    Delivery.deliver(email)
+  end
+
+  @doc """
+  Delivers the daily digest of info-severity admin alerts to the configured
+  admin recipient.
+
+  `digest` is the job's payload as `Tymeslot.Workers.EmailWorker` stores it:
+  string keys, with `"entries"`, `"omitted"` and `"deployment"`. See
+  `Tymeslot.Infrastructure.AdminAlerts.Digest`.
+  """
+  @spec send_admin_alert_digest(String.t(), map()) :: {:ok, any()} | {:error, any()}
+  def send_admin_alert_digest(recipient, digest) do
+    Logger.info("Sending admin alert digest email",
+      entries: length(Map.get(digest, "entries", []))
+    )
+
+    email =
+      MjmlEmail.base_email()
+      |> Email.to({"#{Config.app_name()} Operator", recipient})
+      |> Email.subject(AdminAlertDigest.subject(digest))
+      |> Email.html_body(AdminAlertDigest.render(digest))
+      |> Email.text_body(AdminAlertDigest.render_text(digest))
 
     Delivery.deliver(email)
   end

@@ -112,6 +112,7 @@ defmodule TymeslotWeb.Dashboard.Automation.WebhookFormComponent do
         }
         phx-target={@parent_component}
         class="space-y-8"
+        novalidate
       >
         <%!-- Name Field --%>
         <div>
@@ -156,12 +157,12 @@ defmodule TymeslotWeb.Dashboard.Automation.WebhookFormComponent do
 
               <div
                 :if={@mode == :create}
-                class="p-4 rounded-token-xl bg-primary-50/50 border-2 border-primary-100"
+                class="p-4 rounded-token-xl bg-primary-50/50 dark:bg-primary-950/40 border-2 border-primary-100 dark:border-primary-800"
               >
                 <div class="flex gap-3">
                   <div class="mt-0.5">
                     <svg
-                      class="w-5 h-5 text-primary-600"
+                      class="w-5 h-5 text-primary-600 dark:text-primary-400"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -175,10 +176,10 @@ defmodule TymeslotWeb.Dashboard.Automation.WebhookFormComponent do
                     </svg>
                   </div>
                   <div>
-                    <p class="text-token-sm font-black text-primary-900">
+                    <p class="text-token-sm font-black text-primary-900 dark:text-primary-100">
                       {dgettext("dashboard_automation", "Security Token")}
                     </p>
-                    <p class="text-token-xs text-primary-700 font-medium mt-0.5">
+                    <p class="text-token-xs text-primary-700 dark:text-primary-300 font-medium mt-0.5">
                       {dgettext(
                         "dashboard_automation",
                         "A unique security token will be automatically generated for this webhook once created. You'll use it to verify requests in your automation tool."
@@ -258,7 +259,7 @@ defmodule TymeslotWeb.Dashboard.Automation.WebhookFormComponent do
 
             <div class="space-y-3">
               <%= for event <- @available_events do %>
-                <div class="flex items-start gap-3 p-4 rounded-token-xl border-2 border-neutral-300 dark:border-twilight-indigo-700">
+                <div class="flex items-start gap-3 p-4 rounded-token-xl border-2 border-neutral-300 dark:border-twilight-indigo-800">
                   <div class="flex-1">
                     <div class="font-black text-neutral-900 dark:text-neutral-50">{event.label}</div>
                     <div class="text-token-sm text-neutral-600 dark:text-neutral-300 font-medium">

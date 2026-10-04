@@ -12,6 +12,12 @@ defmodule TymeslotWeb.Live.Shared.DocsUrl do
   @default_base_url "https://lockmycal.local/docs"
 
   @doc """
+  The docs hub's start page, linked from the top bars' help icon.
+  """
+  @spec home_url() :: String.t()
+  def home_url, do: base_url()
+
+  @doc """
   Builds the full URL to a docs article for the given slug.
   """
   @spec article_url(String.t()) :: String.t()

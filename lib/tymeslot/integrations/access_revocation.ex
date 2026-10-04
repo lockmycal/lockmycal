@@ -32,6 +32,7 @@ defmodule Tymeslot.Integrations.AccessRevocation do
 
   require Logger
 
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Integrations.Calendar.CalendarIntegrationQueries
   alias Tymeslot.Integrations.Google.GoogleOAuthHelper
   alias Tymeslot.Integrations.Video.VideoIntegrationQueries
@@ -169,7 +170,7 @@ defmodule Tymeslot.Integrations.AccessRevocation do
         Logger.warning("Could not revoke OAuth access at provider",
           provider: provider,
           integration_ids: grant.integration_ids,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
 
         :failed

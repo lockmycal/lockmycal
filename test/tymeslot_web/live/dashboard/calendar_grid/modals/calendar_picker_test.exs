@@ -45,19 +45,41 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CalendarPickerTest do
     )
   end
 
-  test "renders integration name and calendars" do
+  defp find(html, selector), do: html |> Floki.parse_document!() |> Floki.find(selector)
+
+  test "groups each connection's calendars under its name" do
     html = render_component(&CalendarPicker.calendar_picker/1, base_assigns())
 
-    assert html =~ "Work Calendar"
-    assert html =~ "primary@gmail.com"
-    assert html =~ "meetings@gmail.com"
+    # Upper-cased as text: a native <optgroup> label takes no CSS.
+    assert [_group] = find(html, ~s|optgroup[label="WORK CALENDAR"]|)
+    assert [_option] = find(html, ~s|option[value="1:primary@gmail.com"]|)
+    assert [_option] = find(html, ~s|option[value="1:meetings@gmail.com"]|)
   end
 
-  test "highlights selected calendar" do
+  test "selects the event's calendar and marks it with its connection's colour" do
     html = render_component(&CalendarPicker.calendar_picker/1, base_assigns())
 
-    # The selected calendar should have the turquoise styling
-    assert html =~ "border-primary-400"
+    assert [_selected] = find(html, ~s|option[value="1:primary@gmail.com"][selected]|)
+    assert html =~ "bg-primary-500"
+  end
+
+  test "sends the chosen calendar through the given event" do
+    html = render_component(&CalendarPicker.calendar_picker/1, base_assigns())
+
+    assert [_form] = find(html, ~s|form[phx-change="update_calendar"]|)
+    assert [_select] = find(html, ~s|select[name="calendar_target"]|)
+  end
+
+  test "is not offered as a control when there is only one calendar to show" do
+    integration = %{@integration | calendar_list: [hd(@integration.calendar_list)]}
+
+    html =
+      render_component(
+        &CalendarPicker.calendar_picker/1,
+        base_assigns(%{integrations: [integration]})
+      )
+
+    assert [_disabled] = find(html, "select[disabled]")
   end
 
   test "renders default calendar button when no calendar list" do
@@ -66,10 +88,11 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CalendarPickerTest do
     html =
       render_component(
         &CalendarPicker.calendar_picker/1,
-        base_assigns(%{integrations: [integration]})
+        base_assigns(%{integrations: [integration], selected_calendar_id: nil})
       )
 
     assert html =~ "Default calendar"
+    assert [_option] = find(html, ~s|option[value="1:"][selected]|)
   end
 
   test "highlights the calendar the resolver actually returns, not an unselected primary" do
@@ -96,11 +119,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CalendarPickerTest do
 
     assert resolved_id == "cal-b"
 
-    # Only B is rendered as a chip (A is unselected, so writable_calendars
-    # excludes it) and it carries the highlighted styling.
-    refute html =~ ">A<"
-    assert html =~ ">B<"
-    assert html =~ "border-primary-400"
+    # Only B is offered (A is unselected, so writable_calendars excludes it)
+    # and it is the one selected.
+    assert find(html, ~s|option[value="1:cal-a"]|) == []
+    assert [_selected] = find(html, ~s|option[value="1:cal-b"][selected]|)
   end
 
   test "renders multiple integrations" do
@@ -117,8 +139,38 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CalendarPickerTest do
         base_assigns(%{integrations: [@integration, second]})
       )
 
-    assert html =~ "Work Calendar"
-    assert html =~ "Personal CalDAV"
+    assert [_group] = find(html, ~s|optgroup[label="WORK CALENDAR"]|)
+    assert [_group] = find(html, ~s|optgroup[label="PERSONAL CALDAV"]|)
+  end
+
+  describe "expand_target/1" do
+    test "splits the value into the integration and calendar ids" do
+      assert CalendarPicker.expand_target(%{"calendar_target" => "7:/cal/work/"}) ==
+               %{
+                 "calendar_target" => "7:/cal/work/",
+                 "integration-id" => "7",
+                 "calendar-id" => "/cal/work/"
+               }
+    end
+
+    test "keeps a colon inside the calendar id" do
+      assert %{"calendar-id" => "https://dav.example.com/cal/"} =
+               CalendarPicker.expand_target(%{
+                 "calendar_target" => "7:https://dav.example.com/cal/"
+               })
+    end
+
+    test "leaves the calendar out for a connection's provider default" do
+      params = CalendarPicker.expand_target(%{"calendar_target" => "7:"})
+
+      assert params["integration-id"] == "7"
+      refute Map.has_key?(params, "calendar-id")
+    end
+
+    test "returns params without a target unchanged" do
+      params = %{"integration-id" => "7", "calendar-id" => "x"}
+      assert CalendarPicker.expand_target(params) == params
+    end
   end
 
   describe "derive_event_calendar_id/2" do

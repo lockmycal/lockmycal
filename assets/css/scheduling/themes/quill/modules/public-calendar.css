@@ -191,6 +191,20 @@
   border-right: none;
 }
 
+/* Monday to Friday only (`public_calendar_show_weekends` off). */
+.public-calendar-grid--weekdays .public-calendar-weekdays,
+.public-calendar-grid--weekdays .public-calendar-days {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.public-calendar-grid--weekdays .public-calendar-day:nth-child(7n) {
+  border-right: var(--border-width-thin) solid var(--border-medium);
+}
+
+.public-calendar-grid--weekdays .public-calendar-day:nth-child(5n) {
+  border-right: none;
+}
+
 .public-calendar-day--other-month {
   background: var(--surface-transparent);
 }
@@ -220,15 +234,10 @@
   pointer-events: none;
 }
 
-.public-calendar-day--today .public-calendar-day-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: var(--radius-full);
-  background: var(--theme-primary);
-  color: white;
+/* Today is told apart by its whole cell, not by its number. */
+.public-calendar-day--today,
+.public-calendar-day--today.public-calendar-day--bookable:hover {
+  background: color-mix(in srgb, var(--theme-primary) 22%, transparent);
 }
 
 .public-calendar-day-chips {

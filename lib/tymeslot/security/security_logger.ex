@@ -49,6 +49,8 @@ defmodule Tymeslot.Security.SecurityLogger do
   """
 
   alias Tymeslot.Infrastructure.Config
+  alias Tymeslot.Infrastructure.Logging.LogFormat
+  alias Tymeslot.Infrastructure.Tasks
   alias Tymeslot.Security.AuditLog
 
   require Logger
@@ -458,7 +460,7 @@ defmodule Tymeslot.Security.SecurityLogger do
     else
       :counters.add(counter, 1, 1)
 
-      Task.Supervisor.start_child(Tymeslot.TaskSupervisor, fn ->
+      Tasks.start_child(Tymeslot.TaskSupervisor, fn ->
         try do
           case Application.get_env(:tymeslot, :security_monitoring_webhook) do
             nil ->
@@ -508,7 +510,7 @@ defmodule Tymeslot.Security.SecurityLogger do
   rescue
     error ->
       Logger.error("Exception sending security event to monitoring service",
-        error: inspect(error)
+        error: LogFormat.reason(error)
       )
   end
 end

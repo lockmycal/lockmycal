@@ -33,7 +33,9 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsAppearanceTest do
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
       view
-      |> element("button[phx-click='change_appearance'][phx-value-option='dark']")
+      |> element(
+        "#appearance-form-container button[phx-click='change_appearance'][phx-value-option='dark']"
+      )
       |> render_click()
 
       assert Repo.get(UserSchema, user.id).theme_preference == "dark"
@@ -43,7 +45,9 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsAppearanceTest do
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
       view
-      |> element("button[phx-click='change_appearance'][phx-value-option='dark']")
+      |> element(
+        "#appearance-form-container button[phx-click='change_appearance'][phx-value-option='dark']"
+      )
       |> render_click()
 
       assert render(view) =~ "Appearance updated"
@@ -53,7 +57,9 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsAppearanceTest do
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
       view
-      |> element("button[phx-click='change_appearance'][phx-value-option='dark']")
+      |> element(
+        "#appearance-form-container button[phx-click='change_appearance'][phx-value-option='dark']"
+      )
       |> render_click()
 
       {:ok, _reloaded, html} = live(conn, ~p"/dashboard/settings")
@@ -74,7 +80,9 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsAppearanceTest do
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
       view
-      |> element("button[phx-click='change_appearance'][phx-value-option='dark']")
+      |> element(
+        "#appearance-form-container button[phx-click='change_appearance'][phx-value-option='dark']"
+      )
       |> render_click()
 
       {:ok, _reloaded, html} = live(conn, ~p"/dashboard/settings")
@@ -86,11 +94,15 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsAppearanceTest do
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
       view
-      |> element("button[phx-click='change_appearance'][phx-value-option='dark']")
+      |> element(
+        "#appearance-form-container button[phx-click='change_appearance'][phx-value-option='dark']"
+      )
       |> render_click()
 
       view
-      |> element("button[phx-click='change_appearance'][phx-value-option='light']")
+      |> element(
+        "#appearance-form-container button[phx-click='change_appearance'][phx-value-option='light']"
+      )
       |> render_click()
 
       {:ok, _reloaded, html} = live(conn, ~p"/dashboard/settings")
@@ -102,11 +114,15 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsAppearanceTest do
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
       view
-      |> element("button[phx-click='change_appearance'][phx-value-option='dark']")
+      |> element(
+        "#appearance-form-container button[phx-click='change_appearance'][phx-value-option='dark']"
+      )
       |> render_click()
 
       view
-      |> element("button[phx-click='change_appearance'][phx-value-option='system']")
+      |> element(
+        "#appearance-form-container button[phx-click='change_appearance'][phx-value-option='system']"
+      )
       |> render_click()
 
       assert Repo.get(UserSchema, user.id).theme_preference == nil

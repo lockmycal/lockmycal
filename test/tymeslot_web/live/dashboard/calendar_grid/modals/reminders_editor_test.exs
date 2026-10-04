@@ -29,16 +29,21 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RemindersEditorTest do
     )
   end
 
-  test "renders the add-reminder control with presets and methods" do
+  test "renders the add-reminder control: preset lead times and an add button" do
     html = render_component(&RemindersEditor.reminders_editor/1, base_assigns())
 
-    assert html =~ "Reminders"
+    assert html =~ "Reminder"
     assert html =~ "Add reminder"
     assert html =~ "10 minutes before"
     assert html =~ "1 day before"
-    assert html =~ "Notification"
-    assert html =~ "Email"
     assert html =~ ~s(phx-submit="add_event_reminder")
+  end
+
+  test "adds every reminder as a notification, with no choice of method" do
+    html = render_component(&RemindersEditor.reminders_editor/1, base_assigns())
+
+    assert html =~ ~s(<input type="hidden" name="method" value="popup")
+    refute html =~ ~s(name="method" class)
   end
 
   test "renders existing reminders as removable rows with their lead time" do

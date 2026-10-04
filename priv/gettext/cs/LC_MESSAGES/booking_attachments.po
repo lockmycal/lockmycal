@@ -1,0 +1,75 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: cs\n"
+"Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} is larger than the allowed size."
+msgstr "Soubor %{name} je větší, než je povoleno."
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} is not an allowed file type."
+msgstr "Soubor %{name} nemá povolený typ."
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "A file could not be uploaded."
+msgstr "Soubor se nepodařilo nahrát."
+
+#: lib/tymeslot_web/themes/shared/components/attachment_field.ex
+#, elixir-autogen, elixir-format
+msgid "Attachments (optional)"
+msgstr "Přílohy (nepovinné)"
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "One of your files does not match its file type and was not accepted. Please check it and select it again."
+msgstr "Jeden ze souborů neodpovídá svému typu, a proto nebyl přijat. Zkontrolujte ho a vyberte ho znovu."
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "One of your files is not an allowed file type."
+msgstr "Jeden ze souborů nemá povolený typ."
+
+#: lib/tymeslot_web/themes/shared/components/attachment_field.ex
+#, elixir-autogen, elixir-format
+msgid "Remove %{name}"
+msgstr "Odebrat %{name}"
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "You have selected too many files."
+msgstr "Vybrali jste příliš mnoho souborů."
+
+#: lib/tymeslot_web/themes/shared/components/attachment_field.ex
+#, elixir-autogen, elixir-format
+msgid "Your attachments"
+msgstr "Vaše přílohy"
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "Your files are still uploading. Please wait."
+msgstr "Soubory se ještě nahrávají. Chvíli počkejte."
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "Your files could not be saved. Please try again."
+msgstr "Soubory se nepodařilo uložit. Zkuste to prosím znovu."
+
+#: lib/tymeslot_web/themes/shared/attendee_attachment_upload.ex
+#, elixir-autogen, elixir-format
+msgid "Allowed file types: %{types}, up to %{max_mb} MB, maximum %{count} file."
+msgid_plural "Allowed file types: %{types}, up to %{max_mb} MB each, maximum %{count} files."
+msgstr[0] "Povolené typy souborů: %{types}, nejvýše %{max_mb} MB, maximálně %{count} soubor."
+msgstr[1] "Povolené typy souborů: %{types}, každý nejvýše %{max_mb} MB, maximálně %{count} soubory."
+msgstr[2] "Povolené typy souborů: %{types}, každý nejvýše %{max_mb} MB, maximálně %{count} souborů."

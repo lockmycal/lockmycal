@@ -4,6 +4,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.AllDayRow do
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
 
+  alias TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
 
   @allday_visible_limit 2
@@ -26,7 +27,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.AllDayRow do
       |> assign(:hidden_count, length(hidden))
 
     ~H"""
-    <details class="group border-l border-neutral-300 dark:border-twilight-indigo-800 p-0.5 min-w-0 min-h-[1.5rem] [&>summary::-webkit-details-marker]:hidden">
+    <details class={"group border-l border-neutral-300 dark:border-twilight-indigo-800 p-0.5 min-w-0 min-h-[1.5rem] [&>summary::-webkit-details-marker]:hidden #{Helpers.day_column_class(@day, @assigns_ref)}"}>
       <summary class="flex flex-col gap-0.5 list-none cursor-default">
         <%!-- An all-day event covering several days is rendered in each of
               its cells, so the id names the day as well. --%>
@@ -55,7 +56,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.AllDayRow do
             :if={(Map.get(event, :reminders) || []) != []}
             name="hero-bell-micro"
             class="inline-block w-3 h-3 opacity-70 mr-0.5 align-text-bottom"
-          />{event.summary || dgettext("dashboard_calendar", "(No title)")}
+          /><AttendeeAttachments.marker attachments={Map.get(event, :attendee_attachments)} />{event.summary ||
+            dgettext("dashboard_calendar", "(No title)")}
         </div>
         <span
           :if={@hidden_count > 0}

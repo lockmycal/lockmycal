@@ -1,7 +1,9 @@
 defmodule TymeslotWeb.Live.SchedulingTopBarTest do
   @moduledoc """
   The public booking page's top bar shows Login / Get Started to an anonymous
-  visitor and a Dashboard link to a signed-in one, on both booking themes.
+  visitor and a Dashboard link to a signed-in one, on both booking themes,
+  and its logo links back to the organizer's booking page. The footer below
+  links to the website's bug forum.
   """
   use TymeslotWeb.ConnCase, async: false
   @moduletag :themes
@@ -21,7 +23,14 @@ defmodule TymeslotWeb.Live.SchedulingTopBarTest do
     end)
 
     insert(:calendar_integration, user: user, provider: "google", is_active: true)
-    insert(:meeting_type, user: user, name: "Test Meeting", duration_minutes: 30, is_active: true)
+
+    insert(:meeting_type,
+      user: user,
+      name: "Test Meeting",
+      slug: "test-meeting",
+      duration_minutes: 30,
+      is_active: true
+    )
 
     {:ok, user: user, username: profile.username}
   end
@@ -44,6 +53,14 @@ defmodule TymeslotWeb.Live.SchedulingTopBarTest do
         assert html =~ ~s(href="/dashboard")
         refute html =~ ~s(href="/auth/login")
       end
+
+      test "logo links to the booking page", %{conn: conn, user: user, username: username} do
+        meeting = insert(:meeting, organizer_user: user)
+        path = "/#{username}/meeting/#{meeting.uid}/#{unquote(page)}?theme=#{unquote(theme)}"
+
+        {:ok, _view, html} = live(conn, path)
+        assert logo_href(html) == "/#{username}"
+      end
     end
   end
 
@@ -64,6 +81,44 @@ defmodule TymeslotWeb.Live.SchedulingTopBarTest do
         assert html =~ ~s(href="/dashboard")
         refute html =~ ~s(href="/auth/login")
       end
+
+      test "footer links to the bug forum once WEB_HOST is set", %{
+        conn: conn,
+        username: username
+      } do
+        previous = Application.fetch_env(:tymeslot, :web_host)
+
+        on_exit(fn ->
+          case previous do
+            {:ok, value} -> Application.put_env(:tymeslot, :web_host, value)
+            :error -> Application.delete_env(:tymeslot, :web_host)
+          end
+        end)
+
+        Application.put_env(:tymeslot, :web_host, "https://example.com")
+        {:ok, _view, html} = live(conn, "/#{username}?theme=#{unquote(theme)}")
+
+        assert html
+               |> Floki.parse_document!()
+               |> Floki.attribute("footer.public-footer a", "href") ==
+                 ["https://example.com/forum/bugs"]
+      end
+
+      test "logo links to the booking page from a later step", %{
+        conn: conn,
+        username: username
+      } do
+        {:ok, _view, html} = live(conn, "/#{username}/test-meeting?theme=#{unquote(theme)}")
+
+        assert logo_href(html) == "/#{username}"
+      end
     end
+  end
+
+  defp logo_href(html) do
+    html
+    |> Floki.parse_document!()
+    |> Floki.attribute(".public-top-bar-brand a", "href")
+    |> List.first()
   end
 end

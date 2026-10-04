@@ -14,6 +14,28 @@
   flex-shrink: 0;
 }
 
+/* The full-calendar link, under the intro and on its right. A compact take on
+   .action-button--secondary (components.css). */
+.overview-full-calendar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: calc(var(--space-sm) - var(--space-lg));
+}
+
+/* Scoped to its row so it outranks .action-button, which loads later. */
+.overview-full-calendar .overview-full-calendar-link {
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--theme-font-size-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.overview-full-calendar .calendar-download-icon {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  flex-shrink: 0;
+}
+
 /* Default large size */
 .avatar-image {
   width: var(--avatar-size-xl);

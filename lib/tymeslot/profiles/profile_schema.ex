@@ -10,8 +10,11 @@ defmodule Tymeslot.Profiles.ProfileSchema do
 
   alias Tymeslot.Profiles
   alias Tymeslot.Profiles.ProfileBookingTextTranslation
+  alias Tymeslot.Security.EncryptedString
   alias Tymeslot.Security.FieldValidators.UsernameValidator
+  alias Tymeslot.Security.LegacyPlainColumn
   alias Tymeslot.Security.Security
+  alias Tymeslot.Security.Token
   alias Tymeslot.ThemeCustomizations.ThemeCustomizationSchema
   alias Tymeslot.Themes.Catalog
   alias Tymeslot.Timezones
@@ -44,10 +47,14 @@ defmodule Tymeslot.Profiles.ProfileSchema do
           public_calendar_visible_from: Time.t() | nil,
           public_calendar_visible_to: Time.t() | nil,
           public_calendar_show_historical_events: boolean(),
+          public_calendar_show_weekends: boolean(),
           contacts_enabled: boolean(),
           auto_delete_cancelled_meetings_enabled: boolean(),
           auto_delete_cancelled_meetings_after_days: integer(),
+          freebusy_token_hash: String.t() | nil,
           primary_calendar_integration_id: integer() | nil,
+          default_calendar_id: String.t() | nil,
+          save_bookings_to_own_calendar: :ask | :always | :never,
           user: Tymeslot.Auth.UserSchema.t() | Ecto.Association.NotLoaded.t(),
           primary_calendar_integration:
             Tymeslot.Integrations.Calendar.CalendarIntegrationSchema.t()
@@ -78,16 +85,43 @@ defmodule Tymeslot.Profiles.ProfileSchema do
     field(:booking_heading, :string)
     field(:booking_greeting, :string)
     field(:booking_instruction, :string)
-    field(:freebusy_token, :string)
+    # Grants read access to the host's busy times, and the host copies the
+    # feed URL from the dashboard again whenever they like, so it is
+    # encrypted rather than only hashed; the feed looks it up by
+    # `freebusy_token_hash`. The plain `freebusy_token` column predates this
+    # and is no longer read; it is only emptied when the token changes (see
+    # `Tymeslot.Security.LegacyPlainColumn`).
+    field(:freebusy_token, EncryptedString, source: :freebusy_token_encrypted, redact: true)
+    field(:freebusy_token_hash, :string)
+
+    field(:legacy_freebusy_token, :string,
+      source: :freebusy_token,
+      load_in_query: false,
+      redact: true
+    )
+
     field(:public_calendar_enabled, :boolean, default: true)
     field(:public_calendar_colors, :boolean, default: false)
     field(:public_calendar_visible_from, :time)
     field(:public_calendar_visible_to, :time)
     field(:public_calendar_show_historical_events, :boolean, default: false)
+    field(:public_calendar_show_weekends, :boolean, default: false)
     field(:contacts_enabled, :boolean, default: false)
-    field(:auto_delete_cancelled_meetings_enabled, :boolean, default: false)
+    field(:auto_delete_cancelled_meetings_enabled, :boolean, default: true)
     field(:auto_delete_cancelled_meetings_after_days, :integer, default: 30)
     field(:meeting_types, {:array, :map}, virtual: true)
+
+    # The calendar within `primary_calendar_integration` the user picked as
+    # their default, when it has several (`Tymeslot.Meetings.BookerCalendar`);
+    # nil leaves the connection's own booking calendar in charge.
+    field(:default_calendar_id, :string)
+
+    # Whether a booking this user makes on someone else's page is also
+    # written to their own default calendar (`Tymeslot.Meetings.BookerCalendar`).
+    field(:save_bookings_to_own_calendar, Ecto.Enum,
+      values: [:ask, :always, :never],
+      default: :ask
+    )
 
     embeds_many(:booking_text_translations, ProfileBookingTextTranslation, on_replace: :delete)
 
@@ -123,18 +157,22 @@ defmodule Tymeslot.Profiles.ProfileSchema do
       :allowed_embed_domains,
       :booking_page_published_at,
       :primary_calendar_integration_id,
+      :default_calendar_id,
       :public_calendar_enabled,
       :public_calendar_colors,
       :public_calendar_visible_from,
       :public_calendar_visible_to,
       :public_calendar_show_historical_events,
+      :public_calendar_show_weekends,
       :contacts_enabled,
       :auto_delete_cancelled_meetings_enabled,
-      :auto_delete_cancelled_meetings_after_days
+      :auto_delete_cancelled_meetings_after_days,
+      :save_bookings_to_own_calendar
     ])
     |> validate_required([:user_id])
     # The column is a varchar(255); a longer name must fail here, not at insert.
     |> validate_length(:full_name, max: 255)
+    |> validate_length(:default_calendar_id, max: 1024)
     |> validate_username()
     |> validate_timezone()
     |> validate_booking_theme()
@@ -158,7 +196,9 @@ defmodule Tymeslot.Profiles.ProfileSchema do
   def freebusy_token_changeset(profile, attrs) do
     profile
     |> cast(attrs, [:freebusy_token])
-    |> unique_constraint(:freebusy_token)
+    |> Token.put_hash(:freebusy_token, :freebusy_token_hash)
+    |> LegacyPlainColumn.clear_on_change(freebusy_token: :legacy_freebusy_token)
+    |> unique_constraint(:freebusy_token_hash)
   end
 
   @booking_text_fields [:booking_heading, :booking_greeting, :booking_instruction]

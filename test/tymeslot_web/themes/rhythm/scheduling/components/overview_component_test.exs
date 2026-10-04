@@ -28,6 +28,21 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.OverviewComponentTest 
     end
   end
 
+  describe "full calendar link" do
+    test "links to the public calendar while it is switched on" do
+      html = render_overview(organizer_profile: build(:profile, public_calendar_enabled: true))
+
+      assert html =~ ~s(data-testid="view-full-calendar")
+      assert html =~ ~s(href="/hostuser/calendar")
+    end
+
+    test "is hidden when the organiser switched the public calendar off" do
+      html = render_overview(organizer_profile: build(:profile, public_calendar_enabled: false))
+
+      refute html =~ ~s(data-testid="view-full-calendar")
+    end
+  end
+
   describe "introductory text" do
     test "names the organiser in its heading when nothing is customised" do
       html = render_overview(organizer_profile: build(:profile, full_name: "Sarah Rodriguez"))

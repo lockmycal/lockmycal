@@ -7,10 +7,12 @@ defmodule TymeslotWeb.Components.DashboardLayout do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Phoenix.LiveView.JS
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.SiteBanner
   alias TymeslotWeb.Components.DashboardSidebar
   alias TymeslotWeb.Components.SiteBanner, as: SiteBannerComponent
   alias TymeslotWeb.Components.UserDropdownComponent
+  alias TymeslotWeb.Live.Shared.DocsUrl
 
   @doc """
   Renders the main dashboard layout with left sidebar and top navigation.
@@ -109,7 +111,40 @@ defmodule TymeslotWeb.Components.DashboardLayout do
           <% end %>
         </div>
       </div>
+
+      <.dashboard_footer />
     </div>
+    """
+  end
+
+  # A slim row under the scrolling content area, so it stays in view on
+  # full-width pages (the calendar) whose content does not scroll. "Powered by"
+  # sits in the middle between two equal flex-1 sides, the bug link on the
+  # right one; stacked on phones.
+  defp dashboard_footer(assigns) do
+    assigns = assign(assigns, :bug_report_url, Config.bug_report_url())
+
+    ~H"""
+    <footer class="shrink-0 flex flex-col sm:flex-row items-center gap-1 sm:gap-4 px-4 lg:px-8 py-1.5 border-t border-neutral-200 dark:border-twilight-indigo-800 text-token-xs text-neutral-500 dark:text-neutral-400">
+      <div class="hidden sm:block sm:flex-1"></div>
+      <span class="whitespace-nowrap">
+        {dgettext("dashboard_common", "Powered by %{app_name}", app_name: Config.app_name())} · v{to_string(
+          Application.spec(:tymeslot, :vsn)
+        )}
+      </span>
+      <div class="sm:flex-1 flex justify-end">
+        <a
+          :if={@bug_report_url}
+          href={@bug_report_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+        >
+          <.icon name="hero-bug-ant" class="w-4 h-4" />
+          {dgettext("dashboard_common", "Report a bug")}
+        </a>
+      </div>
+    </footer>
     """
   end
 
@@ -166,25 +201,20 @@ defmodule TymeslotWeb.Components.DashboardLayout do
               </div>
             </div>
 
-            <%!-- Right side: appearance toggle + user dropdown --%>
+            <%!-- Right side: docs + website links, appearance toggle, user dropdown --%>
             <div class="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                id="appearance-topbar-toggle"
-                phx-hook="AppearanceToggle"
-                data-appearance-flip
-                class="flex items-center justify-center w-10 h-10 rounded-xl bg-neutral-50 dark:bg-twilight-indigo-900 border-2 border-neutral-300 dark:border-twilight-indigo-700 hover:bg-primary-50 dark:hover:bg-twilight-indigo-800 hover:border-primary-100 dark:hover:border-twilight-indigo-600 transition-all shrink-0"
-                aria-label={dgettext("dashboard_common", "Toggle light/dark appearance")}
-              >
-                <.icon
-                  name="hero-moon"
-                  class="w-5 h-5 text-neutral-700 dark:text-neutral-200 dark:hidden"
-                />
-                <.icon
-                  name="hero-sun"
-                  class="w-5 h-5 hidden dark:block text-twilight-indigo-100"
-                />
-              </button>
+              <.top_bar_link
+                href={DocsUrl.home_url()}
+                icon="hero-question-mark-circle"
+                label={dgettext("dashboard_common", "Documentation")}
+              />
+              <.top_bar_link
+                :if={website_url = Config.website_url()}
+                href={website_url}
+                icon="hero-globe-alt"
+                label={dgettext("dashboard_common", "Website")}
+              />
+              <.appearance_switch active={@current_user.theme_preference || "system"} />
 
               <div class="relative" data-tour="user-menu">
                 <.live_component
@@ -198,6 +228,70 @@ defmodule TymeslotWeb.Components.DashboardLayout do
           </div>
         </div>
       </nav>
+    </div>
+    """
+  end
+
+  # An icon button in the top bar's style that opens an outside page in a new tab.
+  # Left out on phones, where the logo needs the room.
+  attr :href, :string, required: true
+  attr :icon, :string, required: true
+  attr :label, :string, required: true
+
+  defp top_bar_link(assigns) do
+    ~H"""
+    <a
+      href={@href}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="hidden sm:flex items-center justify-center w-10 h-10 rounded-xl bg-neutral-50 dark:bg-twilight-indigo-900 border-2 border-neutral-300 dark:border-twilight-indigo-700 hover:bg-primary-50 dark:hover:bg-twilight-indigo-800 hover:border-primary-100 dark:hover:border-twilight-indigo-600 transition-all shrink-0"
+      aria-label={@label}
+      title={@label}
+    >
+      <.icon name={@icon} class="w-5 h-5 text-neutral-700 dark:text-twilight-indigo-100" />
+    </a>
+    """
+  end
+
+  # Light / System / Dark, each an icon. The `AppearanceToggle` hook switches
+  # the page's colours on the click itself; the click's `change_appearance`
+  # event saves the choice (`DashboardLive`), "system" as no preference.
+  attr :active, :string, required: true
+
+  defp appearance_switch(assigns) do
+    ~H"""
+    <div
+      id="appearance-topbar-switch"
+      phx-hook="AppearanceToggle"
+      role="group"
+      aria-label={dgettext("dashboard_common", "Appearance")}
+      class="flex items-center gap-0.5 h-10 p-0.5 rounded-xl bg-neutral-50 dark:bg-twilight-indigo-900 border-2 border-neutral-300 dark:border-twilight-indigo-700 shrink-0"
+    >
+      <button
+        :for={
+          {value, icon, label} <- [
+            {"light", "hero-sun", dgettext("dashboard_common", "Light")},
+            {"system", "hero-computer-desktop", dgettext("dashboard_common", "System")},
+            {"dark", "hero-moon", dgettext("dashboard_common", "Dark")}
+          ]
+        }
+        type="button"
+        phx-click="change_appearance"
+        phx-value-option={value}
+        aria-pressed={to_string(value == @active)}
+        aria-label={label}
+        title={label}
+        class={[
+          "flex items-center justify-center w-8 h-8 rounded-lg transition-all",
+          if(value == @active,
+            do: "bg-primary-600 text-white cursor-default",
+            else:
+              "text-neutral-500 dark:text-twilight-indigo-200 hover:bg-primary-50 dark:hover:bg-twilight-indigo-800 hover:text-neutral-900 dark:hover:text-neutral-100 cursor-pointer"
+          )
+        ]}
+      >
+        <.icon name={icon} class="w-5 h-5" />
+      </button>
     </div>
     """
   end

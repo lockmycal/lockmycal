@@ -47,8 +47,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.ReadOnlyCalendarTest do
       html = lv |> element("[id^='event-#{event.id}-']") |> render_click()
 
       assert html =~ "Bank Holiday"
+      assert html =~ "Calendar is read-only"
       refute html =~ "Delete event"
       refute html =~ "event-title-input"
+
+      # Cancel is offered in every variant of the detail modal, and closes it.
+      refute lv
+             |> element("#event-detail-modal button", "Cancel")
+             |> render_click() =~ "event-detail-modal"
     end
 
     test "a delete request is refused instead of opening the confirmation", %{
@@ -109,6 +115,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.ReadOnlyCalendarTest do
       html = lv |> element("[id^='event-#{event.id}-']") |> render_click()
 
       assert html =~ "All-hands"
+      assert html =~ "Calendar is read-only"
       refute html =~ "Delete event"
     end
 
@@ -121,6 +128,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.ReadOnlyCalendarTest do
       html = lv |> element("[id^='event-#{event.id}-']") |> render_click()
 
       assert html =~ "One-to-one"
+      refute html =~ "Calendar is read-only"
       assert html =~ "Delete event"
       assert html =~ "event-title-input"
     end

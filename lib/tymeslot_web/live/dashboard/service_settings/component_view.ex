@@ -162,6 +162,7 @@ defmodule TymeslotWeb.Dashboard.ServiceSettings.ComponentView do
             type={@editing_type}
             is_edit={!!@editing_type}
             video_integrations={@video_integrations}
+            venues={@venues}
             calendar_integrations={@calendar_integrations}
             parent_myself={@myself}
             saving={@saving}
@@ -187,9 +188,11 @@ defmodule TymeslotWeb.Dashboard.ServiceSettings.ComponentView do
           <div class="space-y-6">
             <MeetingTypesListComponent.meeting_types_section
               meeting_types={@meeting_types}
+              schedules={@schedules}
               show_add_form={@show_add_form}
               editing_type={@editing_type}
               currency={@payment_currency}
+              venues={@venues}
               parent_myself={@myself}
               can_share={LinkAccessPolicy.can_link?(@profile, @integration_status)}
             />

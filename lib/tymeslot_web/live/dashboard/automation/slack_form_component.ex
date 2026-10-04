@@ -12,6 +12,7 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackFormComponent do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Phoenix.LiveView.JS
+  alias Tymeslot.Infrastructure.Tasks
   alias Tymeslot.Slack
   alias TymeslotWeb.Components.CoreComponents
   alias TymeslotWeb.Live.Shared.DocsUrl
@@ -162,6 +163,7 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackFormComponent do
         phx-submit={submit_event(@mode)}
         phx-target={@parent_component}
         class="space-y-8"
+        novalidate
       >
         <%!-- Details --%>
         <div class="card-glass">
@@ -564,6 +566,6 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackFormComponent do
     |> assign(:channels_loading?, true)
     |> assign(:channels_error, nil)
     |> assign(:channels_loaded_for, integration.id)
-    |> start_async(:load_channels, fn -> Slack.list_channels(integration) end)
+    |> start_async(:load_channels, Tasks.with_context(fn -> Slack.list_channels(integration) end))
   end
 end

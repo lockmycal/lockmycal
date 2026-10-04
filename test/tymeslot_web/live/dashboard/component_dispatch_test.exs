@@ -5,12 +5,14 @@ defmodule TymeslotWeb.Dashboard.ComponentDispatchTest do
   @moduletag :dashboard
 
   alias Tymeslot.Agenda.Day
+  alias Tymeslot.Dashboard.OverviewStats
   alias TymeslotWeb.Dashboard.AutomationSettingsComponent
   alias TymeslotWeb.Dashboard.BookingsManagementComponent
   alias TymeslotWeb.Dashboard.CalendarGridComponent
   alias TymeslotWeb.Dashboard.CalendarSettingsComponent
   alias TymeslotWeb.Dashboard.ComponentDispatch
   alias TymeslotWeb.Dashboard.DashboardOverviewComponent
+  alias TymeslotWeb.Dashboard.Locations.LocationsComponent
   alias TymeslotWeb.Dashboard.ProfileSettingsComponent
   alias TymeslotWeb.Dashboard.ScheduleSettingsComponent
   alias TymeslotWeb.Dashboard.ServiceSettingsComponent
@@ -36,6 +38,7 @@ defmodule TymeslotWeb.Dashboard.ComponentDispatchTest do
       {:settings, ProfileSettingsComponent},
       {:availability, ScheduleSettingsComponent},
       {:meeting_settings, ServiceSettingsComponent},
+      {:locations, LocationsComponent},
       {:calendar, CalendarGridComponent},
       {:calendar_integration, CalendarSettingsComponent},
       {:video_integration, VideoSettingsComponent},
@@ -75,16 +78,18 @@ defmodule TymeslotWeb.Dashboard.ComponentDispatchTest do
   end
 
   describe "props_for_action/1" do
-    test ":overview surfaces the agenda as shared_data" do
+    test ":overview surfaces the agenda and overview stats as shared_data" do
       agenda = %Day{today: [%{id: 1}]}
-      assigns = %{live_action: :overview, agenda: agenda}
+      stats = %OverviewStats{week_bookings: 3}
+      assigns = %{live_action: :overview, agenda: agenda, overview_stats: stats}
 
-      assert ComponentDispatch.props_for_action(assigns) == %{shared_data: %{agenda: agenda}}
+      assert ComponentDispatch.props_for_action(assigns) ==
+               %{shared_data: %{agenda: agenda, overview_stats: stats}}
     end
 
-    test ":overview defaults the agenda to an empty Day when missing" do
+    test ":overview defaults the agenda and stats to empty structs when missing" do
       assert ComponentDispatch.props_for_action(%{live_action: :overview}) ==
-               %{shared_data: %{agenda: %Day{}}}
+               %{shared_data: %{agenda: %Day{}, overview_stats: %OverviewStats{}}}
     end
 
     test ":settings prefills the profile timezone from the detected timezone" do

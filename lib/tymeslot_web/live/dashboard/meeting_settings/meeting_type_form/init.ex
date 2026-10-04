@@ -37,9 +37,12 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.Init do
     |> Component.assign(:reminders, get_reminders(type))
     |> assign_content_embeds(type)
     |> Component.assign(:allow_guests, get_allow_guests(type))
+    |> Component.assign(:allow_attachments, get_allow_attachments(type))
     |> Component.assign(:requires_approval, get_requires_approval(type))
     |> Component.assign(:approval_window_hours, get_approval_window_hours(type))
     |> Component.assign(:show_as_free, get_show_as_free(type))
+    |> Component.assign(:show_email_to_bookers, enabled?(type, :show_email_to_bookers))
+    |> Component.assign(:show_phone_to_bookers, enabled?(type, :show_phone_to_bookers))
     |> Component.assign(:booking_limits, get_booking_limits(type))
     |> Component.assign(
       :selected_availability_schedule_id,
@@ -214,9 +217,17 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.Init do
   def get_allow_guests(%{allow_guests: true}), do: true
   def get_allow_guests(_type), do: false
 
+  @spec get_allow_attachments(Ecto.Schema.t() | nil) :: boolean()
+  defp get_allow_attachments(%{allow_attachments: true}), do: true
+  defp get_allow_attachments(_type), do: false
+
   @spec get_show_as_free(Ecto.Schema.t() | nil) :: boolean()
   defp get_show_as_free(%{show_as_free: true}), do: true
   defp get_show_as_free(_type), do: false
+
+  @spec enabled?(Ecto.Schema.t() | nil, atom()) :: boolean()
+  defp enabled?(nil, _setting), do: false
+  defp enabled?(type, setting), do: Map.get(type, setting) == true
 
   @doc """
   Returns the booking-limit values for an existing meeting type, keyed by

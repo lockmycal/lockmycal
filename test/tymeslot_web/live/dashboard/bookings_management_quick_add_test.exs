@@ -28,7 +28,12 @@ defmodule TymeslotWeb.Dashboard.BookingsManagementQuickAddTest do
     lv |> element("button[phx-click='show_create_form']", "Add meeting") |> render_click()
   end
 
+  defp fill_title(lv) do
+    lv |> element("#create-event-title") |> render_blur(%{"value" => "Kickoff"})
+  end
+
   defp fill_guest(lv, name, email) do
+    fill_title(lv)
     lv |> element("#create-meeting-guest-name") |> render_blur(%{"value" => name})
     lv |> element("#create-meeting-guest-email") |> render_blur(%{"value" => email})
   end
@@ -54,7 +59,7 @@ defmodule TymeslotWeb.Dashboard.BookingsManagementQuickAddTest do
       html = open_quick_add(lv)
 
       assert html =~ ~s(id="create-event-modal")
-      assert html =~ "New Meeting"
+      assert html =~ "Meeting title"
       assert html =~ ~s(id="create-meeting-guest-name")
       assert html =~ ~s(id="create-meeting-guest-email")
       assert html =~ ~s(id="create-meeting-contact-picker")
@@ -74,7 +79,7 @@ defmodule TymeslotWeb.Dashboard.BookingsManagementQuickAddTest do
 
       html = open_quick_add(lv)
 
-      assert html =~ "New Event"
+      assert html =~ "Event title"
       assert html =~ ~s(data-testid="create-mode-meeting")
       refute html =~ ~s(id="create-meeting-guest-name")
 
@@ -83,18 +88,46 @@ defmodule TymeslotWeb.Dashboard.BookingsManagementQuickAddTest do
         |> element(~s{[data-testid="create-mode-meeting"]})
         |> render_click()
 
-      assert html =~ "New Meeting"
+      assert html =~ "Meeting title"
       assert html =~ ~s(id="create-meeting-guest-name")
       assert html =~ ~s(id="create-meeting-contact-picker")
+    end
+
+    test "an event can't be saved without a title", %{conn: conn, user: user} do
+      insert(:calendar_integration, user: user, is_active: true)
+
+      {:ok, lv, _html} = live(conn, ~p"/dashboard/meetings")
+      open_quick_add(lv)
+
+      lv |> element("button[phx-click='save_event']") |> render_click()
+      html = render(lv)
+
+      assert html =~ "Event title is required"
+      assert html =~ ~s(id="create-event-modal")
     end
   end
 
   describe "validation" do
-    test "saving without guest details flashes a validation error", %{conn: conn} do
+    test "saving without a title flashes a validation error", %{conn: conn} do
       {:ok, lv, _html} = live(conn, ~p"/dashboard/meetings")
       open_quick_add(lv)
 
-      lv |> element("button", "Create") |> render_click()
+      lv |> element("#create-meeting-guest-name") |> render_blur(%{"value" => "Ada Lovelace"})
+      lv |> element("#create-meeting-guest-email") |> render_blur(%{"value" => "ada@example.com"})
+
+      lv |> element("button[phx-click='save_event']", "Send invitation") |> render_click()
+      html = render(lv)
+
+      assert html =~ "Meeting title is required"
+      assert html =~ ~s(id="create-event-modal")
+    end
+
+    test "saving without guest details flashes a validation error", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, ~p"/dashboard/meetings")
+      open_quick_add(lv)
+      fill_title(lv)
+
+      lv |> element("button[phx-click='save_event']", "Send invitation") |> render_click()
       # Flash.error/1 forwards to the parent LiveView via `send/2`; it lands
       # on the next render, not the one the click itself returns.
       html = render(lv)
@@ -109,7 +142,7 @@ defmodule TymeslotWeb.Dashboard.BookingsManagementQuickAddTest do
 
       fill_guest(lv, "Ada Lovelace", "not-an-email")
 
-      lv |> element("button", "Create") |> render_click()
+      lv |> element("button[phx-click='save_event']", "Send invitation") |> render_click()
       html = render(lv)
 
       assert html =~ "A valid guest email is required"
@@ -152,7 +185,7 @@ defmodule TymeslotWeb.Dashboard.BookingsManagementQuickAddTest do
 
       fill_guest(lv, "Ada Lovelace", "ada@example.com")
 
-      first = lv |> element("button", "Create") |> render_click()
+      first = lv |> element("button[phx-click='save_event']", "Send invitation") |> render_click()
       refute first =~ ~s(id="create-event-modal")
 
       html = render(lv)
@@ -166,7 +199,7 @@ defmodule TymeslotWeb.Dashboard.BookingsManagementQuickAddTest do
 
       fill_guest(lv, "Ada Lovelace", user.email)
 
-      first = lv |> element("button", "Create") |> render_click()
+      first = lv |> element("button[phx-click='save_event']", "Send invitation") |> render_click()
       assert first =~ ~s(id="create-event-modal")
 
       html = render(lv)

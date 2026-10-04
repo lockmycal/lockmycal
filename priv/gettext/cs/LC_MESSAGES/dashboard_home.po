@@ -11,16 +11,6 @@ msgstr ""
 "Language: cs\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
 
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "%{hours} hr"
-msgstr "%{hours} h"
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "%{hours} hr %{mins} min"
-msgstr "%{hours} h %{mins} min"
-
 #: lib/tymeslot_web/live/dashboard/agenda_timeline.ex
 #, elixir-autogen, elixir-format
 msgid "%{hours}h %{mins}m free"
@@ -30,11 +20,6 @@ msgstr "%{hours} h %{mins} min volno"
 #, elixir-autogen, elixir-format
 msgid "%{hours}h free"
 msgstr "%{hours} h volno"
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "%{minutes} min"
-msgstr "%{minutes} min"
 
 #: lib/tymeslot_web/live/dashboard/agenda_timeline.ex
 #, elixir-autogen, elixir-format
@@ -49,86 +34,31 @@ msgstr[0] "+%{count} další"
 msgstr[1] "+%{count} další"
 msgstr[2] "+%{count} dalších"
 
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
 #: lib/tymeslot_web/live/dashboard/dashboard_overview_formatters.ex
 #, elixir-autogen, elixir-format
 msgid "All day"
 msgstr "Celý den"
 
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Booking"
-msgstr "Rezervace"
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
 #, elixir-autogen, elixir-format
 msgid "Calendar"
 msgstr "Kalendář"
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Colour"
-msgstr "Barva"
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
 #, elixir-autogen, elixir-format
 msgid "Connect a calendar to see your whole schedule here"
 msgstr "Připojte kalendář a uvidíte tu celý svůj rozvrh"
 
-#: lib/tymeslot_web/live/dashboard/dashboard_overview_component.ex
-#, elixir-autogen, elixir-format
-msgid "Couldn't save that colour. Please try again."
-msgstr "Barvu se nepodařilo uložit. Zkuste to prosím znovu."
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Default"
-msgstr "Výchozí"
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "External calendar"
-msgstr "Externí kalendář"
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Here's an overview of your scheduling setup and recent activity."
-msgstr "Zde je přehled vašeho nastavení plánování a nedávné aktivity."
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "In progress"
-msgstr "Probíhá"
-
 #: lib/tymeslot_web/live/dashboard_live.ex
 #, elixir-autogen, elixir-format
 msgid "Invalid redirect URL"
 msgstr "Neplatná URL pro přesměrování"
 
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
 #: lib/tymeslot_web/live/dashboard/calendar_up_next_strip.ex
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
 #, elixir-autogen, elixir-format
 msgid "Join"
 msgstr "Připojit se"
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Location"
-msgstr "Místo"
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Manage booking"
-msgstr "Spravovat rezervaci"
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Nothing on your plate today or tomorrow."
-msgstr "Dnes ani zítra vás nic nečeká."
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
 #, elixir-autogen, elixir-format
@@ -136,22 +66,12 @@ msgid "Now"
 msgstr "Nyní"
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Overview"
-msgstr "Přehled"
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Time"
-msgstr "Čas"
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #: lib/tymeslot_web/live/dashboard/dashboard_overview_formatters.ex
 #, elixir-autogen, elixir-format
 msgid "Today"
 msgstr "Dnes"
 
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
 #: lib/tymeslot_web/live/dashboard/dashboard_overview_formatters.ex
 #, elixir-autogen, elixir-format
 msgid "Tomorrow"
@@ -163,16 +83,6 @@ msgstr "Zítra"
 msgid "Up next"
 msgstr "Následuje"
 
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Video call"
-msgstr "Videohovor"
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Video meeting"
-msgstr "Videoschůzka"
-
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
 #, elixir-autogen, elixir-format
 msgid "View calendar"
@@ -182,31 +92,6 @@ msgstr "Zobrazit kalendář"
 #, elixir-autogen, elixir-format
 msgid "View details for %{title}"
 msgstr "Zobrazit podrobnosti: %{title}"
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Welcome"
-msgstr "Vítejte"
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Welcome back"
-msgstr "Vítejte zpět"
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "When"
-msgstr "Kdy"
-
-#: lib/tymeslot_web/live/dashboard/agenda_detail_modal.ex
-#, elixir-autogen, elixir-format
-msgid "With"
-msgstr "S kým"
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Your day"
-msgstr "Váš den"
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview_formatters.ex
 #, elixir-autogen, elixir-format
@@ -238,17 +123,184 @@ msgstr "poté"
 msgid "today"
 msgstr "dnes"
 
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #, elixir-autogen, elixir-format
-msgid "Copy link"
-msgstr "Kopírovat odkaz"
+msgid "%{count} active"
+msgid_plural "%{count} active"
+msgstr[0] "%{count} aktivní"
+msgstr[1] "%{count} aktivní"
+msgstr[2] "%{count} aktivních"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} needs attention"
+msgid_plural "%{count} need attention"
+msgstr[0] "%{count} vyžaduje pozornost"
+msgstr[1] "%{count} vyžadují pozornost"
+msgstr[2] "%{count} vyžaduje pozornost"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Availability"
+msgstr "Dostupnost"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Awaiting approval"
+msgstr "Čeká na schválení"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Bookings"
+msgstr "Rezervace"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Calendars"
+msgstr "Kalendáře"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Conversion"
+msgstr "Konverze"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Copy booking link"
+msgstr "Kopírovat odkaz na rezervace"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Create a poll"
+msgstr "Vytvořit anketu"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Daily visits over the last 7 days"
+msgstr "Denní návštěvy za posledních 7 dní"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Integrations"
+msgstr "Integrace"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Last 7 days"
+msgstr "Posledních 7 dní"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting types"
+msgstr "Typy schůzek"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Not connected"
+msgstr "Nepřipojeno"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Open analytics"
+msgstr "Otevřít analytiku"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Open calendar"
+msgstr "Otevřít kalendář"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Open polls"
+msgstr "Otevřené ankety"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Polls"
+msgstr "Ankety"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Quick actions"
+msgstr "Rychlé akce"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Review"
+msgstr "Zkontrolovat"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "This week"
+msgstr "Tento týden"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Video"
+msgstr "Video"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Visits"
+msgstr "Návštěvy"
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
 #, elixir-autogen, elixir-format
-msgid "Send your booking page, public calendar or a specific meeting type to anyone."
-msgstr "Pošlete komukoli svou rezervační stránku, veřejný kalendář nebo konkrétní typ schůzky."
+msgid "Welcome back!"
+msgstr "Vítejte zpět!"
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
 #, elixir-autogen, elixir-format
-msgid "Share your booking page"
-msgstr "Sdílejte svou rezervační stránku"
+msgid "Welcome back, %{name}!"
+msgstr "Vítejte zpět, %{name}!"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Welcome!"
+msgstr "Vítejte!"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Welcome, %{name}!"
+msgstr "Vítejte, %{name}!"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Coming up tomorrow"
+msgstr "Co Vás čeká zítra"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Nothing on your plate today."
+msgstr "Dnes nemáte nic naplánováno."
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Nothing scheduled for tomorrow."
+msgstr "Na zítřek nemáte nic naplánováno."
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Your day today"
+msgstr "Váš dnešní den"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Next appointment"
+msgstr "Další schůzka"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Create a meeting"
+msgstr "Vytvořit schůzku"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "What's ahead"
+msgstr "Co Vás čeká"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Awaiting host approval"
+msgstr "Čeká na schválení hostitelem"

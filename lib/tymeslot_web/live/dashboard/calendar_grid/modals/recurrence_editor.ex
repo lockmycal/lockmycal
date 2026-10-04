@@ -25,6 +25,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Integrations.Calendar.Recurrence.RRule
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared
+  alias TymeslotWeb.Dashboard.CalendarGrid.Modals.FormParts
 
   attr :recurrence_rule, :string, default: nil
   attr :timezone, :string, default: nil
@@ -33,7 +35,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
 
   attr :read_only, :boolean,
     default: false,
-    doc: "Disables every recurrence control, e.g. an existing event's modal."
+    doc: "Shows the rule's summary instead of the controls, e.g. an existing event's modal."
 
   @spec recurrence_editor(map()) :: Phoenix.LiveView.Rendered.t()
   def recurrence_editor(assigns) do
@@ -46,42 +48,39 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
       |> assign(:interval, parsed[:interval] || 1)
       |> assign(:by_day, parsed[:by_day] || [])
       |> assign(:end_type, end_type(parsed))
-      |> assign(:count, parsed[:count] || 10)
+      |> assign(:count, parsed[:count] || Shared.default_recurrence_count())
       |> assign(:until, until_value(parsed[:until]))
       |> assign(:weekdays, weekdays())
       |> assign(:freq_options, freq_options())
       |> assign(:summary, summary(parsed))
 
     ~H"""
-    <div class="flex items-start gap-3">
-      <.icon
-        name="hero-arrow-path"
-        class="w-4 h-4 text-neutral-400 dark:text-twilight-indigo-300 mt-0.5 shrink-0"
-      />
-      <div class="flex-1">
-        <p class="text-token-xs font-medium text-neutral-400 dark:text-twilight-indigo-300 mb-1.5">
-          {dgettext("dashboard_calendar_events", "Repeat")}
+    <div>
+      <FormParts.section_label for={if not @read_only, do: "recurrence-freq-#{@change_event}"}>
+        {dgettext("dashboard_calendar_events", "Repeat")}
+      </FormParts.section_label>
+      <div>
+        <%!-- Read-only: just what the rule says, not a form of disabled controls. --%>
+        <p
+          :if={@read_only}
+          class="text-token-sm text-neutral-600 dark:text-neutral-300 leading-snug"
+        >
+          {@summary || dgettext("dashboard_calendar_events", "Does not repeat")}
         </p>
-
         <form
+          :if={not @read_only}
           id={"recurrence-editor-form-#{@change_event}"}
           phx-change={@change_event}
           phx-target={@myself}
           class="space-y-2"
         >
-          <select
+          <.input
+            type="select"
+            id={"recurrence-freq-#{@change_event}"}
             name="freq"
-            disabled={@read_only}
-            class="w-full rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <option
-              :for={{value, label} <- @freq_options}
-              value={value}
-              selected={to_string(@freq) == value}
-            >
-              {label}
-            </option>
-          </select>
+            value={to_string(@freq)}
+            options={Enum.map(@freq_options, fn {value, label} -> {label, value} end)}
+          />
 
           <div :if={@freq != nil} class="space-y-2 pl-0.5">
             <div class="flex items-center gap-2">
@@ -95,8 +94,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
                 min="1"
                 max="999"
                 value={@interval}
-                disabled={@read_only}
-                class="w-16 rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                class="w-16 rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1"
               />
               <span class="text-token-xs text-neutral-600 dark:text-twilight-indigo-200">{interval_unit(
                 @freq
@@ -108,8 +106,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
                 :for={{day, label} <- @weekdays}
                 class={[
                   "px-2 py-1 rounded-md border text-token-xs transition-all select-none",
-                  if(@read_only, do: "cursor-not-allowed opacity-60", else: "cursor-pointer"),
-                  weekday_label_class(day in @by_day, @read_only)
+                  "cursor-pointer",
+                  weekday_label_class(day in @by_day)
                 ]}
               >
                 <input
@@ -117,7 +115,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
                   name="by_day[]"
                   value={day}
                   checked={day in @by_day}
-                  disabled={@read_only}
                   class="sr-only"
                 />
                 {label}
@@ -127,8 +124,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
             <div class="flex flex-wrap items-center gap-2">
               <select
                 name="end_type"
-                disabled={@read_only}
-                class="rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                class="rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1"
               >
                 <option value="never" selected={@end_type == "never"}>
                   {dgettext("dashboard_calendar_events", "Never ends")}
@@ -148,8 +144,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
                   min="1"
                   max="999"
                   value={@count}
-                  disabled={@read_only}
-                  class="w-16 rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                  class="w-16 rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1"
                 />
                 <span class="text-token-xs text-neutral-600 dark:text-twilight-indigo-200">{dngettext(
                   "dashboard_calendar_events",
@@ -164,15 +159,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
                 type="date"
                 name="until"
                 value={@until}
-                disabled={@read_only}
-                class="rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                class="rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1"
               />
             </div>
           </div>
         </form>
 
         <p
-          :if={@summary != nil}
+          :if={not @read_only and @summary != nil}
           class="text-token-xs text-neutral-400 dark:text-twilight-indigo-300 mt-1.5"
         >
           {@summary}
@@ -182,17 +176,12 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
     """
   end
 
-  # Weekday toggle border/background: selected takes priority over the
-  # read-only dimming, and the hover treatment only applies once interactive.
-  defp weekday_label_class(true, _read_only),
+  # Weekday toggle border/background, with a hover treatment when not selected.
+  defp weekday_label_class(true),
     do:
       "border-primary-400 bg-primary-50 dark:bg-primary-950/40 text-primary-800 dark:text-primary-300 font-semibold"
 
-  defp weekday_label_class(false, true),
-    do:
-      "border-neutral-300 dark:border-twilight-indigo-700 text-neutral-600 dark:text-twilight-indigo-200"
-
-  defp weekday_label_class(false, false),
+  defp weekday_label_class(false),
     do:
       "border-neutral-300 dark:border-twilight-indigo-700 text-neutral-600 dark:text-twilight-indigo-200 hover:border-neutral-300 dark:hover:border-twilight-indigo-600 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-900"
 

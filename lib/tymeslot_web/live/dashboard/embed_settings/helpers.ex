@@ -86,8 +86,8 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers do
       ])
 
     String.trim("""
-    <!-- Tymeslot Inline -->
-    <div id="tymeslot-booking" data-username="#{username}"#{attrs}></div>
+    <!-- LockMyCal Inline -->
+    <div id="lockmycal-booking" data-username="#{username}"#{attrs}></div>
     <script src="#{base_url}/embed.js" async></script>
     """)
   end
@@ -108,8 +108,8 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers do
       )
 
     String.trim("""
-    <!-- Tymeslot Popup -->
-    <button onclick="if(window.TymeslotBooking){TymeslotBooking.open('#{username}'#{js_options})}else{alert('#{unavailable}')}">#{label}</button>
+    <!-- LockMyCal Popup -->
+    <button onclick="if(window.LockMyCalBooking){LockMyCalBooking.open('#{username}'#{js_options})}else{alert('#{unavailable}')}">#{label}</button>
     <script src="#{base_url}/embed.js" async></script>
     """)
   end
@@ -133,13 +133,13 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers do
     js_options = build_js_options(options)
 
     String.trim("""
-    <!-- Tymeslot Floating Button -->
+    <!-- LockMyCal Floating Button -->
     <script src="#{base_url}/embed.js" async></script>
     <script>
       (function() {
         var init = function() {
-          if (window.TymeslotBooking) {
-            TymeslotBooking.initFloating('#{username}'#{js_options});
+          if (window.LockMyCalBooking) {
+            LockMyCalBooking.initFloating('#{username}'#{js_options});
           } else {
             setTimeout(init, 100);
           }
@@ -154,7 +154,7 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers do
   def embed_code(_type, _assigns), do: ""
 
   # Builds the JS options string passed as the 2nd argument to
-  # TymeslotBooking.open / initFloating. Only includes sanitised values.
+  # LockMyCalBooking.open / initFloating. Only includes sanitised values.
   defp build_js_options(options) do
     js_list =
       %{

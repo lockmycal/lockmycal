@@ -24,6 +24,7 @@ defmodule Tymeslot.MeetingPayments.Refunds do
 
   require Logger
 
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.MeetingPayments.AuditTrail
   alias Tymeslot.MeetingPayments.BookingPaymentQueries
   alias Tymeslot.MeetingPayments.BookingPaymentSchema
@@ -305,7 +306,7 @@ defmodule Tymeslot.MeetingPayments.Refunds do
       {:error, reason} ->
         Logger.warning("Failed to enqueue refund email",
           booking_payment_id: payment.id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
 
         :ok

@@ -48,6 +48,7 @@ msgstr "Zrušit"
 msgid "Close"
 msgstr "Zavřít"
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
@@ -124,6 +125,7 @@ msgstr "Upravit kontakt"
 msgid "Edit contact"
 msgstr "Upravit kontakt"
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
@@ -140,6 +142,7 @@ msgstr "Kontakt se nepodařilo smazat"
 msgid "Keep track of the people who book with you."
 msgstr "Mějte přehled o lidech, kteří si u vás rezervují."
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
@@ -161,6 +164,7 @@ msgstr "Zatím žádné kontakty"
 msgid "No meetings yet"
 msgstr "Zatím žádné schůzky"
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Note"
@@ -171,6 +175,7 @@ msgstr "Poznámka"
 msgid "People who booked with you, captured automatically from new bookings."
 msgstr "Lidé, kteří si u vás rezervovali, automaticky zachyceni z nových rezervací."
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
@@ -211,3 +216,8 @@ msgstr "Zobrazit schůzky"
 #, elixir-autogen, elixir-format
 msgid "Contact List"
 msgstr "Seznam kontaktů"
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Export CSV"
+msgstr "Exportovat CSV"

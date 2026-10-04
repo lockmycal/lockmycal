@@ -102,7 +102,7 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.ThemeCustomization.Pickers.ColorPi
       </div>
 
       <%= if @custom_picker_open do %>
-        <div class="animate-fade-in-up rounded-token-2xl border-2 border-neutral-300 dark:border-twilight-indigo-700 bg-neutral-50/50 dark:bg-twilight-indigo-900/60 p-4">
+        <div class="animate-fade-in-up rounded-token-2xl border-2 border-neutral-300 dark:border-twilight-indigo-800 bg-neutral-50/50 dark:bg-twilight-indigo-900/60 p-4">
           <.colour_picker_widget
             id="custom-background-picker"
             target={@myself}

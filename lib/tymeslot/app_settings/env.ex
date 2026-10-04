@@ -53,6 +53,14 @@ defmodule Tymeslot.AppSettings.Env do
   def default_for(:max_image_upload_size_mb), do: 20
   def default_for(:max_video_upload_size_mb), do: 100
 
+  # Booker attachments: every supported type but SVG, and limits that keep
+  # the organiser's email (which carries the files) deliverable.
+  def default_for(:booking_attachment_types),
+    do: AppSettingsSchema.default_booking_attachment_types()
+
+  def default_for(:max_booking_attachment_size_mb), do: 10
+  def default_for(:max_booking_attachments), do: 3
+
   # Security audit log: IP addresses and user agents are personal data, so
   # events are kept for a limited time (GDPR storage limitation).
   def default_for(:audit_log_retention_days), do: 90
@@ -220,6 +228,12 @@ defmodule Tymeslot.AppSettings.Env do
   defp config_path(:recaptcha_booking_min_score), do: [:recaptcha, :booking_min_score]
   defp config_path(:max_image_upload_size_mb), do: [:uploads, :max_image_size_mb]
   defp config_path(:max_video_upload_size_mb), do: [:uploads, :max_video_size_mb]
+  defp config_path(:booking_attachment_types), do: [:uploads, :booking_attachment_types]
+
+  defp config_path(:max_booking_attachment_size_mb),
+    do: [:uploads, :max_booking_attachment_size_mb]
+
+  defp config_path(:max_booking_attachments), do: [:uploads, :max_booking_attachments]
   defp config_path(key), do: [key]
 
   defp fetch_config(key) do

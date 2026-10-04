@@ -6,6 +6,7 @@ defmodule TymeslotWeb.Components.PublicTopBarTest do
 
   import Phoenix.LiveViewTest
   alias TymeslotWeb.Components.PublicTopBar
+  alias TymeslotWeb.Live.Shared.DocsUrl
 
   defp render_bar(extra \\ %{}) do
     render_component(
@@ -50,5 +51,61 @@ defmodule TymeslotWeb.Components.PublicTopBarTest do
 
     refute html =~ "/auth/"
     refute html =~ ~s(href="/dashboard")
+  end
+
+  describe "logo" do
+    test "links to the organizer's booking page" do
+      html = render_bar(%{username: "jane"})
+
+      assert html =~ ~s(href="/jane")
+      assert html =~ ~s(aria-label="Booking page")
+    end
+
+    test "is not a link without an organizer" do
+      refute render_bar() =~ ~s(aria-label="Booking page")
+    end
+
+    test "is not a link on embedded pages" do
+      html = render_bar(%{username: "jane", embedded: true})
+
+      refute html =~ ~s(href="/jane")
+      refute html =~ ~s(aria-label="Booking page")
+    end
+  end
+
+  describe "docs and website links" do
+    setup do
+      previous = Application.fetch_env(:tymeslot, :web_host)
+
+      on_exit(fn ->
+        case previous do
+          {:ok, value} -> Application.put_env(:tymeslot, :web_host, value)
+          :error -> Application.delete_env(:tymeslot, :web_host)
+        end
+      end)
+    end
+
+    test "link to the docs always, and to the website once WEB_HOST is set" do
+      Application.put_env(:tymeslot, :web_host, nil)
+      html = render_bar()
+
+      assert html =~ ~s(aria-label="Documentation")
+      assert html =~ ~s(href="#{DocsUrl.home_url()}")
+      refute html =~ ~s(aria-label="Website")
+
+      Application.put_env(:tymeslot, :web_host, "https://example.com")
+      html = render_bar()
+
+      assert html =~ ~s(aria-label="Website")
+      assert html =~ ~s(href="https://example.com")
+    end
+
+    test "are left out of embedded pages" do
+      Application.put_env(:tymeslot, :web_host, "https://example.com")
+      html = render_bar(%{embedded: true})
+
+      refute html =~ ~s(aria-label="Documentation")
+      refute html =~ ~s(aria-label="Website")
+    end
   end
 end

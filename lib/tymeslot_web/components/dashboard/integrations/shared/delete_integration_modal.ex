@@ -8,6 +8,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.DeleteIntegration
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Integrations.Calendar
+  alias Tymeslot.Integrations.Calendar.IntegrationDeletionHook
   alias Tymeslot.Integrations.Video
   alias TymeslotWeb.Dashboard.{CalendarSettingsComponent, VideoSettingsComponent}
   alias TymeslotWeb.Dashboard.ComponentDispatch
@@ -20,6 +21,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.DeleteIntegration
      socket
      |> assign(:show, false)
      |> assign(:integration_id, nil)
+     |> assign(:deletion_warning, nil)
      |> assign(:rooms_to_delete, @no_rooms)
      |> assign(:delete_rooms, false)}
   end
@@ -35,11 +37,12 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.DeleteIntegration
     user_id = socket.assigns.current_user.id
 
     with {:ok, integration_id} <- parse_integration_id(id),
-         :ok <- authorise(type, user_id, integration_id) do
+         {:ok, integration} <- authorise(type, user_id, integration_id) do
       {:noreply,
        socket
        |> assign(:show, true)
        |> assign(:integration_id, integration_id)
+       |> assign(:deletion_warning, deletion_warning(type, integration))
        |> assign(:delete_rooms, false)
        |> assign(:rooms_to_delete, rooms_to_delete(socket.assigns, integration_id))}
     else
@@ -187,6 +190,21 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.DeleteIntegration
               data: format_integration_data(@integration_type)
             )}
           </p>
+          <%!-- Set by the configured IntegrationDeletionHook, when deleting this
+                integration also removes something outside it. --%>
+          <div
+            :if={@deletion_warning}
+            id={"#{@id}-deletion-warning"}
+            class="flex items-start gap-3 rounded-token-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/40"
+          >
+            <.icon
+              name="hero-exclamation-triangle"
+              class="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-300"
+            />
+            <p class="text-token-sm font-medium text-amber-800 dark:text-amber-200">
+              {@deletion_warning}
+            </p>
+          </div>
           <%!-- Only video integrations own provider-side rooms, and only the
                 rooms the disconnect would actually delete are worth asking about. --%>
           <div :if={@integration_type == :video and @rooms_to_delete.count > 0} class="space-y-3">
@@ -242,25 +260,28 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.DeleteIntegration
   # wrong row. They are spelled out here rather than piped for that reason.
   defp authorise(:calendar, user_id, integration_id) do
     case Calendar.get_integration(integration_id, user_id) do
-      {:ok, _integration} -> :ok
+      {:ok, integration} -> {:ok, integration}
       {:error, :not_found} -> {:error, :not_found}
     end
   end
 
   defp authorise(:video, user_id, integration_id) do
     case Video.get_integration(user_id, integration_id) do
-      {:ok, _integration} ->
-        :ok
+      {:ok, integration} ->
+        {:ok, integration}
 
       # Credentials that no longer decrypt still belong to this user, and
       # deleting the integration is how they recover, so the dialog opens.
-      {:error, :requires_reencryption, _integration} ->
-        :ok
+      {:error, :requires_reencryption, integration} ->
+        {:ok, integration}
 
       {:error, :not_found} ->
         {:error, :not_found}
     end
   end
+
+  defp deletion_warning(:calendar, integration), do: IntegrationDeletionHook.warning(integration)
+  defp deletion_warning(:video, _integration), do: nil
 
   # Only video integrations own provider-side rooms; calendar disconnect has no
   # equivalent cleanup, so it never asks the question.

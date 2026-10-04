@@ -232,7 +232,7 @@
 }
 
 .custom-question-option-indicator.is-check {
-  border-radius: 0.375rem;
+  border-radius: 0.125rem;
 }
 
 .custom-question-option-indicator svg {

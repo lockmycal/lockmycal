@@ -14,7 +14,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Header do
   attr :date, :any, required: true
   attr :integrations, :list, required: true
   attr :integration_colors, :map, required: true
-  attr :calendar_colour_keys, :map, required: true
   attr :hidden_integration_ids, :list, required: true
   attr :hidden_calendar_keys, :any, required: true
   attr :show_calendar_list, :boolean, required: true
@@ -129,7 +128,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Header do
             :if={@integrations != []}
             integrations={@integrations}
             integration_colors={@integration_colors}
-            calendar_colour_keys={@calendar_colour_keys}
             hidden_integration_ids={@hidden_integration_ids}
             hidden_calendar_keys={@hidden_calendar_keys}
             show_calendar_list={@show_calendar_list}
@@ -162,7 +160,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Header do
 
   attr :integrations, :list, required: true
   attr :integration_colors, :map, required: true
-  attr :calendar_colour_keys, :map, required: true
   attr :hidden_integration_ids, :list, required: true
   attr :hidden_calendar_keys, :any, required: true
   attr :show_calendar_list, :boolean, required: true
@@ -190,7 +187,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Header do
         <CalendarListPanel.calendar_list_panel
           integrations={@integrations}
           integration_colors={@integration_colors}
-          calendar_colour_keys={@calendar_colour_keys}
           hidden_integration_ids={@hidden_integration_ids}
           hidden_calendar_keys={@hidden_calendar_keys}
           myself={@myself}

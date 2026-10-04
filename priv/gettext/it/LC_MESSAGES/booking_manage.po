@@ -424,3 +424,8 @@ msgstr "La tua risposta è stata inviata a %{name}."
 #, elixir-autogen, elixir-format
 msgid "the person who booked"
 msgstr "la persona che ha prenotato"
+
+#: lib/tymeslot_web/live/meeting_request_live/view.ex
+#, elixir-autogen, elixir-format
+msgid "Attachments"
+msgstr "Allegati"

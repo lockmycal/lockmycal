@@ -37,7 +37,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerOfflineQueueTest do
                )
 
       assert {:ok, cache_row} =
-               ProviderCalendarEventQueries.get_by_uid(integration.id, meeting.uid)
+               ProviderCalendarEventQueries.get_by_uid(integration.id, meeting.calendar_uid)
 
       assert cache_row.sync_state == "locally_created"
     end
@@ -46,7 +46,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerOfflineQueueTest do
       %{integration: integration, meeting: meeting} =
         setup_calendar_scenario_with_paths()
 
-      uid = meeting.uid
+      uid = meeting.calendar_uid
 
       expect(Tymeslot.CalendarMock, :update_event, fn ^uid, _data, _meeting ->
         {:error, :server_error}
@@ -60,7 +60,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerOfflineQueueTest do
                )
 
       assert {:ok, cache_row} =
-               ProviderCalendarEventQueries.get_by_uid(integration.id, meeting.uid)
+               ProviderCalendarEventQueries.get_by_uid(integration.id, meeting.calendar_uid)
 
       assert cache_row.sync_state == "locally_modified"
     end
@@ -69,7 +69,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerOfflineQueueTest do
       %{integration: integration, meeting: meeting} =
         setup_calendar_scenario_with_paths()
 
-      uid = meeting.uid
+      uid = meeting.calendar_uid
 
       # A 412 means the server's ETag moved on. Replaying the identical
       # conditional PUT fails the same way every time, so the job must stop
@@ -90,7 +90,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerOfflineQueueTest do
       # Discarding is only safe because the write is already queued: the offline
       # queue replays it on the next sync under the row's conflict policy.
       assert {:ok, cache_row} =
-               ProviderCalendarEventQueries.get_by_uid(integration.id, meeting.uid)
+               ProviderCalendarEventQueries.get_by_uid(integration.id, meeting.calendar_uid)
 
       assert cache_row.sync_state == "locally_modified"
     end
@@ -124,7 +124,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerOfflineQueueTest do
         setup_calendar_scenario_with_paths()
 
       {:ok, meeting} = MeetingQueries.update_meeting(meeting, %{status: "cancelled"})
-      uid = meeting.uid
+      uid = meeting.calendar_uid
 
       expect(Tymeslot.CalendarMock, :delete_event, fn ^uid, _meeting ->
         {:error, :server_error}
@@ -138,7 +138,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerOfflineQueueTest do
                )
 
       assert {:ok, cache_row} =
-               ProviderCalendarEventQueries.get_by_uid(integration.id, meeting.uid)
+               ProviderCalendarEventQueries.get_by_uid(integration.id, meeting.calendar_uid)
 
       assert cache_row.sync_state == "locally_deleted"
     end
@@ -151,11 +151,12 @@ defmodule Tymeslot.Workers.CalendarEventWorkerOfflineQueueTest do
       #
       # We force the update failure by seeding a *second* meeting that
       # already owns the UID the provider returns. The unique_constraint
-      # on meetings.uid makes the changeset invalid when we try to write
-      # the same UID onto the meeting under test.
+      # on meetings.calendar_uid makes the changeset invalid when we try to
+      # write the same UID onto the meeting under test.
       %{integration: integration, meeting: meeting} = setup_calendar_scenario_with_paths()
       external_uid = "collides-#{System.unique_integer([:positive])}"
       original_uid = meeting.uid
+      original_calendar_uid = meeting.calendar_uid
 
       # Offset start_time so we don't also trip the
       # `unique_confirmed_meeting_per_organizer_at_time` constraint — we want
@@ -163,7 +164,7 @@ defmodule Tymeslot.Workers.CalendarEventWorkerOfflineQueueTest do
       colliding_start = DateTime.add(meeting.start_time, 1, :hour)
 
       insert(:meeting,
-        uid: external_uid,
+        calendar_uid: external_uid,
         calendar_integration_id: integration.id,
         organizer_user_id: meeting.organizer_user_id,
         start_time: colliding_start,
@@ -186,12 +187,14 @@ defmodule Tymeslot.Workers.CalendarEventWorkerOfflineQueueTest do
       # UID on the meeting under test is untouched — no half-written mapping.
       unchanged = Repo.get!(MeetingSchema, meeting.id)
       assert unchanged.uid == original_uid
+      assert unchanged.calendar_uid == original_calendar_uid
     end
 
     test "successful create job clears a pre-existing offline queue row" do
       # The create mock returns this external uid, which persist_calendar_mapping
       # writes back to the meeting.  clear_offline_queue_tag then fetches the
-      # updated meeting (uid = external_uid) and clears the matching cache row.
+      # updated meeting (calendar_uid = external_uid) and clears the matching
+      # cache row.
       external_uid = "caldav-event-clear-test"
 
       %{integration: integration, meeting: meeting} =

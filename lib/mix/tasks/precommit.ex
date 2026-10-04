@@ -119,6 +119,7 @@ defmodule Mix.Tasks.Precommit do
     # once missed. Lower it again if either goes away.
     {"xref", ~w[xref graph --label compile-connected --fail-above 27], :dev},
     {"test", ~w[test], :test},
+    {"test (js)", ~w[test.js], :dev},
     {"dialyzer", ~w[dialyzer.incremental --list-unused-filters], :dev}
   ]
 

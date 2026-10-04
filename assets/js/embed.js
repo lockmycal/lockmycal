@@ -19,11 +19,12 @@
    * Global Error Handling
    */
   const failSafe = (msg) => {
-    console.error('Tymeslot Error:', msg);
-    const containers = document.querySelectorAll('#tymeslot-booking, [data-tymeslot-inline]');
+    console.error('LockMyCal Error:', msg);
+    const containers = document.querySelectorAll('#lockmycal-booking, #tymeslot-booking, [data-lockmycal-inline], [data-tymeslot-inline]');
     containers.forEach(c => {
-      if (typeof TymeslotBooking !== 'undefined' && TymeslotBooking.showError) {
-        TymeslotBooking.showError(c);
+      const bookingApi = typeof LockMyCalBooking !== 'undefined' ? LockMyCalBooking : (typeof TymeslotBooking !== 'undefined' ? TymeslotBooking : null);
+      if (bookingApi && bookingApi.showError) {
+        bookingApi.showError(c);
       } else {
         const errorDiv = document.createElement('div');
         errorDiv.style.cssText = 'padding:20px;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-family:sans-serif;';
@@ -450,12 +451,14 @@
     };
     
     closeButton.onclick = function() {
-      TymeslotBooking.close();
+      const bookingApi = window.LockMyCalBooking || window.TymeslotBooking || api;
+      bookingApi.close();
     };
     
     modal.onclick = function(e) {
       if (e.target === modal) {
-        TymeslotBooking.close();
+        const bookingApi = window.LockMyCalBooking || window.TymeslotBooking || api;
+        bookingApi.close();
       }
     };
     
@@ -520,7 +523,8 @@
     };
     
     button.onclick = function() {
-      TymeslotBooking.open(username, options);
+      const bookingApi = window.LockMyCalBooking || window.TymeslotBooking || api;
+      bookingApi.open(username, options);
     };
     
     return button;
@@ -530,10 +534,11 @@
    * Initialize inline embeds on page load
    */
   function initInlineEmbeds() {
-    const containers = document.querySelectorAll('#tymeslot-booking, [data-tymeslot-inline]');
+    const containers = document.querySelectorAll('#lockmycal-booking, #tymeslot-booking, [data-lockmycal-inline], [data-tymeslot-inline]');
     
     containers.forEach(container => {
       const username = container.getAttribute('data-username') || 
+                      container.getAttribute('data-lockmycal-inline') ||
                       container.getAttribute('data-tymeslot-inline');
       
       if (!validateUsername('initInlineEmbeds', username)) return;
@@ -611,7 +616,7 @@
   /**
    * Public API
    */
-  window.TymeslotBooking = {
+  const api = {
     /**
      * Display error in a container
      */
@@ -653,7 +658,7 @@
       // div get matching popup sizing without repeating the value in JS.
       if (!options.maxWidth) {
         const inlineDiv = document.querySelector(
-          '#tymeslot-booking[data-max-width], [data-tymeslot-inline][data-max-width]'
+          '#lockmycal-booking[data-max-width], #tymeslot-booking[data-max-width], [data-lockmycal-inline][data-max-width], [data-tymeslot-inline][data-max-width]'
         );
         if (inlineDiv) {
           options = Object.assign({}, options, {
@@ -825,6 +830,9 @@
       ensureScrollable(container, wrapper);
     }
   };
+
+  window.LockMyCalBooking = api;
+  window.TymeslotBooking = api;
 
   /**
    * Initialize when DOM is ready

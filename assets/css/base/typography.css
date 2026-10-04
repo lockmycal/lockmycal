@@ -8,16 +8,17 @@
    and Tailwind utilities take precedence over bare element styling — matching
    the pre-Tailwind-v4 cascade. Without this, the unlayered `h1`/`h2` element
    rules below would override the `.display-*` heading classes and shrink/lighten
-   every heading that uses them (700/48px instead of 900/72px). The duplicated
-   `.text-*` / `.font-*` helpers are token-equivalent to Tailwind's utilities, so
-   demoting them to `base` changes no rendered values. */
+   every heading that uses them. The duplicated `.text-*` / `.font-*` helpers are
+   token-equivalent to Tailwind's utilities, so demoting them to `base` changes
+   no rendered values. */
+
+/* The font faces are declared in fonts.css, shared with the booking themes. */
+
 @layer base {
 
 /* Base Typography */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: "Schibsted Grotesk", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-normal);
@@ -31,15 +32,14 @@ body {
 }
 
 /* Font Families */
-.font-sans {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+.font-sans,
+.font-lmc-sans {
+  font-family: "Schibsted Grotesk", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.font-mono {
-  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono',
-    Menlo, monospace;
+.font-mono,
+.font-lmc-mono {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* Responsive Typography Scale */
@@ -87,39 +87,40 @@ body {
 /* Headings */
 h1, .h1 {
   font-size: clamp(var(--font-size-3xl), 5vw, var(--font-size-5xl));
-  font-weight: var(--font-weight-bold);
+  font-weight: 600;
   line-height: var(--line-height-tight);
-  letter-spacing: var(--letter-spacing-tight);
+  letter-spacing: -0.025em;
 }
 
 h2, .h2 {
   font-size: clamp(var(--font-size-2xl), 4vw, var(--font-size-4xl));
-  font-weight: var(--font-weight-semibold);
+  font-weight: 600;
   line-height: var(--line-height-tight);
-  letter-spacing: var(--letter-spacing-tight);
+  letter-spacing: -0.02em;
 }
 
 h3, .h3 {
   font-size: clamp(var(--font-size-xl), 3vw, var(--font-size-3xl));
-  font-weight: var(--font-weight-semibold);
+  font-weight: 600;
   line-height: var(--line-height-snug);
+  letter-spacing: -0.015em;
 }
 
 h4, .h4 {
   font-size: clamp(var(--font-size-lg), 2.5vw, var(--font-size-2xl));
-  font-weight: var(--font-weight-medium);
+  font-weight: 600;
   line-height: var(--line-height-snug);
 }
 
 h5, .h5 {
   font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-medium);
+  font-weight: 600;
   line-height: var(--line-height-normal);
 }
 
 h6, .h6 {
   font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-medium);
+  font-weight: 600;
   line-height: var(--line-height-normal);
 }
 

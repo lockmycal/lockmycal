@@ -20,6 +20,7 @@ defmodule Tymeslot.Precommit.AffectedTest do
     {"workflows", ~w[actionlint], :dev},
     {"xref", ~w[xref graph --label compile-connected --fail-above 27], :dev},
     {"test", ~w[test], :test},
+    {"test (js)", ~w[test.js], :dev},
     {"dialyzer", ~w[dialyzer.incremental --list-unused-filters], :dev}
   ]
 
@@ -83,7 +84,8 @@ defmodule Tymeslot.Precommit.AffectedTest do
                {"sobelow", "no web, config, auth or upload code changed"},
                {"deps.audit", "mix.exs and mix.lock unchanged"},
                {"migrations", "no migration changed"},
-               {"workflows", "no workflow changed"}
+               {"workflows", "no workflow changed"},
+               {"test (js)", "no JavaScript changed"}
              ]
     end
 
@@ -94,7 +96,9 @@ defmodule Tymeslot.Precommit.AffectedTest do
         {"lib/tymeslot/auth/session.ex", ["sobelow"]},
         {"config/runtime.exs", ["sobelow"]},
         {"priv/repo/migrations/20260101000000_add_x.exs", ["migrations"]},
-        {".github/workflows/verify.yml", ["workflows"]}
+        {".github/workflows/verify.yml", ["workflows"]},
+        {"assets/js/utility_hooks.js", ["test (js)"]},
+        {"assets/package-lock.json", ["test (js)"]}
       ]
 
       for {path, expected} <- cases do
@@ -108,6 +112,11 @@ defmodule Tymeslot.Precommit.AffectedTest do
 
       assert narrowed.steps == []
       assert length(narrowed.skipped) == length(@steps)
+    end
+
+    test "a JS-only diff runs the JS suite and nothing else" do
+      assert names(Affected.select(@steps, ["assets/js/__tests__/flash_hook.test.js"], index())) ==
+               ["test (js)"]
     end
 
     test "a workflow-only diff runs actionlint and nothing else" do

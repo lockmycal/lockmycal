@@ -22,6 +22,7 @@ defmodule Tymeslot.Bookings.BuildParams do
     :location_option_id,
     :location_phone,
     :location_video_integration_id,
+    :location_venue_id,
     :attendee_locale,
     :utm_source,
     :utm_medium,
@@ -30,8 +31,10 @@ defmodule Tymeslot.Bookings.BuildParams do
     :utm_term,
     :referrer_host,
     :visitor_hash,
+    :booker_user_id,
     custom_fields_snapshot: [],
     custom_field_answers: %{},
+    attendee_attachments: [],
     tracking_params: %{}
   ]
 
@@ -48,6 +51,7 @@ defmodule Tymeslot.Bookings.BuildParams do
           location_option_id: String.t() | nil,
           location_phone: String.t() | nil,
           location_video_integration_id: integer() | String.t() | nil,
+          location_venue_id: integer() | String.t() | nil,
           attendee_locale: String.t() | nil,
           utm_source: String.t() | nil,
           utm_medium: String.t() | nil,
@@ -56,8 +60,10 @@ defmodule Tymeslot.Bookings.BuildParams do
           utm_term: String.t() | nil,
           referrer_host: String.t() | nil,
           visitor_hash: String.t() | nil,
+          booker_user_id: integer() | nil,
           custom_fields_snapshot: [map()],
           custom_field_answers: map(),
+          attendee_attachments: [map()],
           tracking_params: map()
         }
 

@@ -20,9 +20,11 @@ defmodule TymeslotWeb.Dashboard.CalendarUpNextStrip do
   def up_next_strip(assigns) do
     ~H"""
     <div
-      class="card-glass-banner mx-3 md:mx-4 flex items-center gap-3 rounded-token-xl px-4 py-2.5 shrink-0"
+      class="relative isolate overflow-hidden bg-linear-to-br from-primary-600 to-secondary-600 text-white mx-3 md:mx-4 flex items-center gap-3 rounded-token-xl px-4 py-2.5 shrink-0"
       data-testid="up-next-strip"
     >
+      <div class="absolute inset-0 -z-10 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_55%)]">
+      </div>
       <div class="flex items-center gap-1.5 text-token-xs font-black uppercase tracking-widest text-white/80 shrink-0">
         <.icon name="hero-bolt-mini" class="w-4 h-4" />
         <span class="hidden sm:inline">{dgettext("dashboard_home", "Up next")}</span>

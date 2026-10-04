@@ -48,6 +48,7 @@ msgstr "Скасувати"
 msgid "Close"
 msgstr "Закрити"
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
@@ -124,6 +125,7 @@ msgstr "Редагувати контакт"
 msgid "Edit contact"
 msgstr "Редагувати контакт"
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
@@ -140,6 +142,7 @@ msgstr "Не вдалося видалити контакт"
 msgid "Keep track of the people who book with you."
 msgstr "Ведіть облік людей, які бронюють у вас."
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
@@ -161,6 +164,7 @@ msgstr "Поки що немає контактів"
 msgid "No meetings yet"
 msgstr "Поки що немає зустрічей"
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Note"
@@ -171,6 +175,7 @@ msgstr "Примітка"
 msgid "People who booked with you, captured automatically from new bookings."
 msgstr "Люди, які бронювали у вас, автоматично додані з нових бронювань."
 
+#: lib/tymeslot/contacts/csv_export.ex
 #: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
 #: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
 #, elixir-autogen, elixir-format
@@ -211,3 +216,8 @@ msgstr "Переглянути зустрічі"
 #, elixir-autogen, elixir-format
 msgid "Contact List"
 msgstr "Список контактів"
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Export CSV"
+msgstr "Експортувати CSV"

@@ -263,6 +263,7 @@ msgid "Role"
 msgstr "Rôle"
 
 #: lib/tymeslot_web/live/dashboard/admin/audit_event_rows.ex
+#: lib/tymeslot_web/live/dashboard/admin/booking_attachment_rows.ex
 #: lib/tymeslot_web/live/dashboard/admin/email_branding_rows.ex
 #: lib/tymeslot_web/live/dashboard/admin/locale_setting.ex
 #: lib/tymeslot_web/live/dashboard/admin/settings_view.ex
@@ -1260,3 +1261,53 @@ msgstr "Connexion Microsoft"
 #, elixir-autogen, elixir-format
 msgid "Show the \"Continue with Microsoft\" button on login and signup, for personal and work or school accounts. Uses the Outlook/Teams app registration (OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET); add /auth/microsoft/callback to its redirect URIs."
 msgstr "Afficher le bouton « Continuer avec Microsoft » sur les pages de connexion et d’inscription, pour les comptes personnels, professionnels et scolaires. Utilise l’inscription d’application Outlook/Teams (OUTLOOK_CLIENT_ID et OUTLOOK_CLIENT_SECRET) ; ajoutez /auth/microsoft/callback à ses URI de redirection."
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Allowed file types"
+msgstr "Types de fichiers autorisés"
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Booking attachments"
+msgstr "Pièces jointes aux réservations"
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Enter a whole number of files (1-10)."
+msgstr "Saisissez un nombre entier de fichiers (1-10)."
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_actions.ex
+#, elixir-autogen, elixir-format
+msgid "Enter a whole number of megabytes (1-100)."
+msgstr "Saisissez un nombre entier de mégaoctets (1-100)."
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "File types a booker may attach on the booking page, for meeting types where the host has switched attachments on. Each file's content is checked against its type. Deselect every type to switch attachments off for the whole install."
+msgstr "Types de fichiers qu’une personne qui réserve peut joindre sur la page de réservation, pour les types de réunion où l’organisateur a activé les pièces jointes. Le contenu de chaque fichier est vérifié selon son type. Désélectionnez tous les types pour désactiver les pièces jointes sur toute l’installation."
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "How many files one booking may carry (at most 10)."
+msgstr "Nombre de fichiers qu’une réservation peut contenir (10 au maximum)."
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Max files per booking"
+msgstr "Fichiers max. par réservation"
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Max size per file"
+msgstr "Taille max. par fichier"
+
+#: lib/tymeslot_web/live/dashboard/admin/formatters.ex
+#, elixir-autogen, elixir-format
+msgid "Maximum size, in megabytes, of each attached file (at most 100). The files are also attached to the host's booking email when together they stay under 15 MB; larger ones are only downloadable from the dashboard."
+msgstr "Taille maximale, en mégaoctets, de chaque fichier joint (100 au maximum). Les fichiers sont aussi joints à l’e-mail de réservation de l’organisateur lorsqu’ils font ensemble moins de 15 Mo ; au-delà, ils ne sont téléchargeables que depuis le tableau de bord."
+
+#: lib/tymeslot_web/live/dashboard/admin/settings_view.ex
+#, elixir-autogen, elixir-format
+msgid "files"
+msgstr "fichiers"

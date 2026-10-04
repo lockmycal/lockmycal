@@ -12,6 +12,8 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.ConfirmationComponent 
   alias TymeslotWeb.Themes.Shared.ApprovalDisplay
   alias TymeslotWeb.Themes.Shared.BookingLocation
   alias TymeslotWeb.Themes.Shared.Components.ApprovalNotice
+  alias TymeslotWeb.Themes.Shared.Components.AttachmentField
+  alias TymeslotWeb.Themes.Shared.Components.LocationField
   alias TymeslotWeb.Themes.Shared.LocalizationHelpers
 
   @impl Phoenix.LiveComponent
@@ -116,7 +118,9 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.ConfirmationComponent 
                       <.icon name="hero-clock" class="hero-icon hero-icon--md" />
                     </div>
                     <div class="ticket-info">
-                      <span class="ticket-value">{@selected_time}</span>
+                      <span class="ticket-value">
+                        {LocalizationHelpers.format_slot_label(@selected_time)}
+                      </span>
                       <span class="ticket-sublabel">{Timezones.format(@user_timezone)}</span>
                     </div>
                   </div>
@@ -146,6 +150,9 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.ConfirmationComponent 
                     <div class="ticket-info">
                       <span class="ticket-value">{BookingLocation.chosen_display(assigns)}</span>
                       <span class="ticket-sublabel">{dgettext("booking", "Location")}</span>
+                      <LocationField.arranged_note :if={
+                        BookingLocation.arranged_after_booking?(assigns)
+                      } />
                     </div>
                   </div>
 
@@ -190,6 +197,10 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Components.ConfirmationComponent 
                   </dl>
                 </section>
               <% end %>
+
+              <AttachmentField.submitted_attachments attachments={
+                assigns[:submitted_attachments] || []
+              } />
 
               <div class="confirmation-actions-section">
                 <a

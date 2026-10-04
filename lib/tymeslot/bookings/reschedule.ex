@@ -43,6 +43,7 @@ defmodule Tymeslot.Bookings.Reschedule do
 
   alias Tymeslot.Clock
   alias Tymeslot.Infrastructure.AvailabilityCache
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Meetings.Approval
   alias Tymeslot.Meetings.MeetingQueries
   alias Tymeslot.Meetings.Scheduling
@@ -60,8 +61,9 @@ defmodule Tymeslot.Bookings.Reschedule do
   never used: the rescheduled meeting keeps the original meeting's persisted
   duration (see `prepare_new_times/3`), never the request's.
 
-  `location_option_id`, `location_phone` and `location_video_integration_id`
-  are the booker's location choice, applied only when it differs from the meeting's current location (see
+  `location_option_id`, `location_phone`, `location_video_integration_id` and
+  `location_venue_id` are the booker's location choice, applied only when it
+  differs from the meeting's current location (see
   `Tymeslot.Bookings.RescheduleLocation`).
   """
   @type reschedule_params :: %{
@@ -72,6 +74,7 @@ defmodule Tymeslot.Bookings.Reschedule do
           optional(:location_option_id) => String.t() | nil,
           optional(:location_phone) => String.t() | nil,
           optional(:location_video_integration_id) => integer() | String.t() | nil,
+          optional(:location_venue_id) => integer() | String.t() | nil,
           optional(atom()) => term()
         }
 
@@ -341,7 +344,7 @@ defmodule Tymeslot.Bookings.Reschedule do
       {:error, reason} ->
         Logger.warning("Failed to send booking request notifications on reschedule",
           meeting_id: updated.id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
 
         :ok
@@ -407,7 +410,7 @@ defmodule Tymeslot.Bookings.Reschedule do
       {:error, reason} ->
         Logger.warning("Failed to cancel stale reminder jobs on reschedule",
           meeting_id: meeting.id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
 
         :ok
@@ -564,7 +567,7 @@ defmodule Tymeslot.Bookings.Reschedule do
       {:error, reason} ->
         Logger.warning("Failed to enqueue provider video sync on reschedule",
           meeting_id: meeting.id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
 
         :ok
@@ -580,7 +583,7 @@ defmodule Tymeslot.Bookings.Reschedule do
       {:error, reason} ->
         Logger.warning("Failed to send reschedule notifications",
           meeting_id: updated_meeting.id,
-          reason: inspect(reason)
+          reason: LogFormat.reason(reason)
         )
 
         :ok

@@ -12,6 +12,8 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.ConfirmationComponent d
   alias TymeslotWeb.Themes.Shared.ApprovalDisplay
   alias TymeslotWeb.Themes.Shared.BookingLocation
   alias TymeslotWeb.Themes.Shared.Components.ApprovalNotice
+  alias TymeslotWeb.Themes.Shared.Components.AttachmentField
+  alias TymeslotWeb.Themes.Shared.Components.LocationField
   alias TymeslotWeb.Themes.Shared.LocalizationHelpers
 
   import TymeslotWeb.Components.CoreComponents
@@ -125,8 +127,8 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.ConfirmationComponent d
                       class="confirmation-border-top mt-3 pt-3 border-t"
                     >
                       <div class="confirmation-email-row" data-testid="confirmation-location">
-                        <div class="confirmation-icon-wrapper rounded-full center-content">
-                          <.icon name="hero-map-pin" class="confirmation-email-link w-3.5 h-3.5" />
+                        <div class="confirmation-icon-wrapper rounded-full">
+                          <.icon name="hero-map-pin" class="confirmation-email-link w-4 h-4" />
                         </div>
                         <p class="text-sm text-white">
                           {dgettext("booking", "Location")}:
@@ -135,13 +137,16 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.ConfirmationComponent d
                           </span>
                         </p>
                       </div>
+                      <LocationField.arranged_note :if={
+                        BookingLocation.arranged_after_booking?(assigns)
+                      } />
                     </div>
 
                     <div class="confirmation-border-top mt-3 pt-3 border-t">
                       <div class="confirmation-email-row">
-                        <div class="confirmation-icon-wrapper rounded-full center-content">
+                        <div class="confirmation-icon-wrapper rounded-full">
                           <svg
-                            class="confirmation-email-link w-3.5 h-3.5"
+                            class="confirmation-email-link w-4 h-4"
                             fill="currentColor"
                             viewBox="0 0 20 20"
                           >
@@ -165,9 +170,9 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.ConfirmationComponent d
                       class="confirmation-border-top mt-3 pt-3 border-t"
                     >
                       <div class="confirmation-email-row">
-                        <div class="confirmation-icon-wrapper rounded-full center-content">
+                        <div class="confirmation-icon-wrapper rounded-full">
                           <svg
-                            class="confirmation-email-link w-3.5 h-3.5"
+                            class="confirmation-email-link w-4 h-4"
                             fill="currentColor"
                             viewBox="0 0 20 20"
                           >
@@ -199,6 +204,10 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.ConfirmationComponent d
                       </dl>
                     </section>
                   <% end %>
+
+                  <AttachmentField.submitted_attachments attachments={
+                    assigns[:submitted_attachments] || []
+                  } />
 
                   <div class="confirmation-actions">
                     <a
@@ -279,6 +288,7 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.ConfirmationComponent d
       |> assign_new(:duration_label, fn -> dgettext("booking", "Duration") end)
       |> assign_new(:timezone_label, fn -> dgettext("booking", "Timezone") end)
       |> assign_new(:formatted_date, fn -> LocalizationHelpers.format_date(assigns.date) end)
+      |> assign_new(:formatted_time, fn -> LocalizationHelpers.format_slot_label(assigns.time) end)
       |> assign_new(:formatted_duration, fn ->
         LocalizationHelpers.format_duration(assigns.duration)
       end)
@@ -292,7 +302,7 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.ConfirmationComponent d
       </div>
       <div>
         <p class="booking-detail-label">{@time_label}</p>
-        <p class="booking-detail-value">{@time}</p>
+        <p class="booking-detail-value">{@formatted_time}</p>
       </div>
       <div>
         <p class="booking-detail-label">{@duration_label}</p>

@@ -1,49 +1,46 @@
 defmodule TymeslotWeb.Dashboard.CalendarGrid.VideoPicker do
   @moduledoc """
-  The row of buttons an organiser picks an event's video provider from.
+  The select an organiser picks an event's video provider from: "None" first,
+  then each connected video integration.
 
   One component for every place the grid offers the choice — the new-event
-  modal, the ad-hoc meeting form and the event detail modal — so the pressed
-  state, the "None" button and the provider icons cannot drift apart between
-  creating an event and editing one. Each caller supplies the event name its
-  own handler listens for.
+  modal, the ad-hoc meeting form and the event detail modal — so the options
+  and their order cannot drift apart between creating an event and editing
+  one. Each caller supplies the event name its own handler listens for; the
+  choice arrives as `video_integration_id` (empty for "None").
   """
 
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
 
-  alias TymeslotWeb.Components.Icons.ProviderIcon
-
   attr :video_integrations, :list, required: true
   attr :selected_id, :any, default: nil
   attr :target, :any, required: true
   attr :phx_event, :string, required: true
+  attr :id, :string, default: "video-picker"
 
   @spec video_picker(map()) :: Phoenix.LiveView.Rendered.t()
   def video_picker(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :options,
+        [
+          {dgettext("dashboard_calendar_events", "None"), ""}
+          | Enum.map(assigns.video_integrations, &{&1.name, to_string(&1.id)})
+        ]
+      )
+
     ~H"""
-    <div class="flex flex-wrap gap-1.5">
-      <button
-        type="button"
-        phx-click={@phx_event}
-        phx-value-video_integration_id=""
-        phx-target={@target}
-        class={"inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-token-xs transition-all #{if is_nil(@selected_id), do: "border-primary-400 bg-primary-50 dark:bg-primary-950/40 text-primary-800 dark:text-primary-300 font-semibold", else: "border-neutral-300 dark:border-twilight-indigo-700 text-neutral-600 dark:text-twilight-indigo-200 hover:border-neutral-300 dark:hover:border-twilight-indigo-600 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-900"}"}
-      >
-        {dgettext("dashboard_calendar_events", "None")}
-      </button>
-      <button
-        :for={vi <- @video_integrations}
-        type="button"
-        phx-click={@phx_event}
-        phx-value-video_integration_id={vi.id}
-        phx-target={@target}
-        class={"inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-token-xs transition-all #{if to_string(vi.id) == to_string(@selected_id), do: "border-primary-400 bg-primary-50 dark:bg-primary-950/40 text-primary-800 dark:text-primary-300 font-semibold", else: "border-neutral-300 dark:border-twilight-indigo-700 text-neutral-600 dark:text-twilight-indigo-200 hover:border-neutral-300 dark:hover:border-twilight-indigo-600 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-900"}"}
-      >
-        <ProviderIcon.provider_icon provider={vi.provider} type="video" size="mini" />
-        <span class="truncate max-w-[10rem]">{vi.name}</span>
-      </button>
-    </div>
+    <form id={"#{@id}-form"} phx-change={@phx_event} phx-target={@target}>
+      <.input
+        type="select"
+        id={@id}
+        name="video_integration_id"
+        value={if is_nil(@selected_id), do: "", else: to_string(@selected_id)}
+        options={@options}
+      />
+    </form>
     """
   end
 end

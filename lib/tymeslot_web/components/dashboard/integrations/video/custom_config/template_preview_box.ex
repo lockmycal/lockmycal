@@ -68,11 +68,11 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Video.CustomConfig.Templ
 
   defp preview_container_class(:static),
     do:
-      "rounded-lg border border-neutral-300 dark:border-twilight-indigo-700 bg-neutral-50 dark:bg-twilight-indigo-900/60"
+      "rounded-lg border border-neutral-300 dark:border-twilight-indigo-800 bg-neutral-50 dark:bg-twilight-indigo-900/60"
 
   defp preview_container_class(:empty),
     do:
-      "rounded-lg border border-neutral-300 dark:border-twilight-indigo-700 bg-neutral-50 dark:bg-twilight-indigo-900/60"
+      "rounded-lg border border-neutral-300 dark:border-twilight-indigo-800 bg-neutral-50 dark:bg-twilight-indigo-900/60"
 
   # Title styling based on status
   defp status_title_class(:valid), do: "font-semibold text-primary-800 dark:text-primary-300"

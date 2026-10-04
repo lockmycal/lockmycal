@@ -124,7 +124,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventColourLiveViewTest do
     bar =
       html
       |> Floki.parse_document!()
-      |> Floki.find(".h-1.rounded-full.w-10.mb-2")
+      |> Floki.find("[data-testid='event-colour-bar']")
       |> List.first()
 
     case bar do

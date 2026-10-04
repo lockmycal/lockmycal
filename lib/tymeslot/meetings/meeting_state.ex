@@ -27,6 +27,7 @@ defmodule Tymeslot.Meetings.MeetingState do
   @occupying_statuses ["confirmed", "pending", "awaiting_payment", "awaiting_approval"]
 
   @awaiting_approval "awaiting_approval"
+  @awaiting_payment "awaiting_payment"
 
   # Statuses a booking is released in without taking place: cancelled, or a
   # request that expired unanswered. Releasing one deletes its video room.
@@ -127,6 +128,14 @@ defmodule Tymeslot.Meetings.MeetingState do
   def awaiting_approval?(_meeting), do: false
 
   @doc """
+  Whether a paid booking is still waiting for its payment to complete. Its
+  side effects, reminders included, are held until the payment lands.
+  """
+  @spec awaiting_payment?(Meeting.t() | map()) :: boolean()
+  def awaiting_payment?(%{status: @awaiting_payment}), do: true
+  def awaiting_payment?(_meeting), do: false
+
+  @doc """
   Whether a held request's answer deadline has passed at `now`.
 
   The deadline itself counts as passed: a request is answerable strictly
@@ -191,6 +200,18 @@ defmodule Tymeslot.Meetings.MeetingState do
   def where_live_booking(query) do
     query
     |> where([m], m.status == "confirmed")
+    |> exclude_voided_slots()
+  end
+
+  @doc """
+  `where_live_booking/1` widened to requests still awaiting the organiser's
+  approval — what the organiser's dashboard agenda lists, so an unanswered
+  request shows up (marked as such) on the day it would happen.
+  """
+  @spec where_live_booking_or_awaiting_approval(Ecto.Queryable.t()) :: Ecto.Query.t()
+  def where_live_booking_or_awaiting_approval(query) do
+    query
+    |> where([m], m.status in ["confirmed", @awaiting_approval])
     |> exclude_voided_slots()
   end
 end

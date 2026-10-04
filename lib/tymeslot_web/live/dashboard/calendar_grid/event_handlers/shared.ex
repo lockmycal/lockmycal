@@ -2,17 +2,36 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
   @moduledoc "Shared helpers used across EventHandlers submodules."
 
   use Gettext, backend: TymeslotWeb.Gettext
+  use TymeslotWeb, :verified_routes
 
   import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [push_navigate: 2]
 
   alias Tymeslot.Clock
   alias Tymeslot.Integrations.Calendar
   alias Tymeslot.Integrations.Calendar.EventColour
   alias Tymeslot.Integrations.Calendar.Recurrence.RRule
+  alias Tymeslot.Locales
+  alias Tymeslot.Meetings.Guests
   alias Tymeslot.Security.RateLimiter
   alias Tymeslot.Utils.DateTimeUtils
   alias TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
+
+  @doc """
+  Sends the user back to the Overview after closing a detail modal that an
+  Overview agenda link opened (`return_to_overview`, set by
+  `UpdateHandlers.maybe_open_linked_entry/1`); any other close stays on the
+  calendar. The flag is spent on the first close.
+  """
+  @spec close_linked_detail(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  def close_linked_detail(%{assigns: %{return_to_overview: true}} = socket) do
+    socket
+    |> assign(:return_to_overview, false)
+    |> push_navigate(to: ~p"/dashboard/overview")
+  end
+
+  def close_linked_detail(socket), do: socket
 
   @weekday_atoms %{
     "mo" => :mo,
@@ -91,13 +110,22 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
     end
   end
 
-  @spec valid_email?(binary()) :: boolean()
-  @spec valid_email?(term()) :: false
-  def valid_email?(email) when is_binary(email) do
-    Regex.match?(~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/, email)
+  @spec check_quick_add_meeting_rate_limit(Phoenix.LiveView.Socket.t()) ::
+          :ok | {:error, :rate_limited, String.t()}
+  def check_quick_add_meeting_rate_limit(socket) do
+    user_id = socket.assigns.current_user.id
+
+    case RateLimiter.check_dashboard_quick_add_meeting_rate_limit(user_id) do
+      :ok -> :ok
+      {:error, :rate_limited, message} -> {:error, :rate_limited, message}
+    end
   end
 
-  def valid_email?(_other), do: false
+  # The domain's rule rather than a copy of it: an address the form accepts
+  # has to be one `Meetings.Guests` keeps, or it is dropped after the host was
+  # told it was fine.
+  @spec valid_email?(term()) :: boolean()
+  def valid_email?(email), do: Guests.valid_email?(email)
 
   @doc """
   Computes the updated `creating_event` map for an Event/Meeting mode-toggle
@@ -202,6 +230,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
       `recurrence_timezone/2`. A timed event's UNTIL is an instant, so the date
       the form supplies has to end its day in a zone rather than in UTC, or the
       series ends a day early west of UTC and a day late east of it.
+    - `:reference_date` — the date a default end date counts from, when
+      `:start_date` isn't given (a new event, whose start can still change).
+
+  Picking "After" or "On date" sends no `count` / `until` yet: the field for it
+  only appears once the rule has one. That first change therefore gets a
+  default — `default_recurrence_count/0` occurrences, or an end a month after
+  the event's start — so the choice sticks and its field shows up. A value the
+  organiser typed that doesn't parse still yields a never-ending rule.
 
   Returns `{:error, :until_before_start}` when `until` precedes `:start_date`.
   """
@@ -216,7 +252,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
           %{freq: freq}
           |> put_interval(params["interval"])
           |> put_by_day(freq, params["by_day"])
-          |> put_end_condition(params["end_type"], params)
+          |> put_end_condition(params["end_type"], params, event_context)
 
         # `build/2` and `retarget/2` are handed the same value-type options, so
         # the rule composed here and the rule read back agree on how UNTIL is
@@ -258,21 +294,43 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
 
   defp put_by_day(opts, _freq, _days), do: opts
 
-  defp put_end_condition(opts, "count", params) do
+  @default_recurrence_count 10
+
+  @doc "How many occurrences a series ending “after N” starts with."
+  @spec default_recurrence_count() :: pos_integer()
+  def default_recurrence_count, do: @default_recurrence_count
+
+  defp put_end_condition(opts, "count", params, _event_context)
+       when not is_map_key(params, "count"),
+       do: Map.put(opts, :count, @default_recurrence_count)
+
+  defp put_end_condition(opts, "count", params, _event_context) do
     case parse_int(params["count"] || "") do
       {:ok, n} when n > 0 -> Map.put(opts, :count, n)
       _other -> opts
     end
   end
 
-  defp put_end_condition(opts, "until", params) do
+  defp put_end_condition(opts, "until", params, event_context)
+       when not is_map_key(params, "until"),
+       do: Map.put(opts, :until, default_until(event_context))
+
+  defp put_end_condition(opts, "until", params, _event_context) do
     case Date.from_iso8601(params["until"] || "") do
       {:ok, date} -> Map.put(opts, :until, date)
       {:error, _reason} -> opts
     end
   end
 
-  defp put_end_condition(opts, _never_or_other, _params), do: opts
+  defp put_end_condition(opts, _never_or_other, _params, _event_context), do: opts
+
+  defp default_until(event_context) do
+    from =
+      Map.get(event_context, :start_date) || Map.get(event_context, :reference_date) ||
+        Clock.utc_today()
+
+    Date.shift(from, month: 1)
+  end
 
   # ---------------------------------------------------------------------------
   # Refactor 1 — optimistic-update plumbing
@@ -333,7 +391,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
 
     * `{:error, :unauthorized}` — "You don't have permission to modify this event"
     * `{:error, :read_only}` — "This calendar is read-only..."
-    * `{:error, :recurring_event}` — "Recurring events cannot be edited here yet..."
     * `{:error, :rate_limited, _message}` — "Too many edits. Please wait a moment."
 
   Flash messages are sent via `send(self(), {:flash, ...})` (the LiveComponent
@@ -365,9 +422,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
 
     {:noreply, socket}
   end
-
-  def flash_guard_error(socket, {:error, :recurring_event}),
-    do: {:noreply, EditWorkflow.refuse_recurring_edit(socket)}
 
   def flash_guard_error(socket, {:error, :rate_limited, _message}) do
     send(
@@ -472,7 +526,20 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
     do: EditWorkflow.assert_owns_integration(socket, integration_id)
 
   @doc """
-  Validates the create-event dialog's meeting-mode guest fields. The
+  Validates the create-event dialog's event-mode title, which a new event can't
+  be saved without (meeting mode checks it in `validate_meeting_fields/2`).
+  """
+  @spec validate_event_title(map()) :: :ok | {:error, String.t()}
+  def validate_event_title(creating) do
+    if String.trim(creating.title || "") == "" do
+      {:error, dgettext("dashboard_calendar_events", "Event title is required")}
+    else
+      :ok
+    end
+  end
+
+  @doc """
+  Validates the create-event dialog's meeting-mode title and guest fields. The
   self-booking rule is enforced authoritatively by `Bookings.CreateAdHoc`,
   which compares against the stored organiser address — repeating it here
   buys a translated message on the form rather than a flash after the round
@@ -483,6 +550,9 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
     guest_email = String.trim(creating.guest_email)
 
     cond do
+      String.trim(creating.title || "") == "" ->
+        {:error, dgettext("dashboard_calendar_events", "Meeting title is required")}
+
       String.trim(creating.guest_name) == "" ->
         {:error, dgettext("dashboard_calendar_events", "Guest name is required")}
 
@@ -548,6 +618,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
       mode: if(writable?(socket.assigns.integrations), do: :event, else: :meeting),
       guest_name: "",
       guest_email: "",
+      # The note field stays hidden until the organiser asks for it.
+      note_open: false,
+      organizer_note: "",
+      guest_emails: [],
+      guest_email_input: "",
+      # Which language the guests are written to. Defaults to the host's own
+      # (they know whom they are inviting) and is theirs to change per meeting.
+      locale: Locales.guest_default_locale(Map.get(socket.assigns, :current_user)),
       integration_id: default_int_id,
       calendar_id: EditWorkflow.default_calendar_id(socket.assigns.integrations, default_int_id),
       attendees: [],

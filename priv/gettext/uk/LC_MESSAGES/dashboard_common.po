@@ -120,7 +120,7 @@ msgid "Toggle sidebar"
 msgstr "Перемкнути бічну панель"
 
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #, elixir-autogen, elixir-format
 msgid "Scheduling link copied to clipboard!"
 msgstr "Посилання для планування скопійовано в буфер обміну!"
@@ -657,19 +657,16 @@ msgid "Users"
 msgstr "Користувачі"
 
 #: lib/tymeslot_web/components/core_components/buttons.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
 #, elixir-autogen, elixir-format
 msgid "Disabled"
 msgstr "Вимкнено"
 
 #: lib/tymeslot_web/components/core_components/buttons.ex
+#: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
 #, elixir-autogen, elixir-format
 msgid "Enabled"
 msgstr "Увімкнено"
-
-#: lib/tymeslot_web/components/dashboard_layout.ex
-#, elixir-autogen, elixir-format
-msgid "Toggle light/dark appearance"
-msgstr "Перемкнути світлий/темний вигляд"
 
 #: lib/tymeslot_web/components/dashboard/locale_tab_switcher.ex
 #, elixir-autogen, elixir-format
@@ -791,7 +788,7 @@ msgid "Send"
 msgstr "Надіслати"
 
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
 #, elixir-autogen, elixir-format
 msgid "Send links by email"
@@ -826,3 +823,49 @@ msgstr "name@example.com, other@example.com"
 #, elixir-autogen, elixir-format
 msgid "Source code"
 msgstr "Вихідний код"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Documentation"
+msgstr "Документація"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Website"
+msgstr "Вебсайт"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Appearance"
+msgstr "Вигляд"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Dark"
+msgstr "Темний"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Light"
+msgstr "Світлий"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "System"
+msgstr "Системний"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Report a bug"
+msgstr "Повідомити про помилку"
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Powered by %{app_name}"
+msgstr "Працює на %{app_name}"
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Locations"
+msgstr "Місця"

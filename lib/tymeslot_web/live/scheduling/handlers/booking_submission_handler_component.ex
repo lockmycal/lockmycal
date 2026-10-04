@@ -36,7 +36,10 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
   alias Tymeslot.Bookings.DemoOrchestrator
   alias Tymeslot.CustomFields
   alias Tymeslot.Demo
+  alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Meetings.Approval
+  alias Tymeslot.Meetings.BookerCalendar
+  alias Tymeslot.Security.Honeypot
   alias Tymeslot.Security.InputProcessor
   alias TymeslotWeb.Live.Scheduling.AvailabilityHelpers
   alias TymeslotWeb.Live.Scheduling.BookingConfig
@@ -91,16 +94,21 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
   def submit_booking(socket, booking_params) do
     Logger.info("Submit event triggered for booking form")
 
-    if BookingGuards.honeypot_tripped?(booking_params) do
+    # The cheapest gate, checked before validation: a tripped honeypot means
+    # nothing else about the submission is worth processing.
+    if Honeypot.tripped?(booking_params) do
       {:honeypot, BookingGuards.handle_honeypot(socket)}
     else
       case InputProcessor.validate_form(booking_params, BookingConfig.booking_field_spec()) do
         {:ok, sanitized_params} ->
           Logger.info("Form validation passed, proceeding to booking")
-          validate_and_submit(socket, sanitized_params, booking_params)
+
+          socket
+          |> assign_own_calendar_consent(booking_params)
+          |> validate_and_submit(sanitized_params, booking_params)
 
         {:error, errors} ->
-          Logger.warning("Form validation failed", errors: inspect(errors))
+          Logger.warning("Form validation failed", errors: LogFormat.reason(errors))
 
           socket =
             socket
@@ -144,6 +152,7 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
       |> assign(:submitting, false)
       |> assign(:meeting_uid, meeting.uid)
       |> assign(:meeting_status, meeting.status)
+      |> BookingLocation.assign_booked(meeting)
       |> assign(:name, validated_data["name"])
       |> assign(:email, validated_data["email"])
       |> assign(:custom_fields_snapshot, Map.get(validated_data, "custom_fields_snapshot", []))
@@ -151,7 +160,52 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
       |> assign(:guest_emails, socket.assigns[:guest_emails] || [])
       |> Flash.put_flash(:info, success_message)
 
+    remember_own_calendar_choice(socket)
+
     {:ok, socket}
+  end
+
+  # Only the signed-in visitor's own id ever becomes the booker, and only when
+  # the form offered them the copy (`BookerCalendar.offer/2`) and they took
+  # it: the two checkboxes say what they chose, never whose calendar it is.
+  defp assign_own_calendar_consent(socket, booking_params) do
+    offer =
+      if socket.assigns[:is_rescheduling], do: nil, else: socket.assigns[:own_calendar_offer]
+
+    {save?, remember} =
+      BookerCalendar.consent(
+        offer,
+        checked?(booking_params["save_to_own_calendar"]),
+        checked?(booking_params["remember_own_calendar_choice"])
+      )
+
+    socket
+    |> assign(:booker_user_id, if(save?, do: current_user_id(socket)))
+    |> assign(:own_calendar_choice_to_remember, remember)
+  end
+
+  defp checked?(value), do: value in ["true", "on", true]
+
+  defp current_user_id(socket) do
+    case socket.assigns[:current_user] do
+      %{id: id} when is_integer(id) -> id
+      _signed_out -> nil
+    end
+  end
+
+  # Remembered once the booking went through, so a rejected submission does
+  # not change what the next one is asked.
+  defp remember_own_calendar_choice(socket) do
+    with choice when choice in [:always, :never] <-
+           socket.assigns[:own_calendar_choice_to_remember],
+         user_id when is_integer(user_id) <- current_user_id(socket),
+         {:error, reason} <- BookerCalendar.remember(user_id, choice) do
+      Logger.warning("Could not remember the own-calendar choice",
+        reason: LogFormat.reason(reason)
+      )
+    end
+
+    :ok
   end
 
   # Handles booking submission errors: updates the socket with the
@@ -164,7 +218,7 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
       |> BookingGuards.release_submission()
       |> Flash.put_flash(:error, BookingErrorMessage.message(reason))
 
-    Logger.error("Failed to create meeting appointment", reason: inspect(reason))
+    Logger.error("Failed to create meeting appointment", reason: LogFormat.reason(reason))
 
     {:error, socket}
   end
@@ -186,7 +240,7 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
       process_booking_submission(socket, enriched_params)
     else
       {:error, field_errors} when is_map(field_errors) and not is_struct(field_errors) ->
-        Logger.warning("Custom field validation failed", errors: inspect(field_errors))
+        Logger.warning("Custom field validation failed", errors: LogFormat.reason(field_errors))
 
         socket =
           socket
@@ -363,17 +417,23 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
       custom_fields_snapshot: Map.get(sanitized_params, "custom_fields_snapshot", []),
       custom_field_answers: Map.get(sanitized_params, "custom_field_answers", %{}),
       guest_emails: socket.assigns[:guest_emails] || [],
+      attendee_attachments: socket.assigns[:attendee_attachments] || [],
       # Only the chosen option's id travels, with the provider picked within a
-      # video option. What they mean is re-derived from the host's own meeting
-      # type in `Bookings.Policy`, so a forged id resolves to a location, or a
-      # provider, the host already offers.
+      # video option or the venue picked within an in-person one. What they
+      # mean is re-derived from the host's own meeting type in
+      # `Bookings.Policy`, so a forged id resolves to a location, a provider or
+      # a venue the host already offers.
       location_option_id: BookingLocation.submitted_option_id(socket.assigns),
       location_phone: socket.assigns[:location_phone],
-      location_video_integration_id: BookingLocation.submitted_video_id(socket.assigns)
+      location_video_integration_id: BookingLocation.submitted_video_id(socket.assigns),
+      location_venue_id: BookingLocation.submitted_venue_id(socket.assigns),
+      booker_user_id: socket.assigns[:booker_user_id]
     }
   end
 
   defp handle_payment_required(socket, meeting, url, sanitized_params) do
+    remember_own_calendar_choice(socket)
+
     if socket.assigns[:embedded] do
       handle_payment_required_embedded(socket, meeting, url, sanitized_params)
     else

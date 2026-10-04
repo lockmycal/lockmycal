@@ -61,6 +61,59 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Helpers.PreferenceHelpersTest do
     end
   end
 
+  # ── month_cell_class/2 and day_column_class/2 ─────────────────────────
+
+  describe "month_cell_class/2 — today's cell is tinted" do
+    setup do
+      freeze_clock(~U[2026-09-14 10:00:00Z])
+      %{assigns: %{date: ~D[2026-09-01], user_timezone: "Etc/UTC"}}
+    end
+
+    test "tints today and no other day", %{assigns: assigns} do
+      assert PreferenceHelpers.month_cell_class(~D[2026-09-14], assigns) =~ "bg-primary-100"
+      refute PreferenceHelpers.month_cell_class(~D[2026-09-15], assigns) =~ "bg-primary-100"
+    end
+
+    test "tints today even when it falls outside the shown month", %{assigns: assigns} do
+      assigns = %{assigns | date: ~D[2026-10-01]}
+
+      assert PreferenceHelpers.month_cell_class(~D[2026-09-14], assigns) =~ "bg-primary-100"
+      assert PreferenceHelpers.month_cell_class(~D[2026-09-30], assigns) =~ "bg-neutral-50"
+    end
+
+    test "follows the user's timezone", %{assigns: assigns} do
+      # Already Tuesday the 15th in Tallinn at 22:00 UTC on the 14th.
+      freeze_clock(~U[2026-09-14 22:00:00Z])
+      assigns = %{assigns | user_timezone: "Europe/Tallinn"}
+
+      assert PreferenceHelpers.month_cell_class(~D[2026-09-15], assigns) =~ "bg-primary-100"
+      refute PreferenceHelpers.month_cell_class(~D[2026-09-14], assigns) =~ "bg-primary-100"
+    end
+  end
+
+  describe "day_column_class/2 — today's column is tinted" do
+    setup do
+      freeze_clock(~U[2026-09-14 10:00:00Z])
+      :ok
+    end
+
+    test "tints today's column in the week and 3-day views" do
+      for view <- [:week, :three_day] do
+        assigns = %{view: view, user_timezone: "Etc/UTC"}
+
+        assert PreferenceHelpers.day_column_class(~D[2026-09-14], assigns) =~ "bg-primary-100"
+        assert PreferenceHelpers.day_column_class(~D[2026-09-15], assigns) == ""
+      end
+    end
+
+    test "leaves the single column of the day view alone" do
+      assert PreferenceHelpers.day_column_class(~D[2026-09-14], %{
+               view: :day,
+               user_timezone: "Etc/UTC"
+             }) == ""
+    end
+  end
+
   # ── today/1 ───────────────────────────────────────────────────────────
 
   describe "today/1" do

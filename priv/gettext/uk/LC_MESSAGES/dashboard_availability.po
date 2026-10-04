@@ -857,3 +857,8 @@ msgstr "Максимальний час зустрічей на %{day}"
 #, elixir-autogen, elixir-format
 msgid "No time limit"
 msgstr "Без обмеження часу"
+
+#: lib/tymeslot/availability/schedules.ex
+#, elixir-autogen, elixir-format
+msgid "Working hours"
+msgstr "Робочі години"

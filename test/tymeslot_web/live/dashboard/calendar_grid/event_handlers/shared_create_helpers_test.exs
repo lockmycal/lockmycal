@@ -41,13 +41,38 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SharedCreateHelpersTe
     end
   end
 
+  describe "validate_event_title/1" do
+    test "accepts a title" do
+      assert :ok = Shared.validate_event_title(%{title: "Standup"})
+    end
+
+    test "rejects a blank or missing title" do
+      for title <- ["", "   ", nil] do
+        assert {:error, "Event title is required"} = Shared.validate_event_title(%{title: title})
+      end
+    end
+  end
+
   describe "validate_meeting_fields/2" do
     defp creating(overrides \\ %{}) do
-      Map.merge(%{guest_name: "Ada Lovelace", guest_email: "ada@example.com"}, overrides)
+      Map.merge(
+        %{title: "Kickoff", guest_name: "Ada Lovelace", guest_email: "ada@example.com"},
+        overrides
+      )
     end
 
     test "accepts valid, distinct guest fields" do
       assert :ok = Shared.validate_meeting_fields(creating(), "organizer@example.com")
+    end
+
+    test "rejects a blank or missing meeting title" do
+      for title <- ["", "   ", nil] do
+        assert {:error, "Meeting title is required"} =
+                 Shared.validate_meeting_fields(
+                   creating(%{title: title}),
+                   "organizer@example.com"
+                 )
+      end
     end
 
     test "rejects a blank guest name" do

@@ -27,8 +27,10 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
 
   alias TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.{
     ApprovalSection,
+    AttachmentsSection,
     Autosave,
     AvailabilitySection,
+    ContactSharingSection,
     CustomQuestionsSection,
     GuestsSection,
     HiddenFields,
@@ -38,16 +40,17 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
     PaymentsSection,
     QuestionEditorComponent,
     ShowAsFreeSection,
+    SlotInterval,
     VisibilitySection
   }
 
-  alias TymeslotWeb.CustomInputModeHelper
   alias TymeslotWeb.Live.Shared.FormValidationHelpers
-  alias TymeslotWeb.Themes.Shared.LocalizationHelpers
 
   import ApprovalSection, only: [approval_section: 1]
   import AvailabilitySection, only: [availability_section: 1]
+  import ContactSharingSection, only: [contact_sharing_section: 1]
   import GuestsSection, only: [guests_section: 1]
+  import AttachmentsSection, only: [attachments_section: 1]
   import LimitsSection, only: [limits_section: 1]
   import ShowAsFreeSection, only: [show_as_free_section: 1]
   import HiddenFields, only: [hidden_fields: 1]
@@ -55,14 +58,6 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
   import VisibilitySection, only: [visibility_section: 1]
   import TymeslotWeb.Dashboard.MeetingSettings.Components.BookingComponents
   import TymeslotWeb.Dashboard.MeetingSettings.Components.Reminders
-
-  # The dropdown value that opens the custom number input. Not a duration, so
-  # it can never collide with one: every real value parses as an integer.
-  @custom_interval_option "custom"
-
-  # The clock the hint's example times are drawn from. Any hour would do; a
-  # round morning start reads as an illustration rather than as real data.
-  @hint_start_time ~T[09:00:00]
 
   # Which form-error fields surface an indicator on which tab. Errors on
   # fields absent here (e.g. :base) render below the panels and need no dot.
@@ -90,6 +85,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
           phx-submit={if @is_edit, do: "flush_autosave", else: "save_meeting_type"}
           phx-target={if @is_edit, do: @myself, else: @parent_myself}
           class={if @is_edit, do: "space-y-6", else: "space-y-8"}
+          novalidate
         >
           <.tab_bar
             :if={@is_edit}
@@ -201,7 +197,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
                       "slot_interval",
                       if(@type, do: @type.slot_interval_minutes, else: "")
                     ) %>
-                  <% slot_interval_custom? = slot_interval_custom?(assigns, slot_interval_value) %>
+                  <% slot_interval_custom? = SlotInterval.custom?(assigns, slot_interval_value) %>
                   <div>
                     <.input
                       type="select"
@@ -209,11 +205,11 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
                       label={dgettext("dashboard_meeting_form", "Booking slot interval")}
                       value={
                         if(slot_interval_custom?,
-                          do: custom_interval_option(),
+                          do: SlotInterval.custom_option(),
                           else: slot_interval_value
                         )
                       }
-                      options={slot_interval_options(slot_interval_value, slot_interval_custom?)}
+                      options={SlotInterval.options(slot_interval_value, slot_interval_custom?)}
                       phx-change="validate_meeting_type"
                       phx-target={@myself}
                       errors={
@@ -249,7 +245,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
                       />
                     </div>
                     <p class="mt-1 text-token-sm text-tymeslot-600">
-                      {slot_interval_hint(slot_interval_value, Map.get(@form_data, "duration"))}
+                      {SlotInterval.hint(slot_interval_value, Map.get(@form_data, "duration"))}
                     </p>
                   </div>
                 </div>
@@ -307,6 +303,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
               id={"locations-section-#{@id}"}
               locations={@locations}
               video_integrations={@video_integrations}
+              venues={@venues}
               form_id={@id}
             />
 
@@ -350,6 +347,8 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
               myself={@myself}
             />
 
+            <.attachments_section allow_attachments={@allow_attachments} myself={@myself} />
+
             <.limits_section booking_limits={@booking_limits} myself={@myself} />
 
             <.visibility_section :if={@is_edit && @type} type={@type} parent={@parent_myself} />
@@ -362,6 +361,12 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
                 |> FormValidationHelpers.field_errors(:approval_window_hours)
                 |> Enum.map(&Helpers.format_errors/1)
               }
+              myself={@myself}
+            />
+
+            <.contact_sharing_section
+              show_email_to_bookers={@show_email_to_bookers}
+              show_phone_to_bookers={@show_phone_to_bookers}
               myself={@myself}
             />
 
@@ -420,6 +425,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
             type={@type}
             selected_icon={@selected_icon}
             locations={@locations}
+            venues={@venues}
             selected_calendar_integration_id={@selected_calendar_integration_id}
             selected_target_calendar_id={@selected_target_calendar_id}
             selected_availability_schedule_id={@selected_availability_schedule_id}
@@ -432,9 +438,12 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
             payment_required={@payment_required}
             payment_price={@payment_price}
             allow_guests={@allow_guests}
+            allow_attachments={@allow_attachments}
             requires_approval={@requires_approval}
             approval_window_hours={@approval_window_hours}
             show_as_free={@show_as_free}
+            show_email_to_bookers={@show_email_to_bookers}
+            show_phone_to_bookers={@show_phone_to_bookers}
           />
 
           <%= for error <- FormValidationHelpers.field_errors(@form_errors, :base) do %>
@@ -491,6 +500,9 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
           location={@editing_location}
           existing_locations={@locations}
           video_integrations={@video_integrations}
+          venues={@venues}
+          current_user={@current_user}
+          parent_myself={@parent_myself}
           form_id={@id}
           mode={@editing_location_mode}
         />
@@ -510,108 +522,6 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
     </div>
     """
   end
-
-  @doc false
-  @spec custom_interval_option() :: String.t()
-  def custom_interval_option, do: @custom_interval_option
-
-  # Whether the custom number input is on screen.
-  #
-  # Two ways in, and both must be honoured. The organiser can pick "Custom" in
-  # the dropdown, which the component records on `:custom_input_mode`. Or the
-  # stored value can simply not be one this dropdown offers — written by a
-  # seed, an import or a support fix — in which case the input opens on its own
-  # so the value stays editable rather than being silently unreachable.
-  defp slot_interval_custom?(assigns, current_value) do
-    chosen? =
-      assigns
-      |> Map.get(:custom_input_mode, %{})
-      |> Map.get(:slot_interval_minutes, false)
-
-    chosen? or off_preset?(parse_interval(current_value))
-  end
-
-  defp off_preset?(nil), do: false
-
-  defp off_preset?(interval),
-    do: not CustomInputModeHelper.preset_value?(:slot_interval_minutes, interval)
-
-  # `current_value` is whatever is currently stored/selected for this meeting
-  # type. It is folded into the option list even when it falls outside the
-  # preset table, so a value written by something other than this form (a seed,
-  # an import, a support fix) still renders as itself instead of silently
-  # falling back to "Same as meeting length" — which the next autosave of any
-  # other field would then persist as the value's erasure.
-  defp slot_interval_options(current_value, custom?) do
-    range = Constraints.slot_interval_minutes_range()
-
-    intervals =
-      :slot_interval_minutes
-      |> CustomInputModeHelper.presets()
-      |> Enum.filter(&(&1 in range))
-      |> add_stored_interval(parse_interval(current_value), custom?)
-      |> Enum.sort()
-      |> Enum.map(
-        &{dgettext("dashboard_meeting_form", "%{minutes} min", minutes: &1), to_string(&1)}
-      )
-
-    [{dgettext("dashboard_meeting_form", "Same as meeting length"), ""}] ++
-      intervals ++
-      [{dgettext("dashboard_meeting_form", "Custom…"), @custom_interval_option}]
-  end
-
-  # While the custom input is open the dropdown reads "Custom…", so folding the
-  # stored value in as well would list a value nothing has selected.
-  defp add_stored_interval(intervals, _interval, true), do: intervals
-  defp add_stored_interval(intervals, nil, _custom?), do: intervals
-  defp add_stored_interval(intervals, interval, _custom?), do: Enum.uniq([interval | intervals])
-
-  # Spells out what the current choice produces. An interval is an abstraction
-  # until it is three clock times, and five minutes is a very different booking
-  # page from sixty; this is where an organiser sees which one they picked.
-  defp slot_interval_hint(interval_value, duration_value) do
-    case {parse_interval(interval_value), parse_interval(duration_value)} do
-      {nil, nil} ->
-        dgettext(
-          "dashboard_meeting_form",
-          "How far apart booking start times are offered. Leave as default to match the meeting length."
-        )
-
-      {nil, duration} ->
-        dgettext(
-          "dashboard_meeting_form",
-          "Matching the meeting length, times will be offered every %{minutes} minutes: %{examples}…",
-          minutes: duration,
-          examples: interval_examples(duration)
-        )
-
-      {interval, _duration} ->
-        dgettext(
-          "dashboard_meeting_form",
-          "Times will be offered every %{minutes} minutes: %{examples}…",
-          minutes: interval,
-          examples: interval_examples(interval)
-        )
-    end
-  end
-
-  defp interval_examples(minutes) do
-    @hint_start_time
-    |> Stream.iterate(&Time.add(&1, minutes, :minute))
-    |> Enum.take(3)
-    |> Enum.map_join(", ", &LocalizationHelpers.format_time_by_locale/1)
-  end
-
-  defp parse_interval(value) when is_integer(value), do: value
-
-  defp parse_interval(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {interval, ""} -> interval
-      _invalid -> nil
-    end
-  end
-
-  defp parse_interval(_value), do: nil
 
   defp form_tabs(form_errors, custom_questions_allowed) do
     tabs = [

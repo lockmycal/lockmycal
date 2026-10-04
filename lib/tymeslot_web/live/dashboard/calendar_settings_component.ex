@@ -8,6 +8,8 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
   require Logger
 
   alias Tymeslot.FreeBusy
+  alias Tymeslot.Infrastructure.Logging.LogFormat
+  alias Tymeslot.Infrastructure.Tasks
   alias Tymeslot.Integrations.Calendar
   alias Tymeslot.Integrations.Calendar.ProviderConfig
   alias Tymeslot.Integrations.HealthCheck
@@ -16,6 +18,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
   alias Tymeslot.Security.RateLimiter
   alias TymeslotWeb.Components.Dashboard.Integrations.Calendar.ConnectionLimit
   alias TymeslotWeb.Dashboard.CalendarSettings.ComponentView
+  alias TymeslotWeb.Dashboard.CalendarSettings.Helpers
   alias TymeslotWeb.Helpers.IntegrationProviders
   alias TymeslotWeb.Live.Dashboard.Shared.DashboardHelpers
   alias TymeslotWeb.Live.Shared.Flash
@@ -25,6 +28,11 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
   @form_provider_strings ProviderConfig.caldav_based_provider_strings() ++
                            ProviderConfig.subscription_provider_strings() ++
                            ProviderConfig.ews_provider_strings()
+
+  @public_calendar_flags %{
+    "toggle_public_calendar_show_historical_events" => :public_calendar_show_historical_events,
+    "toggle_public_calendar_show_weekends" => :public_calendar_show_weekends
+  }
 
   @impl Phoenix.LiveComponent
   def mount(socket) do
@@ -114,6 +122,17 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
     {:noreply, update_freebusy(socket, &FreeBusy.disable_feed/1)}
   end
 
+  def handle_event("toggle_public_calendar_colors", %{"state" => state}, socket) do
+    {:noreply,
+     update_freebusy(socket, fn profile ->
+       Profiles.update_profile_field(
+         profile,
+         :public_calendar_colors,
+         state == "true"
+       )
+     end)}
+  end
+
   def handle_event("toggle_public_calendar_colors", _params, socket) do
     {:noreply,
      update_freebusy(socket, fn profile ->
@@ -137,15 +156,11 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
      end)}
   end
 
-  def handle_event("toggle_public_calendar_show_historical_events", _params, socket) do
+  def handle_event(event, _params, socket) when is_map_key(@public_calendar_flags, event) do
+    field = Map.fetch!(@public_calendar_flags, event)
+
     {:noreply,
-     update_freebusy(socket, fn profile ->
-       Profiles.update_profile_field(
-         profile,
-         :public_calendar_show_historical_events,
-         !profile.public_calendar_show_historical_events
-       )
-     end)}
+     update_freebusy(socket, &Profiles.update_profile_field(&1, field, !Map.fetch!(&1, field)))}
   end
 
   # Turning the window on seeds it with a sensible default (9–5) rather than
@@ -186,7 +201,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
         {:noreply, load_freebusy(socket)}
 
       {:error, changeset} ->
-        Flash.error(visible_hours_error_message(changeset))
+        Flash.error(Helpers.visible_hours_error_message(changeset))
         {:noreply, socket}
     end
   end
@@ -313,19 +328,22 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
             {:noreply,
              socket
              |> assign(:is_refreshing, true)
-             |> start_async(:refresh_calendars, fn ->
-               Tymeslot.TaskSupervisor
-               |> Task.Supervisor.async_stream_nolink(
-                 active,
-                 fn integration ->
-                   {integration.name, Calendar.refresh_integration(integration)}
-                 end,
-                 max_concurrency: 5,
-                 timeout: 30_000,
-                 on_timeout: :kill_task
-               )
-               |> Enum.to_list()
-             end)}
+             |> start_async(
+               :refresh_calendars,
+               Tasks.with_context(fn ->
+                 Tymeslot.TaskSupervisor
+                 |> Tasks.async_stream_nolink(
+                   active,
+                   fn integration ->
+                     {integration.name, Calendar.refresh_integration(integration)}
+                   end,
+                   max_concurrency: 5,
+                   timeout: 30_000,
+                   on_timeout: :kill_task
+                 )
+                 |> Enum.to_list()
+               end)
+             )}
           end
       end
     end
@@ -479,7 +497,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
         )
 
       successes > 0 ->
-        detail = format_refresh_failures(Enum.reverse(failed_names))
+        detail = Helpers.format_refresh_failures(Enum.reverse(failed_names))
 
         Flash.error(
           dgettext(
@@ -499,7 +517,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
   end
 
   def handle_async(:refresh_calendars, {:exit, reason}, socket) do
-    Logger.error("Calendar refresh task crashed", reason: inspect(reason))
+    Logger.error("Calendar refresh task crashed", reason: LogFormat.reason(reason))
     Flash.error(dgettext("dashboard_calendar_settings", "Refresh process failed unexpectedly."))
     {:noreply, assign(socket, :is_refreshing, false)}
   end
@@ -537,24 +555,6 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
     |> assign(:integrations, integrations)
     |> assign(:health_states, health_states)
     |> assign_connection_limit()
-  end
-
-  defp format_refresh_failures(names) when length(names) <= 3 do
-    Enum.join(names, ", ")
-  end
-
-  defp format_refresh_failures(names) do
-    shown = names |> Enum.take(3) |> Enum.join(", ")
-    remaining = length(names) - 3
-
-    dngettext(
-      "dashboard_calendar_settings",
-      "%{shown} and %{count} more",
-      "%{shown} and %{count} more",
-      remaining,
-      shown: shown,
-      count: remaining
-    )
   end
 
   # Every write to one integration goes through here: rate limit, parse the id
@@ -621,16 +621,6 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
   # detail of the picker rather than something the schema has to know about.
   defp palette_key("default"), do: nil
   defp palette_key(colour), do: colour
-
-  defp visible_hours_error_message(changeset) do
-    case changeset.errors[:public_calendar_visible_to] do
-      nil ->
-        dgettext("dashboard_calendar_settings", "Failed to update visible hours")
-
-      _error ->
-        dgettext("dashboard_calendar_settings", "End time must be after the start time")
-    end
-  end
 
   defp parse_int(id) when is_integer(id), do: {:ok, id}
 

@@ -4,14 +4,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView do
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
 
+  alias TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
   alias TymeslotWeb.Dashboard.CalendarGrid.Views.EventBadges
   alias TymeslotWeb.Helpers.LocaleFormat
 
   # Vertical rhythm for the bar band, in rem. The day number occupies the top
-  # `@band_top` — this must clear the "today" circle badge (`w-6 h-6` = 1.5rem,
-  # offset `top-1` = 0.25rem, so its bottom edge sits at 1.75rem), or the first
-  # lane's bar overlaps the date digits on the current day. Each multi-day/
+  # `@band_top` — this must clear it (offset `top-1` = 0.25rem plus a
+  # `text-token-sm` line), or the first lane's bar overlaps the date digits. Each multi-day/
   # all-day bar lane is `@lane_h` tall with the bar itself `@bar_h`. Single-day
   # chips are pushed below the reserved lane band.
   @band_top 1.75
@@ -170,13 +170,11 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView do
   defp month_cell(assigns) do
     chips = Helpers.chip_events(assigns.assigns_ref, assigns.day)
 
-    is_today = Date.compare(assigns.day, Helpers.today(assigns.user_timezone)) == :eq
     is_current_month = assigns.day.month == assigns.assigns_ref.date.month
 
     assigns =
       assigns
       |> assign(:chips, chips)
-      |> assign(:is_today, is_today)
       |> assign(:is_current_month, is_current_month)
       |> assign(:locale, Gettext.get_locale(TymeslotWeb.Gettext))
 
@@ -190,7 +188,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView do
       role="button"
       tabindex="0"
       aria-label={
-        "#{LocaleFormat.format_weekday_name(Date.day_of_week(@day), @locale, :full)}, #{LocaleFormat.format_month_name(@day.month, @locale)} #{@day.day}" <>
+        LocaleFormat.format_weekday_day_month(@day, @locale) <>
           ", " <>
           dngettext(
             "dashboard_calendar",
@@ -201,7 +199,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView do
           )
       }
     >
-      <div class={"absolute top-1 left-1 text-token-sm font-semibold #{day_number_class(@is_today, @is_current_month)}"}>
+      <div class={"absolute top-1 left-1 text-token-sm font-semibold #{day_number_class(@is_current_month)}"}>
         {@day.day}
       </div>
 
@@ -221,7 +219,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView do
             src="/images/brand/logo.svg"
             alt=""
             class="inline-block w-3 h-3 opacity-60 mr-0.5 align-text-bottom"
-          />{event.summary || dgettext("dashboard_calendar", "(No title)")}<span
+          /><AttendeeAttachments.marker attachments={Map.get(event, :attendee_attachments)} />{event.summary ||
+            dgettext("dashboard_calendar", "(No title)")}<span
             :if={EventBadges.guest_summary_for_event(@assigns_ref.guest_rsvp_summaries, event)}
             class={[
               "inline-block w-1.5 h-1.5 rounded-full ml-0.5 align-middle",
@@ -314,12 +313,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView do
   defp bar_round_class(%{continues_left: false, continues_right: true}), do: "rounded-l"
   defp bar_round_class(%{continues_left: true, continues_right: true}), do: "rounded-none"
 
-  defp day_number_class(true = _is_today, _is_current_month),
-    do:
-      "w-6 h-6 rounded-full bg-primary-600 text-white flex items-center justify-center text-center"
-
-  defp day_number_class(_is_today, false = _is_current_month), do: "text-neutral-400"
-
-  defp day_number_class(_is_today, _is_current_month),
-    do: "text-neutral-800 dark:text-neutral-200"
+  # Today is told apart by its cell's tint (`Helpers.month_cell_class/2`), not
+  # by its number.
+  defp day_number_class(false = _is_current_month), do: "text-neutral-400"
+  defp day_number_class(_is_current_month), do: "text-neutral-800 dark:text-neutral-200"
 end

@@ -31,6 +31,7 @@ defmodule TymeslotWeb.Themes.Rhythm.Meeting.Reschedule do
       language_dropdown_open={@language_dropdown_open}
       show_language_switcher={true}
       current_user={assigns[:current_user]}
+      username_context={assigns[:username_context]}
     >
       <div class="scheduling-box">
         <div class="slide-container">

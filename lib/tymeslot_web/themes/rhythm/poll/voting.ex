@@ -32,6 +32,7 @@ defmodule TymeslotWeb.Themes.Rhythm.Poll.Voting do
       language_dropdown_open={@language_dropdown_open}
       show_language_switcher={true}
       current_user={assigns[:current_user]}
+      username_context={assigns[:username_context]}
     >
       <div class="scheduling-box poll-voting-page rhythm-poll-voting">
         <div class="slide-container">

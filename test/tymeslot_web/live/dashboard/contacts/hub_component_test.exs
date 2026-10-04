@@ -70,6 +70,29 @@ defmodule TymeslotWeb.Dashboard.Contacts.HubComponentTest do
     end
   end
 
+  describe "CSV export" do
+    test "is offered only once there are contacts", %{conn: conn, user: user} do
+      {:ok, _view, html} = live(conn, ~p"/dashboard/contacts")
+      refute html =~ "contacts-export-csv"
+
+      insert(:contact, organizer_user: user)
+      {:ok, view, _html} = live(conn, ~p"/dashboard/contacts")
+
+      assert view |> element("#contacts-export-csv") |> render() =~
+               ~s|href="/dashboard/contacts/export"|
+    end
+
+    test "carries the current search", %{conn: conn, user: user} do
+      insert(:contact, organizer_user: user, name: "Jane Booker", email: "jane@example.com")
+      {:ok, view, _html} = live(conn, ~p"/dashboard/contacts")
+
+      view |> form("#contacts-search-form", %{"term" => "jane b"}) |> render_change()
+
+      assert view |> element("#contacts-export-csv") |> render() =~
+               ~s|href="/dashboard/contacts/export?search=jane+b"|
+    end
+  end
+
   describe "pagination" do
     test "shows 20 contacts per page, pages on, and switches the page size", %{
       conn: conn,

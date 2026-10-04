@@ -136,9 +136,15 @@ defmodule TymeslotWeb.Dashboard.AnalyticsLive.VisitsChart do
     """
   end
 
-  # Build a contiguous series covering every day from `from` to `to`,
-  # merging in any non-zero visit counts from the sparse `points` list.
-  defp build_series(points, from, to, time_zone) do
+  @doc """
+  Builds a contiguous series covering every local day from `from` to `to`,
+  merging in the visit counts from the sparse `points` list (days with no
+  visits are omitted by the query). Also used by the Overview's 7-day
+  analytics widget, so both charts bucket days identically.
+  """
+  @spec build_series([map()], DateTime.t() | Date.t(), DateTime.t() | Date.t(), String.t()) ::
+          [%{day: Date.t(), visits: non_neg_integer()}]
+  def build_series(points, from, to, time_zone) do
     visits_by_day = Map.new(points, fn p -> {p.day, p.visits} end)
 
     Enum.map(Date.range(local_date(from, time_zone), local_date(to, time_zone)), fn day ->

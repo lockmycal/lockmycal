@@ -31,6 +31,7 @@ defmodule TymeslotWeb.Components.Dashboard.ContactPicker do
   attr :select_event, :string, required: true
   attr :close_event, :string, required: true
   attr :placeholder, :string, default: nil
+  attr :icon, :string, default: "hero-identification", doc: "the search field's leading icon"
 
   @spec contact_picker(map()) :: Phoenix.LiveView.Rendered.t()
   def contact_picker(assigns) do
@@ -54,7 +55,7 @@ defmodule TymeslotWeb.Components.Dashboard.ContactPicker do
           change_event={@query_event}
           target={@target}
           debounce="200"
-          icon="hero-identification"
+          icon={@icon}
           placeholder={@placeholder || dgettext("dashboard_common", "Pick from contacts")}
         />
       </:trigger>

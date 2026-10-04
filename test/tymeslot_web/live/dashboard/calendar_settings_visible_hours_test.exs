@@ -24,6 +24,29 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsVisibleHoursTest do
 
   setup :setup_dashboard_user
 
+  describe "weekends row" do
+    test "is off by default and the toggle persists both ways", %{conn: conn, user: user} do
+      {:ok, before} = ProfileQueries.get_by_user_id(user.id)
+      refute before.public_calendar_show_weekends
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/calendar-integration")
+
+      view
+      |> element("button[phx-click='toggle_public_calendar_show_weekends']", "Enabled")
+      |> render_click()
+
+      {:ok, after_enable} = ProfileQueries.get_by_user_id(user.id)
+      assert after_enable.public_calendar_show_weekends
+
+      view
+      |> element("button[phx-click='toggle_public_calendar_show_weekends']", "Disabled")
+      |> render_click()
+
+      {:ok, after_disable} = ProfileQueries.get_by_user_id(user.id)
+      refute after_disable.public_calendar_show_weekends
+    end
+  end
+
   describe "public calendar block" do
     test "groups every public calendar setting into one block, visibility first", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/dashboard/calendar-integration")
@@ -32,7 +55,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsVisibleHoursTest do
 
       positions =
         Enum.map(
-          ["Visibility", "Colour settings", "Visible hours", "Historical events"],
+          ["Visibility", "Colour settings", "Visible hours", "Weekends", "Historical events"],
           &elem(:binary.match(block, &1), 0)
         )
 

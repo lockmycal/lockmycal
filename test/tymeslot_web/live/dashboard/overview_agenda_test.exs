@@ -12,6 +12,7 @@ defmodule TymeslotWeb.Dashboard.OverviewAgendaTest do
   import Tymeslot.AuthTestHelpers
   import Tymeslot.Factory
 
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Integrations.Calendar.EventColour
 
   setup %{conn: conn} do
@@ -21,14 +22,16 @@ defmodule TymeslotWeb.Dashboard.OverviewAgendaTest do
   end
 
   test "renders the agenda with the user's next appointment", %{conn: conn, user: user} do
-    tomorrow_noon = DateTime.new!(Date.add(Date.utc_today(), 1), ~T[12:00:00], "Etc/UTC")
+    # In progress right now, so it is today's whatever the time of day.
+    now = DateTime.utc_now(:second)
 
     insert(:meeting,
       organizer_email: user.email,
-      start_time: tomorrow_noon,
-      end_time: DateTime.add(tomorrow_noon, 3600, :second),
+      start_time: DateTime.add(now, -30 * 60, :second),
+      end_time: DateTime.add(now, 30 * 60, :second),
       status: "confirmed",
-      title: "Quarterly review"
+      title: "Quarterly review",
+      attendee_message: nil
     )
 
     {:ok, _view, html} = live(conn, ~p"/dashboard/overview")
@@ -45,7 +48,7 @@ defmodule TymeslotWeb.Dashboard.OverviewAgendaTest do
     refute html =~ "Upcoming Meetings"
   end
 
-  test "lists later tomorrow appointments in the peek, without repeating the cockpit's next",
+  test "lists every tomorrow appointment in its own block, not in today's cockpit",
        %{conn: conn, user: user} do
     tomorrow = Date.add(Date.utc_today(), 1)
     first = DateTime.new!(tomorrow, ~T[09:30:00], "Etc/UTC")
@@ -56,7 +59,8 @@ defmodule TymeslotWeb.Dashboard.OverviewAgendaTest do
       start_time: first,
       end_time: DateTime.add(first, 3600, :second),
       status: "confirmed",
-      title: "Team retro"
+      title: "Team retro",
+      attendee_message: nil
     )
 
     insert(:meeting,
@@ -64,92 +68,124 @@ defmodule TymeslotWeb.Dashboard.OverviewAgendaTest do
       start_time: later,
       end_time: DateTime.add(later, 3600, :second),
       status: "confirmed",
-      title: "Roadmap review"
+      title: "Roadmap review",
+      attendee_message: nil
     )
 
-    {:ok, _view, html} = live(conn, ~p"/dashboard/overview")
+    {:ok, view, _html} = live(conn, ~p"/dashboard/overview")
 
-    # The earliest is the cockpit's "next"; the later one fills the Tomorrow peek.
-    assert html =~ "Tomorrow"
-    assert html =~ "Team retro"
-    assert html =~ "Roadmap review"
+    tomorrow_block = view |> element("#overview-tomorrow") |> render()
+    assert tomorrow_block =~ "Coming up tomorrow"
+    assert tomorrow_block =~ "Team retro"
+    assert tomorrow_block =~ "Roadmap review"
+
+    # The cockpit only features today's next appointment.
+    today_block = view |> element("#overview-today") |> render()
+    assert today_block =~ "Your day today"
+    refute today_block =~ "agenda-countdown-"
+    assert today_block =~ "Nothing on your plate today."
+  end
+
+  test "rows name their calendar instead of a generic source label",
+       %{conn: conn, user: user} do
+    integration = insert(:calendar_integration, user: user, name: "Pavliks.eu")
+    tomorrow = Date.add(Date.utc_today(), 1)
+
+    insert(:provider_calendar_event,
+      calendar_integration: integration,
+      summary: "Sync meeting",
+      start_at: DateTime.new!(tomorrow, ~T[09:00:00], "Etc/UTC"),
+      end_at: DateTime.new!(tomorrow, ~T[10:00:00], "Etc/UTC"),
+      all_day: false
+    )
+
+    insert(:meeting,
+      organizer_email: user.email,
+      start_time: DateTime.new!(tomorrow, ~T[12:00:00], "Etc/UTC"),
+      end_time: DateTime.new!(tomorrow, ~T[13:00:00], "Etc/UTC"),
+      status: "confirmed",
+      title: "Client call",
+      attendee_message: nil
+    )
+
+    {:ok, view, _html} = live(conn, ~p"/dashboard/overview")
+    tomorrow_block = view |> element("#overview-tomorrow") |> render()
+
+    assert tomorrow_block =~ "Pavliks.eu"
+    # A booking in no connected calendar carries the app's name.
+    assert tomorrow_block =~ Config.app_name()
+    refute tomorrow_block =~ "Booking"
+  end
+
+  test "keeps a next appointment beyond tomorrow in sight, dated", %{conn: conn, user: user} do
+    later = DateTime.new!(Date.add(Date.utc_today(), 3), ~T[10:00:00], "Etc/UTC")
+
+    insert(:meeting,
+      organizer_email: user.email,
+      start_time: later,
+      end_time: DateTime.add(later, 3600, :second),
+      status: "confirmed",
+      title: "Board meeting",
+      attendee_message: nil
+    )
+
+    {:ok, view, _html} = live(conn, ~p"/dashboard/overview")
+
+    tomorrow_block = view |> element("#overview-tomorrow") |> render()
+    assert tomorrow_block =~ "Nothing scheduled for tomorrow."
+    assert tomorrow_block =~ "Next appointment"
+    assert tomorrow_block =~ "Board meeting"
   end
 
   test "shows the empty state and connect-a-calendar nudge when nothing is scheduled",
        %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/dashboard/overview")
 
-    assert html =~ "Nothing on your plate today or tomorrow"
+    assert html =~ "Nothing on your plate today."
+    assert html =~ "Nothing scheduled for tomorrow."
     assert html =~ "Connect a calendar to see your whole schedule here"
   end
 
-  test "clicking a booking opens a detail modal with its full details and actions",
+  test "clicking a booking opens it in the calendar's booking detail",
        %{conn: conn, user: user} do
     tomorrow = Date.add(Date.utc_today(), 1)
     start = DateTime.new!(tomorrow, ~T[12:00:00], "Etc/UTC")
 
-    insert(:meeting,
-      organizer_email: user.email,
-      start_time: start,
-      end_time: DateTime.add(start, 45 * 60, :second),
-      status: "confirmed",
-      title: "Quarterly review",
-      attendee_name: "Dana Lee",
-      location: "Room 3B",
-      organizer_video_url: "https://zoom.us/j/123"
-    )
-
-    {:ok, view, html} = live(conn, ~p"/dashboard/overview")
-    refute html =~ "agenda-detail-modal"
-
-    view
-    |> element(~s([aria-label="View details for Quarterly review"]))
-    |> render_click()
-
-    modal = view |> element("#agenda-detail-modal") |> render()
-
-    assert modal =~ Calendar.strftime(tomorrow, "%A, %-d %B %Y")
-    assert modal =~ "45 min"
-    assert modal =~ "Dana Lee"
-    # It reads clearly as a video meeting on a recognised platform, held in a room.
-    assert modal =~ "Video meeting"
-    assert modal =~ "Zoom"
-    assert modal =~ "Room 3B"
-    # A Tymeslot booking is labelled as such and offers both smart actions.
-    assert modal =~ "Calendar"
-    assert modal =~ "Tymeslot"
-    assert modal =~ "Manage booking"
-    assert modal =~ "Join"
-  end
-
-  test "dismissing the detail modal clears it", %{conn: conn, user: user} do
-    tomorrow = Date.add(Date.utc_today(), 1)
-    start = DateTime.new!(tomorrow, ~T[12:00:00], "Etc/UTC")
-
-    insert(:meeting,
-      organizer_email: user.email,
-      start_time: start,
-      end_time: DateTime.add(start, 3600, :second),
-      status: "confirmed",
-      title: "Quarterly review"
-    )
+    meeting =
+      insert(:meeting,
+        organizer_user: user,
+        organizer_email: user.email,
+        start_time: start,
+        end_time: DateTime.add(start, 45 * 60, :second),
+        status: "confirmed",
+        title: "Quarterly review",
+        attendee_message: nil,
+        attendee_name: "Dana Lee"
+      )
 
     {:ok, view, _html} = live(conn, ~p"/dashboard/overview")
 
-    assert view
-           |> element(~s([aria-label="View details for Quarterly review"]))
-           |> render_click() =~ "agenda-detail-modal"
+    path = open_in_calendar(view, "Quarterly review")
+    assert path == ~p"/dashboard?#{[booking: meeting.id, date: Date.to_iso8601(tomorrow)]}"
 
-    refute view
-           |> element(~s(#agenda-detail-modal button[aria-label="Close modal"]))
-           |> render_click() =~ "agenda-detail-modal"
+    {:ok, calendar, html} = live(conn, path)
+
+    assert html =~ ~s(id="booking-detail-modal")
+    assert html =~ "Dana Lee"
+
+    # Closing it returns to the Overview it was opened from.
+    calendar
+    |> element(~s(#booking-detail-modal button[aria-label="Close modal"]))
+    |> render_click()
+
+    assert_redirect(calendar, ~p"/dashboard/overview")
   end
 
   test "the 60s agenda tick refreshes the agenda without a page reload",
        %{conn: conn, user: user} do
     {:ok, view, html} = live(conn, ~p"/dashboard/overview")
 
-    assert html =~ "Nothing on your plate today or tomorrow"
+    assert html =~ "Nothing scheduled for tomorrow."
 
     # Inserted after mount, so it can only appear once the tick re-fetches.
     tomorrow = Date.add(Date.utc_today(), 1)
@@ -160,14 +196,15 @@ defmodule TymeslotWeb.Dashboard.OverviewAgendaTest do
       start_time: start,
       end_time: DateTime.add(start, 3600, :second),
       status: "confirmed",
-      title: "Freshly booked"
+      title: "Freshly booked",
+      attendee_message: nil
     )
 
     send(view.pid, :agenda_tick)
     html = render(view)
 
     assert html =~ "Freshly booked"
-    refute html =~ "Nothing on your plate today or tomorrow"
+    refute html =~ "Nothing scheduled for tomorrow."
 
     # A second tick (mirroring the rescheduled timer firing again) is still a
     # clean no-op re-render, not a crash or a stacked/duplicate refresh.
@@ -177,37 +214,155 @@ defmodule TymeslotWeb.Dashboard.OverviewAgendaTest do
     assert Process.alive?(view.pid)
   end
 
-  test "a synced calendar event offers Join but no booking management",
+  test "clicking a synced event opens it in the calendar's event detail",
        %{conn: conn, user: user} do
     tomorrow = Date.add(Date.utc_today(), 1)
     start = DateTime.new!(tomorrow, ~T[12:00:00], "Etc/UTC")
     integration = insert(:calendar_integration, user: user, name: "Work Google")
 
-    insert(:provider_calendar_event,
-      calendar_integration: integration,
-      summary: "Design sync",
-      start_at: start,
-      end_at: DateTime.add(start, 3600, :second),
-      all_day: false,
-      video_link: "https://meet.example.com/d",
-      organiser: %{"displayName" => "Sam Rivera"}
-    )
+    event =
+      insert(:provider_calendar_event,
+        calendar_integration: integration,
+        summary: "Design sync",
+        start_at: start,
+        end_at: DateTime.add(start, 3600, :second),
+        all_day: false
+      )
 
     {:ok, view, _html} = live(conn, ~p"/dashboard/overview")
 
-    view
-    |> element(~s([aria-label="View details for Design sync"]))
+    path = open_in_calendar(view, "Design sync")
+    assert path == ~p"/dashboard?#{[event: event.id, date: Date.to_iso8601(tomorrow)]}"
+
+    {:ok, calendar, html} = live(conn, path)
+
+    assert html =~ ~s(id="event-detail-modal")
+    assert html =~ "Design sync"
+
+    calendar
+    |> element(~s(#event-detail-modal button[aria-label="Close modal"]))
     |> render_click()
 
-    modal = view |> element("#agenda-detail-modal") |> render()
+    assert_redirect(calendar, ~p"/dashboard/overview")
+  end
 
-    assert modal =~ "Sam Rivera"
-    assert modal =~ "Video meeting"
-    # It names the source calendar it came from …
-    assert modal =~ "Work Google"
-    # … and offers Join but not booking management for a synced event.
-    assert modal =~ "Join"
-    refute modal =~ "Manage booking"
+  test "a detail opened on the calendar itself closes onto the calendar",
+       %{conn: conn, user: user} do
+    start = DateTime.new!(Date.utc_today(), ~T[12:00:00], "Etc/UTC")
+
+    meeting =
+      insert(:meeting,
+        organizer_user: user,
+        organizer_email: user.email,
+        start_time: start,
+        end_time: DateTime.add(start, 3600, :second),
+        status: "confirmed",
+        attendee_message: nil
+      )
+
+    {:ok, calendar, _html} = live(conn, ~p"/dashboard")
+
+    calendar
+    |> element(~s([data-event-id="booking-#{meeting.id}"][phx-click="show_booking"]))
+    |> render_click()
+
+    refute calendar
+           |> element(~s(#booking-detail-modal button[aria-label="Close modal"]))
+           |> render_click() =~ ~s(id="booking-detail-modal")
+
+    refute_redirected(calendar, ~p"/dashboard/overview")
+  end
+
+  test "a booking synced to a calendar opens as its calendar copy",
+       %{conn: conn, user: user} do
+    tomorrow = Date.add(Date.utc_today(), 1)
+    start = DateTime.new!(tomorrow, ~T[12:00:00], "Etc/UTC")
+    integration = insert(:calendar_integration, user: user)
+
+    meeting =
+      insert(:meeting,
+        organizer_user: user,
+        organizer_email: user.email,
+        start_time: start,
+        end_time: DateTime.add(start, 3600, :second),
+        status: "confirmed",
+        title: "Synced review",
+        attendee_message: nil,
+        provider_event_id: "google-synced-1"
+      )
+
+    insert(:provider_calendar_event,
+      calendar_integration: integration,
+      summary: "Synced review",
+      provider_event_id: "google-synced-1",
+      start_at: start,
+      end_at: DateTime.add(start, 3600, :second),
+      all_day: false
+    )
+
+    {:ok, _calendar, html} =
+      live(conn, ~p"/dashboard?#{[booking: meeting.id, date: Date.to_iso8601(tomorrow)]}")
+
+    assert html =~ ~s(id="event-detail-modal")
+    refute html =~ ~s(id="booking-detail-modal")
+  end
+
+  describe "a booking the user made on someone else's page" do
+    setup %{user: user} do
+      tomorrow = Date.add(Date.utc_today(), 1)
+      start = DateTime.new!(tomorrow, ~T[12:00:00], "Etc/UTC")
+      integration = insert(:calendar_integration, user: user)
+      host = insert(:user)
+
+      meeting =
+        insert(:meeting,
+          organizer_user: host,
+          organizer_email: host.email,
+          attendee_email: user.email,
+          start_time: start,
+          end_time: DateTime.add(start, 3600, :second),
+          status: "confirmed",
+          booker_user_id: user.id,
+          booker_calendar_integration_id: integration.id,
+          booker_calendar_event_id: "booked-elsewhere-booker"
+        )
+
+      %{tomorrow: tomorrow, start: start, integration: integration, meeting: meeting}
+    end
+
+    test "opens as the copy written to their calendar", ctx do
+      insert(:provider_calendar_event,
+        calendar_integration: ctx.integration,
+        uid: ctx.meeting.booker_calendar_event_id,
+        summary: "Consultation with the host",
+        start_at: ctx.start,
+        end_at: DateTime.add(ctx.start, 3600, :second),
+        all_day: false
+      )
+
+      {:ok, _calendar, html} =
+        live(
+          ctx.conn,
+          ~p"/dashboard?#{[booking: ctx.meeting.id, date: Date.to_iso8601(ctx.tomorrow)]}"
+        )
+
+      assert html =~ ~s(id="event-detail-modal")
+      assert html =~ "Consultation with the host"
+    end
+
+    test "a meeting of someone else's opens nothing", ctx do
+      stranger =
+        insert(:meeting, start_time: ctx.start, end_time: DateTime.add(ctx.start, 3600, :second))
+
+      {:ok, _calendar, html} =
+        live(
+          ctx.conn,
+          ~p"/dashboard?#{[booking: stranger.id, date: Date.to_iso8601(ctx.tomorrow)]}"
+        )
+
+      refute html =~ ~s(id="event-detail-modal")
+      refute html =~ ~s(id="booking-detail-modal")
+    end
   end
 
   describe "per-event colour" do
@@ -244,7 +399,8 @@ defmodule TymeslotWeb.Dashboard.OverviewAgendaTest do
         start_time: early,
         end_time: DateTime.add(early, 3600, :second),
         status: "confirmed",
-        title: "Standup"
+        title: "Standup",
+        attendee_message: nil
       )
 
       integration = insert(:calendar_integration, user: user)
@@ -265,5 +421,45 @@ defmodule TymeslotWeb.Dashboard.OverviewAgendaTest do
       assert html =~ "Design review"
       assert html =~ EventColour.tailwind_class("blueberry")
     end
+  end
+
+  describe "bookings awaiting approval" do
+    test "are listed red and marked, but not featured in the cockpit",
+         %{conn: conn, user: user} do
+      tomorrow = Date.add(Date.utc_today(), 1)
+      start = DateTime.new!(tomorrow, ~T[09:00:00], "Etc/UTC")
+
+      insert(:meeting,
+        organizer_email: user.email,
+        start_time: start,
+        end_time: DateTime.add(start, 3600, :second),
+        status: "awaiting_approval",
+        title: "Consultation with Jane",
+        attendee_message: "Kitchen remodel quote"
+      )
+
+      {:ok, view, html} = live(conn, ~p"/dashboard/overview")
+
+      refute html =~ "Up next"
+
+      tomorrow_block = view |> element("#overview-tomorrow") |> render()
+      assert tomorrow_block =~ "Kitchen remodel quote"
+      refute tomorrow_block =~ "Consultation with Jane"
+      assert tomorrow_block =~ "Awaiting approval"
+      assert tomorrow_block =~ "border-red-300"
+
+      assert open_in_calendar(view, "Kitchen remodel quote") =~ "booking="
+    end
+  end
+
+  # Clicks the agenda entry titled `title` and returns the calendar path it
+  # navigates to.
+  defp open_in_calendar(view, title) do
+    assert {:error, {:live_redirect, %{to: path}}} =
+             view
+             |> element(~s([aria-label="View details for #{title}"]))
+             |> render_click()
+
+    path
   end
 end

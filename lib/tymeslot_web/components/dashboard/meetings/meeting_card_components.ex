@@ -14,10 +14,12 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingCardComponents do
 
   alias Tymeslot.CustomFields.AnswerRenderer
   alias Tymeslot.Meetings
-  alias Tymeslot.Meetings.MeetingState
   alias TymeslotWeb.Components.CoreComponents
+  alias TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments
   alias TymeslotWeb.Components.Dashboard.Meetings.Helpers
+  alias TymeslotWeb.Components.Dashboard.Meetings.MeetingActions
   alias TymeslotWeb.Components.Dashboard.Meetings.MeetingStatusBadge
+  alias TymeslotWeb.Components.Dashboard.Meetings.RemindersSection
 
   # Meeting Card
   attr :meeting, :map, required: true
@@ -27,37 +29,49 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingCardComponents do
   attr :sending_reschedule, :any, required: false
   attr :answering_request, :any, default: nil
   attr :deleting_meeting, :any, required: false
+  attr :current_user_email, :string, default: nil
   attr :target, :any, required: true
 
   @spec meeting_card(map()) :: Phoenix.LiveView.Rendered.t()
   def meeting_card(assigns) do
+    # A booking the user made on someone else's page is shown from their
+    # side: named after its host, with the host's email, not their own details.
+    assigns =
+      assign(
+        assigns,
+        :attending?,
+        Meetings.attended_by?(assigns.meeting, assigns.current_user_email)
+      )
+
     ~H"""
     <div class="card-glass hover:bg-white dark:hover:bg-twilight-indigo-900 hover:border-primary-100 dark:hover:border-primary-800 hover:shadow-2xl hover:shadow-primary-500/5 group/card">
       <.calendar_sync_banner
         :if={
-          @meeting.calendar_sync_status in [
-            "externally_deleted",
-            "externally_modified",
-            "creation_failed"
-          ] and
-            is_nil(@meeting.calendar_sync_status_dismissed_at)
+          @meeting.calendar_sync_status == "externally_deleted" or
+            (@meeting.calendar_sync_status in ["externally_modified", "creation_failed"] and
+               is_nil(@meeting.calendar_sync_status_dismissed_at))
         }
         meeting={@meeting}
+        profile={@profile}
+        current_user_email={@current_user_email}
         target={@target}
       />
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
         <div class="flex-1">
           <div class="flex items-center gap-3 flex-wrap mb-6">
             <h4 class="text-token-2xl font-black text-neutral-900 dark:text-neutral-100 tracking-tight group-hover/card:text-primary-700 transition-colors">
-              {@meeting.attendee_name}
+              {if @attending?, do: @meeting.organizer_name, else: @meeting.attendee_name}
             </h4>
             <span
-              :if={@meeting.attendee_company}
+              :if={@meeting.attendee_company && !@attending?}
               class="text-token-sm font-black text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-twilight-indigo-900 px-3 py-1 rounded-token-lg"
             >
               {@meeting.attendee_company}
             </span>
-            <MeetingStatusBadge.status_badges meeting={@meeting} />
+            <MeetingStatusBadge.status_badges
+              meeting={@meeting}
+              organizer?={Meetings.organized_by?(@meeting, @current_user_email)}
+            />
             <span
               :if={@meeting.meeting_url}
               class="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary-50 dark:bg-secondary-950/40 text-secondary-700 dark:text-secondary-300 text-token-xs font-black uppercase tracking-wider rounded-full border border-secondary-100 dark:border-secondary-800 shadow-sm"
@@ -65,6 +79,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingCardComponents do
               <CoreComponents.icon name="hero-video-camera" class="w-3.5 h-3.5" />
               {dgettext("dashboard_bookings", "Video Call")}
             </span>
+            <AttendeeAttachments.badge attachments={@meeting.attendee_attachments} />
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -124,7 +139,27 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingCardComponents do
               </div>
             </div>
 
-            <div class="flex items-center gap-4">
+            <div
+              :if={@meeting.meeting_type && @meeting.meeting_type != ""}
+              class="flex items-center gap-4"
+            >
+              <div class="w-12 h-12 rounded-token-2xl bg-secondary-50 dark:bg-secondary-950/30 flex items-center justify-center shadow-sm border border-secondary-100 dark:border-secondary-800 transition-transform group-hover/card:scale-110">
+                <CoreComponents.icon
+                  name="hero-tag"
+                  class="w-6 h-6 text-secondary-600 dark:text-secondary-400"
+                />
+              </div>
+              <div class="min-w-0">
+                <p class="text-token-xs font-black text-neutral-400 uppercase tracking-widest mb-0.5">
+                  {dgettext("dashboard_bookings", "Meeting Type")}
+                </p>
+                <p class="text-neutral-700 dark:text-neutral-300 font-bold truncate">
+                  {@meeting.meeting_type}
+                </p>
+              </div>
+            </div>
+
+            <div :if={contact_email(@meeting, @attending?)} class="flex items-center gap-4">
               <div class="w-12 h-12 rounded-token-2xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center shadow-sm border border-blue-100 dark:border-blue-800 transition-transform group-hover/card:scale-110">
                 <CoreComponents.icon
                   name="hero-envelope"
@@ -133,18 +168,20 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingCardComponents do
               </div>
               <div>
                 <p class="text-token-xs font-black text-neutral-400 uppercase tracking-widest mb-0.5">
-                  {dgettext("dashboard_bookings", "Attendee Email")}
+                  {if @attending?,
+                    do: dgettext("dashboard_bookings", "Host Email"),
+                    else: dgettext("dashboard_bookings", "Attendee Email")}
                 </p>
                 <a
-                  href={"mailto:#{@meeting.attendee_email}"}
+                  href={"mailto:#{contact_email(@meeting, @attending?)}"}
                   class="text-neutral-700 dark:text-neutral-300 hover:text-primary-600 transition-colors font-bold"
                 >
-                  {@meeting.attendee_email}
+                  {contact_email(@meeting, @attending?)}
                 </a>
               </div>
             </div>
 
-            <div :if={@meeting.attendee_phone} class="flex items-center gap-4">
+            <div :if={contact_phone(@meeting, @attending?)} class="flex items-center gap-4">
               <div class="w-12 h-12 rounded-token-2xl bg-green-50 dark:bg-green-950/30 flex items-center justify-center shadow-sm border border-green-100 dark:border-green-800 transition-transform group-hover/card:scale-110">
                 <CoreComponents.icon
                   name="hero-phone"
@@ -153,13 +190,15 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingCardComponents do
               </div>
               <div>
                 <p class="text-token-xs font-black text-neutral-400 uppercase tracking-widest mb-0.5">
-                  Attendee Phone
+                  {if @attending?,
+                    do: dgettext("dashboard_bookings", "Host Phone"),
+                    else: dgettext("dashboard_bookings", "Attendee Phone")}
                 </p>
                 <a
-                  href={"tel:#{@meeting.attendee_phone}"}
+                  href={"tel:#{contact_phone(@meeting, @attending?)}"}
                   class="text-neutral-700 dark:text-neutral-300 hover:text-primary-600 transition-colors font-bold"
                 >
-                  {@meeting.attendee_phone}
+                  {contact_phone(@meeting, @attending?)}
                 </a>
               </div>
             </div>
@@ -212,6 +251,27 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingCardComponents do
             </p>
           </div>
 
+          <div
+            :if={
+              @meeting.attendee_attachments != [] &&
+                Meetings.organized_by?(@meeting, @current_user_email)
+            }
+            class="mt-8 p-5 bg-neutral-50/50 dark:bg-twilight-indigo-900/40 rounded-token-2xl border-2 border-neutral-300 dark:border-twilight-indigo-800"
+          >
+            <div class="flex items-center gap-4 mb-4">
+              <div class="w-8 h-8 rounded-token-lg bg-white dark:bg-twilight-indigo-950 shadow-sm flex items-center justify-center shrink-0 border border-neutral-300 dark:border-twilight-indigo-700">
+                <CoreComponents.icon name="hero-paper-clip" class="w-4 h-4 text-neutral-400" />
+              </div>
+              <p class="text-token-xs font-black text-neutral-400 uppercase tracking-widest">
+                {dgettext("dashboard_bookings", "Attachments")}
+              </p>
+            </div>
+            <AttendeeAttachments.links
+              meeting_id={@meeting.id}
+              attachments={@meeting.attendee_attachments}
+            />
+          </div>
+
           <% displayable_fields =
             Enum.filter(@meeting.custom_fields_snapshot, fn field ->
               @meeting.custom_field_answers[field["id"]]
@@ -244,144 +304,46 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingCardComponents do
               </div>
             </dl>
           </div>
+          <RemindersSection.reminders_section meeting={@meeting} />
         </div>
 
-        <div class="flex lg:flex-col gap-3 shrink-0 lg:w-[160px]">
-          <%!-- A held request offers exactly two actions. Join, Reschedule and
-                Cancel all presuppose a meeting that is happening, and offering
-                them here is what let a host "reschedule" a booking they had
-                never agreed to. --%>
-          <div :if={MeetingState.awaiting_approval?(@meeting)} class="contents">
-            <button
-              id={"approve-request-#{@meeting.id}"}
-              phx-click="approve_request"
-              phx-value-id={@meeting.id}
-              phx-target={@target}
-              disabled={@answering_request == @meeting.id}
-              data-testid="approve-request"
-              class="btn btn-success py-3 px-4 text-token-sm w-full flex items-center justify-center whitespace-nowrap disabled:opacity-50"
-            >
-              <CoreComponents.spinner :if={@answering_request == @meeting.id} class="h-4 w-4 mr-2" />
-              <CoreComponents.icon
-                :if={@answering_request != @meeting.id}
-                name="hero-check"
-                class="w-4 h-4 mr-2 shrink-0"
-              />
-              {dgettext("dashboard_bookings", "Approve")}
-            </button>
-
-            <button
-              phx-click="show_decline_modal"
-              phx-value-id={@meeting.id}
-              phx-target={@target}
-              disabled={@answering_request == @meeting.id}
-              data-testid="decline-request"
-              class="btn btn-danger py-3 px-4 text-token-sm w-full flex items-center justify-center whitespace-nowrap disabled:opacity-50"
-            >
-              <CoreComponents.icon name="hero-x-mark" class="w-4 h-4 mr-2 shrink-0" />
-              {dgettext("dashboard_bookings", "Decline")}
-            </button>
-          </div>
-
-          <div
-            :if={
-              @meeting.status != "cancelled" && !MeetingState.awaiting_approval?(@meeting) &&
-                !Helpers.past_meeting?(@meeting)
-            }
-            class="contents"
-          >
-            <a
-              :if={@meeting.meeting_url}
-              href={@meeting.meeting_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="btn btn-primary py-3 px-4 text-token-sm w-full flex items-center justify-center whitespace-nowrap"
-            >
-              <CoreComponents.icon name="hero-video-camera" class="w-4 h-4 mr-2 shrink-0" />
-              {dgettext("dashboard_bookings", "Join Meeting")}
-            </a>
-
-            <button
-              phx-click="show_reschedule_modal"
-              phx-value-id={@meeting.id}
-              phx-target={@target}
-              disabled={!Helpers.can_reschedule?(@meeting)}
-              class={[
-                "btn btn-secondary py-3 px-4 text-token-sm w-full flex items-center justify-center whitespace-nowrap",
-                if(!Helpers.can_reschedule?(@meeting), do: "opacity-50 cursor-not-allowed", else: "")
-              ]}
-            >
-              <CoreComponents.icon name="hero-arrows-right-left" class="w-4 h-4 mr-2 shrink-0" />
-              {dgettext("dashboard_bookings", "Reschedule")}
-            </button>
-
-            <button
-              id={"cancel-meeting-#{@meeting.id}"}
-              phx-click="show_cancel_modal"
-              phx-value-id={@meeting.id}
-              phx-target={@target}
-              disabled={@cancelling_meeting == @meeting.id || !Helpers.can_cancel?(@meeting)}
-              class={[
-                "btn btn-danger py-3 px-4 text-token-sm w-full flex items-center justify-center whitespace-nowrap",
-                if(!Helpers.can_cancel?(@meeting), do: "opacity-50 cursor-not-allowed", else: "")
-              ]}
-            >
-              <span :if={@cancelling_meeting == @meeting.id} class="flex items-center">
-                <CoreComponents.spinner class="h-4 w-4 mr-2" /> {dgettext(
-                  "dashboard_bookings",
-                  "Processing..."
-                )}
-              </span>
-              <span :if={@cancelling_meeting != @meeting.id} class="flex items-center">
-                <CoreComponents.icon name="hero-x-mark" class="w-4 h-4 mr-2 shrink-0" /> {dgettext(
-                  "dashboard_bookings",
-                  "Cancel"
-                )}
-              </span>
-            </button>
-          </div>
-          <div :if={@meeting.status == "cancelled"} class="contents">
-            <button
-              id={"delete-meeting-#{@meeting.id}"}
-              phx-click="show_delete_modal"
-              phx-value-id={@meeting.id}
-              phx-target={@target}
-              disabled={@deleting_meeting == @meeting.id}
-              class="btn btn-danger py-3 px-4 text-token-sm w-full flex items-center justify-center whitespace-nowrap"
-            >
-              <span :if={@deleting_meeting == @meeting.id} class="flex items-center">
-                <CoreComponents.spinner class="h-4 w-4 mr-2" /> {dgettext(
-                  "dashboard_bookings",
-                  "Deleting..."
-                )}
-              </span>
-              <span :if={@deleting_meeting != @meeting.id} class="flex items-center">
-                <CoreComponents.icon name="hero-trash" class="w-4 h-4 mr-2 shrink-0" /> {dgettext(
-                  "dashboard_bookings",
-                  "Delete"
-                )}
-              </span>
-            </button>
-          </div>
-          <div
-            :if={
-              @meeting.status != "cancelled" and Helpers.past_meeting?(@meeting) and
-                not MeetingState.awaiting_approval?(@meeting)
-            }
-            class="hidden lg:block"
-          >
-            &nbsp;
-          </div>
-        </div>
+        <MeetingActions.action_bar
+          meeting={@meeting}
+          target={@target}
+          answering_request={@answering_request}
+          cancelling_meeting={@cancelling_meeting}
+          deleting_meeting={@deleting_meeting}
+          current_user_email={@current_user_email}
+          attending?={@attending?}
+        />
       </div>
     </div>
     """
   end
 
+  # The host's details reach the attendee only as far as the host shared them
+  # when the meeting was booked (`share_organizer_email`, `organizer_phone`).
+  defp contact_email(%{share_organizer_email: true} = meeting, true = _attending?),
+    do: meeting.organizer_email
+
+  defp contact_email(_meeting, true = _attending?), do: nil
+  defp contact_email(meeting, false = _attending?), do: meeting.attendee_email
+
+  defp contact_phone(meeting, true = _attending?), do: meeting.organizer_phone
+  defp contact_phone(meeting, false = _attending?), do: meeting.attendee_phone
+
   attr :meeting, :map, required: true
+  attr :profile, :any, default: nil
+  attr :current_user_email, :string, default: nil
   attr :target, :any, required: true
 
+  # "externally_deleted" has no dismiss button: the meeting was auto-cancelled
+  # because of it, so the banner stays as the reason until the meeting itself
+  # is deleted (by hand or by the organiser's cancelled-meeting cleanup).
   defp calendar_sync_banner(assigns) do
+    assigns =
+      assign(assigns, :auto_delete_date, banner_auto_delete_date(assigns))
+
     ~H"""
     <div class={[
       "flex items-start justify-between gap-4 rounded-2xl px-5 py-4 mb-6 border-2",
@@ -394,10 +356,24 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingCardComponents do
     ]}>
       <p class="font-medium text-token-sm">
         <span :if={@meeting.calendar_sync_status == "externally_deleted"}>
-          {dgettext(
-            "dashboard_bookings",
-            "This meeting's event was deleted from your external calendar."
-          )}
+          {if Meetings.organized_by?(@meeting, @current_user_email),
+            do:
+              dgettext(
+                "dashboard_bookings",
+                "This meeting's event was deleted from your external calendar."
+              ),
+            else:
+              dgettext(
+                "dashboard_bookings",
+                "The organiser removed this meeting's event from their calendar."
+              )}
+          <span :if={@auto_delete_date}>
+            {dgettext(
+              "dashboard_bookings",
+              "It will be deleted automatically after %{date}.",
+              date: @auto_delete_date
+            )}
+          </span>
         </span>
         <span :if={@meeting.calendar_sync_status == "externally_modified"}>
           {dgettext(
@@ -413,6 +389,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingCardComponents do
         </span>
       </p>
       <button
+        :if={@meeting.calendar_sync_status != "externally_deleted"}
         phx-click="dismiss_calendar_sync_banner"
         phx-value-id={@meeting.id}
         phx-target={@target}
@@ -426,6 +403,19 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingCardComponents do
   end
 
   # Small coloured pill reflecting a guest's RSVP status.
+  # Only the organiser's own profile carries the cleanup setting that will
+  # delete this meeting; an attendee's card has no date to show.
+  defp banner_auto_delete_date(%{meeting: meeting, profile: profile} = assigns) do
+    if meeting.calendar_sync_status == "externally_deleted" and
+         Meetings.organized_by?(meeting, assigns.current_user_email) do
+      Helpers.format_auto_delete_date(
+        meeting,
+        profile,
+        Helpers.get_meeting_timezone(meeting, profile)
+      )
+    end
+  end
+
   attr :status, :string, required: true
 
   defp guest_status_badge(assigns) do

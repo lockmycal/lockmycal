@@ -45,8 +45,11 @@ export const TurnstileHook = {
       return;
     }
 
+    // Never turnstile.ready(): Cloudflare throws from it whenever api.js was
+    // loaded async/defer, which a script injected from JS always is. Once the
+    // script has loaded, render() is available, so call it directly.
     if (window.turnstile) {
-      window.turnstile.ready(() => this.renderWidget());
+      this.renderWidget();
       return;
     }
 
@@ -67,7 +70,7 @@ export const TurnstileHook = {
 
     script.onload = () => {
       scriptLoaded = true;
-      window.turnstile.ready(() => this.renderWidget());
+      this.renderWidget();
     };
     script.onerror = () => this.handleTurnstileLoadError();
     script.onabort = () => this.handleTurnstileLoadError();

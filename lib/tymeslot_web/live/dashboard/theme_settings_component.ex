@@ -217,7 +217,7 @@ defmodule TymeslotWeb.Dashboard.ThemeSettingsComponent do
           profile={@profile}
         />
 
-        <div class="mt-16 bg-neutral-50 dark:bg-twilight-indigo-900/60 border-2 border-dashed border-neutral-300 dark:border-twilight-indigo-700 rounded-token-3xl p-8 relative overflow-hidden group">
+        <div class="mt-16 bg-neutral-50 dark:bg-twilight-indigo-900/60 border-2 border-dashed border-neutral-300 dark:border-twilight-indigo-800 rounded-token-3xl p-8 relative overflow-hidden group">
           <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform duration-700">
             <svg
               class="w-32 h-32 text-neutral-900 dark:text-neutral-50"
