@@ -30,28 +30,25 @@ defmodule TymeslotWeb.Dashboard.PaymentsSettings.DisconnectModal do
   @spec disconnect_modal(map()) :: Phoenix.LiveView.Rendered.t()
   def disconnect_modal(assigns) do
     ~H"""
-    <.modal
+    <.confirm_modal
       :if={@open}
       id="disconnect-modal"
-      show={true}
+      show
+      title={dgettext("dashboard_payments", "Disconnect Stripe")}
+      confirm_label={dgettext("dashboard_payments", "Disconnect Stripe")}
       on_cancel={JS.push("close_disconnect_modal", target: @myself)}
-      size={:medium}
+      on_confirm={JS.push("disconnect", target: @myself)}
+      data-testid="confirm-disconnect-stripe"
     >
-      <:header>
-        <span class="text-token-xl font-black tracking-tight">
-          {dgettext("dashboard_payments", "Disconnect Stripe")}
-        </span>
-      </:header>
+      <p>
+        {dgettext(
+          "dashboard_payments",
+          "Disconnect your Stripe account from %{app_name}? Existing payments remain visible, but new paid bookings will fail until you reconnect.",
+          app_name: Config.app_name()
+        )}
+      </p>
 
-      <div class="space-y-4">
-        <p class="text-neutral-700 dark:text-neutral-200">
-          {dgettext(
-            "dashboard_payments",
-            "Disconnect your Stripe account from %{app_name}? Existing payments remain visible, but new paid bookings will fail until you reconnect.",
-            app_name: Config.app_name()
-          )}
-        </p>
-
+      <:extra :if={@pending_count > 0 or @outstanding_refunds.count > 0}>
         <.info_box :if={@pending_count > 0} variant={:warning}>
           {dngettext(
             "dashboard_payments",
@@ -70,23 +67,8 @@ defmodule TymeslotWeb.Dashboard.PaymentsSettings.DisconnectModal do
             total: format_totals(@outstanding_refunds.totals)
           )}
         </.info_box>
-      </div>
-
-      <:footer>
-        <div class="flex justify-end gap-3">
-          <.action_button
-            variant={:secondary}
-            phx-click="close_disconnect_modal"
-            phx-target={@myself}
-          >
-            {dgettext("dashboard_payments", "Cancel")}
-          </.action_button>
-          <.action_button variant={:danger} phx-click="disconnect" phx-target={@myself}>
-            {dgettext("dashboard_payments", "Disconnect Stripe")}
-          </.action_button>
-        </div>
-      </:footer>
-    </.modal>
+      </:extra>
+    </.confirm_modal>
     """
   end
 

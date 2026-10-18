@@ -21,7 +21,8 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingErrorMessageTest do
     :checkout_failed,
     :meeting_not_found,
     :failed_to_update_meeting,
-    :booking_limit_reached
+    :booking_limit_reached,
+    :not_invited
   ]
 
   describe "message/1 with classified error atoms" do

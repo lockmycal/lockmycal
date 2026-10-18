@@ -60,19 +60,19 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Video.CustomConfig.Templ
   # Container styling based on status
   defp preview_container_class(:valid),
     do:
-      "rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-950/40"
+      "rounded-token-lg border border-primary-200 bg-primary-50 dark:border-primary-800 dark:bg-primary-950/40"
 
   defp preview_container_class(:warning),
     do:
-      "rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40"
+      "rounded-token-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40"
 
   defp preview_container_class(:static),
     do:
-      "rounded-lg border border-neutral-300 dark:border-twilight-indigo-800 bg-neutral-50 dark:bg-twilight-indigo-900/60"
+      "rounded-token-lg border border-neutral-300 bg-neutral-50 dark:border-twilight-indigo-800 dark:bg-twilight-indigo-900/60"
 
   defp preview_container_class(:empty),
     do:
-      "rounded-lg border border-neutral-300 dark:border-twilight-indigo-800 bg-neutral-50 dark:bg-twilight-indigo-900/60"
+      "rounded-token-lg border border-neutral-300 bg-neutral-50 dark:border-twilight-indigo-800 dark:bg-twilight-indigo-900/60"
 
   # Title styling based on status
   defp status_title_class(:valid), do: "font-semibold text-primary-800 dark:text-primary-300"

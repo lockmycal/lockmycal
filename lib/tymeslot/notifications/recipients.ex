@@ -4,6 +4,7 @@ defmodule Tymeslot.Notifications.Recipients do
   Pure functions for recipient determination and notification targeting.
   """
 
+  alias Tymeslot.Meetings
   alias Tymeslot.Profiles
 
   @typep participant :: %{
@@ -15,9 +16,11 @@ defmodule Tymeslot.Notifications.Recipients do
   @doc """
   Determines the recipients for a given notification type and meeting.
 
-  Every notification type routes to both participants except
-  `:video_room_failed`: a provisioning failure is an operational problem for
-  the organizer to act on, not something the attendee needs to see.
+  Routing depends on the meeting and the notification type. Every type routes to
+  both participants except `:video_room_failed`: a provisioning failure is an
+  operational problem for the organizer to act on, not something the attendee
+  needs to see. A group meeting routes to the organizer only — see
+  `recipients_for/2`.
   """
   @spec determine_recipients(term(), atom()) ::
           {:both | :organizer_only,
@@ -30,7 +33,7 @@ defmodule Tymeslot.Notifications.Recipients do
   end
 
   def determine_recipients(meeting, _notification_type) do
-    {:both, base_recipients(meeting)}
+    recipients_for(meeting, base_recipients(meeting))
   end
 
   defp base_recipients(meeting) do
@@ -46,6 +49,20 @@ defmodule Tymeslot.Notifications.Recipients do
         timezone: meeting.attendee_timezone || get_organizer_timezone(meeting)
       }
     }
+  end
+
+  # A group meeting's row carries no attendee of its own — `attendee_email`,
+  # `attendee_name` and `attendee_timezone` are nullable precisely because
+  # group attendees live on `meeting_participants`, not on the meeting row.
+  # The organizer is still a real recipient; the meeting-row "attendee" is
+  # not, so validation must not demand fields that cannot exist. Participants
+  # are resolved and emailed downstream via `Meetings.recipients/1`.
+  defp recipients_for(meeting, base_recipients) do
+    if Meetings.group?(meeting) do
+      {:organizer_only, base_recipients}
+    else
+      {:both, base_recipients}
+    end
   end
 
   @doc """
@@ -74,6 +91,13 @@ defmodule Tymeslot.Notifications.Recipients do
   The attendee_timezone should always be populated during booking creation.
   """
   @spec get_attendee_timezone(term()) :: String.t()
+  # A group meeting's row never carries an attendee (its people are its
+  # participants), so a missing timezone there is the design, not a defect
+  # worth a warning on every booking.
+  def get_attendee_timezone(%{attendee_timezone: nil, capacity: capacity} = meeting)
+      when is_integer(capacity) and capacity > 1,
+      do: get_organizer_timezone(meeting)
+
   def get_attendee_timezone(meeting) do
     # This should always be set, but add defensive logging
     case meeting.attendee_timezone do
@@ -105,6 +129,9 @@ defmodule Tymeslot.Notifications.Recipients do
 
       {:organizer_only, %{organizer: organizer}} ->
         validate_recipient(organizer, :organizer)
+
+      {:attendee_only, %{attendee: attendee}} ->
+        validate_recipient(attendee, :attendee)
 
       _invalid_structure ->
         {:error, "Invalid recipient structure"}

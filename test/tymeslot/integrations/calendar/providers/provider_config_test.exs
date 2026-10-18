@@ -141,6 +141,13 @@ defmodule Tymeslot.Integrations.Calendar.ProviderConfigTest do
     test "nil returns nil" do
       assert ProviderConfig.locked_url_for(nil) == nil
     end
+
+    test "the tooltip is in the viewer's language" do
+      Gettext.with_locale(TymeslotWeb.Gettext, "cs", fn ->
+        assert %{tooltip: "mailbox.org vždy používá tento CalDAV server — adresu nelze změnit"} =
+                 ProviderConfig.locked_url_for(:mailbox_org)
+      end)
+    end
   end
 
   describe "parse/1" do

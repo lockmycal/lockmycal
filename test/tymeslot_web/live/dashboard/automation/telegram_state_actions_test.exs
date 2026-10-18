@@ -94,7 +94,7 @@ defmodule TymeslotWeb.Dashboard.Automation.TelegramStateActionsTest do
       {:ok, view, _html} = live(conn, "/dashboard/automation")
       open_telegram_tab(view)
 
-      view |> element("button[aria-label^='Test']") |> render_click()
+      view |> element("button", "Test") |> render_click()
 
       assert render(view) =~ "Test message sent"
     end
@@ -109,7 +109,7 @@ defmodule TymeslotWeb.Dashboard.Automation.TelegramStateActionsTest do
       {:ok, view, _html} = live(conn, "/dashboard/automation")
       open_telegram_tab(view)
 
-      view |> element("button[aria-label^='Test']") |> render_click()
+      view |> element("button", "Test") |> render_click()
 
       refute render(view) =~ "Test message sent"
     end
@@ -162,7 +162,7 @@ defmodule TymeslotWeb.Dashboard.Automation.TelegramStateActionsTest do
 
       assert {:ok, %{chat_id: nil}} = Telegram.get_integration(integration.id, user.id)
       assert [_delivery] = Telegram.list_deliveries(integration.id, limit: 50)
-      assert has_element?(view, "button[aria-label='Connect']")
+      assert has_element?(view, "button", "Connect")
     end
 
     test "own-bot integrations never expose the disconnect button", %{conn: conn, user: user} do
@@ -191,7 +191,7 @@ defmodule TymeslotWeb.Dashboard.Automation.TelegramStateActionsTest do
       {:ok, view, _html} = live(conn, "/dashboard/automation")
       open_telegram_tab(view)
 
-      view |> element("button[aria-label='Re-enable']") |> render_click()
+      view |> element("button", "Re-enable") |> render_click()
 
       assert render(view) =~ "Integration re-enabled"
 
@@ -218,7 +218,7 @@ defmodule TymeslotWeb.Dashboard.Automation.TelegramStateActionsTest do
       {:ok, view, _html} = live(conn, "/dashboard/automation")
       open_telegram_tab(view)
 
-      view |> element("button[aria-label='Connect']") |> render_click()
+      view |> element("button", "Connect") |> render_click()
 
       html = render(view)
       assert html =~ "Connect Telegram"
@@ -241,7 +241,7 @@ defmodule TymeslotWeb.Dashboard.Automation.TelegramStateActionsTest do
       {:ok, view, _html} = live(conn, "/dashboard/automation")
       open_telegram_tab(view)
 
-      view |> element("button[aria-label='Connect']") |> render_click()
+      view |> element("button", "Connect") |> render_click()
 
       assert render(view) =~ "Open in Telegram"
       token = deep_link_token(view)
@@ -261,7 +261,7 @@ defmodule TymeslotWeb.Dashboard.Automation.TelegramStateActionsTest do
       open_telegram_tab(view)
 
       view |> element("button[title='Disconnect Telegram']") |> render_click()
-      view |> element("button[aria-label='Connect']") |> render_click()
+      view |> element("button", "Connect") |> render_click()
 
       assert render(view) =~ "Open in Telegram"
 

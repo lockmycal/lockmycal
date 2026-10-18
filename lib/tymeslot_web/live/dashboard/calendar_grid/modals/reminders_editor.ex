@@ -57,13 +57,11 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RemindersEditor do
         class="flex items-start gap-2"
       >
         <input type="hidden" name="method" value="popup" />
-        <.input
-          type="select"
-          id="add-reminder-minutes"
-          name="minutes"
-          options={@presets}
-          class="flex-1 min-w-0"
-        />
+        <%!-- The select is a form of its own, so a re-render of the dialog (any other
+            field being edited) would put it back on the first option. --%>
+        <div id="add-reminder-minutes-wrapper" phx-update="ignore" class="flex-1 min-w-0">
+          <.input type="select" id="add-reminder-minutes" name="minutes" options={@presets} />
+        </div>
         <.action_button
           type="submit"
           variant={:secondary}
@@ -83,7 +81,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RemindersEditor do
       <div :if={@reminders != []} class={["flex flex-wrap gap-1.5", not @read_only && "mt-2"]}>
         <span
           :for={{reminder, index} <- Enum.with_index(@reminders)}
-          class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-primary-50 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-700 text-token-xs text-primary-800 dark:text-primary-300"
+          class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-token-full bg-primary-50 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-700 text-token-xs text-primary-800 dark:text-primary-300"
         >
           {reminder_label(reminder)}
           <button
@@ -91,7 +89,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RemindersEditor do
             phx-click={@remove_event}
             phx-value-index={index}
             phx-target={@myself}
-            class="w-4 h-4 rounded-full hover:bg-red-100 flex items-center justify-center transition-colors"
+            class="w-4 h-4 rounded-token-full hover:bg-red-100 flex items-center justify-center transition-colors"
             aria-label={
               dgettext("dashboard_calendar_events", "Remove reminder %{label}",
                 label: reminder_label(reminder)

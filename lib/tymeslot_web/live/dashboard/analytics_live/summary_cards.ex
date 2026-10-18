@@ -55,12 +55,16 @@ defmodule TymeslotWeb.Dashboard.AnalyticsLive.SummaryCards do
         color={:secondary}
         loading?={@loading?}
       />
+      <%!-- With no visitors there is no rate to report, and "0.0%" would read
+            as a measured result; a dash says "nothing to measure yet". --%>
       <.stat_card
         label={dgettext("dashboard_analytics", "Conversion (est.)")}
-        value={"#{@conversion_rate}%"}
+        value={if @unique_visitors > 0, do: "#{@conversion_rate}%", else: "—"}
+        hint={if @unique_visitors == 0, do: dgettext("dashboard_analytics", "No visits yet")}
         icon="hero-arrow-trending-up"
         color={:emerald}
         loading?={@loading?}
+        data-testid="conversion-card"
       />
     </div>
     """

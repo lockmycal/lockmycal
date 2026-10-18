@@ -10,6 +10,13 @@
  * 1. Inline: <div id="tymeslot-booking" data-username="sarah"></div>
  * 2. Popup: <button onclick="TymeslotBooking.open('sarah')">Book</button>
  * 3. Floating: TymeslotBooking.initFloating('sarah')
+ *
+ * Background: data-background="transparent" or "#f5f5f5" (inline), or
+ * { background: '…' } in the options; without it the theme's own shows.
+ *
+ * One meeting type only: data-meeting="intro-call" on the inline container,
+ * or { meeting: 'intro-call' } in the options of open(), initFloating() and
+ * embed(). The widget then opens that type's booking page directly.
  */
 
 (function() {
@@ -158,16 +165,26 @@
     });
   });
 
+  // A meeting type's slug, in the shape the server accepts for it (lowercase
+  // letters and digits in hyphen-separated runs). Anything else is dropped and
+  // the widget shows the organiser's overview, as the other options fall back
+  // to their defaults.
+  const MEETING_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+  function meetingPath(meeting) {
+    return typeof meeting === 'string' && MEETING_SLUG.test(meeting) ? `/${meeting}` : '';
+  }
+
   /**
    * Create an iframe for embedding
    */
   function createBookingIframe(username, options = {}) {
     const iframe = document.createElement('iframe');
     const base = BASE_URL.replace(/\/$/, '');
-    const url = new URL(`${base}/${encodeURIComponent(username)}`);
+    const url = new URL(`${base}/${encodeURIComponent(username)}${meetingPath(options.meeting)}`);
     
     // Build URL with customization params - STRICT ALLOWLIST
-    const ALLOWED_PARAMS = ['theme', 'primaryColor', 'locale', 'layout', 'previewToken'];
+    const ALLOWED_PARAMS = ['theme', 'primaryColor', 'locale', 'layout', 'background', 'previewToken'];
 
     ALLOWED_PARAMS.forEach(key => {
       const val = options[key];
@@ -181,6 +198,10 @@
         url.searchParams.append('locale', val);
       } else if (key === 'layout' && /^(default|column)$/.test(val)) {
         url.searchParams.append('layout', val);
+      } else if (key === 'background' && /^(transparent|#[0-9A-Fa-f]{6})$/.test(val)) {
+        // Replaces the theme's background inside the widget: a colour, or
+        // transparent so the embedding page shows through.
+        url.searchParams.append('background', val);
       } else if (key === 'previewToken' && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(val)) {
         // Owner preview. One option in, both halves of the contract out:
         // `preview` is the forgeable display claim, `preview_token` the signed,
@@ -548,6 +569,8 @@
         primaryColor: container.getAttribute('data-primary-color'),
         locale: container.getAttribute('data-locale'),
         layout: container.getAttribute('data-layout'),
+        meeting: container.getAttribute('data-meeting'),
+        background: container.getAttribute('data-background'),
         initialHeight:
           container.getAttribute('data-initial-height') ||
           container.getAttribute('data-min-height'),

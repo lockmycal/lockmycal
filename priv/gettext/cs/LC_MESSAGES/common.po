@@ -36,7 +36,7 @@ msgstr "Probíhá pokus o opětovné připojení"
 msgid "Browser Not Supported"
 msgstr "Nepodporovaný prohlížeč"
 
-#: lib/tymeslot_web/components/confirmation_modal.ex
+#: lib/tymeslot_web/components/core_components/modal.ex
 #: lib/tymeslot_web/components/dashboard/meetings/add_guests_modal.ex
 #: lib/tymeslot_web/components/dashboard/meetings/reschedule_request_modal.ex
 #: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
@@ -59,7 +59,7 @@ msgstr "Zavřít"
 msgid "Close modal"
 msgstr "Zavřít dialog"
 
-#: lib/tymeslot_web/components/confirmation_modal.ex
+#: lib/tymeslot_web/components/core_components/modal.ex
 #, elixir-autogen, elixir-format
 msgid "Confirm"
 msgstr "Potvrdit"
@@ -99,7 +99,6 @@ msgstr "Jedno velké písmeno"
 msgid "Password must contain:"
 msgstr "Heslo musí obsahovat:"
 
-#: lib/tymeslot_web/components/confirmation_modal.ex
 #: lib/tymeslot_web/components/core_components/buttons.ex
 #: lib/tymeslot_web/live/dashboard/polls/poll_results.ex
 #, elixir-autogen, elixir-format
@@ -126,11 +125,6 @@ msgstr "Hledat města, země nebo časová pásma…"
 msgid "Select timezone"
 msgstr "Vyberte časové pásmo"
 
-#: lib/tymeslot_web/components/core_components/navigation.ex
-#, elixir-autogen, elixir-format
-msgid "Tabs"
-msgstr "Karty"
-
 #: lib/tymeslot_web/components/layouts.ex
 #, elixir-autogen, elixir-format
 msgid "This %{context} requires a modern browser with ES module support. Please upgrade to the latest version of Chrome, Firefox, Safari, or Edge."
@@ -146,10 +140,10 @@ msgstr "Tato aplikace ke svému fungování vyžaduje JavaScript. Zapněte jej 
 msgid "This timezone will be used for your availability and scheduling."
 msgstr "Toto časové pásmo se použije pro vaši dostupnost a plánování."
 
-#: lib/tymeslot_web/components/core_components/layout.ex
+#: lib/tymeslot_web/components/timezone_dropdown.ex
 #, elixir-autogen, elixir-format
-msgid "Tymeslot team"
-msgstr "tým LockMyCal"
+msgid "Your Timezone"
+msgstr "Vaše časové pásmo"
 
 #: lib/tymeslot_web/components/layouts.ex
 #, elixir-autogen, elixir-format
@@ -165,11 +159,6 @@ msgstr "místní čas"
 #, elixir-autogen, elixir-format
 msgid "scheduling page"
 msgstr "stránka pro plánování"
-
-#: lib/tymeslot_web/components/core_components/layout.ex
-#, elixir-autogen, elixir-format
-msgid "Made with %{heart} by the %{team}"
-msgstr "S %{heart} vytvořil %{team}"
 
 #: lib/tymeslot_web/components/public_top_bar.ex
 #: lib/tymeslot_web/components/site_components.ex
@@ -244,25 +233,155 @@ msgstr "Přehrát video na pozadí"
 msgid "Search timezones"
 msgstr "Hledat časová pásma"
 
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} day"
+msgid_plural "%{count} days"
+msgstr[0] "%{count} den"
+msgstr[1] "%{count} dny"
+msgstr[2] "%{count} dní"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} hour"
+msgid_plural "%{count} hours"
+msgstr[0] "%{count} hodinu"
+msgstr[1] "%{count} hodiny"
+msgstr[2] "%{count} hodin"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} minute"
+msgid_plural "%{count} minutes"
+msgstr[0] "%{count} minutu"
+msgstr[1] "%{count} minuty"
+msgstr[2] "%{count} minut"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "%{label} before"
+msgstr "%{label} předem"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "1 hour before"
+msgstr "1 hodinu předem"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "30 min. before"
+msgstr "30 min předem"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Add"
+msgstr "Přidat"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Add Custom"
+msgstr "Přidat vlastní"
+
+#: lib/tymeslot_web/components/shared/reminder_picker_state.ex
+#, elixir-autogen, elixir-format
+msgid "Added %{label} before"
+msgstr "Přidáno: %{label} předem"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel Custom"
+msgstr "Zrušit vlastní"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Days"
+msgstr "Dny"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Hours"
+msgstr "Hodiny"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Maximum of %{count} reminder allowed"
+msgid_plural "Maximum of %{count} reminders allowed"
+msgstr[0] "Nastavit lze nejvýše %{count} připomínku"
+msgstr[1] "Nastavit lze nejvýše %{count} připomínky"
+msgstr[2] "Nastavit lze nejvýše %{count} připomínek"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Minutes"
+msgstr "Minuty"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "No reminders configured."
+msgstr "Nejsou nastaveny žádné připomínky."
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Reminder value is required"
+msgstr "Hodnota připomínky je povinná"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Reminder value must be a positive number"
+msgstr "Hodnota připomínky musí být kladné číslo"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Reminders"
+msgstr "Připomínky"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Reminders cannot be set for more than 1 year in advance"
+msgstr "Připomínky nelze nastavit více než 1 rok předem"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Remove reminder"
+msgstr "Odebrat připomínku"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Select a valid reminder unit"
+msgstr "Vyberte platnou jednotku připomínky"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "This reminder already exists"
+msgstr "Tato připomínka již existuje"
+
+#: lib/tymeslot_web/components/shared/reminder_picker.ex
+#, elixir-autogen, elixir-format
+msgid "You can configure up to %{count} reminder"
+msgid_plural "You can configure up to %{count} reminders"
+msgstr[0] "Můžete nastavit až %{count} připomínku"
+msgstr[1] "Můžete nastavit až %{count} připomínky"
+msgstr[2] "Můžete nastavit až %{count} připomínek"
+
+#: lib/tymeslot_web/components/core_components/feedback.ex
+#, elixir-autogen, elixir-format
+msgid "Loading"
+msgstr "Načítání"
+
 #: lib/tymeslot_web/components/core_components/brand.ex
 #, elixir-autogen, elixir-format
 msgid "%{app_name} logo"
 msgstr "Logo %{app_name}"
 
-#: lib/tymeslot_web/components/site_components.ex
-#, elixir-autogen, elixir-format
-msgid "© %{year} %{app_name}. All rights reserved."
-msgstr "© %{year} %{app_name}. Všechna práva vyhrazena."
-
-#: lib/tymeslot_web/components/timezone_dropdown.ex
-#, elixir-autogen, elixir-format
-msgid "Your Timezone"
-msgstr "Vaše časové pásmo"
-
 #: lib/tymeslot_web/components/site_banner.ex
 #, elixir-autogen, elixir-format
 msgid "Announcement"
 msgstr "Oznámení"
+
+#: lib/tymeslot_web/components/public_top_bar.ex
+#, elixir-autogen, elixir-format
+msgid "Booking page"
+msgstr "Rezervační stránka"
 
 #: lib/tymeslot_web/components/site_banner.ex
 #, elixir-autogen, elixir-format
@@ -274,22 +393,33 @@ msgstr "Skrýt oznámení"
 msgid "Documentation"
 msgstr "Dokumentace"
 
-#: lib/tymeslot_web/components/public_top_bar.ex
+#: lib/tymeslot_web/components/public_footer.ex
 #, elixir-autogen, elixir-format
-msgid "Website"
-msgstr "Web"
-
-#: lib/tymeslot_web/components/public_top_bar.ex
-#, elixir-autogen, elixir-format
-msgid "Booking page"
-msgstr "Rezervační stránka"
+msgid "Powered by %{app_name}"
+msgstr "Běží na %{app_name}"
 
 #: lib/tymeslot_web/components/public_footer.ex
 #, elixir-autogen, elixir-format
 msgid "Report a bug"
 msgstr "Nahlásit chybu"
 
-#: lib/tymeslot_web/components/public_footer.ex
+#: lib/tymeslot_web/components/core_components/navigation.ex
 #, elixir-autogen, elixir-format
-msgid "Powered by %{app_name}"
-msgstr "Běží na %{app_name}"
+msgid "Sections"
+msgstr ""
+"Sekce"
+
+#: lib/tymeslot_web/components/public_top_bar.ex
+#, elixir-autogen, elixir-format
+msgid "Website"
+msgstr "Web"
+
+#: lib/tymeslot_web/components/site_components.ex
+#, elixir-autogen, elixir-format
+msgid "© %{year} %{app_name}. All rights reserved."
+msgstr "© %{year} %{app_name}. Všechna práva vyhrazena."
+
+#: lib/tymeslot_web/components/public_top_bar.ex
+#, elixir-autogen, elixir-format
+msgid "Organizer logo"
+msgstr "Logo organizátora"

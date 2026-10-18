@@ -22,7 +22,7 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
   alias TymeslotWeb.Themes.Shared.LocalizationHelpers
   alias TymeslotWeb.Themes.Shared.SecurityFields
 
-  import TymeslotWeb.Components.CoreComponents
+  use TymeslotWeb.Components.CoreComponents
 
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
@@ -121,6 +121,8 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
 
   @impl Phoenix.LiveComponent
   def render(assigns) do
+    assigns = assign(assigns, :next_day_end, LocalizationHelpers.booking_next_day_end(assigns))
+
     ~H"""
     <div class="container flex-1" data-locale={@locale}>
       <.page_layout
@@ -134,13 +136,9 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
             <div class="w-full">
               <.glass_morphism_card class="booking-form-card">
                 <div class="booking-card-body">
-                  <.section_header
-                    level={2}
-                    class="booking-heading-wrapper"
-                    title_class="section-header booking-heading"
-                  >
+                  <h1 class="section-header booking-heading booking-heading-wrapper">
                     {dgettext("booking", "Enter Your Details")}
-                  </.section_header>
+                  </h1>
 
                   <p class="booking-subtitle text-quill-primary">
                     <%= if @organizer_profile do %>
@@ -169,6 +167,13 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.BookingComponent do
                       @selected_time,
                       @user_timezone
                     )}
+                  </p>
+                  <p
+                    :if={@next_day_end}
+                    class="booking-datetime text-quill-secondary"
+                    data-testid="booking-next-day-end"
+                  >
+                    {@next_day_end}
                   </p>
 
                   <LocationField.location_field

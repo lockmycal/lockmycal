@@ -2,7 +2,7 @@ defmodule TymeslotWeb.AdminLive.Components.LocaleSetting do
   @moduledoc """
   The per-surface fallback-language control on the admin settings page.
 
-  A `select` input (via the shared `CoreComponents.input/1`), matching the
+  A `select` input (via the shared `Forms.input/1`), matching the
   same language picker on Profile Settings (`LanguageFormComponent`) rather
   than the row-of-flag-buttons this used to be — the flag row scaled poorly
   as more locales are added and didn't match the rest of the settings tab's

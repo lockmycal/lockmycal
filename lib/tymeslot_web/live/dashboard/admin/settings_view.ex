@@ -148,7 +148,7 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
       />
 
       <div class="card-glass p-0! overflow-hidden divide-y divide-neutral-100 dark:divide-twilight-indigo-800">
-        <.setting_row
+        <.admin_setting_row
           :for={key <- @keys}
           key={key}
           effective_values={@effective_values}
@@ -181,7 +181,11 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
       </h3>
 
       <div class="card-glass p-0! overflow-hidden divide-y divide-neutral-100 dark:divide-twilight-indigo-800">
-        <.setting_row key={:email_brand_name} effective_values={@effective_values} target={@target} />
+        <.admin_setting_row
+          key={:email_brand_name}
+          effective_values={@effective_values}
+          target={@target}
+        />
         <EmailBrandingRows.brand_accent_row
           effective={Map.fetch!(@effective_values, :email_brand_accent)}
           stock_accent={@stock_accent}
@@ -206,8 +210,8 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
 
   # Public: also used by SiteBannerRows for its on/off rows, so they render
   # exactly like every other boolean setting.
-  @spec setting_row(map()) :: Phoenix.LiveView.Rendered.t()
-  def setting_row(assigns) do
+  @spec admin_setting_row(map()) :: Phoenix.LiveView.Rendered.t()
+  def admin_setting_row(assigns) do
     effective = Map.fetch!(assigns.effective_values, assigns.key)
     kind = Formatters.kind(assigns.key)
 

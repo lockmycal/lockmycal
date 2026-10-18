@@ -57,6 +57,11 @@
   .phx-change-loading& { @slot; }
   .phx-change-loading & { @slot; }
 }
+/* While files are dragged over a `phx-drop-target`. */
+@custom-variant phx-drop-target-active {
+  .phx-drop-target-active& { @slot; }
+  .phx-drop-target-active & { @slot; }
+}
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -236,6 +241,8 @@
   --radius-token-xl: var(--radius-xl);
   --radius-token-2xl: var(--radius-2xl);
   --radius-token-3xl: var(--radius-3xl);
+  --radius-token-4xl: var(--radius-4xl);
+  --radius-token-5xl: var(--radius-5xl);
   --radius-token-full: var(--radius-full);
 
   /* --- Refined shadows --- */
@@ -266,5 +273,18 @@
   ::backdrop,
   ::file-selector-button {
     border-color: var(--color-border-light, currentColor);
+  }
+
+  /* Tailwind 4's preflight leaves buttons on the default arrow. Every control
+     that does something shows the hand, so a switch, tab or segmented control
+     needs no cursor class of its own. A disabled one (the active option of a
+     toggle, a locked setting) keeps the arrow, and a utility such as
+     `cursor-not-allowed` still wins over this base rule. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  [role="switch"]:not([aria-disabled="true"]),
+  summary {
+    cursor: pointer;
   }
 }

@@ -26,13 +26,14 @@ defmodule TymeslotWeb.Dashboard.DashboardOverviewFormatters do
   end
 
   # Clamped to at least a minute: a countdown that reads "in 0m" is wrong.
-  defp countdown(seconds) when seconds < 3600,
+  @spec countdown(integer()) :: String.t()
+  def countdown(seconds) when seconds < 3600,
     do: fill(minutes_template(), max(div(seconds, 60), 1))
 
-  defp countdown(seconds) when seconds < 86_400,
+  def countdown(seconds) when seconds < 86_400,
     do: fill(hours_template(), div(seconds, 3600))
 
-  defp countdown(seconds),
+  def countdown(seconds),
     do: fill(days_template(), div(seconds, 86_400))
 
   @doc """

@@ -72,7 +72,7 @@ defmodule TymeslotWeb.Hooks.PageViewHook do
 
   # Compute the visitor hash exactly once, here, via the canonical ClientIP
   # module (Cloudflare-aware). The hash is assigned to the socket so a later
-  # booking can persist the *same* value — `TrackingHelpers.assign_tracking/2` folds it into the
+  # booking can persist the *same* value — `BookingTracking.assign_tracking/2` folds it into the
   # `:tracking` map. The async page-view write recomputes the hash from the
   # identical (ip, user_agent, session_id) inputs, so the event and the booking
   # always share one join key. Anything else risks two extractors disagreeing
@@ -127,7 +127,7 @@ defmodule TymeslotWeb.Hooks.PageViewHook do
   defp resolve_target(%{"username" => username} = params) when is_binary(username) do
     slug = params["slug"]
 
-    case {Profiles.get_profile_by_username(username), slug} do
+    case {Profiles.get_profile_by_handle(username), slug} do
       {%{user_id: user_id}, slug} when is_binary(slug) ->
         meeting_type_id =
           case MeetingTypes.find_by_slug(user_id, slug) do

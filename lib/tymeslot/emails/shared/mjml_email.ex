@@ -23,10 +23,12 @@ defmodule Tymeslot.Emails.Shared.MjmlEmail do
   alias Swoosh.Attachment
   alias Tymeslot.Emails.Branding
   alias Tymeslot.Emails.Shared.{AvatarHelper, Frame, Sanitise, Stage, Styles, Urls}
-  alias Tymeslot.Emails.Shared.Styles.Tokens
+  alias Tymeslot.Emails.Shared.Styles.{CSS, Tokens}
   alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Mailer
   alias Tymeslot.Mailer.Providers
+  alias Tymeslot.Profiles
+  alias Tymeslot.Profiles.BrandLogo
 
   use Gettext, backend: TymeslotWeb.Gettext
 
@@ -89,6 +91,10 @@ defmodule Tymeslot.Emails.Shared.MjmlEmail do
   site for templates that genuinely benefit from engagement metrics. The
   category is only stashed on the email here; `Tymeslot.Mailer.deliver/2`
   translates it into provider options at delivery time.
+
+  Pass `organizer_user_id:` for an email about that organizer's meeting or
+  poll: their own logo (`Tymeslot.Profiles.BrandLogo`) then heads the email
+  instead of the instance logo, when they have one and are allowed to use it.
   """
   @spec base_email(keyword()) :: Swoosh.Email.t()
   def base_email(opts \\ []) do
@@ -97,8 +103,34 @@ defmodule Tymeslot.Emails.Shared.MjmlEmail do
     new()
     |> from({fetch_from_name(), fetch_from_email()})
     |> Mailer.put_tracking(tracking)
-    |> attach_logo()
+    |> attach_logo(Keyword.get(opts, :organizer_user_id))
   end
+
+  @doc """
+  Sets `Reply-To` to the other party of a booking, so that a reply reaches
+  that person instead of the instance's sending mailbox, which is often a
+  no-reply address. `From` stays the instance address, keeping SPF, DKIM
+  and DMARC aligned with the sending domain.
+
+  Leaves the email untouched when there is no address (a group meeting's
+  organiser copy has no single attendee), or when the address is the
+  instance's own sender, where the header would add nothing.
+  """
+  @spec put_reply_to(Swoosh.Email.t(), String.t() | nil, String.t() | nil) :: Swoosh.Email.t()
+  def put_reply_to(email, name, address) when is_binary(address) do
+    address = String.trim(address)
+
+    cond do
+      address == "" -> email
+      same_address?(address, fetch_from_email()) -> email
+      true -> reply_to(email, {Sanitise.sanitize_for_header(name), address})
+    end
+  end
+
+  def put_reply_to(email, _name, _address), do: email
+
+  defp same_address?(address, from),
+    do: String.downcase(address) == String.downcase(String.trim(from))
 
   # Content-ID must match the attachment filename exactly: Swoosh's SendGrid
   # adapter derives the content_id from the filename (ignoring `cid:`), and
@@ -112,17 +144,18 @@ defmodule Tymeslot.Emails.Shared.MjmlEmail do
   def logo_cid, do: @logo_cid
 
   @doc """
-  Attaches the instance logo as an inline image — the custom logo when a
-  self-hosted instance has uploaded one, the stock Tymeslot logo otherwise.
-  Swallowed silently if neither PNG can be read: the email still sends, the
-  logo simply won't render.
+  Attaches the logo as an inline image — the organizer's own logo when
+  `organizer_user_id` names one who has it, otherwise the instance logo: the
+  custom logo when a self-hosted instance has uploaded one, the stock Tymeslot
+  logo otherwise. Swallowed silently if no PNG can be read: the email still
+  sends, the logo simply won't render.
 
   The filename and cid stay fixed regardless of which logo is attached, for
   the ESP-compatibility reason documented on `@logo_cid`.
   """
-  @spec attach_logo(Swoosh.Email.t()) :: Swoosh.Email.t()
-  def attach_logo(email) do
-    case Branding.logo_bytes() do
+  @spec attach_logo(Swoosh.Email.t(), integer() | nil) :: Swoosh.Email.t()
+  def attach_logo(email, organizer_user_id \\ nil) do
+    case logo_bytes(organizer_user_id) do
       {:ok, bytes} ->
         attachment(
           email,
@@ -144,6 +177,22 @@ defmodule Tymeslot.Emails.Shared.MjmlEmail do
         email
     end
   end
+
+  defp logo_bytes(organizer_user_id) do
+    case organizer_logo_bytes(organizer_user_id) do
+      {:ok, bytes} -> {:ok, bytes}
+      :error -> Branding.logo_bytes()
+    end
+  end
+
+  defp organizer_logo_bytes(user_id) when is_integer(user_id) do
+    case Profiles.get_profile_by_user_id(user_id) do
+      {:ok, profile} -> BrandLogo.email_logo_bytes(profile)
+      {:error, _not_found} -> :error
+    end
+  end
+
+  defp organizer_logo_bytes(_user_id), do: :error
 
   @doc "Returns the configured from-email."
   @spec fetch_from_email() :: String.t()
@@ -222,6 +271,7 @@ defmodule Tymeslot.Emails.Shared.MjmlEmail do
           align="center"
           padding="0"
           border="0"
+          css-class="#{CSS.logo_plate_class()}"
         />
       </mj-column>
     </mj-section>

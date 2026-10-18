@@ -154,42 +154,36 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.DeleteIntegration
   def render(assigns) do
     ~H"""
     <div id={@id}>
-      <TymeslotWeb.Components.CoreComponents.modal
+      <.confirm_modal
         id={"#{@id}-modal"}
         show={@show}
-        on_cancel={JS.push("hide", target: @myself)}
         size={:small}
+        title={
+          dgettext("dashboard_integrations", "Delete %{type} integration",
+            type: format_integration_type(@integration_type) |> String.downcase()
+          )
+        }
+        confirm_label={dgettext("dashboard_integrations", "Delete Integration")}
+        on_cancel={JS.push("hide", target: @myself)}
+        on_confirm={JS.push("confirm", target: @myself)}
       >
-        <:header>
-          <div class="flex items-center gap-2">
-            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-              />
-            </svg>
-            {dgettext("dashboard_integrations", "Delete %{type} Integration",
-              type: format_integration_type(@integration_type)
-            )}
-          </div>
-        </:header>
-        <div class="space-y-4">
-          <p class="text-neutral-600 dark:text-neutral-300 font-medium text-lg leading-relaxed">
-            {dgettext(
-              "dashboard_integrations",
-              "Are you sure you want to delete this %{type} integration?",
-              type: format_integration_type(@integration_type) |> String.downcase()
-            )}
-          </p>
-          <p class="text-neutral-500 font-medium">
-            {dgettext(
-              "dashboard_integrations",
-              "This action cannot be undone and will remove all associated %{data}.",
-              data: format_integration_data(@integration_type)
-            )}
-          </p>
+        <p>
+          {dgettext(
+            "dashboard_integrations",
+            "Are you sure you want to delete this %{type} integration?",
+            type: format_integration_type(@integration_type) |> String.downcase()
+          )}
+        </p>
+        <p class="text-neutral-500 dark:text-twilight-indigo-200">
+          {dgettext(
+            "dashboard_integrations",
+            "This action cannot be undone and will remove all associated %{data}.",
+            data: format_integration_data(@integration_type)
+          )}
+        </p>
+        <:extra :if={
+          @deletion_warning || (@integration_type == :video and @rooms_to_delete.count > 0)
+        }>
           <%!-- Set by the configured IntegrationDeletionHook, when deleting this
                 integration also removes something outside it. --%>
           <div
@@ -208,10 +202,10 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.DeleteIntegration
           <%!-- Only video integrations own provider-side rooms, and only the
                 rooms the disconnect would actually delete are worth asking about. --%>
           <div :if={@integration_type == :video and @rooms_to_delete.count > 0} class="space-y-3">
-            <p class="text-neutral-500 font-medium">
+            <p class="text-neutral-500 dark:text-twilight-indigo-200">
               {rooms_summary(@rooms_to_delete)}
             </p>
-            <label class="flex items-start gap-3 p-4 rounded-token-xl border-2 border-neutral-300 hover:border-primary-200 cursor-pointer transition-colors">
+            <label class="flex items-start gap-3 p-4 rounded-token-xl border-2 border-neutral-300 hover:border-primary-200 cursor-pointer transition-colors dark:border-twilight-indigo-700 dark:hover:border-primary-800">
               <%!-- For a non-array name the input component derives its checked
                     state by comparing value against checked_value ("true"), so
                     the state has to be passed as value; a `checked` attribute is
@@ -222,29 +216,13 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.DeleteIntegration
                 value={to_string(@delete_rooms)}
                 phx-click={JS.push("toggle_delete_rooms", target: @myself)}
               />
-              <span class="flex-1 text-token-sm text-neutral-600 dark:text-neutral-300 font-medium">
+              <span class="flex-1 text-token-sm">
                 {delete_rooms_label(@rooms_to_delete.scope)}
               </span>
             </label>
           </div>
-        </div>
-        <:footer>
-          <div class="flex justify-end gap-3">
-            <TymeslotWeb.Components.CoreComponents.action_button
-              variant={:secondary}
-              phx-click={JS.push("hide", target: @myself)}
-            >
-              {dgettext("dashboard_integrations", "Cancel")}
-            </TymeslotWeb.Components.CoreComponents.action_button>
-            <TymeslotWeb.Components.CoreComponents.action_button
-              variant={:danger}
-              phx-click={JS.push("confirm", target: @myself)}
-            >
-              {dgettext("dashboard_integrations", "Delete Integration")}
-            </TymeslotWeb.Components.CoreComponents.action_button>
-          </div>
-        </:footer>
-      </TymeslotWeb.Components.CoreComponents.modal>
+        </:extra>
+      </.confirm_modal>
     </div>
     """
   end

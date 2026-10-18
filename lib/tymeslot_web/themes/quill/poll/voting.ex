@@ -11,7 +11,7 @@ defmodule TymeslotWeb.Themes.Quill.Poll.Voting do
   alias TymeslotWeb.Themes.Quill.Scheduling.Wrapper
   alias TymeslotWeb.Themes.Shared.PollVotingComponents
 
-  import TymeslotWeb.Components.CoreComponents, only: [glass_morphism_card: 1]
+  use TymeslotWeb.Components.CoreComponents, only: [glass_morphism_card: 1]
 
   attr :theme_customization, :map, required: true
   attr :custom_css, :string, required: true
@@ -34,6 +34,7 @@ defmodule TymeslotWeb.Themes.Quill.Poll.Voting do
       show_language_switcher={true}
       current_user={assigns[:current_user]}
       username_context={assigns[:username_context]}
+      brand_logo_url={assigns[:brand_logo_url]}
     >
       <div class="poll-voting-page quill-poll-voting min-h-screen flex items-center justify-center px-4 py-8">
         <div class="w-full max-w-2xl">

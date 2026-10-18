@@ -45,6 +45,7 @@ defmodule TymeslotWeb.Themes.Shared.SchedulingLive do
 
       alias TymeslotWeb.Themes.Shared.BookingFlow
       alias TymeslotWeb.Themes.Shared.BookingLocation
+      alias TymeslotWeb.Themes.Shared.BookingTracking
       alias TymeslotWeb.Themes.Shared.GuestBooking
 
       alias TymeslotWeb.Components.MeetingUtils
@@ -56,17 +57,13 @@ defmodule TymeslotWeb.Themes.Shared.SchedulingLive do
         PathHandlers,
         ReschedulePin,
         SchedulingInit,
-        SlotGrouping,
-        TrackingHelpers
+        SlotGrouping
       }
 
       alias TymeslotWeb.Themes.Shared.StateMachineHelpers, as: StateMachine
 
-      alias Tymeslot.CustomFields
-      alias Tymeslot.Locales
-
       alias TymeslotWeb.Themes.Shared.Components.ErrorComponent
-      alias TymeslotWeb.Themes.Shared.CustomQuestions.Engine, as: QEngine
+      alias TymeslotWeb.Themes.Shared.CustomQuestions.QuestionsStep
 
       @theme_id unquote(theme_id)
 
@@ -83,7 +80,7 @@ defmodule TymeslotWeb.Themes.Shared.SchedulingLive do
             &setup_initial_state/3
           )
 
-        socket = TrackingHelpers.assign_tracking(socket, params)
+        socket = BookingTracking.assign_tracking(socket, params)
 
         {:ok, socket}
       end
@@ -146,6 +143,11 @@ defmodule TymeslotWeb.Themes.Shared.SchedulingLive do
       @impl Phoenix.LiveView
       def handle_info({ref, {:slots, duration, result}}, socket) when is_reference(ref) do
         InfoHandlers.handle_slots_fetched(socket, ref, duration, result)
+      end
+
+      @impl Phoenix.LiveView
+      def handle_info({:seat_update, meeting_type_id}, socket) do
+        InfoHandlers.handle_seat_update(socket, meeting_type_id, &transition_to/3)
       end
 
       @impl Phoenix.LiveView
@@ -382,74 +384,8 @@ defmodule TymeslotWeb.Themes.Shared.SchedulingLive do
         end
       end
 
-      defp handle_questions_events(socket, event, data) do
-        case event do
-          :answer ->
-            {id, value} = data
-            engine = QEngine.answer(socket.assigns.engine, id, value)
-            {:noreply, assign(socket, :engine, engine)}
-
-          :next ->
-            handle_questions_next(socket)
-
-          :back ->
-            handle_questions_back(socket)
-
-          _other ->
-            {:noreply, socket}
-        end
-      end
-
-      # Advance within the questions wizard, or proceed to :booking when all
-      # questions have been answered and validated.
-      #
-      # Transitions to :booking only when the booker is already on the last
-      # question and presses Next — this ensures a single optional question is
-      # always shown before the wizard exits, even when it validates as empty.
-      defp handle_questions_next(socket) do
-        engine = socket.assigns.engine
-
-        if QEngine.skipped?(engine) do
-          {:noreply, transition_to(socket, :booking, %{})}
-        else
-          last_index = QEngine.total(engine) - 1
-
-          cond do
-            engine.current_index < last_index ->
-              case QEngine.next(engine) do
-                {:ok, engine} -> {:noreply, assign(socket, :engine, engine)}
-                {:error, engine} -> {:noreply, assign(socket, :engine, engine)}
-              end
-
-            engine.current_index == last_index ->
-              case QEngine.validate_all(engine) do
-                {:ok, _answers} ->
-                  socket = assign(socket, :engine, QEngine.mark_reviewed(engine))
-                  {:noreply, transition_to(socket, :booking, %{})}
-
-                {:error, _errors} ->
-                  case QEngine.next(engine) do
-                    {:ok, engine} -> {:noreply, assign(socket, :engine, engine)}
-                    {:error, engine} -> {:noreply, assign(socket, :engine, engine)}
-                  end
-              end
-
-            true ->
-              {:noreply, socket}
-          end
-        end
-      end
-
-      # Move backwards within the wizard, or return to :schedule from the first question.
-      defp handle_questions_back(socket) do
-        engine = socket.assigns.engine
-
-        if engine.current_index == 0 do
-          {:noreply, transition_to(socket, :schedule, %{})}
-        else
-          {:noreply, assign(socket, :engine, QEngine.prev(engine))}
-        end
-      end
+      defp handle_questions_events(socket, event, data),
+        do: QuestionsStep.handle_event(socket, event, data, &transition_to/3)
 
       defp handle_confirmation_events(socket, event, _data) do
         case event do
@@ -457,12 +393,18 @@ defmodule TymeslotWeb.Themes.Shared.SchedulingLive do
             # The flow restarts here without navigating, so the reschedule
             # context has to be dropped explicitly or the next submit moves the
             # meeting that was just moved. See `ReschedulePin.abandon/1`.
+            #
+            # The booker is on the overview now, with every meeting type in
+            # front of them, so the date step offers the way back to it
+            # whichever page they first entered on.
             socket =
               socket
               |> GuestBooking.assign_defaults()
               |> ReschedulePin.abandon()
+              |> assign(:entered_via_overview, true)
+              |> transition_to(:overview, %{})
 
-            {:noreply, transition_to(socket, :overview, %{})}
+            {:noreply, ReschedulePin.drop_from_url(socket)}
 
           _other ->
             {:noreply, socket}
@@ -491,21 +433,7 @@ defmodule TymeslotWeb.Themes.Shared.SchedulingLive do
         |> refresh_stale_slot_snapshot()
       end
 
-      defp handle_state_entry(socket, :questions, _params) do
-        # Re-sync the engine snapshot on entry so that forward/back navigation always
-        # reflects the latest custom field definitions for this meeting type. Only
-        # re-init when definitions actually changed so back-navigation preserves answers.
-        meeting_type = socket.assigns[:meeting_type] || %{}
-        locale = socket.assigns[:locale] || Locales.booking_default_locale()
-        defs = CustomFields.snapshot_for(meeting_type, locale)
-
-        engine =
-          if defs != socket.assigns.engine.definitions,
-            do: LiveHelpers.init_questions_engine(socket, defs),
-            else: socket.assigns.engine
-
-        assign(socket, :engine, engine)
-      end
+      defp handle_state_entry(socket, :questions, _params), do: QuestionsStep.enter(socket)
 
       defp handle_state_entry(socket, :booking, params) do
         LiveHelpers.handle_booking_entry(socket, params)

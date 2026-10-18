@@ -47,6 +47,39 @@ defmodule Tymeslot.Telegram.MessageBuilder do
     """)
   end
 
+  def build_message("meeting.requested", meeting, timezone) do
+    String.trim("""
+    #{emoji(:hourglass)} <b>New Booking Request</b>
+
+    <b>#{esc(attendee_name(meeting))}</b> asked to book <i>#{esc(meeting_title(meeting))}</i>
+    #{emoji(:clock)} #{format_time(meeting, timezone)}
+    #{emoji(:email)} #{esc(meeting.attendee_email)}
+    #{deadline_line(meeting, timezone)}\
+    #{link_line(meeting)}\
+    """)
+  end
+
+  def build_message("meeting.declined", meeting, timezone) do
+    String.trim("""
+    #{emoji(:cancel)} <b>Booking Request Declined</b>
+
+    <b>#{esc(attendee_name(meeting))}</b>'s request for <i>#{esc(meeting_title(meeting))}</i> was declined
+    #{emoji(:clock)} #{format_time(meeting, timezone)}
+    #{decline_reason(meeting)}\
+    #{link_line(meeting)}\
+    """)
+  end
+
+  def build_message("meeting.request_expired", meeting, timezone) do
+    String.trim("""
+    #{emoji(:hourglass)} <b>Booking Request Expired</b>
+
+    <b>#{esc(attendee_name(meeting))}</b>'s request for <i>#{esc(meeting_title(meeting))}</i> got no answer before the deadline, so the slot was released
+    #{emoji(:clock)} #{format_time(meeting, timezone)}\
+    #{link_line(meeting)}\
+    """)
+  end
+
   def build_message(event_type, meeting, timezone) do
     String.trim("""
     #{emoji(:calendar)} <b>Meeting Update</b>
@@ -108,9 +141,12 @@ defmodule Tymeslot.Telegram.MessageBuilder do
 
     date = Calendar.strftime(start_time, "%a %d %b %Y")
     start_str = Calendar.strftime(start_time, "%H:%M")
-    end_str = Calendar.strftime(end_time, "%H:%M")
 
-    "#{date}, #{start_str}\u2013#{end_str} (#{esc(timezone)})"
+    if DateTime.to_date(end_time) == DateTime.to_date(start_time) do
+      "#{date}, #{start_str}\u2013#{Calendar.strftime(end_time, "%H:%M")} (#{esc(timezone)})"
+    else
+      "#{date}, #{start_str} \u2013 #{Calendar.strftime(end_time, "%a %d %b %H:%M")} (#{esc(timezone)})"
+    end
   end
 
   defp video_line(meeting) do
@@ -139,6 +175,33 @@ defmodule Tymeslot.Telegram.MessageBuilder do
     end
   end
 
+  defp decline_reason(meeting) do
+    reason = Map.get(meeting, :decline_reason)
+
+    if reason && String.trim(reason) != "" do
+      "\n#{emoji(:note)} Reason: #{esc(reason)}"
+    else
+      ""
+    end
+  end
+
+  # When the organiser has to answer by; absent for a request with no deadline.
+  defp deadline_line(meeting, timezone) do
+    case Map.get(meeting, :approval_deadline_at) do
+      %DateTime{} = deadline ->
+        local =
+          case DateTime.shift_zone(deadline, timezone) do
+            {:ok, dt} -> dt
+            _error -> deadline
+          end
+
+        "\n#{emoji(:hourglass)} Respond by #{Calendar.strftime(local, "%a %d %b %Y, %H:%M")} (#{esc(timezone)})"
+
+      _none ->
+        ""
+    end
+  end
+
   defp link_line(meeting) do
     uid = Map.get(meeting, :uid)
 
@@ -160,4 +223,5 @@ defmodule Tymeslot.Telegram.MessageBuilder do
   defp emoji(:video), do: "\u{1F4F9}"
   defp emoji(:note), do: "\u{1F4DD}"
   defp emoji(:check), do: "\u2705"
+  defp emoji(:hourglass), do: "\u23F3"
 end

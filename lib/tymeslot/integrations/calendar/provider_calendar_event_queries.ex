@@ -121,6 +121,10 @@ defmodule Tymeslot.Integrations.Calendar.ProviderCalendarEventQueries do
 
   @default_search_limit 50
 
+  @doc "The cap `search/3` applies when no `:limit` is given."
+  @spec default_search_limit() :: pos_integer()
+  def default_search_limit, do: @default_search_limit
+
   @doc """
   Searches a user's cached calendar events by a free-text term.
 

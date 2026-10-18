@@ -1,7 +1,7 @@
 defmodule TymeslotWeb.Dashboard.MeetingSettingsBookingLinkGatingTest do
   @moduledoc """
   Verifies the UI side of `:custom_booking_link_allowed` gating on the
-  meeting-type "Change link" action — the disabled button + Pro badge.
+  meeting-type "Change link" action — the disabled button, Pro badge and note.
   Server-side defense-in-depth against a stale/hand-crafted event is covered
   by `TymeslotWeb.Dashboard.ServiceSettingsComponentTest`, and backend
   enforcement itself by `Tymeslot.MeetingTypes.SlugGatingTest`.
@@ -59,6 +59,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettingsBookingLinkGatingTest do
       |> render_click()
 
       assert has_element?(view, "[data-testid='booking-link-pro-badge']")
+      assert has_element?(view, "[data-testid='booking-link-pro-note']")
       assert has_element?(view, "button[phx-click='open_slug_modal'][disabled]")
 
       # Phoenix.LiveViewTest itself refuses to click a disabled element, which
@@ -66,6 +67,22 @@ defmodule TymeslotWeb.Dashboard.MeetingSettingsBookingLinkGatingTest do
       # defense-in-depth (a stale client/hand-crafted event) is exercised
       # directly against the LiveComponent in ServiceSettingsComponentTest.
       assert Repo.reload!(meeting_type).slug == "original-slug"
+    end
+  end
+
+  describe "Change link button when custom_booking_link_allowed is true" do
+    test "renders enabled without a Pro badge or note", %{conn: conn, user: user} do
+      meeting_type = insert(:meeting_type, user: user, name: "Strategy Session")
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
+
+      view
+      |> element("[phx-click='edit_type'][phx-value-id='#{meeting_type.id}']")
+      |> render_click()
+
+      assert has_element?(view, "button[phx-click='open_slug_modal']:not([disabled])")
+      refute has_element?(view, "[data-testid='booking-link-pro-badge']")
+      refute has_element?(view, "[data-testid='booking-link-pro-note']")
     end
   end
 end

@@ -17,12 +17,14 @@ defmodule Tymeslot.MeetingTypes.FormMapper do
 
   alias Tymeslot.MeetingPayments
   alias Tymeslot.MeetingTypes.ApprovalWindow
+  alias Tymeslot.MeetingTypes.GroupRegistration
   alias Tymeslot.Utils.ReminderUtils
   alias Tymeslot.Validation.Constraints
 
   @typedoc "Why form input could not be mapped onto schema attributes."
   @type error ::
           :invalid_duration
+          | :invalid_max_participants
           | :invalid_price
           | :invalid_reminder_config
           | :invalid_approval_window
@@ -39,6 +41,7 @@ defmodule Tymeslot.MeetingTypes.FormMapper do
     with {:ok, duration_minutes} <- parse_duration(params["duration"]),
          {:ok, reminder_config} <- normalize_reminder_config(params["reminder_config"]),
          {:ok, payment} <- payment_attrs(params),
+         {:ok, max_participants} <- parse_max_participants(params["max_participants"]),
          {:ok, approval_window_hours} <- ApprovalWindow.parse(params["approval_window_hours"]) do
       attrs = %{
         name: params["name"],
@@ -48,29 +51,88 @@ defmodule Tymeslot.MeetingTypes.FormMapper do
         icon: ui_state.selected_icon,
         is_active: params["is_active"] == "true",
         allow_guests: params["allow_guests"] == "true",
-        allow_attachments: params["allow_attachments"] == "true",
-        show_as_free: params["show_as_free"] == "true",
-        show_email_to_bookers: params["show_email_to_bookers"] == "true",
-        show_phone_to_bookers: params["show_phone_to_bookers"] == "true",
         requires_approval: params["requires_approval"] == "true",
         approval_window_hours: approval_window_hours,
         calendar_integration_id: blank_to_nil(params["calendar_integration_id"]),
         availability_schedule_id: blank_to_nil(params["availability_schedule_id"]),
         target_calendar_id: blank_to_nil(params["target_calendar_id"]),
-        reminder_config: reminder_config
+        reminder_config: reminder_config,
+        max_participants: max_participants
       }
 
       attrs =
         attrs
         |> Map.merge(booking_limits(params))
+        |> Map.merge(fork_flags(params))
+        |> Map.merge(seat_display(params))
         |> maybe_put_custom_fields(params)
         |> maybe_put_locations(params)
         |> maybe_put_translations(params)
+        |> maybe_put_registration(params)
         |> Map.merge(payment)
+        |> unpaid_when_group()
 
       {:ok, attrs}
     end
   end
+
+  # The fork's own on/off settings (attachments, show as free, contact
+  # sharing), kept out of the attrs map above so upstream edits to it merge.
+  defp fork_flags(params) do
+    %{
+      allow_attachments: params["allow_attachments"] == "true",
+      show_as_free: params["show_as_free"] == "true",
+      show_email_to_bookers: params["show_email_to_bookers"] == "true",
+      show_phone_to_bookers: params["show_phone_to_bookers"] == "true"
+    }
+  end
+
+  # The booking page's spots display. Only keys the form posted are set, so a
+  # caller that does not render these controls cannot reset them by omission.
+  # The threshold is posted blank when the option is off; the changeset
+  # validates its range.
+  defp seat_display(params) do
+    params
+    |> Map.take(["show_seat_availability", "last_spots_threshold"])
+    |> Map.new(&seat_display_attr/1)
+  end
+
+  defp seat_display_attr({"show_seat_availability", value}),
+    do: {:show_seat_availability, value != "false"}
+
+  defp seat_display_attr({"last_spots_threshold", value}),
+    do: {:last_spots_threshold, parse_threshold(value)}
+
+  defp parse_threshold(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {count, ""} -> count
+      _blank_or_invalid -> nil
+    end
+  end
+
+  defp parse_threshold(_value), do: nil
+
+  # Payments and group bookings are mutually exclusive. A host who cannot take
+  # charges posts no payment fields at all (see `payment_attrs/1`), so turning
+  # group bookings on for a paid type has to switch the payment off here or
+  # the save is refused with no control left to fix it. The stored price is
+  # kept, exactly as it is while charges are unavailable.
+  defp unpaid_when_group(%{max_participants: limit} = attrs) when limit > 1,
+    do: Map.put(attrs, :payment_required, false)
+
+  defp unpaid_when_group(attrs), do: attrs
+
+  # Who may book a group type. Only a form that renders the group section
+  # posts these, so an absent key leaves the stored mode and list alone, the
+  # same as `maybe_put_custom_fields/2`.
+  defp maybe_put_registration(attrs, %{"registration_mode" => mode} = params) do
+    Map.merge(attrs, %{
+      registration_mode: mode,
+      invited_emails: GroupRegistration.parse_list(params["invited_emails"])
+    })
+  end
+
+  defp maybe_put_registration(attrs, _params), do: attrs
 
   # A form that cannot render the payment controls does not post them, and an
   # absent key is not a request to make the meeting type free. Both
@@ -183,6 +245,23 @@ defmodule Tymeslot.MeetingTypes.FormMapper do
   end
 
   defp parse_booking_limit(_value), do: nil
+
+  # Converts the max-participants form param into an integer participant
+  # limit. Absent or blank means a solo type and stores 1 (the column
+  # default). Bad input yields `{:error, :invalid_max_participants}` so the
+  # form surfaces it the same way an invalid price does; the 1..999 range
+  # itself is enforced by the schema changeset.
+  defp parse_max_participants(nil), do: {:ok, 1}
+  defp parse_max_participants(""), do: {:ok, 1}
+
+  defp parse_max_participants(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {limit, ""} -> {:ok, limit}
+      _invalid -> {:error, :invalid_max_participants}
+    end
+  end
+
+  defp parse_max_participants(_value), do: {:error, :invalid_max_participants}
 
   defp blank_to_nil(""), do: nil
   defp blank_to_nil(value), do: value

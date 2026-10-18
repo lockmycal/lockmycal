@@ -21,3 +21,13 @@ msgstr "Organizator nie zezwolił tej witrynie na wyświetlanie swojej strony re
 #, elixir-autogen, elixir-format
 msgid "This booking page can’t be embedded here"
 msgstr "Tej strony rezerwacji nie można tutaj osadzić"
+
+#: lib/tymeslot_web/controllers/embed_blocked_html.ex
+#, elixir-autogen, elixir-format
+msgid "It may have been renamed, paused or removed. Please contact the organiser."
+msgstr "Mógł zostać przemianowany, wstrzymany lub usunięty. Skontaktuj się z organizatorem."
+
+#: lib/tymeslot_web/controllers/embed_blocked_html.ex
+#, elixir-autogen, elixir-format
+msgid "This meeting type isn’t available"
+msgstr "Ten typ spotkania jest niedostępny"

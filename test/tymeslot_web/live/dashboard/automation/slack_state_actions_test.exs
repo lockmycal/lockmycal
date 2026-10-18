@@ -98,7 +98,7 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackStateActionsTest do
       {:ok, view, _html} = live(conn, "/dashboard/automation")
       open_slack_tab(view)
 
-      view |> element("button[aria-label^='Test']") |> render_click()
+      view |> element("button", "Test") |> render_click()
 
       assert render(view) =~ "Test message sent"
     end
@@ -113,7 +113,7 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackStateActionsTest do
       {:ok, view, _html} = live(conn, "/dashboard/automation")
       open_slack_tab(view)
 
-      view |> element("button[aria-label^='Test']") |> render_click()
+      view |> element("button", "Test") |> render_click()
 
       refute render(view) =~ "Test message sent"
     end
@@ -183,7 +183,7 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackStateActionsTest do
       open_slack_tab(view)
 
       assert {:error, {:redirect, %{to: "/api/slack/oauth/start"}}} =
-               view |> element("button[aria-label='Reconnect']") |> render_click()
+               view |> element("button", "Reconnect") |> render_click()
     end
 
     test "does not show Reconnect on active OAuth integrations", %{conn: conn, user: user} do
@@ -237,7 +237,7 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackStateActionsTest do
       {:ok, view, _html} = live(conn, "/dashboard/automation")
       open_slack_tab(view)
 
-      view |> element("button[aria-label='Re-enable']") |> render_click()
+      view |> element("button", "Re-enable") |> render_click()
 
       assert render(view) =~ "Slack integration re-enabled"
 

@@ -119,7 +119,9 @@ defmodule Mix.Tasks.Precommit do
     # once missed. Lower it again if either goes away.
     {"xref", ~w[xref graph --label compile-connected --fail-above 27], :dev},
     {"test", ~w[test], :test},
-    {"test (js)", ~w[test.js], :dev},
+    # Vitest, over the hooks under assets/js. `mix test` never reaches it, so
+    # without this step a JavaScript change could pass the whole gate unrun.
+    {"js", ~w[test.js], :dev},
     {"dialyzer", ~w[dialyzer.incremental --list-unused-filters], :dev}
   ]
 
@@ -131,17 +133,34 @@ defmodule Mix.Tasks.Precommit do
       OptionParser.parse!(argv, strict: [fail_fast: :boolean, affected: :boolean, base: :string])
 
     fail_fast? = Keyword.get(opts, :fail_fast, false)
+    {steps, inapplicable} = applicable(@steps, File.dir?("assets/js"))
 
     if opts[:affected] do
-      narrowed = Affected.narrow(@steps, base: opts[:base])
+      narrowed = Affected.narrow(steps, base: opts[:base])
 
       Runner.run(narrowed.steps, fail_fast?,
-        skipped: narrowed.skipped,
+        skipped: narrowed.skipped ++ inapplicable,
         suite_plan: suite_plan(narrowed.suite)
       )
     else
       if opts[:base], do: Mix.raise("--base only applies together with --affected")
-      Runner.run(@steps, fail_fast?, suite_plan: &CpuBudget.suite_plan/0)
+      Runner.run(steps, fail_fast?, skipped: inapplicable, suite_plan: &CpuBudget.suite_plan/0)
+    end
+  end
+
+  # The gate is Core's, but a project that builds on Core (the paid overlay)
+  # runs it too, and `test.js` is an alias of Core's own mix.exs: a project
+  # without `assets/js` has no JavaScript tests and no such task. Reported as
+  # skipped, with the reason, so it never reads as a gate that quietly passed.
+  @doc false
+  @spec applicable([Runner.step()], boolean()) :: {[Runner.step()], [{String.t(), String.t()}]}
+  def applicable(steps, js_tests?) do
+    {js, rest} = Enum.split_with(steps, &match?({_name, ["test.js" | _more], _env}, &1))
+
+    if js_tests? or js == [] do
+      {steps, []}
+    else
+      {rest, Enum.map(js, fn {name, _args, _env} -> {name, "this project has no assets/js"} end)}
     end
   end
 

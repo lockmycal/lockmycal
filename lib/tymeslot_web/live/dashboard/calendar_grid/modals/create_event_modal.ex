@@ -11,7 +11,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModal do
   alias Tymeslot.Locales
   alias Tymeslot.Meetings.Guests
   alias Tymeslot.Meetings.MeetingSchema
+  alias Tymeslot.MeetingTypes.ReminderValidation
   alias TymeslotWeb.Components.Dashboard.ContactPicker
+  alias TymeslotWeb.Components.Shared.ReminderPicker
+  alias TymeslotWeb.Components.Shared.ReminderPickerState
   alias TymeslotWeb.Components.UI.StatusSwitch
   alias TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
@@ -52,6 +55,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModal do
       # the mode toggle and the picker follow what can be written to, not what
       # is connected.
       |> assign(:targets, Calendar.writable_integrations(assigns.integrations))
+      |> assign(
+        :reminder_picker,
+        assigns.creating_event[:meeting_reminders] || ReminderPickerState.new()
+      )
 
     ~H"""
     <.modal
@@ -82,35 +89,22 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModal do
             meeting mode, the only kind that can exist without one. --%>
       <:subheader :if={@targets != [] and @show_mode_toggle}>
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <div
-            class="inline-flex shrink-0 rounded-token-lg border border-neutral-300 dark:border-twilight-indigo-700 p-1 gap-1"
-            role="tablist"
-            aria-label={dgettext("dashboard_calendar_events", "What to create")}
+          <.segmented_control
+            id="create-mode"
+            value={if @meeting_mode, do: "meeting", else: "event"}
+            on_change="set_create_mode"
+            param="mode"
+            target={@myself}
+            aria_label={dgettext("dashboard_calendar_events", "What to create")}
+            class="shrink-0"
           >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={to_string(!@meeting_mode)}
-              phx-click="set_create_mode"
-              phx-value-mode="event"
-              phx-target={@myself}
-              class={mode_tab_class(!@meeting_mode)}
-            >
-              {dgettext("dashboard_calendar_events", "Event")}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={to_string(@meeting_mode)}
-              phx-click="set_create_mode"
-              phx-value-mode="meeting"
-              phx-target={@myself}
-              data-testid="create-mode-meeting"
-              class={mode_tab_class(@meeting_mode)}
-            >
-              {dgettext("dashboard_calendar_events", "Meeting with a guest")}
-            </button>
-          </div>
+            <:option value="event" label={dgettext("dashboard_calendar_events", "Event")} />
+            <:option
+              value="meeting"
+              label={dgettext("dashboard_calendar_events", "Meeting with a guest")}
+              testid="create-mode-meeting"
+            />
+          </.segmented_control>
           <p
             :if={@meeting_mode}
             class="flex-1 min-w-[12rem] text-token-sm leading-snug text-neutral-500 dark:text-twilight-indigo-300"
@@ -193,7 +187,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModal do
             <div :if={@creating_event[:guest_emails] != []} class="flex flex-wrap gap-1.5 mb-2">
               <span
                 :for={email <- @creating_event[:guest_emails] || []}
-                class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-primary-50 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-700 text-token-xs text-primary-800 dark:text-primary-300"
+                class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-token-full bg-primary-50 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-700 text-token-xs text-primary-800 dark:text-primary-300"
               >
                 {email}
                 <button
@@ -201,10 +195,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModal do
                   phx-click="remove_create_guest"
                   phx-value-email={email}
                   phx-target={@myself}
-                  class="w-4 h-4 rounded-full hover:bg-primary-200 flex items-center justify-center transition-colors"
+                  class="w-4 h-4 rounded-token-full hover:bg-primary-200 flex items-center justify-center transition-colors"
                   aria-label={dgettext("dashboard_calendar_events", "Remove %{email}", email: email)}
                 >
-                  <.icon name="hero-x-mark" class="w-2.5 h-2.5" />
+                  <.icon name="hero-x-mark-micro" class="w-2.5 h-2.5" />
                 </button>
               </span>
             </div>
@@ -398,14 +392,45 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModal do
           </div>
         </div>
 
-        <%!-- Reminders, in both modes: synced to the calendar as a VALARM, and
-              for a meeting also folded into the reminder email Tymeslot already
-              sends (see `Tymeslot.Integrations.Calendar.CalendarEventBuilder`).
-              A meeting doesn't repeat. --%>
-        <div>
+        <%!-- Meeting mode's reminders: the emails the app sends before the
+              meeting, the same ones a meeting type configures, also written to
+              the calendar as VALARMs (see
+              `Tymeslot.Integrations.Calendar.CalendarEventBuilder`). The
+              picker's custom row posts through `phx-change`, a form binding,
+              so it sits in a form of its own; `phx-submit` makes Enter in the
+              number field add the reminder rather than reload the page. --%>
+        <form
+          :if={@meeting_mode}
+          id="create-meeting-reminders-form"
+          phx-change="meeting_update_reminder_input"
+          phx-submit="meeting_add_reminder"
+          phx-target={@myself}
+        >
+          <ReminderPicker.reminder_picker
+            reminders={@reminder_picker.reminders}
+            max_reminders={ReminderValidation.max_reminders()}
+            new_reminder_value={@reminder_picker.new_reminder_value}
+            new_reminder_unit={@reminder_picker.new_reminder_unit}
+            reminder_error={@reminder_picker.reminder_error}
+            show_custom_reminder={@reminder_picker.show_custom_reminder}
+            description={
+              dngettext(
+                "dashboard_calendar_events",
+                "Add up to %{count} reminder email for this meeting. The guest and anyone else invited receive it.",
+                "Add up to %{count} reminder emails for this meeting. The guest and anyone else invited receive it.",
+                ReminderValidation.max_reminders()
+              )
+            }
+            event_prefix="meeting_"
+            myself={@myself}
+          />
+        </form>
+
+        <%!-- Event mode: repeat, and alarms the calendar provider fires on the
+              organiser's own devices. --%>
+        <div :if={!@meeting_mode}>
           <div class="grid gap-4 sm:grid-cols-2">
             <RecurrenceEditor.recurrence_editor
-              :if={!@meeting_mode}
               recurrence_rule={@creating_event[:recurrence_rule]}
               timezone={@user_timezone}
               myself={@myself}
@@ -418,7 +443,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModal do
               remove_event="remove_create_reminder"
             />
           </div>
-          <RemindersEditor.hint :if={!@meeting_mode} />
+          <RemindersEditor.hint />
         </div>
 
         <%!-- Attendees of a plain event, invited by the calendar provider. --%>
@@ -429,7 +454,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModal do
           <div :if={@creating_event[:attendees] != []} class="flex flex-wrap gap-1.5 mb-2">
             <span
               :for={email <- @creating_event[:attendees] || []}
-              class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-dashed border-amber-300 dark:border-amber-700 text-token-xs text-amber-800 dark:text-amber-300"
+              class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-token-full bg-amber-50 dark:bg-amber-950/40 border border-dashed border-amber-300 dark:border-amber-700 text-token-xs text-amber-800 dark:text-amber-300"
             >
               {email}
               <button
@@ -437,10 +462,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModal do
                 phx-click="remove_create_attendee"
                 phx-value-email={email}
                 phx-target={@myself}
-                class="w-4 h-4 rounded-full hover:bg-amber-200 flex items-center justify-center transition-colors"
+                class="w-4 h-4 rounded-token-full hover:bg-amber-200 flex items-center justify-center transition-colors"
                 aria-label={dgettext("dashboard_calendar_events", "Remove %{email}", email: email)}
               >
-                <.icon name="hero-x-mark" class="w-2.5 h-2.5" />
+                <.icon name="hero-x-mark-micro" class="w-2.5 h-2.5" />
               </button>
             </span>
           </div>
@@ -502,12 +527,4 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.CreateEventModal do
     </.modal>
     """
   end
-
-  defp mode_tab_class(true),
-    do:
-      "px-4 py-1.5 rounded-token-md text-token-sm font-semibold bg-primary-600 text-white transition-colors"
-
-  defp mode_tab_class(false),
-    do:
-      "px-4 py-1.5 rounded-token-md text-token-sm font-semibold text-neutral-600 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-twilight-indigo-800 transition-colors"
 end

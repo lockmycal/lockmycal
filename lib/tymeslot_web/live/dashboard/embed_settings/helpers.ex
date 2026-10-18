@@ -23,6 +23,76 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers do
   @spec valid_layouts() :: [String.t()]
   def valid_layouts, do: ThemeContext.valid_layouts()
 
+  @settings_defaults %{
+    selected_embed_type: "inline",
+    embed_layout: "column",
+    embed_locale: "",
+    embed_meeting: "",
+    embed_background_mode: "default",
+    embed_background_color: "#ffffff",
+    initial_height: nil,
+    max_width: nil
+  }
+
+  @doc """
+  The Customise panel's choices and the picked style, as stored in
+  `profiles.embed_settings`: a string-keyed map of the assigns that differ
+  from nothing, so a profile that never touched the panel stores nothing.
+  """
+  @spec stored_settings(map()) :: %{String.t() => String.t()}
+  def stored_settings(assigns) do
+    for key <- Map.keys(@settings_defaults),
+        value = assigns[key],
+        is_binary(value),
+        into: %{},
+        do: {Atom.to_string(key), value}
+  end
+
+  @doc """
+  The Customise panel's assigns restored from `profiles.embed_settings`. Every
+  value is checked again (a stored choice can outlive what made it valid,
+  such as a language dropped from the supported list); anything unusable
+  falls back to the panel's default.
+  """
+  @spec restore_settings(map() | nil) :: map()
+  def restore_settings(stored) do
+    stored = stored || %{}
+
+    Map.new(@settings_defaults, fn {key, default} ->
+      value = stored[Atom.to_string(key)]
+      {key, if(valid_setting?(key, value), do: value, else: default)}
+    end)
+  end
+
+  defp valid_setting?(_key, nil), do: false
+  defp valid_setting?(:selected_embed_type, value), do: value in valid_embed_types()
+  defp valid_setting?(:embed_layout, value), do: value in valid_layouts()
+  defp valid_setting?(:embed_locale, value), do: value == "" or value in Locales.supported_codes()
+  defp valid_setting?(:embed_meeting, value), do: value == "" or sanitize_meeting(value) != nil
+  defp valid_setting?(:embed_background_mode, value), do: value in background_modes()
+
+  defp valid_setting?(:embed_background_color, value),
+    do: is_binary(value) and Regex.match?(~r/^#[0-9a-f]{6}$/, value)
+
+  defp valid_setting?(key, value) when key in [:initial_height, :max_width],
+    do: sanitize_int_in_range(value, 200, 2000) != nil
+
+  @doc "Returns the widget background choices of the Customise panel."
+  @spec background_modes() :: [String.t()]
+  def background_modes, do: ~w(default transparent color)
+
+  @doc """
+  The widget background the snippets carry, from the Customise panel's
+  assigns: `""` for the theme's own, `"transparent"`, or the picked colour.
+  """
+  @spec embed_background(map()) :: String.t()
+  def embed_background(%{embed_background_mode: "transparent"}), do: "transparent"
+
+  def embed_background(%{embed_background_mode: "color", embed_background_color: color}),
+    do: color
+
+  def embed_background(_assigns), do: ""
+
   @doc """
   Returns `{name, code}` tuples for the supported booking languages, for the
   embed language picker. The empty-value "Auto" option is added at the call
@@ -36,7 +106,8 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers do
   @doc """
   Builds the options map expected by `embed_code/2` from socket assigns.
 
-  Remaps `:embed_layout` → `:layout` and collects `:initial_height`,
+  Remaps `:embed_layout` → `:layout` (and `:embed_locale`, `:embed_meeting`
+  the same way) and collects `:initial_height`,
   `:max_width`, `:username`, `:base_url`, and `:booking_url` in one place
   so both the on-screen snippet renderer and the copy handler stay in sync.
   """
@@ -48,6 +119,8 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers do
       booking_url: assigns[:booking_url],
       layout: assigns[:embed_layout],
       locale: assigns[:embed_locale],
+      meeting: assigns[:embed_meeting],
+      background: embed_background(assigns),
       initial_height: assigns[:initial_height],
       max_width: assigns[:max_width]
     }
@@ -77,6 +150,8 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers do
 
     attrs =
       Enum.join([
+        data_attr("meeting", sanitize_meeting(options[:meeting])),
+        data_attr("background", sanitize_background(options[:background])),
         data_attr("locale", sanitize_locale(options[:locale])),
         data_attr("theme", sanitize_theme(options[:theme])),
         data_attr("primary-color", sanitize_primary_color(options[:primary_color])),
@@ -122,7 +197,7 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers do
     label = escape(snippet_label("link", options))
 
     String.trim("""
-    <a href="#{booking_url}#{query}">#{label}</a>
+    <a href="#{booking_url}#{meeting_path(options)}#{query}">#{label}</a>
     """)
   end
 
@@ -158,6 +233,8 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers do
   defp build_js_options(options) do
     js_list =
       %{
+        meeting: sanitize_meeting(options[:meeting]),
+        background: sanitize_background(options[:background]),
         locale: sanitize_locale(options[:locale]),
         theme: sanitize_theme(options[:theme]),
         primaryColor: sanitize_primary_color(options[:primary_color]),
@@ -247,6 +324,12 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers do
   defp escape(nil), do: ""
   defp escape(val), do: val |> HTML.html_escape() |> HTML.safe_to_string()
 
+  # The booking widget's alias (`Tymeslot.Profiles.EmbedAlias`) stands where
+  # the username would and is no username, so it has its own shape check.
+  defp sanitize_username("_" <> token = embed_alias) do
+    if Regex.match?(~r/^[a-z2-7]+$/, token), do: embed_alias, else: "invalid-username"
+  end
+
   defp sanitize_username(username) do
     with {:ok, sanitized} <- UniversalSanitizer.sanitize_and_validate(username || ""),
          :ok <- UsernameValidator.validate(sanitized) do
@@ -254,6 +337,26 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers do
     else
       {:error, _error} -> "invalid-username"
     end
+  end
+
+  defp meeting_path(options) do
+    case sanitize_meeting(options[:meeting]) do
+      nil -> ""
+      slug -> "/" <> slug
+    end
+  end
+
+  # A meeting type slug in the shape `MeetingTypeSchema` accepts, the same
+  # check embed.js applies to `data-meeting`. It goes into a path and a
+  # single-quoted JS string, so nothing else may pass.
+  defp sanitize_meeting(value) when is_binary(value) do
+    if Regex.match?(~r/^[a-z0-9]+(?:-[a-z0-9]+)*$/, value), do: value, else: nil
+  end
+
+  defp sanitize_meeting(_value), do: nil
+
+  defp sanitize_background(value) do
+    if ThemeContext.valid_embed_background?(value), do: value, else: nil
   end
 
   defp sanitize_theme(nil), do: nil

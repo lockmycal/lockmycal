@@ -16,7 +16,8 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Calendar.DefaultCalendar
 
   alias Phoenix.LiveView.JS
   alias Tymeslot.Integrations.Calendar
-  alias TymeslotWeb.Components.CoreComponents
+  alias TymeslotWeb.Components.CoreComponents.Buttons
+  alias TymeslotWeb.Components.CoreComponents.Modal
   alias TymeslotWeb.Dashboard.CalendarSettingsComponent
   alias TymeslotWeb.Live.Shared.Flash
 
@@ -108,7 +109,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Calendar.DefaultCalendar
   def render(assigns) do
     ~H"""
     <div id={@id}>
-      <CoreComponents.modal
+      <Modal.modal
         id={"#{@id}-dialog"}
         show={@show}
         on_cancel={JS.push("hide", target: @myself)}
@@ -141,18 +142,18 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Calendar.DefaultCalendar
             options={Enum.map(@choices, &{&1.name || &1.id, &1.id})}
           />
           <div class="flex justify-end gap-3">
-            <CoreComponents.action_button
+            <Buttons.action_button
               variant={:secondary}
               phx-click={JS.push("hide", target: @myself)}
             >
               {dgettext("dashboard_calendar_settings", "Cancel")}
-            </CoreComponents.action_button>
-            <CoreComponents.action_button type="submit">
+            </Buttons.action_button>
+            <Buttons.action_button type="submit">
               {dgettext("dashboard_calendar_settings", "Set as default")}
-            </CoreComponents.action_button>
+            </Buttons.action_button>
           </div>
         </.form>
-      </CoreComponents.modal>
+      </Modal.modal>
     </div>
     """
   end

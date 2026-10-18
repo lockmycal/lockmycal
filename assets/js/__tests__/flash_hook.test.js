@@ -19,7 +19,8 @@ function makeHook({ close } = {}) {
   el.setAttribute('phx-click', DISMISS);
   if (close !== undefined) el.dataset.close = close;
   const exec = vi.fn();
-  const hook = Object.assign(Object.create(Flash), { el, js: () => ({ exec }) });
+  const liveSocket = { execJS: (_el, commands) => exec(commands) };
+  const hook = Object.assign(Object.create(Flash), { el, liveSocket });
   return { hook, el, exec };
 }
 

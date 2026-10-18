@@ -11,7 +11,9 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.DeleteMeetingModal do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Phoenix.LiveView.JS
-  alias TymeslotWeb.Components.CoreComponents
+  alias TymeslotWeb.Components.CoreComponents.Buttons
+  alias TymeslotWeb.Components.CoreComponents.Icons
+  alias TymeslotWeb.Components.CoreComponents.Modal
   alias TymeslotWeb.Components.Dashboard.Meetings.Helpers
 
   @doc """
@@ -41,10 +43,10 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.DeleteMeetingModal do
   @spec delete_meeting_modal(map()) :: Phoenix.LiveView.Rendered.t()
   def delete_meeting_modal(assigns) do
     ~H"""
-    <CoreComponents.modal id={@id} show={@show} on_cancel={@on_cancel} size={:medium}>
+    <Modal.modal id={@id} show={@show} on_cancel={@on_cancel} size={:medium}>
       <:header>
         <div class="flex items-center gap-2">
-          <CoreComponents.icon name="hero-trash" class="w-5 h-5 text-red-500" />
+          <Icons.icon name="hero-trash" class="w-5 h-5 text-red-500" />
           {dgettext("dashboard_bookings", "Delete Meeting")}
         </div>
       </:header>
@@ -67,10 +69,10 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.DeleteMeetingModal do
 
       <:footer>
         <div class="flex justify-end gap-3">
-          <CoreComponents.action_button variant={:secondary} phx-click={@on_cancel}>
+          <Buttons.action_button variant={:secondary} phx-click={@on_cancel}>
             {dgettext("dashboard_bookings", "Keep")}
-          </CoreComponents.action_button>
-          <CoreComponents.loading_button
+          </Buttons.action_button>
+          <Buttons.loading_button
             type="submit"
             form="delete-meeting-form"
             variant={:danger}
@@ -78,10 +80,10 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.DeleteMeetingModal do
             loading_text={dgettext("dashboard_bookings", "Deleting...")}
           >
             {dgettext("dashboard_bookings", "Delete Meeting")}
-          </CoreComponents.loading_button>
+          </Buttons.loading_button>
         </div>
       </:footer>
-    </CoreComponents.modal>
+    </Modal.modal>
     """
   end
 end

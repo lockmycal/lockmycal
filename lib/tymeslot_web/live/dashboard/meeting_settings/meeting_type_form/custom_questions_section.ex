@@ -15,7 +15,6 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.CustomQuestionsS
   alias Ecto.UUID
   alias Phoenix.LiveView
   alias Tymeslot.CustomFields.FieldDefinition
-  alias TymeslotWeb.Components.CoreComponents
   alias TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm
 
   @impl Phoenix.LiveComponent
@@ -33,13 +32,15 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.CustomQuestionsS
     # SaaS hasn't registered a placeholder component — render a minimal lock
     # notice rather than nothing, so the operator notices the misconfiguration.
     ~H"""
-    <section class="card-glass py-6 text-center">
-      <p class="text-token-sm text-neutral-500 dark:text-twilight-indigo-200">
-        {dgettext(
-          "dashboard_meeting_form",
-          "Custom booking questions are not available on your current plan."
-        )}
-      </p>
+    <section>
+      <.card class="text-center">
+        <p class="text-token-sm text-neutral-500 dark:text-twilight-indigo-300">
+          {dgettext(
+            "dashboard_meeting_form",
+            "Custom booking questions are not available on your current plan."
+          )}
+        </p>
+      </.card>
     </section>
     """
   end
@@ -60,132 +61,105 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.CustomQuestionsS
   def render(assigns) do
     ~H"""
     <section class="space-y-4">
-      <div class="flex items-start justify-between gap-4">
-        <div class="flex items-center gap-2">
-          <CoreComponents.icon name="hero-question-mark-circle" class="w-5 h-5 text-primary-500" />
-          <h3 class="text-token-base font-semibold text-neutral-800 dark:text-neutral-100">
-            {dgettext("dashboard_meeting_form", "Custom questions")}
-          </h3>
-        </div>
-        <CoreComponents.action_button
-          type="button"
-          variant={:secondary}
-          phx-click="add_question"
-          phx-target={@myself}
-        >
-          {dgettext("dashboard_meeting_form", "Add question")}
-        </CoreComponents.action_button>
-      </div>
-
-      <div class="card-glass space-y-4">
-        <p class="text-token-sm text-neutral-500 dark:text-twilight-indigo-200">
-          {dgettext(
+      <.subsection_header
+        icon="hero-question-mark-circle"
+        title={dgettext("dashboard_meeting_form", "Custom questions")}
+        description={
+          dgettext(
             "dashboard_meeting_form",
             "Ask bookers extra questions during the booking flow."
-          )}
-        </p>
-
-        <%= if @custom_fields == [] do %>
-          <div class="py-6 text-center">
-            <CoreComponents.icon
-              name="hero-question-mark-circle"
-              class="w-8 h-8 mx-auto mb-2 text-neutral-400"
-            />
-            <p class="text-token-sm font-medium text-neutral-700 dark:text-neutral-200">
-              {dgettext("dashboard_meeting_form", "No custom questions yet")}
-            </p>
-            <p class="text-token-xs text-neutral-500 mt-1">
-              {dgettext(
-                "dashboard_meeting_form",
-                "Add a question and bookers will be asked it when they book this meeting type."
-              )}
-            </p>
-          </div>
-        <% else %>
-          <ul
-            id={"custom-questions-list-#{@form_id}"}
-            phx-hook="QuestionsSortable"
+          )
+        }
+      >
+        <:actions>
+          <.action_button
+            type="button"
+            variant={:secondary}
+            phx-click="add_question"
             phx-target={@myself}
-            data-target={@myself}
-            class="space-y-2"
           >
-            <%= for {q, i} <- Enum.with_index(@custom_fields) do %>
-              <li
-                class="flex items-center gap-3 rounded-token-lg bg-neutral-50 dark:bg-twilight-indigo-900/60 px-4 py-3"
-                data-id={q.id}
-                data-index={i}
-                draggable="true"
-              >
-                <%!-- Drag handle --%>
-                <span class="drag-handle cursor-grab active:cursor-grabbing text-neutral-400 shrink-0">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M4 8h16M4 16h16"
-                    />
-                  </svg>
+            {dgettext("dashboard_meeting_form", "Add question")}
+          </.action_button>
+        </:actions>
+      </.subsection_header>
+
+      <%= if @custom_fields == [] do %>
+        <.empty_state
+          icon="hero-question-mark-circle"
+          size={:sm}
+          title={dgettext("dashboard_meeting_form", "No custom questions yet")}
+          description={
+            dgettext(
+              "dashboard_meeting_form",
+              "Add a question and bookers will be asked it when they book this meeting type."
+            )
+          }
+        />
+      <% else %>
+        <ul
+          id={"custom-questions-list-#{@form_id}"}
+          phx-hook="QuestionsSortable"
+          phx-target={@myself}
+          data-target={@myself}
+          class="space-y-2"
+        >
+          <%= for {q, i} <- Enum.with_index(@custom_fields) do %>
+            <.card
+              tag="li"
+              variant={:flat}
+              padding={:xs}
+              class="flex items-center gap-3"
+              data-id={q.id}
+              data-index={i}
+              draggable="true"
+            >
+              <%!-- Drag handle --%>
+              <span class="drag-handle cursor-grab active:cursor-grabbing text-neutral-400 shrink-0 dark:text-twilight-indigo-300">
+                <.icon name="hero-bars-2" class="w-4 h-4" />
+              </span>
+
+              <%!-- Question info --%>
+              <div class="flex-1 min-w-0">
+                <span class="text-token-sm font-medium text-neutral-800 truncate block dark:text-neutral-100">
+                  {q.label}
                 </span>
+                <span class="text-token-xs text-neutral-500 dark:text-twilight-indigo-300">
+                  {human_type(q.type)}
+                  <%= if q.required do %>
+                    <span class="ml-1 text-token-xs text-primary-600 font-medium">
+                      · {dgettext("dashboard_meeting_form", "required")}
+                    </span>
+                  <% end %>
+                </span>
+              </div>
 
-                <%!-- Question info --%>
-                <div class="flex-1 min-w-0">
-                  <span class="text-token-sm font-medium text-neutral-800 dark:text-neutral-100 truncate block">
-                    {q.label}
-                  </span>
-                  <span class="text-token-xs text-neutral-500">
-                    {human_type(q.type)}
-                    <%= if q.required do %>
-                      <span class="ml-1 text-token-xs text-primary-600 font-medium">
-                        · {dgettext("dashboard_meeting_form", "required")}
-                      </span>
-                    <% end %>
-                  </span>
-                </div>
-
-                <%!-- Actions --%>
-                <div class="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    phx-click="edit_question"
-                    phx-value-id={q.id}
-                    phx-target={@myself}
-                    class="row-action-button row-action-button--icon-only row-action-button--neutral"
-                    title={dgettext("dashboard_meeting_form", "Edit")}
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
-                  </button>
-
-                  <button
-                    type="button"
-                    phx-click="delete_question"
-                    phx-value-id={q.id}
-                    phx-target={@myself}
-                    class="row-action-button row-action-button--danger"
-                    title={dgettext("dashboard_meeting_form", "Delete")}
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </li>
-            <% end %>
-          </ul>
-        <% end %>
-      </div>
+              <%!-- Actions --%>
+              <div class="flex items-center gap-1 shrink-0">
+                <.action_button
+                  type="button"
+                  variant={:secondary}
+                  phx-click="edit_question"
+                  phx-value-id={q.id}
+                  phx-target={@myself}
+                  size={:sm}
+                >
+                  {dgettext("dashboard_meeting_form", "Edit")}
+                </.action_button>
+                <.action_button
+                  type="button"
+                  variant={:danger_soft}
+                  phx-click="delete_question"
+                  phx-value-id={q.id}
+                  phx-target={@myself}
+                  size={:sm}
+                >
+                  {dgettext("dashboard_meeting_form", "Delete")}
+                </.action_button>
+              </div>
+            </.card>
+          <% end %>
+        </ul>
+      <% end %>
     </section>
     """
   end

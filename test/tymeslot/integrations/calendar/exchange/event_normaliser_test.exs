@@ -62,6 +62,30 @@ defmodule Tymeslot.Integrations.Calendar.Exchange.EventNormaliserTest do
       assert event.provider_metadata == %{"calendar_item_type" => "Single"}
     end
 
+    test "reads the item's reminder only when it is switched on" do
+      reminder = fn set, minutes ->
+        String.replace(
+          @timed_item,
+          "</t:CalendarItem>",
+          "<t:ReminderIsSet>#{set}</t:ReminderIsSet>" <>
+            "<t:ReminderMinutesBeforeStart>#{minutes}</t:ReminderMinutesBeforeStart></t:CalendarItem>"
+        )
+      end
+
+      assert {:ok, [on]} =
+               EventNormaliser.normalise_events(items([reminder.("true", 30)]), @context)
+
+      assert on.reminders == [%{method: :popup, minutes_before: 30}]
+
+      assert {:ok, [off]} =
+               EventNormaliser.normalise_events(items([reminder.("false", 15)]), @context)
+
+      assert off.reminders == []
+
+      assert {:ok, [none]} = EventNormaliser.normalise_events(items([@timed_item]), @context)
+      assert none.reminders == []
+    end
+
     test "leaves the optional content fields nil when the server omits them" do
       item = """
       <t:CalendarItem>

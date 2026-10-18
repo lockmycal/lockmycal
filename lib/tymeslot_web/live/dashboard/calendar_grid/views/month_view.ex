@@ -7,6 +7,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView do
   alias TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
   alias TymeslotWeb.Dashboard.CalendarGrid.Views.EventBadges
+  alias TymeslotWeb.Dashboard.DashboardFormat
   alias TymeslotWeb.Helpers.LocaleFormat
 
   # Vertical rhythm for the bar band, in rem. The day number occupies the top
@@ -141,7 +142,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView do
             {Helpers.open_event_attrs(seg.event)}
             phx-target={@myself}
             title={
-              "#{seg.event.summary || dgettext("dashboard_calendar", "(No title)")} · #{Helpers.format_display_time_range(seg.event, Helpers.time_format(@assigns_ref), @assigns_ref.user_timezone)}"
+              "#{DashboardFormat.title(seg.event.summary)} · #{Helpers.format_display_time_range(seg.event, Helpers.time_format(@assigns_ref), @assigns_ref.user_timezone)}"
             }
           >
             <img
@@ -152,8 +153,9 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView do
             /><%!-- `min-w-0` overrides the flex item's default `min-width: auto`,
                   which otherwise lets a long summary's intrinsic width win over
                   the bar's fixed `calc()` width and spill past its right edge
-                  into the next day's column instead of truncating. --%><span class="truncate min-w-0">{seg.event.summary ||
-              dgettext("dashboard_calendar", "(No title)")}</span>
+                  into the next day's column instead of truncating. --%><span class="truncate min-w-0">{DashboardFormat.title(
+              seg.event.summary
+            )}</span>
           </div>
         </div>
       </div>
@@ -219,11 +221,12 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView do
             src="/images/brand/logo.svg"
             alt=""
             class="inline-block w-3 h-3 opacity-60 mr-0.5 align-text-bottom"
-          /><AttendeeAttachments.marker attachments={Map.get(event, :attendee_attachments)} />{event.summary ||
-            dgettext("dashboard_calendar", "(No title)")}<span
+          /><AttendeeAttachments.marker attachments={Map.get(event, :attendee_attachments)} />{DashboardFormat.title(
+            event.summary
+          )}<span
             :if={EventBadges.guest_summary_for_event(@assigns_ref.guest_rsvp_summaries, event)}
             class={[
-              "inline-block w-1.5 h-1.5 rounded-full ml-0.5 align-middle",
+              "inline-block w-1.5 h-1.5 rounded-token-full ml-0.5 align-middle",
               EventBadges.guest_dot_tone(
                 EventBadges.guest_summary_for_event(@assigns_ref.guest_rsvp_summaries, event)
               )
@@ -251,7 +254,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView do
           :if={List.first(@chips)}
           class={"rounded px-1 text-token-xs truncate #{Helpers.event_block_class(@assigns_ref, List.first(@chips))}"}
         >
-          {List.first(@chips).summary || dgettext("dashboard_calendar", "(No title)")}
+          {DashboardFormat.title(List.first(@chips).summary)}
         </div>
         <div
           :if={length(@chips) > 1}
@@ -315,6 +318,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView do
 
   # Today is told apart by its cell's tint (`Helpers.month_cell_class/2`), not
   # by its number.
-  defp day_number_class(false = _is_current_month), do: "text-neutral-400"
+  defp day_number_class(false = _is_current_month),
+    do: "text-neutral-400 dark:text-twilight-indigo-300"
+
   defp day_number_class(_is_current_month), do: "text-neutral-800 dark:text-neutral-200"
 end

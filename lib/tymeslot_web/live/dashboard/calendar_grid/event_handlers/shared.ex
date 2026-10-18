@@ -8,13 +8,15 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
   import Phoenix.LiveView, only: [push_navigate: 2]
 
   alias Tymeslot.Clock
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Integrations.Calendar
   alias Tymeslot.Integrations.Calendar.EventColour
-  alias Tymeslot.Integrations.Calendar.Recurrence.RRule
   alias Tymeslot.Locales
+  alias Tymeslot.Meetings
   alias Tymeslot.Meetings.Guests
   alias Tymeslot.Security.RateLimiter
   alias Tymeslot.Utils.DateTimeUtils
+  alias TymeslotWeb.Components.Shared.ReminderPickerState
   alias TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
 
@@ -32,16 +34,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
   end
 
   def close_linked_detail(socket), do: socket
-
-  @weekday_atoms %{
-    "mo" => :mo,
-    "tu" => :tu,
-    "we" => :we,
-    "th" => :th,
-    "fr" => :fr,
-    "sa" => :sa,
-    "su" => :su
-  }
 
   @spec parse_int(binary()) :: {:ok, integer()} | :error
   @spec parse_int(term()) :: :error
@@ -186,152 +178,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
   defp parse_reminder_method("email"), do: {:ok, :email}
   defp parse_reminder_method(_other), do: :error
 
-  @doc """
-  The timezone a recurring event's UNTIL date ends its day in: the event's own,
-  falling back to the organiser's profile zone for an event that carries none.
-
-  A series belongs to the calendar it sits on, not to whoever is looking at it,
-  so reading the organiser's zone for both is only right while they agree. An
-  organiser in `Europe/Tallinn` ending an `America/Los_Angeles` series on 31
-  December otherwise gets an UNTIL at 13:59 Los Angeles time, cutting that day's
-  afternoon occurrences; west-to-east the mirror case adds one.
-
-  Creates pass the organiser's zone directly and do not call this: an event
-  being drawn on the grid has no zone of its own yet, and the grid's wall clock
-  is the organiser's.
-  """
-  @spec recurrence_timezone(map() | nil, String.t() | nil) :: String.t() | nil
-  def recurrence_timezone(event, user_timezone)
-  def recurrence_timezone(nil, user_timezone), do: user_timezone
-
-  def recurrence_timezone(event, user_timezone) do
-    case Map.get(event, :timezone) do
-      zone when is_binary(zone) and zone != "" -> zone
-      _none -> user_timezone
-    end
-  end
-
-  @doc """
-  Composes a canonical RRULE string from the recurrence editor's raw form
-  fields (`freq`, `interval`, `by_day[]`, `end_type`, `count`, `until`).
-
-  Returns `nil` when no frequency is chosen ("Does not repeat") or the fields do
-  not describe a valid rule. Unrecognised frequencies and malformed end
-  conditions degrade gracefully — a bad `count` simply yields a never-ending
-  rule rather than failing.
-
-  The optional `event_context` map may include:
-    - `:start_date` — a `Date.t()` used to reject an `until` that precedes the
-      event start (which would produce a dead rule with zero occurrences).
-    - `:all_day` — a boolean that controls UNTIL value-type: all-day recurring
-      events must emit `UNTIL=YYYYMMDD` (RFC 5545 §3.3.10) rather than the
-      default UTC date-time form.
-    - `:timezone` — the timezone whose day the UNTIL date ends, from
-      `recurrence_timezone/2`. A timed event's UNTIL is an instant, so the date
-      the form supplies has to end its day in a zone rather than in UTC, or the
-      series ends a day early west of UTC and a day late east of it.
-    - `:reference_date` — the date a default end date counts from, when
-      `:start_date` isn't given (a new event, whose start can still change).
-
-  Picking "After" or "On date" sends no `count` / `until` yet: the field for it
-  only appears once the rule has one. That first change therefore gets a
-  default — `default_recurrence_count/0` occurrences, or an end a month after
-  the event's start — so the choice sticks and its field shows up. A value the
-  organiser typed that doesn't parse still yields a never-ending rule.
-
-  Returns `{:error, :until_before_start}` when `until` precedes `:start_date`.
-  """
-  @spec compose_recurrence_rule(map(), map()) :: String.t() | nil | {:error, :until_before_start}
-  def compose_recurrence_rule(params, event_context \\ %{}) do
-    case parse_freq(params["freq"]) do
-      nil ->
-        nil
-
-      freq ->
-        opts =
-          %{freq: freq}
-          |> put_interval(params["interval"])
-          |> put_by_day(freq, params["by_day"])
-          |> put_end_condition(params["end_type"], params, event_context)
-
-        # `build/2` and `retarget/2` are handed the same value-type options, so
-        # the rule composed here and the rule read back agree on how UNTIL is
-        # written; retarget/2 is what rejects a series ending before it starts.
-        fit_opts = [
-          all_day: Map.get(event_context, :all_day, false),
-          timezone: Map.get(event_context, :timezone),
-          start_date: Map.get(event_context, :start_date)
-        ]
-
-        case RRule.retarget(RRule.build(opts, fit_opts), fit_opts) do
-          {:ok, rule} -> rule
-          {:error, :until_before_start} = error -> error
-        end
-    end
-  end
-
-  defp parse_freq("daily"), do: :daily
-  defp parse_freq("weekly"), do: :weekly
-  defp parse_freq("monthly"), do: :monthly
-  defp parse_freq("yearly"), do: :yearly
-  defp parse_freq(_other), do: nil
-
-  defp put_interval(opts, value) do
-    case parse_int(value || "") do
-      {:ok, n} when n > 1 -> Map.put(opts, :interval, n)
-      _other -> opts
-    end
-  end
-
-  defp put_by_day(opts, :weekly, days) when is_list(days) do
-    by_day =
-      days
-      |> Enum.map(&Map.get(@weekday_atoms, &1))
-      |> Enum.reject(&is_nil/1)
-
-    if by_day == [], do: opts, else: Map.put(opts, :by_day, by_day)
-  end
-
-  defp put_by_day(opts, _freq, _days), do: opts
-
-  @default_recurrence_count 10
-
-  @doc "How many occurrences a series ending “after N” starts with."
-  @spec default_recurrence_count() :: pos_integer()
-  def default_recurrence_count, do: @default_recurrence_count
-
-  defp put_end_condition(opts, "count", params, _event_context)
-       when not is_map_key(params, "count"),
-       do: Map.put(opts, :count, @default_recurrence_count)
-
-  defp put_end_condition(opts, "count", params, _event_context) do
-    case parse_int(params["count"] || "") do
-      {:ok, n} when n > 0 -> Map.put(opts, :count, n)
-      _other -> opts
-    end
-  end
-
-  defp put_end_condition(opts, "until", params, event_context)
-       when not is_map_key(params, "until"),
-       do: Map.put(opts, :until, default_until(event_context))
-
-  defp put_end_condition(opts, "until", params, _event_context) do
-    case Date.from_iso8601(params["until"] || "") do
-      {:ok, date} -> Map.put(opts, :until, date)
-      {:error, _reason} -> opts
-    end
-  end
-
-  defp put_end_condition(opts, _never_or_other, _params, _event_context), do: opts
-
-  defp default_until(event_context) do
-    from =
-      Map.get(event_context, :start_date) || Map.get(event_context, :reference_date) ||
-        Clock.utc_today()
-
-    Date.shift(from, month: 1)
-  end
-
   # ---------------------------------------------------------------------------
   # Refactor 1 — optimistic-update plumbing
   # ---------------------------------------------------------------------------
@@ -392,60 +238,16 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
     * `{:error, :unauthorized}` — "You don't have permission to modify this event"
     * `{:error, :read_only}` — "This calendar is read-only..."
     * `{:error, :rate_limited, _message}` — "Too many edits. Please wait a moment."
+    * `{:error, :group_booking}` — a group meeting with live seats sits on the event
+      (`check_seat_lock/2`)
+    * `{:error, :until_before_start}` — the recurrence ends before the event starts
 
   Flash messages are sent via `send(self(), {:flash, ...})` (the LiveComponent
   pattern; `put_flash/3` does not propagate from LiveComponents).
   """
   @spec flash_guard_error(Phoenix.LiveView.Socket.t(), term()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
-  def flash_guard_error(socket, {:error, :unauthorized}) do
-    send(
-      self(),
-      {:flash,
-       {:error,
-        dgettext("dashboard_calendar_events", "You don't have permission to modify this event")}}
-    )
-
-    {:noreply, socket}
-  end
-
-  def flash_guard_error(socket, {:error, :read_only}) do
-    send(
-      self(),
-      {:flash,
-       {:error,
-        dgettext(
-          "dashboard_calendar_events",
-          "This calendar is read-only. Events on it can't be changed from Tymeslot."
-        )}}
-    )
-
-    {:noreply, socket}
-  end
-
-  def flash_guard_error(socket, {:error, :rate_limited, _message}) do
-    send(
-      self(),
-      {:flash,
-       {:warning, dgettext("dashboard_calendar_events", "Too many edits. Please wait a moment.")}}
-    )
-
-    {:noreply, socket}
-  end
-
-  def flash_guard_error(socket, {:error, :until_before_start}) do
-    send(
-      self(),
-      {:flash,
-       {:error,
-        dgettext(
-          "dashboard_calendar_events",
-          "The recurrence end date must be on or after the event start."
-        )}}
-    )
-
-    {:noreply, socket}
-  end
+  def flash_guard_error(socket, error), do: {:noreply, flash_guard(socket, error)}
 
   # ---------------------------------------------------------------------------
   # Refactor 3 — optional int parsing and reminder-list helpers
@@ -631,10 +433,113 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared do
       attendees: [],
       attendee_input: "",
       reminders: [],
+      # Meeting mode's own reminders: when the app emails the guest before the
+      # meeting. Kept apart from `reminders` above, which are the provider
+      # alarms a plain calendar event carries and mean nothing to a booking.
+      meeting_reminders: ReminderPickerState.new(),
       recurrence_rule: nil,
       video_integration_id: nil
     }
 
     Map.merge(defaults, overrides)
+  end
+
+  @doc """
+  Refuses a change to a calendar event that a group meeting with live seats
+  sits on: moving or resizing it, changing its recurrence, deleting it, or
+  adding or removing its attendees.
+
+  The organiser's provider event is a projection of the Tymeslot meeting, not
+  the meeting itself. Moving it does not move the participants' seats (their
+  reschedule links still point at the booked slot, and the next sync reports
+  the organiser's own edit back as an external change); deleting it leaves
+  everyone booked on a meeting with no calendar event; and its attendee list
+  is not who holds a seat. The grid hides these controls on a locked event,
+  so reaching here means the client asked anyway: this is the guard, not a
+  hint.
+
+  Deliberately re-read from the database rather than taken from the socket:
+  the assigned lock set is as old as the last event load, and a seat booked
+  since then must still count. Scoped to the acting organiser's meetings.
+  """
+  @spec check_seat_lock(Phoenix.LiveView.Socket.t(), map()) :: :ok | {:error, :group_booking}
+  def check_seat_lock(socket, event) do
+    if Meetings.group_booking_uid?(socket.assigns.current_user.id, Map.get(event, :uid)) do
+      {:error, :group_booking}
+    else
+      :ok
+    end
+  end
+
+  @doc """
+  The socket-returning form of `flash_guard_error/2`, for callers already
+  inside a continuation that has to hand a socket back.
+  """
+  @spec flash_guard(Phoenix.LiveView.Socket.t(), term()) :: Phoenix.LiveView.Socket.t()
+  def flash_guard(socket, {:error, :unauthorized}) do
+    send(
+      self(),
+      {:flash,
+       {:error,
+        dgettext("dashboard_calendar_events", "You don't have permission to modify this event")}}
+    )
+
+    socket
+  end
+
+  def flash_guard(socket, {:error, :read_only}) do
+    send(
+      self(),
+      {:flash,
+       {:error,
+        dgettext(
+          "dashboard_calendar_events",
+          "This calendar is read-only. Events on it can't be changed from %{app_name}.",
+          app_name: Config.app_name()
+        )}}
+    )
+
+    socket
+  end
+
+  def flash_guard(socket, {:error, :rate_limited, _message}) do
+    send(
+      self(),
+      {:flash,
+       {:warning, dgettext("dashboard_calendar_events", "Too many edits. Please wait a moment.")}}
+    )
+
+    socket
+  end
+
+  def flash_guard(socket, {:error, :group_booking}) do
+    send(self(), {:flash, {:warning, seat_lock_message()}})
+    socket
+  end
+
+  def flash_guard(socket, {:error, :until_before_start}) do
+    send(
+      self(),
+      {:flash,
+       {:error,
+        dgettext(
+          "dashboard_calendar_events",
+          "The recurrence end date must be on or after the event start."
+        )}}
+    )
+
+    socket
+  end
+
+  @doc """
+  Why an event `check_seat_lock/2` refuses cannot be changed here: the one
+  wording the refusal flash, the locked badge and the event modal share.
+  """
+  @spec seat_lock_message() :: String.t()
+  def seat_lock_message do
+    dgettext(
+      "dashboard_calendar_events",
+      "This is a group booking. Move it, cancel it or change who attends from the meeting instead."
+    )
   end
 end

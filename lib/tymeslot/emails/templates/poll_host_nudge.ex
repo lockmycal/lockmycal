@@ -45,7 +45,7 @@ defmodule Tymeslot.Emails.Templates.PollHostNudge do
             dgettext("emails_polls", "Pick a final time so everyone can put it in the diary.")
         )
 
-      MjmlEmail.base_email(tracking: :lifecycle)
+      MjmlEmail.base_email(tracking: :lifecycle, organizer_user_id: poll.user_id)
       |> to({host_name, poll.user.email})
       |> subject(Sanitise.sanitize_for_header(copy.subject))
       |> html_body(html_body)

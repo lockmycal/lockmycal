@@ -71,7 +71,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponentTest do
       lv |> element("button[phx-value-view='day']", "Day") |> render_click()
       html = lv |> element("button[phx-value-view='week']", "Week") |> render_click()
       # Week view shows short day names, not the full "DayName, Month Day, Year" format
-      refute html =~ Calendar.strftime(Date.utc_today(), "%A, %B %-d, %Y")
+      refute html =~ Calendar.strftime(Date.utc_today(), "%A, %-d %B %Y")
     end
 
     test "switches to 3-day view", %{conn: conn} do
@@ -110,7 +110,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponentTest do
 
       html = render(lv)
       # Day view's full date format appears
-      assert html =~ Calendar.strftime(Date.utc_today(), "%A, %B %-d, %Y")
+      assert html =~ Calendar.strftime(Date.utc_today(), "%A, %-d %B %Y")
     end
 
     test "mobile viewport demotes three_day to day", %{conn: conn} do
@@ -221,6 +221,47 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponentTest do
     end
   end
 
+  describe "event search" do
+    # A booking with no calendar copy is on the grid as a projection of the
+    # booking itself, so only the booking search can find it.
+    test "finds a local booking and opens it in the booking detail", %{conn: conn, user: user} do
+      start_time = DateTime.add(DateTime.utc_now(), 2, :day)
+
+      meeting =
+        insert(:meeting,
+          organizer_user_id: user.id,
+          title: "Test sync 21:02",
+          attendee_message: nil,
+          start_time: start_time,
+          end_time: DateTime.add(start_time, 30, :minute)
+        )
+
+      {:ok, lv, _html} = live(conn, ~p"/dashboard/calendar")
+
+      html = lv |> form("#calendar-search-form", %{"term" => "test sync"}) |> render_change()
+
+      assert html =~ "Test sync 21:02"
+      refute html =~ "No matching events"
+      refute has_element?(lv, "[data-testid='booking-detail']")
+
+      lv
+      |> element("#calendar-search-results button[phx-value-meeting-id='#{meeting.id}']")
+      |> render_click()
+
+      assert has_element?(lv, "[data-testid='booking-detail']")
+      refute has_element?(lv, "#calendar-search-results")
+    end
+
+    test "says so when nothing matches", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, ~p"/dashboard/calendar")
+
+      html =
+        lv |> form("#calendar-search-form", %{"term" => "nothing like this"}) |> render_change()
+
+      assert html =~ "No matching events"
+    end
+  end
+
   describe "month view" do
     test "renders month grid", %{conn: conn} do
       {:ok, lv, _html} = live(conn, ~p"/dashboard/calendar")
@@ -239,7 +280,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponentTest do
         |> element("[phx-click='navigate_to_day'][phx-value-date='#{today_iso}']")
         |> render_click()
 
-      assert html =~ Calendar.strftime(Date.utc_today(), "%A, %B")
+      assert html =~ Calendar.strftime(Date.utc_today(), "%A, %-d %B")
     end
   end
 
@@ -416,7 +457,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponentTest do
       html =
         lv |> element("#calendar-grid") |> render_hook("set_view", %{"view" => "day"})
 
-      assert html =~ Calendar.strftime(Date.utc_today(), "%A, %B %-d, %Y")
+      assert html =~ Calendar.strftime(Date.utc_today(), "%A, %-d %B %Y")
 
       lv |> element("#calendar-grid") |> render_hook("set_view", %{"view" => "month"})
       html = render(lv)
@@ -426,7 +467,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGridComponentTest do
       html =
         lv |> element("#calendar-grid") |> render_hook("set_view", %{"view" => "week"})
 
-      refute html =~ Calendar.strftime(Date.utc_today(), "%A, %B %-d, %Y")
+      refute html =~ Calendar.strftime(Date.utc_today(), "%A, %-d %B %Y")
     end
   end
 

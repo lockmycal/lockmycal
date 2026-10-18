@@ -51,7 +51,9 @@ defmodule Tymeslot.Emails.Templates.BookingPaymentRefunded do
     defstruct [
       :attendee_email,
       :attendee_name,
+      :host_email,
       :host_name,
+      :host_user_id,
       :meeting_title,
       :amount_cents,
       :refunded_amount_cents,
@@ -63,7 +65,9 @@ defmodule Tymeslot.Emails.Templates.BookingPaymentRefunded do
     @type t :: %__MODULE__{
             attendee_email: String.t(),
             attendee_name: String.t() | nil,
+            host_email: String.t() | nil,
             host_name: String.t() | nil,
+            host_user_id: integer() | nil,
             meeting_title: String.t() | nil,
             amount_cents: pos_integer(),
             refunded_amount_cents: pos_integer(),
@@ -117,12 +121,13 @@ defmodule Tymeslot.Emails.Templates.BookingPaymentRefunded do
 
       html_body = TemplateHelper.compile_template(mjml_content, organizer_details)
 
-      MjmlEmail.base_email()
+      MjmlEmail.base_email(organizer_user_id: context.host_user_id)
       |> to(
         if has_name?,
           do: {context.attendee_name, context.attendee_email},
           else: context.attendee_email
       )
+      |> MjmlEmail.put_reply_to(context.host_name, context.host_email)
       |> subject(
         if context.is_full_refund? do
           dgettext("emails_booking", "Refund Issued - %{amount}", amount: refunded_amount)

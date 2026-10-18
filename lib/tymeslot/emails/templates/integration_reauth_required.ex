@@ -26,6 +26,7 @@ defmodule Tymeslot.Emails.Templates.IntegrationReauthRequired do
   """
 
   alias Tymeslot.Emails.Shared.{Buttons, Callouts, Styles, TemplateHelper, Text}
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Integrations.Calendar.ProviderConfig, as: CalendarProviderConfig
   alias Tymeslot.Integrations.Video.ProviderConfig, as: VideoProviderConfig
   alias Tymeslot.Utils.UrlBuilder
@@ -132,7 +133,7 @@ defmodule Tymeslot.Emails.Templates.IntegrationReauthRequired do
   end
 
   defp default_reason(provider_label),
-    do: "#{provider_label} needs reconnecting before Tymeslot can use it again."
+    do: "#{provider_label} needs reconnecting before #{Config.app_name()} can use it again."
 
   @doc """
   The provider's name as the owner knows it: the video provider's display name
@@ -224,7 +225,7 @@ defmodule Tymeslot.Emails.Templates.IntegrationReauthRequired do
     %{
       steps: [
         "Open your calendar settings",
-        {"Select ", "Remove connection", " on the #{provider_label} row"},
+        {"Select ", "Delete", " on the #{provider_label} row"},
         {"Choose ", "Calendar subscription", ", paste the current feed link and select Subscribe"}
       ],
       button: "Open calendar settings",

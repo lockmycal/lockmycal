@@ -29,7 +29,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsTimeFormatTest do
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
       view
-      |> element("button[phx-click='change_time_format'][phx-value-option='24h']")
+      |> element("#profile-time-format-toggle-24h")
       |> render_click()
 
       assert CalendarGrid.get_user_time_format(user.id, "en") == "24h"
@@ -38,9 +38,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsTimeFormatTest do
     test "confirms the change to the organiser", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
-      view
-      |> element("button[phx-click='change_time_format'][phx-value-option='24h']")
-      |> render_click()
+      view |> element("#profile-time-format-toggle-24h") |> render_click()
 
       # The flash is raised by the component but rendered by the parent
       # LiveView, so it only appears once the parent has re-rendered.
@@ -50,24 +48,16 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsTimeFormatTest do
     test "the choice survives a reload and stays selected", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
-      view
-      |> element("button[phx-click='change_time_format'][phx-value-option='24h']")
-      |> render_click()
+      view |> element("#profile-time-format-toggle-24h") |> render_click()
 
       {:ok, _reloaded, html} = live(conn, ~p"/dashboard/settings")
 
-      # The active option is disabled with the primary fill; the inactive one
-      # is neither. Asserting on the rendered state rather than the stored
-      # value is what proves the form reads back what it wrote.
+      # The active option is pressed; the inactive one is not. Asserting on the
+      # rendered state rather than the stored value is what proves the form
+      # reads back what it wrote.
       doc = Floki.parse_document!(html)
-
-      assert doc |> Floki.find("button[phx-value-option='24h']") |> Floki.attribute("disabled") ==
-               [""]
-
-      assert doc
-             |> Floki.find("button[phx-value-option='24h']")
-             |> Floki.attribute("class")
-             |> Enum.any?(&String.contains?(&1, "bg-primary-600"))
+      assert Floki.attribute(doc, "#profile-time-format-toggle-24h", "aria-pressed") == ["true"]
+      assert Floki.attribute(doc, "#profile-time-format-toggle-12h", "aria-pressed") == ["false"]
     end
 
     test "writes to the same preference the calendar settings modal uses", %{
@@ -78,9 +68,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsTimeFormatTest do
       # grid reads, otherwise the dashboard disagrees with itself.
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
-      view
-      |> element("button[phx-click='change_time_format'][phx-value-option='24h']")
-      |> render_click()
+      view |> element("#profile-time-format-toggle-24h") |> render_click()
 
       assert CalendarGrid.get_or_create_preferences(user.id).time_format == "24h"
     end
@@ -88,13 +76,8 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsTimeFormatTest do
     test "can be switched back to a 12-hour clock", %{conn: conn, user: user} do
       {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
 
-      view
-      |> element("button[phx-click='change_time_format'][phx-value-option='24h']")
-      |> render_click()
-
-      view
-      |> element("button[phx-click='change_time_format'][phx-value-option='12h']")
-      |> render_click()
+      view |> element("#profile-time-format-toggle-24h") |> render_click()
+      view |> element("#profile-time-format-toggle-12h") |> render_click()
 
       assert CalendarGrid.get_user_time_format(user.id, "de") == "12h"
     end

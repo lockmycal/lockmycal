@@ -16,6 +16,7 @@ defmodule Tymeslot.Profiles do
   alias Tymeslot.Features
   alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Profiles.Avatars
+  alias Tymeslot.Profiles.EmbedAlias
   alias Tymeslot.Profiles.EmbedDomains
   alias Tymeslot.Profiles.OrganizerContext
   alias Tymeslot.Profiles.ProfileQueries
@@ -129,6 +130,20 @@ defmodule Tymeslot.Profiles do
       {:error, :not_found} -> nil
     end
   end
+
+  # The booking widget's alias lives in the focused sibling module
+  # Tymeslot.Profiles.EmbedAlias; these delegations keep the context's public
+  # API in one place.
+  defdelegate get_profile_by_handle(handle), to: EmbedAlias
+  defdelegate embed_alias?(handle), to: EmbedAlias, as: :alias?
+  defdelegate url_under_embed_alias?(url), to: EmbedAlias, as: :url_under_alias?
+  defdelegate generate_embed_alias(profile), to: EmbedAlias, as: :generate
+  defdelegate clear_embed_alias(profile), to: EmbedAlias, as: :clear
+  defdelegate reset_embed_alias(profile), to: EmbedAlias, as: :reset
+
+  @doc "Saves the Embed & Share page's Customise choices (a string-keyed map)."
+  @spec update_embed_settings(profile, map()) :: {:ok, profile} | {:error, Ecto.Changeset.t()}
+  defdelegate update_embed_settings(profile, settings), to: ProfileQueries
 
   @doc """
   Marks a host's booking page as published the first time it goes live.
@@ -269,7 +284,7 @@ defmodule Tymeslot.Profiles do
   Gets the default timezone.
   """
   @spec get_default_timezone() :: timezone
-  def get_default_timezone, do: "Europe/Tallinn"
+  def get_default_timezone, do: "Europe/Prague"
 
   @doc """
   Updates the timezone for a profile.

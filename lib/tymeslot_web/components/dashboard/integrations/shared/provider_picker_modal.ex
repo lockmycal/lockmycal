@@ -59,7 +59,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.ProviderPickerMod
   def provider_picker_modal(assigns) do
     ~H"""
     <div id={@id}>
-      <TymeslotWeb.Components.CoreComponents.modal
+      <TymeslotWeb.Components.CoreComponents.Modal.modal
         id={"#{@id}-modal"}
         show={@show}
         on_cancel={@on_cancel}
@@ -67,16 +67,14 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.ProviderPickerMod
       >
         <:header>
           <div class="flex items-center gap-3">
-            <button
+            <.icon_button
               :if={@config_active && @back_event}
-              type="button"
+              icon="hero-arrow-left"
+              label={dgettext("dashboard_integrations", "Back to providers")}
+              class="shrink-0"
               phx-click={@back_event}
               phx-target={@target}
-              class="modal-icon-button modal-icon-button--sm modal-icon-button--neutral"
-              aria-label={dgettext("dashboard_integrations", "Back to providers")}
-            >
-              <.icon name="hero-arrow-left" class="h-5 w-5" />
-            </button>
+            />
             <div>
               <h2 class="text-token-lg font-semibold text-neutral-800 dark:text-neutral-100">
                 {@title}
@@ -114,7 +112,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Shared.ProviderPickerMod
             </div>
           </div>
         </div>
-      </TymeslotWeb.Components.CoreComponents.modal>
+      </TymeslotWeb.Components.CoreComponents.Modal.modal>
     </div>
     """
   end

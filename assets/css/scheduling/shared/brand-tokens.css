@@ -11,4 +11,15 @@
   --color-primary-600: #D9762B;
   --color-primary-700: #B4581A;
   --color-neutral-500: #737373;
+
+  /* Core components that also render on booking pages (the flash toasts,
+   * info_box) draw their corners with rounded-token-*. Map those utilities
+   * onto the radius scale shared/layout.css defines, as app.css does. */
+  --radius-token-sm: var(--radius-sm);
+  --radius-token-md: var(--radius-md);
+  --radius-token-lg: var(--radius-lg);
+  --radius-token-xl: var(--radius-xl);
+  --radius-token-2xl: var(--radius-2xl);
+  --radius-token-3xl: var(--radius-3xl);
+  --radius-token-full: var(--radius-full);
 }

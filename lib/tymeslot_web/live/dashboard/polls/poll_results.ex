@@ -24,9 +24,14 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Utils.DateTimeUtils
+  alias Tymeslot.Utils.DateTimeUtils.TimeFormat
+  alias TymeslotWeb.Components.CoreComponents.Buttons
+  alias TymeslotWeb.Components.CoreComponents.Containers
+  alias TymeslotWeb.Components.CoreComponents.Feedback
   alias TymeslotWeb.Components.CoreComponents.Forms
   alias TymeslotWeb.Components.CoreComponents.Icons
   alias TymeslotWeb.Dashboard.Polls.PollShareLink
+  alias TymeslotWeb.Helpers.LocaleFormat
 
   @responses [:yes, :if_need_be, :no]
   @bar_responses [:yes, :if_need_be, :no, :none]
@@ -46,6 +51,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
   attr :editing_details?, :boolean, default: false
   attr :detail_errors, :map, default: %{}
   attr :meetings_path, :string, required: true
+  attr :time_format, :string, default: nil
   attr :myself, :any, required: true
 
   @spec results_panel(map()) :: Phoenix.LiveView.Rendered.t()
@@ -58,7 +64,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
       |> assign(:leaders, leader_ids(assigns.poll.time_slots, assigns.tallies))
 
     ~H"""
-    <div id={"poll-results-#{@poll.id}"} class="card-glass py-6 px-6 space-y-6">
+    <Containers.card id={"poll-results-#{@poll.id}"} class="space-y-6">
       <.details_form
         :if={@editing_details?}
         poll={@poll}
@@ -68,37 +74,37 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
 
       <div :if={!@editing_details?} class="flex items-start justify-between gap-3">
         <div class="min-w-0">
-          <h3 class="text-token-lg font-semibold text-neutral-800 dark:text-neutral-100 truncate">
+          <h2 class="text-token-lg font-semibold text-neutral-900 truncate dark:text-neutral-50">
             {@poll.title}
-          </h3>
+          </h2>
           <%!-- The zone qualifies every time in the panel, so it reads as a
                 property of the poll rather than a sentence about it. The full
                 phrasing stays on the label, which keeps the already-translated
                 string and gives the badge an accessible reading. --%>
-          <span
-            class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-token-full text-token-xs font-medium bg-neutral-100 dark:bg-twilight-indigo-800 text-neutral-600 dark:text-neutral-300"
+          <Feedback.pill
+            icon="hero-globe-alt-mini"
+            class="mt-1"
             aria-label={
               dgettext("dashboard_common", "Times shown in %{timezone}", timezone: @poll.timezone)
             }
             data-testid="poll-timezone-badge"
           >
-            <Icons.icon name="hero-globe-alt-mini" class="w-3.5 h-3.5" />
             {@poll.timezone}
-          </span>
+          </Feedback.pill>
 
           <%!-- The host's own description. Shown here because the panel is
                 where they check what they asked their guests, and it is the
                 only place in the dashboard the text appears at all. --%>
           <p
             :if={@poll.description not in [nil, ""]}
-            class="mt-2 text-token-sm text-neutral-600 dark:text-neutral-300 whitespace-pre-line"
+            class="mt-2 text-token-sm text-neutral-600 whitespace-pre-line dark:text-neutral-300"
             data-testid="poll-description"
           >
             {@poll.description}
           </p>
         </div>
 
-        <div class="flex items-center gap-1.5 shrink-0">
+        <div class="flex items-center gap-2 shrink-0">
           <%!-- The voting link belongs next to the open poll, not only on the
                 list card the panel pushes off screen. --%>
           <PollShareLink.copy_link_button
@@ -109,26 +115,20 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
           />
           <%!-- Wording only, and only while the poll is open: see
                 `Polls.update_details/3` for why the times are not editable. --%>
-          <button
+          <Buttons.icon_button
             :if={@open?}
-            type="button"
+            icon="hero-pencil-square"
+            label={dgettext("dashboard_common", "Edit title and description")}
             phx-click="edit_poll_details"
             phx-target={@myself}
-            class="row-action-button row-action-button--icon-only row-action-button--neutral"
-            title={dgettext("dashboard_common", "Edit title and description")}
             data-testid="poll-edit-details"
-          >
-            <Icons.icon name="hero-pencil-square" class="w-5 h-5" />
-          </button>
-          <button
-            type="button"
+          />
+          <Buttons.icon_button
+            icon="hero-x-mark"
+            label={dgettext("dashboard_common", "Close results")}
             phx-click="deselect_poll"
             phx-target={@myself}
-            class="p-2 rounded-lg text-neutral-500 hover:text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 transition-colors"
-            aria-label={dgettext("dashboard_common", "Close results")}
-          >
-            <Icons.icon name="hero-x-mark" class="w-4 h-4" />
-          </button>
+          />
         </div>
       </div>
 
@@ -136,7 +136,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
 
       <p
         :if={@slot_health_loading}
-        class="flex items-center gap-2 text-token-xs text-neutral-500"
+        class="flex items-center gap-2 text-token-xs text-neutral-500 dark:text-twilight-indigo-300"
       >
         <Icons.icon name="hero-arrow-path" class="w-3.5 h-3.5 animate-spin" />
         {dgettext("dashboard_common", "Checking your calendar for conflicts…")}
@@ -165,6 +165,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
           health={Map.get(@slot_health, slot.id, :ok)}
           slot_error={Map.get(@slot_errors, slot.id)}
           timezone={@poll.timezone}
+          time_format={@time_format}
           winner?={@winning_slot_id == slot.id}
           leader?={@open? && slot.id in @leaders}
           expanded?={slot.id in @expanded_slots}
@@ -175,19 +176,19 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
 
       <div
         :if={@open?}
-        class="flex justify-end pt-2 border-t border-neutral-300 dark:border-twilight-indigo-800"
+        class="flex justify-end pt-2 border-t border-neutral-100 dark:border-twilight-indigo-800"
       >
-        <button
-          type="button"
+        <Buttons.action_button
+          variant={:danger_soft}
+          size={:sm}
+          icon="hero-x-circle"
           phx-click="request_cancel_poll"
           phx-target={@myself}
-          class="btn btn-danger btn-sm inline-flex items-center gap-1"
         >
-          <Icons.icon name="hero-x-circle" class="w-4 h-4" />
           {dgettext("dashboard_common", "Cancel poll")}
-        </button>
+        </Buttons.action_button>
       </div>
-    </div>
+    </Containers.card>
     """
   end
 
@@ -227,17 +228,17 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
       />
 
       <div class="flex justify-end gap-2">
-        <button
-          type="button"
+        <Buttons.action_button
+          variant={:secondary}
+          size={:sm}
           phx-click="cancel_edit_poll_details"
           phx-target={@myself}
-          class="btn btn-secondary btn-sm"
         >
           {dgettext("dashboard_common", "Cancel")}
-        </button>
-        <button type="submit" class="btn btn-primary btn-sm">
+        </Buttons.action_button>
+        <Buttons.action_button type="submit" size={:sm}>
           {dgettext("dashboard_common", "Save changes")}
-        </button>
+        </Buttons.action_button>
       </div>
     </form>
     """
@@ -252,7 +253,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
 
   defp state_banner(%{poll: %{status: :confirmed}} = assigns) do
     ~H"""
-    <div class="rounded-token-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 px-4 py-3 text-token-sm text-blue-800 dark:text-blue-200 flex items-center gap-2 flex-wrap">
+    <div class="rounded-token-lg bg-blue-50 border border-blue-100 px-4 py-3 text-token-sm text-blue-800 flex items-center gap-2 flex-wrap dark:bg-blue-950/40 dark:text-blue-200">
       <Icons.icon name="hero-check-circle-solid" class="w-5 h-5 text-blue-500 shrink-0" />
       <span>{dgettext(
         "dashboard_common",
@@ -260,7 +261,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
       )}</span>
       <.link
         navigate={@meetings_path}
-        class="font-medium text-blue-700 dark:text-blue-300 underline hover:text-blue-900 dark:hover:text-blue-100"
+        class="font-medium text-blue-700 underline hover:text-blue-900 dark:text-blue-200"
       >
         {dgettext("dashboard_common", "View meeting")}
       </.link>
@@ -270,8 +271,11 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
 
   defp state_banner(%{poll: %{status: :cancelled}} = assigns) do
     ~H"""
-    <div class="rounded-token-lg bg-neutral-100 dark:bg-twilight-indigo-800 border border-neutral-300 px-4 py-3 text-token-sm text-neutral-600 dark:text-neutral-300 flex items-center gap-2">
-      <Icons.icon name="hero-x-circle-solid" class="w-5 h-5 text-neutral-400 shrink-0" />
+    <div class="rounded-token-lg bg-neutral-100 border border-neutral-200 px-4 py-3 text-token-sm text-neutral-600 flex items-center gap-2 dark:bg-twilight-indigo-800 dark:border-twilight-indigo-800 dark:text-neutral-300">
+      <Icons.icon
+        name="hero-x-circle-solid"
+        class="w-5 h-5 text-neutral-400 shrink-0 dark:text-twilight-indigo-300"
+      />
       <span>{dgettext("dashboard_common", "This poll was cancelled. Voting is closed.")}</span>
     </div>
     """
@@ -279,7 +283,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
 
   defp state_banner(assigns) do
     ~H"""
-    <div class="rounded-token-lg bg-primary-50 dark:bg-primary-950/40 border border-primary-100 dark:border-primary-800 px-4 py-3 text-token-sm text-primary-800 dark:text-primary-200 flex items-center gap-2">
+    <div class="rounded-token-lg bg-primary-50 border border-primary-100 px-4 py-3 text-token-sm text-primary-800 flex items-center gap-2 dark:bg-primary-900/30">
       <Icons.icon name="hero-hand-raised" class="w-5 h-5 text-primary-500 shrink-0" />
       <span>{dgettext(
         "dashboard_common",
@@ -299,6 +303,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
   attr :health, :atom, required: true
   attr :slot_error, :any, default: nil
   attr :timezone, :string, required: true
+  attr :time_format, :string, default: nil
   attr :winner?, :boolean, default: false
   attr :leader?, :boolean, default: false
   attr :expanded?, :boolean, default: false
@@ -313,53 +318,54 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
       data-testid="poll-slot"
       class={[
         "rounded-token-lg border p-4 space-y-3",
-        @winner? && "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40",
+        @winner? && "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40",
         !@winner? &&
-          "border-neutral-300 dark:border-twilight-indigo-700 bg-white dark:bg-twilight-indigo-950"
+          "border-neutral-100 bg-white dark:border-twilight-indigo-800 dark:bg-twilight-indigo-950"
       ]}
     >
       <div class="flex items-start justify-between gap-3 flex-wrap">
         <div class="flex items-center gap-2 flex-wrap min-w-0">
           <span class="font-medium text-neutral-800 dark:text-neutral-100">
-            {format_slot(@slot, @timezone)}
+            {format_slot(@slot, @timezone, @time_format)}
           </span>
-          <span
+          <Feedback.pill
             :if={@winner?}
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-token-full text-token-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
+            tone={:info}
+            icon="hero-check-circle-mini"
           >
-            <Icons.icon name="hero-check-circle-mini" class="w-3.5 h-3.5" />
             {dgettext("dashboard_common", "Winner")}
-          </span>
-          <span
+          </Feedback.pill>
+          <Feedback.pill
             :if={@leader?}
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-token-full text-token-xs font-medium bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300"
+            tone={:brand}
+            icon="hero-arrow-trending-up-mini"
             data-testid="poll-slot-leader"
           >
-            <Icons.icon name="hero-arrow-trending-up-mini" class="w-3.5 h-3.5" />
             {dgettext("dashboard_common", "Most votes")}
-          </span>
-          <span
+          </Feedback.pill>
+          <Feedback.pill
             :if={@health == :conflict}
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-token-full text-token-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300"
+            tone={:warning}
+            icon="hero-exclamation-triangle-mini"
             title={dgettext("dashboard_common", "This time clashes with an event on your calendar")}
           >
-            <Icons.icon name="hero-exclamation-triangle-mini" class="w-3.5 h-3.5" />
             {dgettext("dashboard_common", "Calendar conflict")}
-          </span>
+          </Feedback.pill>
         </div>
 
-        <button
+        <Buttons.action_button
           :if={@open?}
-          type="button"
+          variant={:secondary}
+          size={:sm}
+          icon="hero-check"
+          class="shrink-0"
           phx-click="confirm_slot"
           phx-value-slot={@slot.id}
           phx-target={@myself}
           phx-disable-with={dgettext("common", "Processing...")}
-          class="btn btn-secondary btn-sm inline-flex items-center gap-1 shrink-0"
         >
-          <Icons.icon name="hero-check" class="w-4 h-4" />
           {dgettext("dashboard_common", "Confirm this time")}
-        </button>
+        </Buttons.action_button>
       </div>
 
       <.response_bar counts={@counts} total={@participant_count} />
@@ -382,7 +388,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
         phx-target={@myself}
         aria-expanded={to_string(@expanded?)}
         aria-controls={"poll-voters-#{@slot.id}"}
-        class="w-full flex items-center justify-center gap-1.5 pt-3 border-t border-neutral-300 dark:border-twilight-indigo-800 text-token-sm font-medium text-primary-700 dark:text-primary-300 hover:text-primary-900 dark:hover:text-primary-100 transition-colors"
+        class="w-full flex items-center justify-center gap-1.5 pt-3 border-t border-neutral-100 text-token-sm font-medium text-primary-700 hover:text-primary-900 transition-colors dark:border-twilight-indigo-800 dark:text-primary-300"
       >
         <Icons.icon
           name={if @expanded?, do: "hero-chevron-up-mini", else: "hero-chevron-down-mini"}
@@ -478,7 +484,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
         name={response_icon(@response)}
         class={"w-4 h-4 shrink-0 mt-0.5 " <> response_class(@response)}
       />
-      <span class="text-neutral-500 dark:text-twilight-indigo-300 shrink-0">{response_label(@response)}:</span>
+      <span class="text-neutral-500 shrink-0 dark:text-twilight-indigo-300">{response_label(@response)}:</span>
       <span class="text-neutral-700 dark:text-neutral-200">{Enum.join(@names, ", ")}</span>
     </div>
     """
@@ -546,10 +552,14 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
     if length(leaders) == map_size(scores), do: [], else: leaders
   end
 
-  defp format_slot(slot, timezone) do
-    slot.start_time
-    |> DateTimeUtils.convert_to_timezone(timezone)
-    |> Calendar.strftime("%a %-d %b, %H:%M")
+  # The weekday and month follow the organiser's language and the clock their
+  # own 12/24-hour preference, as everywhere else on the dashboard.
+  defp format_slot(slot, timezone, time_format) do
+    local = DateTimeUtils.convert_to_timezone(slot.start_time, timezone)
+    locale = Gettext.get_locale(TymeslotWeb.Gettext)
+
+    "#{LocaleFormat.format_short_weekday_date(local, locale)}, " <>
+      TimeFormat.format(local, TimeFormat.resolve(time_format, locale))
   end
 
   # --- Response presentation ---
@@ -563,7 +573,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollResults do
   defp bar_segment_class(:yes), do: "bg-green-500"
   defp bar_segment_class(:if_need_be), do: "bg-amber-400"
   defp bar_segment_class(:no), do: "bg-red-400"
-  defp bar_segment_class(:none), do: "bg-neutral-200 dark:bg-twilight-indigo-600"
+  defp bar_segment_class(:none), do: "bg-neutral-200 dark:bg-twilight-indigo-700"
 
   defp response_icon(:yes), do: "hero-check-circle-solid"
   defp response_icon(:if_need_be), do: "hero-question-mark-circle-solid"

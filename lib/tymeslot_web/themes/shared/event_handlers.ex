@@ -8,8 +8,8 @@ defmodule TymeslotWeb.Themes.Shared.EventHandlers do
   alias Tymeslot.Infrastructure.Logging.LogFormat
   alias TymeslotWeb.Live.Scheduling.AvailabilityHelpers
   alias TymeslotWeb.Live.Scheduling.Handlers.BookingErrorMessage
+  alias TymeslotWeb.Themes.Shared.BookingTracking
   alias TymeslotWeb.Themes.Shared.ReschedulePin
-  alias TymeslotWeb.Themes.Shared.TrackingHelpers
   import Phoenix.Component, only: [assign: 3]
 
   @doc """
@@ -41,7 +41,7 @@ defmodule TymeslotWeb.Themes.Shared.EventHandlers do
     path =
       socket
       |> path_handlers_module.build_path_with_locale(locale)
-      |> TrackingHelpers.tracking_path(socket.assigns[:tracking])
+      |> BookingTracking.tracking_path(socket.assigns[:tracking])
 
     {:noreply, LiveView.redirect(socket, external: path)}
   end

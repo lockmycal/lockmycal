@@ -16,6 +16,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
   alias TymeslotWeb.Dashboard.CalendarGrid.Views.EventBadges
   alias TymeslotWeb.Dashboard.CalendarGrid.Views.MonthView
   alias TymeslotWeb.Dashboard.CalendarGrid.Views.StatusBanners
+  alias TymeslotWeb.Dashboard.DashboardFormat
   alias TymeslotWeb.Helpers.LocaleFormat
 
   @timed_views [:week, :three_day, :day]
@@ -40,6 +41,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
   attr :sync_completed, :integer, required: true
   attr :date, :any, required: true
   attr :guest_rsvp_summaries, :map, default: %{}
+  attr :group_booking_uids, :any, default: nil
   attr :myself, :any, required: true
 
   @spec week_day_view(map()) :: Phoenix.LiveView.Rendered.t()
@@ -95,6 +97,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
         class="flex-1 overflow-y-auto overflow-x-auto relative pr-2 md:pr-3"
         data-current-top-rem={@current_top_rem}
         data-show-now={to_string(@today_visible?)}
+        data-timed={to_string(@is_timed)}
       >
         <%!-- Day column headers (sticky) --%>
         <div
@@ -159,15 +162,13 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
                 <div
                   :for={{event, col_idx, total_cols} <- elem(Map.get(@day_layouts, day, {[], []}), 0)}
                   id={"event-#{event.id}-#{day}"}
-                  class={"absolute rounded px-1 py-0.5 #{if @view == :day, do: "text-token-sm", else: "text-token-xs"} overflow-hidden cursor-pointer hover:brightness-90 focus:outline-hidden focus:ring-2 focus:ring-primary-400 focus:ring-offset-1 group #{Helpers.event_block_class(assigns, event)}"}
+                  class={"absolute rounded px-1 py-0.5 #{if @view == :day, do: "text-token-sm", else: "text-token-xs"} overflow-hidden cursor-pointer select-none hover:brightness-90 focus:outline-hidden focus:ring-2 focus:ring-primary-400 focus:ring-offset-1 group #{Helpers.event_block_class(assigns, event)}"}
                   style={"top: #{Helpers.top_rem(event.start_at, @user_timezone)}rem; height: #{Helpers.height_rem(event.start_at, event.end_at)}rem; left: #{Helpers.left_pct(col_idx, total_cols)}%; width: calc(#{Helpers.width_pct(total_cols)}% - 2px);"}
-                  {Helpers.open_event_attrs(event)}
+                  {Helpers.open_event_attrs(event, keys: :hook)}
                   phx-target={@myself}
-                  role="button"
-                  tabindex="0"
                   aria-label={
                     dgettext("dashboard_calendar", "%{event}, %{time}",
-                      event: event.summary || dgettext("dashboard_calendar", "Untitled event"),
+                      event: DashboardFormat.title(event.summary),
                       time:
                         Helpers.format_display_time_range(
                           event,
@@ -176,7 +177,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
                         )
                     )
                   }
-                  data-draggable={to_string(not Helpers.booking?(event))}
+                  data-draggable={to_string(movable?(event, @group_booking_uids))}
+                  data-locked={EventBadges.seat_locked?(@group_booking_uids, event) && "true"}
                   data-event-id={event.id}
                   data-event-date={Date.to_iso8601(day)}
                   data-start-minutes={
@@ -201,8 +203,9 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
                       :if={(Map.get(event, :reminders) || []) != []}
                       name="hero-bell-micro"
                       class="inline-block w-3 h-3 opacity-70 mr-0.5 align-text-bottom"
-                    /><AttendeeAttachments.marker attachments={Map.get(event, :attendee_attachments)} />{event.summary ||
-                      dgettext("dashboard_calendar", "(No title)")}
+                    /><AttendeeAttachments.marker attachments={Map.get(event, :attendee_attachments)} />{DashboardFormat.title(
+                      event.summary
+                    )}
                   </div>
                   <div class="opacity-80">
                     {Helpers.format_display_time_range(
@@ -226,9 +229,12 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
                   <EventBadges.event_guest_badge summary={
                     EventBadges.guest_summary_for_event(@guest_rsvp_summaries, event)
                   } />
+                  <EventBadges.seat_lock_badge locked={
+                    EventBadges.seat_locked?(@group_booking_uids, event)
+                  } />
                   <%!-- Enlarged invisible resize hit-target for touch; visual handle revealed on hover --%>
                   <div
-                    :if={not Helpers.booking?(event)}
+                    :if={movable?(event, @group_booking_uids)}
                     data-resize-handle
                     class="absolute bottom-0 left-0 right-0 h-3 cursor-s-resize touch-none"
                     aria-hidden="true"
@@ -266,7 +272,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
                   aria-hidden="true"
                 >
                   <div class="h-0.5 bg-red-500 relative">
-                    <div class="w-2.5 h-2.5 rounded-full bg-red-500 absolute -left-1.5 -top-[0.1875rem]">
+                    <div class="w-2.5 h-2.5 rounded-token-full bg-red-500 absolute -left-1.5 -top-[0.1875rem]">
                     </div>
                   </div>
                 </div>
@@ -359,6 +365,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.GridViews do
   end
 
   defp max_datetime(a, b), do: if(DateTime.compare(a, b) == :gt, do: a, else: b)
+
+  # Whether an event block may be dragged or resized on the grid. A booking's
+  # time belongs to whoever booked it, and a group booking stays fixed even
+  # when the grid only knows it as the provider event mirroring it, which
+  # carries the meeting's uid but not the `:booking` kind.
+  defp movable?(event, group_booking_uids) do
+    not (Helpers.booking?(event) or EventBadges.seat_locked?(group_booking_uids, event))
+  end
 
   # Localised short day-column header label, for narrow screens.
   defp short_day_label(day, locale) do

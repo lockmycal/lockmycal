@@ -19,6 +19,8 @@ defmodule Tymeslot.Workers.DataRetentionWorker do
       `Tymeslot.MeetingPayments.DataRetention`)
   11. Booker attachment files no meeting references any more (own grace
       period, see `Tymeslot.Bookings.AttendeeAttachments.prune_orphans/0`)
+  12. What invitees gave on meetings and polls that ended two years ago,
+      anonymised rather than deleted (see `Tymeslot.InviteeData`)
 
   Ensures the database doesn't grow indefinitely by removing
   old records based on configured retention periods.
@@ -36,6 +38,7 @@ defmodule Tymeslot.Workers.DataRetentionWorker do
   alias Tymeslot.Bookings.AttendeeAttachments
   alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Integrations.HealthCheck.AvailabilityRefusalQueries
+  alias Tymeslot.InviteeData
   alias Tymeslot.MeetingPayments.DataRetention
   alias Tymeslot.Slack
   alias Tymeslot.Telegram
@@ -98,6 +101,13 @@ defmodule Tymeslot.Workers.DataRetentionWorker do
       config_key: :unverified_account_days,
       default_days: 30,
       prune: {Auth, :purge_unverified_accounts}
+    },
+    %{
+      name: "invitee data",
+      args_key: "invitee_data_retention_days",
+      config_key: :invitee_data_days,
+      default_days: 730,
+      prune: {InviteeData, :anonymise_expired}
     }
   ]
 

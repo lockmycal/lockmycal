@@ -3,29 +3,29 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
   LiveComponent that renders and manages the Meeting Type form UI state.
 
   It handles local UI events (validate, icon selection, calendar destination).
-  When editing an existing meeting type, each change auto-saves via
-  `MeetingTypeForm.Autosave`; when creating a new one, the parent component
-  handles the final "Create" submit/persist event.
+  A new meeting type is created with an explicit submit on the Details tab
+  (`MeetingTypeForm.Creation`), after which the same component carries on in
+  edit mode; from then on each change auto-saves via `MeetingTypeForm.Autosave`.
   """
   use TymeslotWeb, :live_component
   use Gettext, backend: TymeslotWeb.Gettext
 
   # Follow project rule: ALWAYS alias nested modules and organize alphabetically within groups
-  alias Ecto.UUID
   alias Tymeslot.Availability.Schedules
   alias Tymeslot.Locales
   alias Tymeslot.MeetingTypes
   alias Tymeslot.MeetingTypes.ApprovalWindow
-  alias Tymeslot.MeetingTypes.MeetingTypeTranslation
-  alias Tymeslot.Utils.ReminderUtils
-  alias TymeslotWeb.Dashboard.MeetingSettings.Components.Reminders
+  alias TymeslotWeb.Components.Shared.ReminderPickerState
   alias TymeslotWeb.Dashboard.MeetingSettings.Helpers
 
   alias TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.{
     Autosave,
+    Creation,
     FormView,
+    GroupHandlers,
     Init,
-    SlotInterval,
+    SlotIntervalField,
+    TypeTranslations,
     Validation
   }
 
@@ -33,72 +33,80 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
   alias TymeslotWeb.Live.Shared.Flash
   alias TymeslotWeb.Live.Shared.FormValidationHelpers
 
+  # The Group bookings section's events, handled by `GroupHandlers`.
+  @group_events ~w(toggle_group_bookings change_max_participants change_registration_mode
+                   change_invited_emails toggle_seat_availability toggle_last_spots
+                   change_last_spots_threshold)
+
   # Public assigns passed from parent
   # - type: existing meeting type or nil
-  # - is_edit: whether we are editing
+  # - is_edit: whether the meeting type exists yet (set here too, on creation)
   # - video_integrations: list for selection
   # - venues: the organiser's saved venues, for in-person locations
-  # - parent_myself: phx-target for parent events (submit/cancel)
-  # - saving: parent's saving state to control the button disabled state
+  # - parent_myself: phx-target for parent events (cancel, done, visibility)
   # - current_user: used for security metadata in validation
 
   @impl Phoenix.LiveComponent
   def mount(socket) do
     {:ok,
-     socket
-     |> assign(:form_errors, %{})
-     |> assign(:form_data, %{})
-     |> assign(:selected_icon, "none")
-     |> assign(:locations, [])
-     |> assign(:venues, [])
-     |> assign(:selected_calendar_integration_id, nil)
-     |> assign(:selected_target_calendar_id, nil)
-     |> assign(:selected_availability_schedule_id, nil)
-     |> assign(:schedules, [])
-     |> assign(:default_schedule_name, Schedules.default_schedule_name())
-     |> assign(:available_calendars, [])
-     |> assign(:no_writable_calendars, false)
-     |> assign(:target_calendar_status, :ok)
-     |> assign(:refreshing_calendars, false)
-     |> assign(:reminders, [])
-     |> assign(:max_reminders, MeetingTypes.max_reminders())
-     |> assign(:new_reminder_value, "")
-     |> assign(:new_reminder_unit, "minutes")
-     |> assign(:reminder_error, nil)
-     |> assign(:show_custom_reminder, false)
-     |> assign(:reminder_confirmation, nil)
-     |> assign(:custom_fields, [])
-     |> assign(:translations, [])
-     |> assign(:active_translation_locale, Locales.default_locale())
-     |> assign(:save_status, :saved)
-     |> assign(:editing_question, nil)
-     |> assign(:editing_question_mode, :add)
-     |> assign(:editing_location, nil)
-     |> assign(:editing_location_mode, :add)
-     |> assign(:custom_questions_allowed, true)
-     |> assign(:payments_feature_enabled, false)
-     |> assign(:payments_charges_enabled, false)
-     |> assign(:payment_currency, "usd")
-     |> assign(:payment_currency_minimum_cents, 50)
-     |> assign(:payment_required, false)
-     |> assign(:payment_price, "")
-     |> assign(:allow_guests, false)
-     |> assign(:allow_attachments, false)
-     |> assign(:requires_approval, false)
-     |> assign(:approval_window_hours, nil)
-     |> assign(:show_as_free, false)
-     |> assign(:show_email_to_bookers, false)
-     |> assign(:show_phone_to_bookers, false)
-     |> assign(:booking_limits, Init.get_booking_limits(nil))
-     |> assign(:active_tab, "details")
-     |> assign(:__initialized__, false)}
+     assign(socket,
+       form_errors: %{},
+       form_data: %{},
+       selected_icon: "none",
+       locations: [],
+       venues: [],
+       selected_calendar_integration_id: nil,
+       selected_target_calendar_id: nil,
+       selected_availability_schedule_id: nil,
+       schedules: [],
+       default_schedule_name: Schedules.default_schedule_name(),
+       available_calendars: [],
+       no_writable_calendars: false,
+       target_calendar_status: :ok,
+       refreshing_calendars: false,
+       reminders: [],
+       max_reminders: MeetingTypes.max_reminders(),
+       new_reminder_value: "",
+       new_reminder_unit: "minutes",
+       reminder_error: nil,
+       show_custom_reminder: false,
+       reminder_confirmation: nil,
+       custom_fields: [],
+       translations: [],
+       active_translation_locale: Locales.default_locale(),
+       save_status: :saved,
+       editing_question: nil,
+       editing_question_mode: :add,
+       editing_location: nil,
+       editing_location_mode: :add,
+       custom_questions_allowed: true,
+       group_bookings_allowed: true,
+       show_seat_availability: true,
+       last_spots_threshold: nil,
+       payments_feature_enabled: false,
+       payments_charges_enabled: false,
+       payment_currency: "usd",
+       payment_currency_minimum_cents: 50,
+       payment_required: false,
+       payment_price: "",
+       allow_guests: false,
+       allow_attachments: false,
+       requires_approval: false,
+       approval_window_hours: nil,
+       show_as_free: false,
+       show_email_to_bookers: false,
+       show_phone_to_bookers: false,
+       booking_limits: Init.get_booking_limits(nil),
+       active_tab: "details",
+       __initialized__: false
+     )}
   end
 
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
     socket =
       socket
-      |> assign(assigns)
+      |> assign(keep_created_type(assigns, socket))
       |> Init.maybe_initialize()
 
     # Custom-question and location edits arrive here as a `send_update`
@@ -121,10 +129,28 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
   def render(assigns), do: FormView.form(assigns)
 
   @impl Phoenix.LiveComponent
-  def handle_event("switch_tab", %{"tab" => tab}, socket)
-      when tab in ~w(details location booking questions reminders) do
+  def handle_event("switch_tab", %{"tab" => "details"}, socket) do
+    {:noreply, assign(socket, :active_tab, "details")}
+  end
+
+  # The other tabs are disabled until the meeting type exists, since nothing
+  # on them can save before then; a forged switch is ignored the same way.
+  def handle_event("switch_tab", %{"tab" => tab}, %{assigns: %{is_edit: true}} = socket)
+      when tab in ~w(location booking questions reminders) do
     {:noreply, assign(socket, :active_tab, tab)}
   end
+
+  def handle_event("switch_tab", _params, socket), do: {:noreply, socket}
+
+  @impl Phoenix.LiveComponent
+  def handle_event("create_meeting_type", params, %{assigns: %{is_edit: false}} = socket) do
+    {:noreply, Creation.run(socket, Map.get(params, "meeting_type", %{}))}
+  end
+
+  # A second submit can arrive after the first has created the type (a double
+  # click racing the round trip). The type exists now, so there is nothing
+  # left to create.
+  def handle_event("create_meeting_type", _params, socket), do: {:noreply, socket}
 
   # The tab-switcher inside the "details" panel that picks which locale's
   # name/description are shown/edited — unrelated to the 5-panel `active_tab`
@@ -141,7 +167,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
   @impl Phoenix.LiveComponent
   def handle_event("validate_meeting_type_translation", %{"translation" => params}, socket) do
     locale = socket.assigns.active_translation_locale
-    translations = upsert_translation(socket.assigns.translations, locale, params)
+    translations = TypeTranslations.upsert(socket.assigns.translations, locale, params)
 
     {:noreply,
      socket
@@ -254,8 +280,9 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
   @impl Phoenix.LiveComponent
   def handle_event("toggle_payment_required", %{"state" => state}, socket) do
     # Guard: hosts who cannot accept charges must not flip the toggle even
-    # if a stale/forged event arrives — the control renders disabled.
-    if socket.assigns.payments_charges_enabled do
+    # if a stale/forged event arrives — the control renders disabled. The
+    # same applies while group bookings is enabled (mutual exclusion).
+    if socket.assigns.payments_charges_enabled and not socket.assigns.group_bookings_enabled do
       {:noreply,
        socket
        |> assign(:payment_required, state == "true")
@@ -271,11 +298,22 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
 
   @impl Phoenix.LiveComponent
   def handle_event("toggle_requires_approval", %{"state" => state}, socket) do
-    {:noreply,
-     socket
-     |> assign(:requires_approval, state == "true")
-     |> Autosave.maybe_run()}
+    # Guard: approval and group bookings are mutually exclusive. The control
+    # renders disabled while group bookings are on, so a stale or forged
+    # event must not turn approval on; turning it off is always allowed.
+    if state == "true" and socket.assigns.group_bookings_enabled do
+      {:noreply, socket}
+    else
+      {:noreply,
+       socket
+       |> assign(:requires_approval, state == "true")
+       |> Autosave.maybe_run()}
+    end
   end
+
+  @impl Phoenix.LiveComponent
+  def handle_event(event, params, socket) when event in @group_events,
+    do: {:noreply, GroupHandlers.handle_event(event, params, socket)}
 
   @impl Phoenix.LiveComponent
   def handle_event("update_approval_window", params, socket) do
@@ -305,8 +343,9 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
       # autosaving over a good previously saved window.
       {:error, :invalid_approval_window} ->
         {:noreply,
-         assign(
-           socket,
+         socket
+         |> assign(:save_status, :unsaved)
+         |> assign(
            :form_errors,
            Map.put(
              socket.assigns.form_errors,
@@ -390,109 +429,28 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
   end
 
   @impl Phoenix.LiveComponent
-  def handle_event("update_reminder_input", %{"reminder" => reminder_params}, socket) do
-    reminder_value = Map.get(reminder_params, "value", socket.assigns.new_reminder_value)
-    reminder_unit = Map.get(reminder_params, "unit", socket.assigns.new_reminder_unit)
-
-    {:noreply,
-     assign(socket,
-       new_reminder_value: reminder_value,
-       new_reminder_unit: reminder_unit,
-       reminder_error: nil
-     )}
+  def handle_event("update_reminder_input", params, socket) do
+    socket |> picker_state() |> ReminderPickerState.update_input(params) |> apply_picker(socket)
   end
 
   @impl Phoenix.LiveComponent
   def handle_event("toggle_custom_reminder", _params, socket) do
-    {:noreply,
-     assign(socket,
-       show_custom_reminder: !socket.assigns.show_custom_reminder,
-       reminder_confirmation: nil
-     )}
+    socket |> picker_state() |> ReminderPickerState.toggle_custom() |> apply_picker(socket)
   end
 
   @impl Phoenix.LiveComponent
   def handle_event("add_quick_reminder", params, socket) do
-    # Handle map from JS.push
-    {amount, unit} =
-      case params do
-        %{"amount" => a, "unit" => u} -> {a, u}
-        _other -> {nil, nil}
-      end
-
-    case Validation.validate_new_reminder(socket.assigns.reminders, amount, unit) do
-      {:ok, reminder} ->
-        reminders = socket.assigns.reminders ++ [reminder]
-
-        # Clear any existing confirmation timer if we had one
-        Process.send_after(self(), {:clear_reminder_confirmation, socket.assigns.id}, 3000)
-
-        {:noreply,
-         socket
-         |> assign(:reminders, reminders)
-         |> assign(
-           :reminder_confirmation,
-           dgettext("dashboard_meeting_form", "Added %{label} before",
-             label: Reminders.reminder_label(reminder.value, reminder.unit)
-           )
-         )
-         |> assign(:reminder_error, nil)
-         |> Autosave.maybe_run()}
-
-      {:error, message} ->
-        {:noreply, assign(socket, reminder_error: message)}
-    end
+    socket |> picker_state() |> ReminderPickerState.add_quick(params) |> apply_picker(socket)
   end
 
   @impl Phoenix.LiveComponent
   def handle_event("add_reminder", _params, socket) do
-    value = socket.assigns.new_reminder_value
-    unit = socket.assigns.new_reminder_unit
-
-    case Validation.validate_new_reminder(socket.assigns.reminders, value, unit) do
-      {:ok, reminder} ->
-        reminders = socket.assigns.reminders ++ [reminder]
-
-        Process.send_after(self(), {:clear_reminder_confirmation, socket.assigns.id}, 3000)
-
-        {:noreply,
-         socket
-         |> assign(
-           reminders: reminders,
-           new_reminder_value: "",
-           reminder_error: nil,
-           show_custom_reminder: false,
-           reminder_confirmation:
-             dgettext("dashboard_meeting_form", "Added %{label} before",
-               label: Reminders.reminder_label(reminder.value, reminder.unit)
-             )
-         )
-         |> Autosave.maybe_run()}
-
-      {:error, message} ->
-        {:noreply, assign(socket, reminder_error: message)}
-    end
+    socket |> picker_state() |> ReminderPickerState.add_custom() |> apply_picker(socket)
   end
 
   @impl Phoenix.LiveComponent
   def handle_event("remove_reminder", params, socket) do
-    # Handle both JS.push map and individual phx-value-params
-    {value, unit} =
-      case params do
-        %{"value" => %{"value" => v, "unit" => u}} -> {v, u}
-        %{"value" => v, "unit" => u} -> {v, u}
-        _other -> {nil, nil}
-      end
-
-    reminders =
-      Enum.reject(socket.assigns.reminders, fn reminder ->
-        reminder.value == ReminderUtils.parse_reminder_value(value) and reminder.unit == unit
-      end)
-
-    {:noreply,
-     socket
-     |> assign(reminders: reminders, reminder_error: nil)
-     |> Autosave.maybe_run()}
+    socket |> picker_state() |> ReminderPickerState.remove(params) |> apply_picker(socket)
   end
 
   @impl Phoenix.LiveComponent
@@ -512,9 +470,19 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
     socket
   end
 
-  # Creating still saves on submit, and a failed save already shows its own
-  # error, so neither gets a "saved" flash.
+  # A failed save already shows its own error, so it gets no "saved" flash.
   defp flash_schedule_saved(socket), do: socket
+
+  # Once this form has created its meeting type, the parent may still render
+  # once more with the props it had while the type was new (`type: nil`,
+  # `is_edit: false`) before it learns of the record. Taking those would flip
+  # the form back to create mode and offer a second create, so they are
+  # dropped while the form holds a persisted type.
+  defp keep_created_type(%{type: nil} = assigns, %{assigns: %{type: %{id: id}}})
+       when is_integer(id),
+       do: Map.drop(assigns, [:type, :is_edit])
+
+  defp keep_created_type(assigns, _socket), do: assigns
 
   # Blank means "follow the profile's default schedule", stored as nil; the
   # same goes for anything unparseable, since the chips only ever offer the
@@ -562,7 +530,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
 
   defp drop_interval_mode_sentinel(params), do: params
 
-  defp custom_interval_sentinel?(value), do: value == SlotInterval.custom_option()
+  defp custom_interval_sentinel?(value), do: value == SlotIntervalField.custom_interval_option()
 
   defp off_preset_interval?(value) when is_binary(value) do
     case Integer.parse(String.trim(value)) do
@@ -573,44 +541,28 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm do
 
   defp off_preset_interval?(_value), do: false
 
-  # Upserts one locale's row into the in-memory translations list, matching
-  # `custom_questions_section.ex`'s idiom for a new `%FieldDefinition{}`: build
-  # the struct directly, id included, since full changeset validation only
-  # happens once at persist time (`MeetingTypeTranslation.changeset/2`).
-  #
-  # `params` carries only the one field that actually changed — each
-  # translation input fires its own `phx-change`, same as the base
-  # `meeting_type[name]`/`[description]` inputs — so an existing row is
-  # updated one field at a time; the field absent from `params` must be left
-  # exactly as it was, not reset to blank.
-  defp upsert_translation(translations, locale, params) do
-    case Enum.find_index(translations, &(&1.locale == locale)) do
-      nil ->
-        new_row = %MeetingTypeTranslation{
-          id: UUID.generate(),
-          locale: locale,
-          name: blank_to_nil(Map.get(params, "name", "")),
-          description: blank_to_nil(Map.get(params, "description", ""))
-        }
-
-        translations ++ [new_row]
-
-      index ->
-        List.update_at(translations, index, &put_translation_fields(&1, params))
-    end
+  # The reminder picker's own state, as the shared module keeps it. This form
+  # holds each field as an assign of its own, so it is lifted out for the
+  # picker to work on and written straight back.
+  defp picker_state(socket) do
+    Map.take(socket.assigns, [
+      :reminders,
+      :new_reminder_value,
+      :new_reminder_unit,
+      :reminder_error,
+      :show_custom_reminder,
+      :reminder_confirmation
+    ])
   end
 
-  defp put_translation_fields(row, params) do
-    row
-    |> maybe_put_translation_field(:name, params["name"])
-    |> maybe_put_translation_field(:description, params["description"])
+  # A change to the list is worth saving, and starts the timer that takes the
+  # confirmation back down; anything else (a keystroke in the custom row, a
+  # rejected reminder) only updates what is on screen.
+  defp apply_picker({:ok, state}, socket) do
+    Process.send_after(self(), {:clear_reminder_confirmation, socket.assigns.id}, 3000)
+
+    {:noreply, socket |> assign(state) |> Autosave.maybe_run()}
   end
 
-  defp maybe_put_translation_field(row, _field, nil), do: row
-
-  defp maybe_put_translation_field(row, field, value),
-    do: Map.put(row, field, blank_to_nil(value))
-
-  defp blank_to_nil(""), do: nil
-  defp blank_to_nil(value), do: value
+  defp apply_picker({:noop, state}, socket), do: {:noreply, assign(socket, state)}
 end

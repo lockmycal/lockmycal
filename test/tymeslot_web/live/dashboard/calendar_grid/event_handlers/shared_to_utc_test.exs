@@ -13,6 +13,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SharedToUtcTest do
   @moduletag :calendar
 
   alias Tymeslot.Integrations.Calendar.Recurrence.RRule
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.RecurrenceRule
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared
 
   describe "to_utc/4 — normal (non-DST) times" do
@@ -77,14 +78,16 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SharedToUtcTest do
     test "compose_recurrence_rule returns {:error, :until_before_start} when until < start" do
       params = %{"freq" => "weekly", "end_type" => "until", "until" => "2025-01-01"}
       context = %{start_date: ~D[2026-06-01], all_day: false}
-      assert {:error, :until_before_start} = Shared.compose_recurrence_rule(params, context)
+
+      assert {:error, :until_before_start} =
+               RecurrenceRule.compose_recurrence_rule(params, context)
     end
 
     test "compose_recurrence_rule returns a rule when until == start date" do
       params = %{"freq" => "weekly", "end_type" => "until", "until" => "2026-06-01"}
       context = %{start_date: ~D[2026-06-01], all_day: false}
 
-      assert Shared.compose_recurrence_rule(params, context) ==
+      assert RecurrenceRule.compose_recurrence_rule(params, context) ==
                "FREQ=WEEKLY;UNTIL=20260601T235959Z"
     end
 
@@ -92,13 +95,13 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SharedToUtcTest do
       params = %{"freq" => "daily", "end_type" => "until", "until" => "2026-12-31"}
       context = %{start_date: ~D[2026-06-01], all_day: false}
 
-      assert Shared.compose_recurrence_rule(params, context) ==
+      assert RecurrenceRule.compose_recurrence_rule(params, context) ==
                "FREQ=DAILY;UNTIL=20261231T235959Z"
     end
 
     test "compose_recurrence_rule accepts no context (backward compatible)" do
       params = %{"freq" => "daily"}
-      assert Shared.compose_recurrence_rule(params) == "FREQ=DAILY"
+      assert RecurrenceRule.compose_recurrence_rule(params) == "FREQ=DAILY"
     end
   end
 
@@ -106,13 +109,15 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SharedToUtcTest do
     test "emits UNTIL as YYYYMMDD (no time) for all-day events" do
       params = %{"freq" => "weekly", "end_type" => "until", "until" => "2026-12-31"}
       context = %{all_day: true, start_date: ~D[2026-06-01]}
-      assert Shared.compose_recurrence_rule(params, context) == "FREQ=WEEKLY;UNTIL=20261231"
+
+      assert RecurrenceRule.compose_recurrence_rule(params, context) ==
+               "FREQ=WEEKLY;UNTIL=20261231"
     end
 
     test "emits UNTIL as UTC timestamp for timed events" do
       params = %{"freq" => "weekly", "end_type" => "until", "until" => "2026-12-31"}
       context = %{all_day: false, start_date: ~D[2026-06-01]}
-      result = Shared.compose_recurrence_rule(params, context)
+      result = RecurrenceRule.compose_recurrence_rule(params, context)
       assert String.contains?(result, "UNTIL=20261231T235959Z")
     end
   end
@@ -123,26 +128,27 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SharedToUtcTest do
     test "west of UTC the local day ends on the next UTC day" do
       context = %{all_day: false, start_date: ~D[2026-06-01], timezone: "America/Los_Angeles"}
 
-      assert Shared.compose_recurrence_rule(@params, context) ==
+      assert RecurrenceRule.compose_recurrence_rule(@params, context) ==
                "FREQ=DAILY;UNTIL=20260701T065959Z"
     end
 
     test "east of UTC the local day ends earlier on the same UTC day" do
       context = %{all_day: false, start_date: ~D[2026-06-01], timezone: "Pacific/Auckland"}
 
-      assert Shared.compose_recurrence_rule(@params, context) ==
+      assert RecurrenceRule.compose_recurrence_rule(@params, context) ==
                "FREQ=DAILY;UNTIL=20260630T115959Z"
     end
 
     test "an all-day series keeps its bare-date UNTIL whatever the timezone" do
       context = %{all_day: true, start_date: ~D[2026-06-01], timezone: "America/Los_Angeles"}
 
-      assert Shared.compose_recurrence_rule(@params, context) == "FREQ=DAILY;UNTIL=20260630"
+      assert RecurrenceRule.compose_recurrence_rule(@params, context) ==
+               "FREQ=DAILY;UNTIL=20260630"
     end
 
     test "the composed rule reads back as the date the form supplied" do
       context = %{all_day: false, start_date: ~D[2026-06-01], timezone: "America/Los_Angeles"}
-      rule = Shared.compose_recurrence_rule(@params, context)
+      rule = RecurrenceRule.compose_recurrence_rule(@params, context)
 
       assert %{until: ~D[2026-06-30]} = RRule.parse(rule, timezone: "America/Los_Angeles")
     end
@@ -150,20 +156,24 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SharedToUtcTest do
 
   describe "recurrence_timezone/2" do
     test "an event's own timezone wins over the organiser's profile zone" do
-      assert Shared.recurrence_timezone(
+      assert RecurrenceRule.recurrence_timezone(
                %{timezone: "America/Los_Angeles"},
                "Europe/Tallinn"
              ) == "America/Los_Angeles"
     end
 
     test "an event carrying no timezone falls back to the organiser's" do
-      assert Shared.recurrence_timezone(%{timezone: nil}, "Europe/Tallinn") == "Europe/Tallinn"
-      assert Shared.recurrence_timezone(%{timezone: ""}, "Europe/Tallinn") == "Europe/Tallinn"
-      assert Shared.recurrence_timezone(%{}, "Europe/Tallinn") == "Europe/Tallinn"
+      assert RecurrenceRule.recurrence_timezone(%{timezone: nil}, "Europe/Tallinn") ==
+               "Europe/Tallinn"
+
+      assert RecurrenceRule.recurrence_timezone(%{timezone: ""}, "Europe/Tallinn") ==
+               "Europe/Tallinn"
+
+      assert RecurrenceRule.recurrence_timezone(%{}, "Europe/Tallinn") == "Europe/Tallinn"
     end
 
     test "no event at all falls back to the organiser's" do
-      assert Shared.recurrence_timezone(nil, "Europe/Tallinn") == "Europe/Tallinn"
+      assert RecurrenceRule.recurrence_timezone(nil, "Europe/Tallinn") == "Europe/Tallinn"
     end
   end
 
@@ -180,10 +190,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SharedToUtcTest do
       context = %{
         all_day: false,
         start_date: ~D[2026-06-01],
-        timezone: Shared.recurrence_timezone(event, "Europe/Tallinn")
+        timezone: RecurrenceRule.recurrence_timezone(event, "Europe/Tallinn")
       }
 
-      assert Shared.compose_recurrence_rule(@cross_zone_params, context) ==
+      assert RecurrenceRule.compose_recurrence_rule(@cross_zone_params, context) ==
                "FREQ=DAILY;UNTIL=20270101T075959Z"
     end
 
@@ -191,10 +201,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SharedToUtcTest do
       context = %{
         all_day: false,
         start_date: ~D[2026-06-01],
-        timezone: Shared.recurrence_timezone(%{timezone: nil}, "Europe/Tallinn")
+        timezone: RecurrenceRule.recurrence_timezone(%{timezone: nil}, "Europe/Tallinn")
       }
 
-      assert Shared.compose_recurrence_rule(@cross_zone_params, context) ==
+      assert RecurrenceRule.compose_recurrence_rule(@cross_zone_params, context) ==
                "FREQ=DAILY;UNTIL=20261231T215959Z"
     end
   end
@@ -206,27 +216,29 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SharedToUtcTest do
     test "“After” without a count yet ends after the default number of occurrences" do
       params = %{"freq" => "weekly", "end_type" => "count"}
 
-      assert Shared.compose_recurrence_rule(params) ==
-               "FREQ=WEEKLY;COUNT=#{Shared.default_recurrence_count()}"
+      assert RecurrenceRule.compose_recurrence_rule(params) ==
+               "FREQ=WEEKLY;COUNT=#{RecurrenceRule.default_recurrence_count()}"
     end
 
     test "“On date” without a date yet ends a month after the event's start" do
       params = %{"freq" => "weekly", "end_type" => "until"}
       context = %{start_date: ~D[2026-06-01], all_day: true}
 
-      assert Shared.compose_recurrence_rule(params, context) == "FREQ=WEEKLY;UNTIL=20260701"
+      assert RecurrenceRule.compose_recurrence_rule(params, context) ==
+               "FREQ=WEEKLY;UNTIL=20260701"
     end
 
     test "a new event's date as it stands anchors the default end date" do
       params = %{"freq" => "daily", "end_type" => "until"}
       context = %{reference_date: ~D[2026-11-15], all_day: true}
 
-      assert Shared.compose_recurrence_rule(params, context) == "FREQ=DAILY;UNTIL=20261215"
+      assert RecurrenceRule.compose_recurrence_rule(params, context) ==
+               "FREQ=DAILY;UNTIL=20261215"
     end
 
     test "a count the organiser typed that doesn't parse still gives a never-ending rule" do
       params = %{"freq" => "weekly", "end_type" => "count", "count" => "abc"}
-      assert Shared.compose_recurrence_rule(params) == "FREQ=WEEKLY"
+      assert RecurrenceRule.compose_recurrence_rule(params) == "FREQ=WEEKLY"
     end
   end
 end

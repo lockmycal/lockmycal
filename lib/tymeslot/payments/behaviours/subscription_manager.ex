@@ -36,9 +36,4 @@ defmodule Tymeslot.Payments.Behaviours.SubscriptionManager do
               status :: String.t(),
               canceled_at :: DateTime.t() | nil
             ) :: {:ok, struct()} | {:error, term()}
-
-  @doc """
-  Checks if branding should be shown for a user.
-  """
-  @callback should_show_branding?(user_id :: integer()) :: boolean()
 end

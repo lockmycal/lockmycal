@@ -7,18 +7,17 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
 
   require Logger
 
-  alias Tymeslot.FreeBusy
   alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Infrastructure.Tasks
   alias Tymeslot.Integrations.Calendar
   alias Tymeslot.Integrations.Calendar.ProviderConfig
   alias Tymeslot.Integrations.HealthCheck
   alias Tymeslot.Integrations.HealthCheck.Monitor
-  alias Tymeslot.Profiles
   alias Tymeslot.Security.RateLimiter
   alias TymeslotWeb.Components.Dashboard.Integrations.Calendar.ConnectionLimit
   alias TymeslotWeb.Dashboard.CalendarSettings.ComponentView
   alias TymeslotWeb.Dashboard.CalendarSettings.Helpers
+  alias TymeslotWeb.Dashboard.CalendarSettings.PublicCalendarHandlers
   alias TymeslotWeb.Helpers.IntegrationProviders
   alias TymeslotWeb.Live.Dashboard.Shared.DashboardHelpers
   alias TymeslotWeb.Live.Shared.Flash
@@ -29,10 +28,15 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
                            ProviderConfig.subscription_provider_strings() ++
                            ProviderConfig.ews_provider_strings()
 
-  @public_calendar_flags %{
-    "toggle_public_calendar_show_historical_events" => :public_calendar_show_historical_events,
-    "toggle_public_calendar_show_weekends" => :public_calendar_show_weekends
-  }
+  # The free/busy feed's and the public calendar's events, handled by
+  # `PublicCalendarHandlers`. Listed here rather than read from that module so
+  # the guard stays a runtime dependency (no `compile-connected` xref edge).
+  @public_calendar_events ~w(enable_freebusy regenerate_freebusy disable_freebusy
+                             toggle_public_calendar_colors toggle_public_calendar_enabled
+                             toggle_public_calendar_show_historical_events
+                             toggle_public_calendar_show_weekends
+                             toggle_public_calendar_visible_hours
+                             update_public_calendar_visible_hours)
 
   @impl Phoenix.LiveComponent
   def mount(socket) do
@@ -53,7 +57,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
       socket
       |> assign(assigns)
       |> maybe_load_integrations(assigns)
-      |> load_freebusy()
+      |> PublicCalendarHandlers.load()
       |> assign_new(:security_metadata, fn -> DashboardHelpers.get_security_metadata(socket) end)
 
     {:ok, socket}
@@ -78,133 +82,11 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
     assign(socket, :connection_limit, Calendar.connection_limit(socket.assigns.current_user.id))
   end
 
-  defp load_freebusy(socket) do
-    case Profiles.get_or_create_profile(socket.assigns.current_user.id) do
-      {:ok, profile} ->
-        token = profile.freebusy_token
-
-        socket
-        |> assign(:freebusy_profile, profile)
-        |> assign(:freebusy_enabled, FreeBusy.feed_enabled?(profile))
-        |> assign(:freebusy_url, token && url(~p"/free-busy/#{token}"))
-
-      _error ->
-        socket
-        |> assign(:freebusy_profile, nil)
-        |> assign(:freebusy_enabled, false)
-        |> assign(:freebusy_url, nil)
-    end
-  end
-
-  defp update_freebusy(%{assigns: %{freebusy_profile: %{} = profile}} = socket, fun) do
-    case fun.(profile) do
-      {:ok, _updated} -> load_freebusy(socket)
-      {:error, _changeset} -> socket
-    end
-  end
-
-  defp update_freebusy(socket, _fun), do: socket
-
   # --- Event Handlers ---
 
   @impl Phoenix.LiveComponent
-  def handle_event("enable_freebusy", _params, socket) do
-    {:noreply, update_freebusy(socket, &FreeBusy.enable_feed/1)}
-  end
-
-  @impl Phoenix.LiveComponent
-  def handle_event("regenerate_freebusy", _params, socket) do
-    {:noreply, update_freebusy(socket, &FreeBusy.regenerate_token/1)}
-  end
-
-  @impl Phoenix.LiveComponent
-  def handle_event("disable_freebusy", _params, socket) do
-    {:noreply, update_freebusy(socket, &FreeBusy.disable_feed/1)}
-  end
-
-  def handle_event("toggle_public_calendar_colors", %{"state" => state}, socket) do
-    {:noreply,
-     update_freebusy(socket, fn profile ->
-       Profiles.update_profile_field(
-         profile,
-         :public_calendar_colors,
-         state == "true"
-       )
-     end)}
-  end
-
-  def handle_event("toggle_public_calendar_colors", _params, socket) do
-    {:noreply,
-     update_freebusy(socket, fn profile ->
-       Profiles.update_profile_field(
-         profile,
-         :public_calendar_colors,
-         !profile.public_calendar_colors
-       )
-     end)}
-  end
-
-  # Also tells DashboardLive, whose profile feeds the share-links dialog.
-  def handle_event("toggle_public_calendar_enabled", %{"state" => state}, socket) do
-    {:noreply,
-     update_freebusy(socket, fn profile ->
-       with {:ok, updated} <-
-              Profiles.update_profile_field(profile, :public_calendar_enabled, state == "true") do
-         send(self(), {:profile_updated, updated})
-         {:ok, updated}
-       end
-     end)}
-  end
-
-  def handle_event(event, _params, socket) when is_map_key(@public_calendar_flags, event) do
-    field = Map.fetch!(@public_calendar_flags, event)
-
-    {:noreply,
-     update_freebusy(socket, &Profiles.update_profile_field(&1, field, !Map.fetch!(&1, field)))}
-  end
-
-  # Turning the window on seeds it with a sensible default (9–5) rather than
-  # leaving it half-configured — the changeset rejects one bound set without
-  # the other (`ProfileSchema.validate_public_calendar_visible_hours/1`), so
-  # "enabled" always means both fields are present. Turning it off clears
-  # both, back to "no restriction".
-  def handle_event("toggle_public_calendar_visible_hours", %{"state" => "true"}, socket) do
-    {:noreply,
-     update_freebusy(socket, fn profile ->
-       Profiles.update_profile(profile, %{
-         public_calendar_visible_from: profile.public_calendar_visible_from || ~T[09:00:00],
-         public_calendar_visible_to: profile.public_calendar_visible_to || ~T[17:00:00]
-       })
-     end)}
-  end
-
-  def handle_event("toggle_public_calendar_visible_hours", %{"state" => "false"}, socket) do
-    {:noreply,
-     update_freebusy(socket, fn profile ->
-       Profiles.update_profile(profile, %{
-         public_calendar_visible_from: nil,
-         public_calendar_visible_to: nil
-       })
-     end)}
-  end
-
-  def handle_event(
-        "update_public_calendar_visible_hours",
-        %{"from" => from, "to" => to},
-        socket
-      ) do
-    case Profiles.update_profile(socket.assigns.freebusy_profile, %{
-           public_calendar_visible_from: from,
-           public_calendar_visible_to: to
-         }) do
-      {:ok, _updated} ->
-        {:noreply, load_freebusy(socket)}
-
-      {:error, changeset} ->
-        Flash.error(Helpers.visible_hours_error_message(changeset))
-        {:noreply, socket}
-    end
-  end
+  def handle_event(event, params, socket) when event in @public_calendar_events,
+    do: {:noreply, PublicCalendarHandlers.handle_event(event, params, socket)}
 
   @impl Phoenix.LiveComponent
   def handle_event("show_picker", _params, socket) do
@@ -228,6 +110,27 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
 
   def handle_event("close_manage_calendars", _params, socket) do
     {:noreply, assign(socket, :managing_calendar_id, nil)}
+  end
+
+  def handle_event("toggle_all_events_busy", %{"id" => id}, socket) do
+    user_id = socket.assigns.current_user.id
+
+    with :ok <- RateLimiter.check_integration_write_rate_limit(user_id),
+         {:ok, int_id} <- parse_int(id),
+         %{} = integration <- Enum.find(socket.assigns.integrations, &(&1.id == int_id)),
+         {:ok, updated} <-
+           Calendar.set_all_events_busy(int_id, user_id, not integration.all_events_busy) do
+      Flash.info(all_events_busy_message(updated.all_events_busy))
+      send(self(), {:integration_updated, :calendar})
+      {:noreply, load_integrations(socket)}
+    else
+      {:error, :rate_limited, message} ->
+        Flash.error(message)
+        {:noreply, socket}
+
+      _not_changed ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("toggle_integration", %{"id" => id}, socket) do
@@ -635,4 +538,14 @@ defmodule TymeslotWeb.Dashboard.CalendarSettingsComponent do
 
   @impl Phoenix.LiveComponent
   def render(assigns), do: ComponentView.settings(assigns)
+
+  defp all_events_busy_message(true),
+    do: dgettext("dashboard_calendar_settings", "Every event in this calendar now blocks time")
+
+  defp all_events_busy_message(false),
+    do:
+      dgettext(
+        "dashboard_calendar_settings",
+        "Events this calendar marks as free no longer block time"
+      )
 end

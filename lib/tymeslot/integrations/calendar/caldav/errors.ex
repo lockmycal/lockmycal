@@ -105,7 +105,8 @@ defmodule Tymeslot.Integrations.Calendar.CalDAV.Errors do
     do:
       dgettext(
         "dashboard_calendar_providers",
-        "The calendar server returned more data than Tymeslot can process at once."
+        "The calendar server returned more data than %{app_name} can process at once.",
+        app_name: Config.app_name()
       )
 
   def describe_error(:server_error),

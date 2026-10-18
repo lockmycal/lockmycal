@@ -55,6 +55,7 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.BookingTextForm do
   alias Ecto.Changeset
   alias Ecto.UUID
   alias Phoenix.HTML.Form
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Locales
   alias Tymeslot.Profiles
   alias Tymeslot.Profiles.InputValidation
@@ -64,7 +65,6 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.BookingTextForm do
   alias Tymeslot.Themes.Catalog
   alias Tymeslot.Validation.Constraints
   alias TymeslotWeb.Components.Dashboard.LocaleTabSwitcher
-  alias TymeslotWeb.Components.UI.StatusSwitch
   alias TymeslotWeb.Live.Dashboard.Shared.DashboardHelpers
   alias TymeslotWeb.Live.Scheduling.PreviewMode
   alias TymeslotWeb.Themes.Shared.BookingText
@@ -101,12 +101,13 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.BookingTextForm do
     ~H"""
     <div id={@id} class="mt-16">
       <.section_header
+        level={2}
         icon="hero-chat-bubble-bottom-center-text"
         title={dgettext("dashboard_appearance", "Booking Page Text")}
       />
 
       <div class="mb-10 max-w-2xl">
-        <p class="text-xl text-tymeslot-500 font-medium leading-relaxed">
+        <p class="text-xl text-neutral-500 font-medium leading-relaxed dark:text-twilight-indigo-300">
           {dgettext(
             "dashboard_appearance",
             "Replace the wording that introduces you at the top of your booking page. Applies to every theme."
@@ -118,189 +119,183 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.BookingTextForm do
         <%!-- `phx-submit` exists only so pressing Enter in a field flushes the
         pending debounce instead of reloading the page; the change handler is
         what normally saves. --%>
-        <.form
-          for={@form}
-          id={"#{@id}-form"}
-          phx-change="save"
-          phx-submit="save"
-          phx-target={@myself}
-          class="card-glass p-8 space-y-6"
-          novalidate
-        >
-          <div class="flex items-start justify-between gap-6">
-            <div>
-              <p class="label mb-1">
-                {dgettext("dashboard_appearance", "Use my own wording")}
-              </p>
-              <p class="text-token-xs text-tymeslot-500 font-medium normal-case tracking-normal">
-                {dgettext(
-                  "dashboard_appearance",
-                  "Turn this off to go back to the built-in text, which is translated into every language Tymeslot supports. Your own wording is discarded."
-                )}
-              </p>
-            </div>
-            <StatusSwitch.status_switch
+        <.card padding={:lg}>
+          <.form
+            for={@form}
+            id={"#{@id}-form"}
+            phx-change="save"
+            phx-submit="save"
+            phx-target={@myself}
+            class="space-y-6"
+            novalidate
+          >
+            <.setting_row
               id={"#{@id}-enabled"}
+              control={:switch}
+              label={dgettext("dashboard_appearance", "Use my own wording")}
+              description={
+                dgettext(
+                  "dashboard_appearance",
+                  "Turn this off to go back to the built-in text, which is translated into every language %{app_name} supports. Your own wording is discarded.",
+                  app_name: Config.app_name()
+                )
+              }
               checked={enabled?(@form)}
               on_change="toggle_enabled"
               target={@myself}
-              class="shrink-0 mt-1"
-              aria_label={dgettext("dashboard_appearance", "Use my own wording")}
             />
-          </div>
 
-          <%!-- The switch is a button, not a form control, so the flag needs a
+            <%!-- The switch is a button, not a form control, so the flag needs a
           field of its own to travel with the submitted form. --%>
-          <input
-            type="hidden"
-            name={@form[:booking_text_enabled].name}
-            value={to_string(enabled?(@form))}
-          />
+            <input
+              type="hidden"
+              name={@form[:booking_text_enabled].name}
+              value={to_string(enabled?(@form))}
+            />
 
-          <%!-- Disabled rather than hidden, so the section keeps its shape and
+            <%!-- Disabled rather than hidden, so the section keeps its shape and
           the organiser can still read what the switch controls. A disabled input
           submits nothing, which is what stops the empty fields from being
           validated as missing while the customisation is off. --%>
-          <div class={["space-y-6", not enabled?(@form) && "opacity-60"]}>
-            <%!-- The default-locale tab edits the base fields directly, below;
+            <div class={["space-y-6", not enabled?(@form) && "opacity-60"]}>
+              <%!-- The default-locale tab edits the base fields directly, below;
             every other tab edits the matching row of the profile's
             `booking_text_translations`, upserted on save (see `shape_save_params/2`). --%>
-            <LocaleTabSwitcher.locale_tab_switcher
-              active_value={@active_translation_locale}
-              click_event="switch_translation_locale"
-              target={@myself}
-            />
+              <LocaleTabSwitcher.locale_tab_switcher
+                active_value={@active_translation_locale}
+                click_event="switch_translation_locale"
+                target={@myself}
+              />
 
-            <.input
-              :if={@active_translation_locale == Locales.default_locale()}
-              field={@form[:booking_heading]}
-              type="text"
-              required={enabled?(@form)}
-              disabled={not enabled?(@form)}
-              phx-debounce="600"
-              maxlength={Constraints.booking_heading_max_length()}
-              label={dgettext("dashboard_appearance", "Heading")}
-              placeholder={BookingText.default_heading(current_theme_key(@profile), name(@profile))}
-            />
-
-            <.input
-              :if={@active_translation_locale == Locales.default_locale()}
-              field={@form[:booking_greeting]}
-              type="text"
-              required={enabled?(@form)}
-              disabled={not enabled?(@form)}
-              phx-debounce="600"
-              maxlength={Constraints.booking_welcome_line_max_length()}
-              label={dgettext("dashboard_appearance", "Greeting")}
-              placeholder={BookingText.default_greeting(name(@profile))}
-            />
-
-            <.input
-              :if={@active_translation_locale == Locales.default_locale()}
-              field={@form[:booking_instruction]}
-              type="text"
-              required={enabled?(@form)}
-              disabled={not enabled?(@form)}
-              phx-debounce="600"
-              maxlength={Constraints.booking_welcome_line_max_length()}
-              label={dgettext("dashboard_appearance", "Instruction")}
-              placeholder={BookingText.default_instruction()}
-            />
-
-            <div :if={@active_translation_locale != Locales.default_locale()} class="space-y-6">
-              <% translation = current_translation(@profile, @active_translation_locale) %>
               <.input
-                name="profile_schema[translation][booking_heading]"
+                :if={@active_translation_locale == Locales.default_locale()}
+                field={@form[:booking_heading]}
                 type="text"
+                required={enabled?(@form)}
                 disabled={not enabled?(@form)}
                 phx-debounce="600"
                 maxlength={Constraints.booking_heading_max_length()}
                 label={dgettext("dashboard_appearance", "Heading")}
-                value={(translation && translation.booking_heading) || ""}
-                placeholder={@profile.booking_heading || ""}
+                placeholder={BookingText.default_heading(current_theme_key(@profile), name(@profile))}
               />
 
               <.input
-                name="profile_schema[translation][booking_greeting]"
+                :if={@active_translation_locale == Locales.default_locale()}
+                field={@form[:booking_greeting]}
                 type="text"
+                required={enabled?(@form)}
                 disabled={not enabled?(@form)}
                 phx-debounce="600"
                 maxlength={Constraints.booking_welcome_line_max_length()}
                 label={dgettext("dashboard_appearance", "Greeting")}
-                value={(translation && translation.booking_greeting) || ""}
-                placeholder={@profile.booking_greeting || ""}
+                placeholder={BookingText.default_greeting(name(@profile))}
               />
 
               <.input
-                name="profile_schema[translation][booking_instruction]"
+                :if={@active_translation_locale == Locales.default_locale()}
+                field={@form[:booking_instruction]}
                 type="text"
+                required={enabled?(@form)}
                 disabled={not enabled?(@form)}
                 phx-debounce="600"
                 maxlength={Constraints.booking_welcome_line_max_length()}
                 label={dgettext("dashboard_appearance", "Instruction")}
-                value={(translation && translation.booking_instruction) || ""}
-                placeholder={@profile.booking_instruction || ""}
+                placeholder={BookingText.default_instruction()}
               />
+
+              <div :if={@active_translation_locale != Locales.default_locale()} class="space-y-6">
+                <% translation = current_translation(@profile, @active_translation_locale) %>
+                <.input
+                  name="profile_schema[translation][booking_heading]"
+                  type="text"
+                  disabled={not enabled?(@form)}
+                  phx-debounce="600"
+                  maxlength={Constraints.booking_heading_max_length()}
+                  label={dgettext("dashboard_appearance", "Heading")}
+                  value={(translation && translation.booking_heading) || ""}
+                  placeholder={@profile.booking_heading || ""}
+                />
+
+                <.input
+                  name="profile_schema[translation][booking_greeting]"
+                  type="text"
+                  disabled={not enabled?(@form)}
+                  phx-debounce="600"
+                  maxlength={Constraints.booking_welcome_line_max_length()}
+                  label={dgettext("dashboard_appearance", "Greeting")}
+                  value={(translation && translation.booking_greeting) || ""}
+                  placeholder={@profile.booking_greeting || ""}
+                />
+
+                <.input
+                  name="profile_schema[translation][booking_instruction]"
+                  type="text"
+                  disabled={not enabled?(@form)}
+                  phx-debounce="600"
+                  maxlength={Constraints.booking_welcome_line_max_length()}
+                  label={dgettext("dashboard_appearance", "Instruction")}
+                  value={(translation && translation.booking_instruction) || ""}
+                  placeholder={@profile.booking_instruction || ""}
+                />
+              </div>
+
+              <.info_box variant={:info}>
+                <p class="font-bold mb-2">
+                  {dgettext("dashboard_appearance", "Your heading replaces:")}
+                </p>
+                <ul class="space-y-1">
+                  <li :for={{theme_name, theme_key} <- heading_defaults()}>
+                    <span class="font-semibold">{theme_name}</span>
+                    <span class="text-neutral-500 dark:text-twilight-indigo-300">
+                      &ldquo;{BookingText.default_heading(theme_key, name(@profile))}&rdquo;
+                    </span>
+                    <span :if={theme_key == current_theme_key(@profile)} class="text-primary-600">
+                      {dgettext("dashboard_appearance", "(your current theme)")}
+                    </span>
+                  </li>
+                </ul>
+              </.info_box>
+
+              <p class="text-token-sm text-neutral-500 dark:text-twilight-indigo-300">
+                {dgettext(
+                  "dashboard_appearance",
+                  "Your own wording is shown to everyone, in whatever language they pick. Only the built-in text is translated."
+                )}
+              </p>
             </div>
 
-            <.info_box variant={:info}>
-              <p class="font-bold mb-2">
-                {dgettext("dashboard_appearance", "Your heading replaces:")}
-              </p>
-              <ul class="space-y-1">
-                <li :for={{theme_name, theme_key} <- heading_defaults()}>
-                  <span class="font-semibold">{theme_name}</span>
-                  <span class="text-tymeslot-500">
-                    &ldquo;{BookingText.default_heading(theme_key, name(@profile))}&rdquo;
-                  </span>
-                  <span :if={theme_key == current_theme_key(@profile)} class="text-turquoise-600">
-                    {dgettext("dashboard_appearance", "(your current theme)")}
-                  </span>
-                </li>
-              </ul>
-            </.info_box>
-
-            <p class="text-token-sm text-tymeslot-500">
-              {dgettext(
-                "dashboard_appearance",
-                "Your own wording is shown to everyone, in whatever language they pick. Only the built-in text is translated."
-              )}
-            </p>
-          </div>
-
-          <div class="flex justify-end pt-2 min-h-6">
-            <.save_indicator status={@save_status} />
-          </div>
-        </.form>
+            <div class="flex justify-end pt-2 min-h-6">
+              <.save_indicator status={@save_status} />
+            </div>
+          </.form>
+        </.card>
 
         <div class="space-y-3">
-          <p class="text-token-sm font-bold text-tymeslot-600 uppercase tracking-wider">
+          <p class="text-token-sm font-bold text-neutral-600 uppercase tracking-wider dark:text-neutral-300">
             {dgettext("dashboard_appearance", "Live Preview")}
           </p>
           <%= if preview_url = preview_url(@profile, @preview_token) do %>
             <iframe
               src={preview_url}
               title={dgettext("dashboard_appearance", "Booking page preview")}
-              class="w-full h-[600px] rounded-token-2xl border-2 border-tymeslot-100 bg-tymeslot-50"
+              class="w-full h-[600px] rounded-token-2xl border-2 border-neutral-100 bg-neutral-50 dark:border-twilight-indigo-800 dark:bg-twilight-indigo-900/60"
               loading="lazy"
             ></iframe>
-            <p class="text-token-sm text-tymeslot-500">
+            <p class="text-token-sm text-neutral-500 dark:text-twilight-indigo-300">
               {dgettext("dashboard_appearance", "The preview updates as your changes are saved.")}
             </p>
           <% else %>
             <.empty_state
-              message={dgettext("dashboard_appearance", "No preview yet")}
-              secondary_message={
+              icon="hero-eye-slash"
+              variant={:dashed}
+              title={dgettext("dashboard_appearance", "No preview yet")}
+              description={
                 dgettext(
                   "dashboard_appearance",
                   "Pick a username for your booking page to see it here."
                 )
               }
-            >
-              <:icon>
-                <.icon name="hero-eye-slash" class="w-8 h-8 text-tymeslot-400" />
-              </:icon>
-            </.empty_state>
+            />
           <% end %>
         </div>
       </div>
@@ -316,12 +311,15 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.BookingTextForm do
       <%= case @status do %>
         <% :saved -> %>
           <.icon name="hero-check-circle-mini" class="w-4 h-4 text-green-500" />
-          <span class="text-tymeslot-500">
+          <span class="text-neutral-500 dark:text-twilight-indigo-300">
             {dgettext("dashboard_appearance", "All changes saved")}
           </span>
         <% :incomplete -> %>
-          <.icon name="hero-information-circle-mini" class="w-4 h-4 text-tymeslot-400" />
-          <span class="text-tymeslot-500">
+          <.icon
+            name="hero-information-circle-mini"
+            class="w-4 h-4 text-neutral-400 dark:text-twilight-indigo-300"
+          />
+          <span class="text-neutral-500 dark:text-twilight-indigo-300">
             {dgettext("dashboard_appearance", "Complete the form to save")}
           </span>
         <% :unsaved -> %>

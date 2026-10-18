@@ -70,96 +70,99 @@
 }
 
 /* Status Toggle */
-.status-toggle {
-  position: relative;
-  display: inline-flex;
-  height: 1.5rem;
-  width: 2.75rem;
-  flex-shrink: 0;
-  cursor: pointer;
-  border-radius: 9999px;
-  border: 1px solid;
-  transition: all 0.2s ease-in-out;
-  outline: none;
-}
+@layer components {
+  .status-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: 1.5rem;
+    width: 2.75rem;
+    flex-shrink: 0;
+    cursor: pointer;
+    border-radius: 9999px;
+    border: 1px solid;
+    transition: all 0.2s ease-in-out;
+    outline: none;
+  }
 
-.status-toggle:disabled {
-  cursor: not-allowed;
-}
+  .status-toggle:disabled {
+    cursor: not-allowed;
+  }
 
-.status-toggle:focus {
-  outline: 2px solid var(--color-primary-500);
-  outline-offset: 2px;
-}
+  .status-toggle:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+  }
 
-.status-toggle--active {
-  background: var(--color-primary-500);
-  border-color: var(--color-primary-500);
-}
+  .status-toggle--active {
+    background: var(--color-primary-500);
+    border-color: var(--color-primary-500);
+  }
 
-.status-toggle--active:hover:not(:disabled) {
-  background: var(--color-primary-600);
-  border-color: var(--color-primary-600);
-}
+  .status-toggle--active:hover:not(:disabled) {
+    background: var(--color-primary-600);
+    border-color: var(--color-primary-600);
+  }
 
-.status-toggle--inactive {
-  background: var(--color-neutral-200);
-  border-color: var(--color-neutral-300);
-}
+  .status-toggle--inactive {
+    background: var(--color-neutral-200);
+    border-color: var(--color-neutral-300);
+  }
 
-html.dark .status-toggle--inactive {
-  background: var(--color-twilight-indigo-800);
-  border-color: var(--color-twilight-indigo-700);
-}
+  html.dark .status-toggle--inactive {
+    background: var(--color-twilight-indigo-800);
+    border-color: var(--color-twilight-indigo-700);
+  }
 
-.status-toggle--inactive:hover:not(:disabled) {
-  border-color: var(--color-primary-400);
-  background: rgba(240, 138, 60, 0.05);
-}
+  .status-toggle--inactive:hover:not(:disabled) {
+    border-color: var(--color-primary-400);
+    background: rgba(240, 138, 60, 0.05);
+  }
 
-.status-toggle-slider {
-  pointer-events: none;
-  position: relative;
-  display: inline-block;
-  height: 1.25rem;
-  width: 1.25rem;
-  transform: translateX(0);
-  border-radius: 9999px;
-  background: white;
-  transition: transform 0.2s ease-in-out;
-}
+  .status-toggle-slider {
+    pointer-events: none;
+    position: relative;
+    display: inline-block;
+    height: 1.25rem;
+    width: 1.25rem;
+    transform: translateX(0);
+    border-radius: 9999px;
+    background: white;
+    transition: transform 0.2s ease-in-out;
+  }
 
-.status-toggle-slider--active {
-  transform: translateX(1.25rem);
-}
+  .status-toggle-slider--active {
+    transform: translateX(1.25rem);
+  }
 
-.status-toggle-icon {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  height: 100%;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.2s ease-in-out;
-}
+  .status-toggle-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    height: 100%;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease-in-out;
+  }
 
-.status-toggle-icon--visible {
-  opacity: 1;
-}
+  .status-toggle-icon--visible {
+    opacity: 1;
+  }
 
-.status-toggle-icon--hidden {
-  opacity: 0;
-}
+  .status-toggle-icon--hidden {
+    opacity: 0;
+  }
 
-.status-icon {
-  height: 0.75rem;
-  width: 0.75rem;
-  color: var(--color-text-secondary);
-}
+  .status-icon {
+    height: 0.75rem;
+    width: 0.75rem;
+    color: var(--color-text-secondary);
+  }
 
-.status-icon--white {
-  color: #111210;
+  .status-icon--white {
+    color: #111210;
+  }
 }
 
 /* Integration Content */
@@ -450,7 +453,7 @@ html.dark .dashboard-nav-link--needs-setup svg {
 
 /* Availability Weekday Rows */
 .day-hours-inline .input {
-  @apply w-auto rounded-lg py-1 text-sm;
+  @apply w-auto rounded-lg text-sm;
   padding-left: 0.5rem;
   padding-right: 1.625rem;
   background-position: right 0.5rem center;

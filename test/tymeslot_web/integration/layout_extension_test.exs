@@ -6,7 +6,6 @@ defmodule TymeslotWeb.Integration.LayoutExtensionTest do
   import Tymeslot.TestFixtures
   import Tymeslot.Factory
   import Mox
-  alias Tymeslot.ConfigTestHelpers
   alias Tymeslot.Profiles.ProfileQueries
 
   setup do
@@ -27,12 +26,6 @@ defmodule TymeslotWeb.Integration.LayoutExtensionTest do
   end
 
   describe "Core Layout Extensions" do
-    setup do
-      # Ensure show_branding is false for Core tests
-      ConfigTestHelpers.setup_config(:tymeslot, show_branding: false)
-      :ok
-    end
-
     test "scheduling pages render without branding in Core-only mode", %{conn: conn} do
       # Setup: Create a user with a profile and a calendar integration
       user = create_user_fixture(%{username: "coreuser"})

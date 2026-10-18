@@ -4,26 +4,44 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.BookingDetailModal do
 
   Bookings are managed through the booking flows (cancel with refund handling,
   reschedule requests) rather than edited like provider events, so this modal
-  presents the booking and links to the Meetings page for those actions.
+  presents the booking and links to the Meetings page for those actions. Its
+  body and actions are `AppointmentDetails`, shared with the overview's agenda
+  modal; the booking is described as an `Agenda.Entry`. Below them come what
+  only a booking carries: its meeting type's description, the attendee's notes
+  and the files they attached.
+
+  A group booking also lists its live participants, shows how many of its
+  seats are taken and, beside the actions, why it cannot be moved or deleted
+  from the calendar: the same wording the grid's lock badge and its refusals
+  use.
   """
 
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Phoenix.LiveView.JS
-  alias Tymeslot.Infrastructure.Config
+  alias Tymeslot.Agenda
+  alias Tymeslot.CalendarGrid.BookingEvent
+  alias TymeslotWeb.Components.Dashboard.Appointments.AppointmentDetails
   alias TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
-  alias TymeslotWeb.Dashboard.CalendarGrid.Modals.FormParts
-  alias TymeslotWeb.Helpers.LocaleFormat
+  alias TymeslotWeb.Dashboard.DashboardFormat
 
-  attr :booking, :map, required: true
+  attr :booking, BookingEvent, required: true
   attr :user_timezone, :string, required: true
-  attr :time_format, :any, default: nil
+  attr :time_format, :string, required: true
+  attr :now, DateTime, required: true, doc: "The grid's clock, anchoring the countdown"
   attr :myself, :any, required: true
 
   @spec booking_detail_modal(map()) :: Phoenix.LiveView.Rendered.t()
   def booking_detail_modal(assigns) do
+    assigns =
+      assign(assigns,
+        entry: Agenda.entry_for_grid_event(assigns.booking, assigns.user_timezone),
+        group?: group?(assigns.booking)
+      )
+
     ~H"""
     <.modal
       id="booking-detail-modal"
@@ -32,128 +50,101 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.BookingDetailModal do
       size={:medium}
     >
       <:header>
-        <div class="flex items-center gap-2 min-w-0">
-          <img src="/images/brand/logo.svg" alt="" class="w-5 h-5 shrink-0" />
-          <span class="truncate">{@booking.summary}</span>
+        <%!-- A long booking title wraps rather than truncating, so it stays readable. --%>
+        <div class="flex items-start gap-2 min-w-0">
+          <img src="/images/brand/logo.svg" alt="" class="w-5 h-5 mt-1 sm:mt-1.5 shrink-0" />
+          <span class="min-w-0 break-words">{DashboardFormat.title(@entry.title)}</span>
         </div>
       </:header>
 
-      <div class="space-y-6" data-testid="booking-detail">
-        <div>
-          <FormParts.section_label>
-            {dgettext("dashboard_calendar_events", "Time")}
-          </FormParts.section_label>
-          <div class="text-token-sm font-medium text-neutral-800 dark:text-neutral-100">
-            {booking_date_label(@booking, @user_timezone)}
-          </div>
-          <div class="text-token-sm text-neutral-500 dark:text-twilight-indigo-300">
-            {Helpers.format_display_time_range(@booking, @time_format, @user_timezone)}
-          </div>
-        </div>
+      <div class="space-y-4" data-testid="booking-detail">
+        <AppointmentDetails.appointment_details
+          entry={@entry}
+          timezone={@user_timezone}
+          time_format={@time_format}
+          now={@now}
+        />
 
-        <div :if={@booking.attendee_name || @booking.attendee_email} class="min-w-0">
-          <FormParts.section_label>
-            {dgettext("dashboard_calendar_events", "Guest")}
-          </FormParts.section_label>
-          <div
-            :if={@booking.attendee_name}
-            class="text-token-sm font-medium text-neutral-800 dark:text-neutral-100"
-          >
-            {@booking.attendee_name}
-          </div>
-          <div
-            :if={@booking.attendee_email}
-            class="text-token-sm text-neutral-500 dark:text-twilight-indigo-300 truncate"
-          >
-            {@booking.attendee_email}
-          </div>
-        </div>
+        <.detail_line
+          :if={@booking.participants != []}
+          icon="hero-user-group"
+          label={dgettext("dashboard_calendar", "Participants")}
+          data-testid="booking-participants"
+        >
+          <.pill :if={@group?} tone={:brand} class="mb-2" data-testid="booking-seats">
+            {dgettext("dashboard_calendar", "%{count}/%{capacity} seats taken",
+              count: @booking.seats_taken,
+              capacity: @booking.capacity
+            )}
+          </.pill>
+          <ul class="min-w-0 space-y-2">
+            <li :for={participant <- @booking.participants} class="min-w-0">
+              <span :if={participant.name} class="block">{participant.name}</span>
+              <a
+                href={"mailto:#{participant.email}"}
+                class="block text-token-sm font-semibold text-neutral-500 hover:text-primary-600 truncate dark:text-twilight-indigo-300"
+              >
+                {participant.email}
+              </a>
+            </li>
+          </ul>
+        </.detail_line>
 
-        <div :if={@booking.location} class="min-w-0">
-          <FormParts.section_label>
-            {dgettext("dashboard_calendar_events", "Location")}
-          </FormParts.section_label>
-          <div class="text-token-sm text-neutral-700 dark:text-neutral-200 break-words">
-            {@booking.location}
-          </div>
-        </div>
-
-        <div :if={@booking.description} class="min-w-0">
-          <FormParts.section_label>
-            {dgettext("dashboard_bookings", "Meeting Type")}
-          </FormParts.section_label>
+        <.detail_line
+          :if={@booking.description}
+          icon="hero-document-text"
+          label={dgettext("dashboard_bookings", "Meeting Type")}
+        >
           <%!-- phx-no-format: under whitespace-pre-line the formatter's line
                break before the value would render as a blank first line. --%>
           <div
             phx-no-format
-            class="text-token-sm text-neutral-700 dark:text-neutral-200 max-h-52 overflow-y-auto whitespace-pre-line break-words leading-relaxed"
+            class="max-h-52 overflow-y-auto whitespace-pre-line break-words leading-relaxed"
           >{Helpers.linkify_text(@booking.description)}</div>
-        </div>
+        </.detail_line>
 
-        <div :if={@booking.attendee_message} class="min-w-0">
-          <FormParts.section_label>
-            {dgettext("dashboard_bookings", "Meeting Notes")}
-          </FormParts.section_label>
+        <.detail_line
+          :if={@booking.attendee_message}
+          icon="hero-chat-bubble-left-ellipsis"
+          label={dgettext("dashboard_bookings", "Meeting Notes")}
+        >
           <div
             phx-no-format
-            class="text-token-sm text-neutral-700 dark:text-neutral-200 max-h-52 overflow-y-auto whitespace-pre-line break-words leading-relaxed"
+            class="max-h-52 overflow-y-auto whitespace-pre-line break-words leading-relaxed"
           >{@booking.attendee_message}</div>
-        </div>
+        </.detail_line>
 
-        <div :if={@booking.attendee_attachments != []} class="min-w-0">
-          <FormParts.section_label>
-            {dgettext("dashboard_bookings", "Attachments")}
-          </FormParts.section_label>
+        <.detail_line
+          :if={@booking.attendee_attachments != []}
+          icon="hero-paper-clip"
+          label={dgettext("dashboard_bookings", "Attachments")}
+        >
           <AttendeeAttachments.links
             meeting_id={@booking.meeting_id}
             attachments={@booking.attendee_attachments}
           />
-        </div>
-
-        <FormParts.divider />
-
-        <div class="flex items-center gap-2 text-token-xs text-neutral-500 dark:text-twilight-indigo-300">
-          <.icon name="hero-check-badge" class="w-4 h-4 text-primary-500" />
-          {dgettext("dashboard_calendar", "Booked through your %{app_name} booking page",
-            app_name: Config.app_name()
-          )}
-        </div>
+        </.detail_line>
       </div>
 
       <:footer>
-        <div class="flex flex-wrap gap-2">
-          <.action_button
-            variant={:secondary}
-            phx-click={JS.push("close_booking_detail", target: @myself)}
+        <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+          <p
+            :if={@group?}
+            class="flex items-start gap-1.5 text-token-xs text-neutral-500 min-w-0 flex-1 basis-56 dark:text-twilight-indigo-300"
+            data-testid="booking-lock-note"
           >
-            {dgettext("dashboard_calendar_events", "Cancel")}
-          </.action_button>
-          <a
-            :if={@booking.join_url}
-            href={@booking.join_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-token-sm font-semibold rounded-token-lg transition-colors"
-          >
-            <.icon name="hero-video-camera" class="w-4 h-4" />
-            {dgettext("dashboard_calendar", "Join meeting")}
-          </a>
-          <.link
-            patch={~p"/dashboard/meetings"}
-            class="btn btn-primary gap-2 text-token-sm"
-          >
-            <.icon name="hero-arrow-top-right-on-square" class="w-4 h-4" />
-            {dgettext("dashboard_calendar", "Manage in Meetings")}
-          </.link>
+            <.icon name="hero-lock-closed-micro" class="w-3.5 h-3.5 shrink-0 mt-px" />
+            <span>{Shared.seat_lock_message()}</span>
+          </p>
+          <AppointmentDetails.appointment_actions entry={@entry} />
         </div>
       </:footer>
     </.modal>
     """
   end
 
-  defp booking_date_label(booking, timezone) do
-    booking
-    |> Helpers.event_display_date(timezone)
-    |> LocaleFormat.format_weekday_date(Gettext.get_locale(TymeslotWeb.Gettext))
-  end
+  defp group?(%{participants: [_first | _rest], capacity: capacity}) when capacity > 1,
+    do: true
+
+  defp group?(_booking), do: false
 end

@@ -16,6 +16,15 @@ defmodule TymeslotWeb.EmbedBlockedControllerTest do
       assert get_resp_header(conn, "x-frame-options") == []
     end
 
+    test "reason=meeting_type shows the meeting type notice and posts no message", %{conn: conn} do
+      query = %{"reason" => "meeting_type", "parent-origin" => "https://example.com"}
+      body = conn |> get(~p"/embed-unavailable?#{query}") |> html_response(200)
+
+      assert body =~ "This meeting type isn’t available"
+      refute body =~ "can’t be embedded here"
+      refute body =~ "tymeslot-embed-blocked"
+    end
+
     test "posts tymeslot-embed-blocked to a valid parent origin", %{conn: conn} do
       conn = get(conn, ~p"/embed-unavailable?#{%{"parent-origin" => "https://example.com"}}")
       body = html_response(conn, 200)

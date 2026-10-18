@@ -8,6 +8,7 @@ defmodule Tymeslot.Emails.Templates.SocialSignupConfirmation do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Emails.Shared.{Buttons, Greeting, SignInProvider, TemplateHelper, Text}
+  alias Tymeslot.Infrastructure.Config
 
   # A first-contact email welcoming a new user in.
   @intent :confirmed
@@ -31,7 +32,9 @@ defmodule Tymeslot.Emails.Templates.SocialSignupConfirmation do
     TemplateHelper.compile_system_template(
       mjml_content,
       dgettext("emails_account", "Account Verification"),
-      dgettext("emails_account", "Confirm your email to finish signing up for Tymeslot."),
+      dgettext("emails_account", "Confirm your email to finish signing up for %{app_name}.",
+        app_name: Config.app_name()
+      ),
       intent: @intent,
       eyebrow: dgettext("emails_account", "Welcome"),
       stage_title: dgettext("emails_account", "One step to go"),
@@ -59,15 +62,17 @@ defmodule Tymeslot.Emails.Templates.SocialSignupConfirmation do
   defp explanation(provider) do
     dgettext(
       "emails_account",
-      "You're signing up for Tymeslot with %{provider}. Confirm this email address to create your account and sign in.",
-      provider: SignInProvider.display_name(%{provider: provider})
+      "You're signing up for %{app_name} with %{provider}. Confirm this email address to create your account and sign in.",
+      provider: SignInProvider.display_name(%{provider: provider}),
+      app_name: Config.app_name()
     )
   end
 
   defp footer do
     dgettext(
       "emails_account",
-      "This link expires in 24 hours. If you didn't sign up for Tymeslot, you can ignore this email and no account will be created."
+      "This link expires in 24 hours. If you didn't sign up for %{app_name}, you can ignore this email and no account will be created.",
+      app_name: Config.app_name()
     )
   end
 end

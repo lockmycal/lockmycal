@@ -202,7 +202,7 @@ defmodule Tymeslot.LocalesTest do
     end
 
     test "supported_codes/0 lists the configured codes, in configured order" do
-      assert Locales.supported_codes() == ["en", "cs", "de", "fr", "it", "uk", "pl"]
+      assert Locales.supported_codes() == ["en", "cs", "de", "fr", "it", "uk", "pl", "pt"]
     end
   end
 

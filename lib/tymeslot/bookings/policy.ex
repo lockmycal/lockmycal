@@ -22,6 +22,7 @@ defmodule Tymeslot.Bookings.Policy do
   alias Tymeslot.Locales
   alias Tymeslot.Meetings.Approval
   alias Tymeslot.MeetingTypes
+  alias Tymeslot.MeetingTypes.GroupRegistration
   alias Tymeslot.Profiles
   alias Tymeslot.Profiles.ProfileQueries
   alias Tymeslot.Timezones
@@ -29,7 +30,7 @@ defmodule Tymeslot.Bookings.Policy do
   alias Tymeslot.Utils.UrlBuilder
 
   @doc """
-  Scheduling policy for a booking: buffer, minimum notice, advance window and
+  Scheduling policy for a booking: buffers, minimum notice, advance window and
   the organiser's timezone.
 
   The policy comes from the schedule the meeting type is booked against, so
@@ -38,7 +39,8 @@ defmodule Tymeslot.Bookings.Policy do
   """
   @spec scheduling_config(integer() | nil, map() | nil) :: %{
           required(:schedule_id) => integer() | nil,
-          required(:buffer_minutes) => integer(),
+          required(:buffer_before_minutes) => integer(),
+          required(:buffer_after_minutes) => integer(),
           required(:min_advance_hours) => integer(),
           required(:max_advance_booking_days) => integer(),
           required(:owner_timezone) => String.t(),
@@ -151,7 +153,8 @@ defmodule Tymeslot.Bookings.Policy do
       resolve_meeting_type_record(params.meeting_type_id, organizer_user_id)
 
     # Get organizer details from profile if available
-    {org_name, org_email, org_username, org_phone} = get_organizer_details(organizer_user_id)
+    {org_name, org_email, org_username, org_phone} =
+      get_organizer_details(organizer_user_id, params.via_embed_alias)
 
     # Resolve attendee timezone
     config = scheduling_config(organizer_user_id, meeting_type_record)
@@ -425,6 +428,21 @@ defmodule Tymeslot.Bookings.Policy do
   end
 
   @doc """
+  True when the booking's meeting type allows the booker to add guests. An
+  invite-only group type takes none: each invited address books for itself
+  (`Tymeslot.MeetingTypes.GroupRegistration`).
+
+  Shared by the solo/paid booking transaction and the group seat-booking
+  pipeline so both re-apply the same rule to the (never-trusted) client-
+  submitted guest list.
+  """
+  @spec guests_allowed?(map()) :: boolean()
+  def guests_allowed?(%{meeting_type: %{allow_guests: true} = meeting_type}),
+    do: not GroupRegistration.invite_only?(meeting_type)
+
+  def guests_allowed?(_booking_data), do: false
+
+  @doc """
   Gets the organizer name from configuration.
   """
   @spec organizer_name() :: String.t()
@@ -493,10 +511,14 @@ defmodule Tymeslot.Bookings.Policy do
     end
   end
 
-  # Private helper to get organizer details from profile or fallback to config
-  defp get_organizer_details(nil), do: {organizer_name(), organizer_email(), nil, nil}
+  # Private helper to get organizer details from profile or fallback to config.
+  # A booking made through the widget's hidden address gets its links under
+  # that address (the profile's current one), so its emails do not reveal the
+  # public booking page.
+  defp get_organizer_details(nil, _via_embed_alias),
+    do: {organizer_name(), organizer_email(), nil, nil}
 
-  defp get_organizer_details(user_id) do
+  defp get_organizer_details(user_id, via_embed_alias) do
     case ProfileQueries.get_by_user_id(user_id) do
       {:error, :not_found} ->
         {organizer_name(), organizer_email(), nil, nil}
@@ -505,8 +527,8 @@ defmodule Tymeslot.Bookings.Policy do
         profile = ProfileQueries.preload_user(profile)
         name = profile.full_name || profile.user.name || organizer_name()
         email = profile.user.email || organizer_email()
-        username = profile.username
-        {name, email, username, profile.phone}
+        handle = (via_embed_alias && profile.embed_alias) || profile.username
+        {name, email, handle, profile.phone}
     end
   end
 

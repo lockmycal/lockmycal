@@ -111,7 +111,7 @@ defmodule TymeslotWeb.Hooks.EmbedAuthHook do
   defp verify_embedding(_username, nil), do: {:error, :missing_origin}
 
   defp verify_embedding(username, parent_origin) do
-    case Profiles.get_profile_by_username(username) do
+    case Profiles.get_profile_by_handle(username) do
       %{allowed_embed_domains: domains} ->
         if origin_allowed?(parent_origin, domains),
           do: :ok,

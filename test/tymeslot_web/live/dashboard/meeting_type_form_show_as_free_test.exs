@@ -11,27 +11,25 @@ defmodule TymeslotWeb.Dashboard.MeetingTypeFormShowAsFreeTest do
 
   import Phoenix.LiveViewTest
   import Tymeslot.DashboardTestHelpers
+  import Tymeslot.Factory
 
   alias Tymeslot.MeetingTypes
 
   setup :setup_dashboard_user
 
   test "switching it on saves it", %{conn: conn, user: user} do
+    meeting_type = insert(:meeting_type, user: user, name: "Free time")
+
     {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
-    view |> element("button", "Add Meeting Type") |> render_click()
-    view |> element("button[aria-label='Remove reminder']") |> render_click()
+
+    view
+    |> element("button[phx-click='edit_type'][phx-value-id='#{meeting_type.id}']")
+    |> render_click()
 
     view
     |> element("button[phx-click='toggle_show_as_free'][phx-value-state='true']")
     |> render_click()
 
-    view
-    |> form("form[phx-submit='save_meeting_type']", %{
-      "meeting_type" => %{"name" => "Free time", "duration" => "30"}
-    })
-    |> render_submit()
-
-    assert %{show_as_free: true} =
-             Enum.find(MeetingTypes.get_all_meeting_types(user.id), &(&1.name == "Free time"))
+    assert %{show_as_free: true} = MeetingTypes.get_meeting_type(meeting_type.id, user.id)
   end
 end

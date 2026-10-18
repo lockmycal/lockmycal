@@ -102,20 +102,8 @@ defmodule Tymeslot.Integrations.Calendar.ProviderConfig do
   # Providers whose CalDAV server URL is fixed and must never be edited by the
   # user — both during initial connection and reconnection. A provider absent
   # from this map allows the user to enter their own server URL.
-  @locked_url_providers %{
-    mailbox_org: %{
-      url: "https://dav.mailbox.org",
-      tooltip: "mailbox.org always uses this CalDAV server — the address cannot be changed"
-    },
-    apple: %{
-      url: "https://caldav.icloud.com",
-      tooltip: "Apple iCloud always uses this CalDAV server — the address cannot be changed"
-    }
-  }
-
-  @locked_url_providers_by_string Map.new(@locked_url_providers, fn {atom_key, value} ->
-                                    {Atom.to_string(atom_key), value}
-                                  end)
+  @locked_urls %{mailbox_org: "https://dav.mailbox.org", apple: "https://caldav.icloud.com"}
+  @locked_url_strings Map.new(@locked_urls, fn {key, _url} -> {Atom.to_string(key), key} end)
 
   # Provider metadata - single source of truth for all provider information
   @provider_metadata %{
@@ -419,11 +407,20 @@ defmodule Tymeslot.Integrations.Calendar.ProviderConfig do
   """
   @spec locked_url_for(atom() | String.t()) ::
           %{url: String.t(), tooltip: String.t()} | nil
-  def locked_url_for(provider) when is_atom(provider),
-    do: Map.get(@locked_url_providers, provider)
+  def locked_url_for(provider) when is_map_key(@locked_urls, provider) do
+    %{
+      url: Map.fetch!(@locked_urls, provider),
+      tooltip:
+        dgettext(
+          "dashboard_calendar_providers",
+          "%{provider} always uses this CalDAV server — the address cannot be changed",
+          provider: display_name(provider)
+        )
+    }
+  end
 
-  def locked_url_for(provider) when is_binary(provider),
-    do: Map.get(@locked_url_providers_by_string, provider)
+  def locked_url_for(provider) when is_map_key(@locked_url_strings, provider),
+    do: locked_url_for(Map.fetch!(@locked_url_strings, provider))
 
   def locked_url_for(_provider), do: nil
 

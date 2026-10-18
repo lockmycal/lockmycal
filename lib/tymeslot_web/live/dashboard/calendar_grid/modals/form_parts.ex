@@ -7,7 +7,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.FormParts do
   section labels, plain field labels, hints, and the start/end date and time
   fields.
 
-  The inputs themselves are `CoreComponents.input/1`, the app's standard
+  The inputs themselves are `Forms.input/1`, the app's standard
   field, rather than a style of their own.
   """
 

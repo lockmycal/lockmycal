@@ -235,7 +235,6 @@ config :tymeslot, :recaptcha, signup_provider: :off, booking_provider: :off
 config :tymeslot, :stripe_provider, Tymeslot.Payments.StripeMock
 config :tymeslot, :subscription_manager, Tymeslot.Payments.SubscriptionManagerMock
 config :tymeslot, :stripe_adapter, Tymeslot.MeetingPayments.StripeAdapterMock
-config :tymeslot, :show_branding, true
 config :tymeslot, :allow_payment_event_jobs_in_test, false
 
 # Pricing configuration for tests

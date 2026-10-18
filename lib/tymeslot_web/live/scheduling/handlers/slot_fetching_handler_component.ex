@@ -33,6 +33,7 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.SlotFetchingHandlerComponent do
 
   alias Tymeslot.Availability.Offer
   alias Tymeslot.Infrastructure.Logging.LogFormat
+  alias TymeslotWeb.Components.MeetingUtils
   alias TymeslotWeb.Live.Scheduling.AvailabilityHelpers
 
   @doc """
@@ -120,7 +121,7 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.SlotFetchingHandlerComponent do
   # `handle_schedule_date_selection/2`.
   defp apply_slots_result(socket, duration_to_fetch, {:ok, slots}) do
     socket
-    |> assign(:available_slots, slots)
+    |> assign(:available_slots, MeetingUtils.normalize_slot_list(slots))
     |> assign(:slot_interval_minutes, AvailabilityHelpers.slot_interval_minutes(socket))
     |> assign(:duration_minutes, duration_to_fetch)
     |> assign(:loading_slots, false)

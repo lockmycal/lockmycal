@@ -33,7 +33,8 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Live do
       current_user={assigns[:current_user]}
       username_context={assigns[:username_context]}
       embedded={assigns[:embedded] == true}
-      should_show_branding={assigns[:should_show_branding]}
+      embed_background={assigns[:embed_background]}
+      brand_logo_url={assigns[:brand_logo_url]}
     >
       <%= if assigns[:scheduling_error_message] do %>
         <.live_component

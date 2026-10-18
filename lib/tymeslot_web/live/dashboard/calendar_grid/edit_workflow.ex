@@ -8,6 +8,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow do
   alias Tymeslot.CalendarGrid
   alias Tymeslot.CalendarGrid.RecurrenceScope
   alias Tymeslot.CalendarGrid.WriteGuardian
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Infrastructure.Tasks
   alias Tymeslot.Integrations.Calendar
@@ -297,6 +298,19 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow do
     )
   end
 
+  @doc """
+  The message shown when Outlook would move a repeating event onto the last
+  day of the months that lack its day (`:day_missing_in_some_months`, see
+  `Outlook.RecurrenceConverter`), so it was not written.
+  """
+  @spec month_end_refused_message() :: String.t()
+  def month_end_refused_message do
+    dgettext(
+      "dashboard_calendar_events",
+      "Outlook can't skip the months that don't have this series' day, and would move those events to the month's last day. Please start the series on the 28th or earlier, or save it to another calendar."
+    )
+  end
+
   @doc "The message shown when an organiser has moved events too often in a short while."
   @spec move_rate_limited_message() :: String.t()
   def move_rate_limited_message,
@@ -350,7 +364,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow do
   def not_organiser_message do
     dgettext(
       "dashboard_calendar_events",
-      "Someone else organises this meeting, so Tymeslot can't move or split a series you were only invited to."
+      "Someone else organises this meeting, so %{app_name} can't move or split a series you were only invited to.",
+      app_name: Config.app_name()
     )
   end
 

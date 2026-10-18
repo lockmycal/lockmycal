@@ -9,8 +9,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Search do
   import Phoenix.Component, only: [assign: 3]
 
   alias Tymeslot.CalendarGrid
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.BookingDetail
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
+  alias TymeslotWeb.Dashboard.CalendarGrid.Helpers.DataLoading
 
   @spec handle_search(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
@@ -20,7 +22,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Search do
 
     results =
       CalendarGrid.search_events(user_id, term, socket.assigns.integrations,
-        hidden_integration_ids: hidden_ids
+        hidden_integration_ids: hidden_ids,
+        title_source: DataLoading.booking_title_source(socket.assigns)
       )
 
     {:noreply,
@@ -54,6 +57,23 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Search do
       {:noreply, socket}
     else
       _error -> {:noreply, socket}
+    end
+  end
+
+  # A booking has no provider event to select: the grid opens it in its own
+  # detail modal, after moving to the day it is on.
+  def handle_goto_search_result(%{"meeting-id" => meeting_id, "date" => date_str}, socket) do
+    case Date.from_iso8601(date_str) do
+      {:ok, date} ->
+        socket
+        |> assign(:view, :day)
+        |> assign(:date, date)
+        |> Helpers.load_events()
+        |> assign(:search_open, false)
+        |> then(&BookingDetail.handle_show_booking(%{"meeting-id" => meeting_id}, &1))
+
+      {:error, _reason} ->
+        {:noreply, socket}
     end
   end
 

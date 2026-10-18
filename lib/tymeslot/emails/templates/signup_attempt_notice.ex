@@ -9,6 +9,8 @@ defmodule Tymeslot.Emails.Templates.SignupAttemptNotice do
   """
   use Gettext, backend: TymeslotWeb.Gettext
 
+  alias Tymeslot.Infrastructure.Config
+
   alias Tymeslot.Emails.Shared.{
     Buttons,
     Greeting,
@@ -29,7 +31,7 @@ defmodule Tymeslot.Emails.Templates.SignupAttemptNotice do
 
     #{Text.centered_text(explanation(user), padding: "0 0 20px 0")}
 
-    #{Buttons.action_button(@intent, dgettext("emails_account", "Sign In to Tymeslot"), sign_in_url, full_width: true, size: :large)}
+    #{Buttons.action_button(@intent, dgettext("emails_account", "Sign In to %{app_name}", app_name: Config.app_name()), sign_in_url, full_width: true, size: :large)}
 
     #{reset_section(user, reset_url)}
 
@@ -57,7 +59,7 @@ defmodule Tymeslot.Emails.Templates.SignupAttemptNotice do
 
     #{explanation(user)}
 
-    #{dgettext("emails_account", "Sign In to Tymeslot:")}
+    #{dgettext("emails_account", "Sign In to %{app_name}:", app_name: Config.app_name())}
     #{sign_in_url}
     #{reset_text(user, reset_url)}
     #{dgettext("emails_account", "If it wasn't you, you can ignore this email. No new account was created and nothing about your account has changed.")}
@@ -70,13 +72,15 @@ defmodule Tymeslot.Emails.Templates.SignupAttemptNotice do
     if SignInProvider.social?(user) do
       dgettext(
         "emails_account",
-        "Someone just tried to create a new Tymeslot account with this email address, which already has an account. If it was you, sign in with %{provider} below.",
-        provider: SignInProvider.display_name(user)
+        "Someone just tried to create a new %{app_name} account with this email address, which already has an account. If it was you, sign in with %{provider} below.",
+        provider: SignInProvider.display_name(user),
+        app_name: Config.app_name()
       )
     else
       dgettext(
         "emails_account",
-        "Someone just tried to create a new Tymeslot account with this email address, which already has an account. If it was you, sign in below, or reset your password if you can't remember it."
+        "Someone just tried to create a new %{app_name} account with this email address, which already has an account. If it was you, sign in below, or reset your password if you can't remember it.",
+        app_name: Config.app_name()
       )
     end
   end

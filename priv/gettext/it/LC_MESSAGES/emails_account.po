@@ -94,11 +94,6 @@ msgstr "Conferma l'email e inizia:"
 msgid "Confirm your email and your account is ready."
 msgstr "Conferma la tua email e il tuo account è pronto."
 
-#: lib/tymeslot/emails/templates/social_signup_confirmation.ex
-#, elixir-autogen, elixir-format
-msgid "Confirm your email to finish signing up for Tymeslot."
-msgstr "Conferma la tua email per completare la registrazione a LockMyCal."
-
 #: lib/tymeslot/emails/templates/email_change_verification.ex
 #, elixir-autogen, elixir-format
 msgid "Confirm your new email"
@@ -323,14 +318,14 @@ msgstr "Imposta una nuova password:"
 #: lib/tymeslot/emails/templates/no_password_to_reset.ex
 #: lib/tymeslot/emails/templates/signup_attempt_notice.ex
 #, elixir-autogen, elixir-format
-msgid "Sign In to Tymeslot"
-msgstr "Accedi a LockMyCal"
+msgid "Sign In to %{app_name}"
+msgstr "Accedi a %{app_name}"
 
 #: lib/tymeslot/emails/templates/no_password_to_reset.ex
 #: lib/tymeslot/emails/templates/signup_attempt_notice.ex
 #, elixir-autogen, elixir-format
-msgid "Sign In to Tymeslot:"
-msgstr "Accedi a LockMyCal:"
+msgid "Sign In to %{app_name}:"
+msgstr "Accedi a %{app_name}:"
 
 #: lib/tymeslot/emails/templates/signup_attempt_notice.ex
 #, elixir-autogen, elixir-format
@@ -339,18 +334,18 @@ msgstr "Accedi invece di registrarti."
 
 #: lib/tymeslot/emails/templates/no_password_to_reset.ex
 #, elixir-autogen, elixir-format
-msgid "Someone asked to reset the password for your Tymeslot account, but your account signs in with %{provider}, so it has no password to reset. Use the button below and choose %{provider} to sign in."
-msgstr "Qualcuno ha chiesto di reimpostare la password del tuo account LockMyCal, ma il tuo account accede con %{provider}, quindi non ha una password da reimpostare. Usa il pulsante qui sotto e scegli %{provider} per accedere."
+msgid "Someone asked to reset the password for your %{app_name} account, but your account signs in with %{provider}, so it has no password to reset. Use the button below and choose %{provider} to sign in."
+msgstr "Qualcuno ha chiesto di reimpostare la password del tuo account %{app_name}, ma il tuo account accede con %{provider}, quindi non ha una password da reimpostare. Usa il pulsante qui sotto e scegli %{provider} per accedere."
 
 #: lib/tymeslot/emails/templates/signup_attempt_notice.ex
 #, elixir-autogen, elixir-format
-msgid "Someone just tried to create a new Tymeslot account with this email address, which already has an account. If it was you, sign in below, or reset your password if you can't remember it."
-msgstr "Qualcuno ha appena provato a creare un nuovo account LockMyCal con questo indirizzo email, che ha già un account. Se sei stato tu, accedi qui sotto, oppure reimposta la password se non la ricordi."
+msgid "Someone just tried to create a new %{app_name} account with this email address, which already has an account. If it was you, sign in below, or reset your password if you can't remember it."
+msgstr "Qualcuno ha appena provato a creare un nuovo account %{app_name} con questo indirizzo email, che ha già un account. Se sei stato tu, accedi qui sotto, oppure reimposta la password se non la ricordi."
 
 #: lib/tymeslot/emails/templates/signup_attempt_notice.ex
 #, elixir-autogen, elixir-format
-msgid "Someone just tried to create a new Tymeslot account with this email address, which already has an account. If it was you, sign in with %{provider} below."
-msgstr "Qualcuno ha appena provato a creare un nuovo account LockMyCal con questo indirizzo email, che ha già un account. Se sei stato tu, accedi qui sotto con %{provider}."
+msgid "Someone just tried to create a new %{app_name} account with this email address, which already has an account. If it was you, sign in with %{provider} below."
+msgstr "Qualcuno ha appena provato a creare un nuovo account %{app_name} con questo indirizzo email, che ha già un account. Se sei stato tu, accedi qui sotto con %{provider}."
 
 #: lib/tymeslot/emails/templates/signup_attempt_notice.ex
 #, elixir-autogen, elixir-format
@@ -391,8 +386,8 @@ msgstr "Questo è un avviso di sicurezza inviato per proteggere il tuo account. 
 
 #: lib/tymeslot/emails/templates/social_signup_confirmation.ex
 #, elixir-autogen, elixir-format
-msgid "This link expires in 24 hours. If you didn't sign up for Tymeslot, you can ignore this email and no account will be created."
-msgstr "Questo link scade tra 24 ore. Se non ti sei registrato a LockMyCal, puoi ignorare questa email e non verrà creato alcun account."
+msgid "This link expires in 24 hours. If you didn't sign up for %{app_name}, you can ignore this email and no account will be created."
+msgstr "Questo link scade tra 24 ore. Se non ti sei registrato a %{app_name}, puoi ignorare questa email e non verrà creato alcun account."
 
 #: lib/tymeslot/emails/templates/email_change_verification.ex
 #, elixir-autogen, elixir-format
@@ -487,13 +482,13 @@ msgstr "Accedi con %{provider}."
 
 #: lib/tymeslot/emails/templates/social_signup_confirmation.ex
 #, elixir-autogen, elixir-format
-msgid "You're signing up for Tymeslot with %{provider}. Confirm this email address to create your account and sign in."
-msgstr "Ti stai registrando a LockMyCal con %{provider}. Conferma questo indirizzo email per creare il tuo account e accedere."
+msgid "You're signing up for %{app_name} with %{provider}. Confirm this email address to create your account and sign in."
+msgstr "Ti stai registrando a %{app_name} con %{provider}. Conferma questo indirizzo email per creare il tuo account e accedere."
 
 #: lib/tymeslot/emails/templates/no_password_to_reset.ex
 #, elixir-autogen, elixir-format
-msgid "Your Tymeslot account has no password to reset."
-msgstr "Il tuo account LockMyCal non ha una password da reimpostare."
+msgid "Your %{app_name} account has no password to reset."
+msgstr "Il tuo account %{app_name} non ha una password da reimpostare."
 
 #: lib/tymeslot/emails/templates/email_change_confirmed.ex
 #, elixir-autogen, elixir-format
@@ -579,3 +574,8 @@ msgstr "L'indirizzo email del tuo account %{app_name} è stato modificato con su
 #, elixir-autogen, elixir-format
 msgid "Your %{app_name} email address has been changed."
 msgstr "L'indirizzo email del tuo account %{app_name} è stato modificato."
+
+#: lib/tymeslot/emails/templates/social_signup_confirmation.ex
+#, elixir-autogen, elixir-format
+msgid "Confirm your email to finish signing up for %{app_name}."
+msgstr "Conferma la tua email per completare la registrazione a %{app_name}."

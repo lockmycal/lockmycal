@@ -1,6 +1,7 @@
 defmodule TymeslotWeb.Components.Dashboard.Meetings.RemindersSection do
   @moduledoc """
-  The reminders a booking carries, as shown on its card in the meetings list.
+  The reminders a booking carries, as shown on its card in the meetings list:
+  a tile in the card's grid of details, after the meeting type.
 
   Read-only: a booking's reminders are fixed when it is made, and this says
   what they are and how far they have got. It is the only place a host can see
@@ -20,7 +21,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.RemindersSection do
 
   alias Phoenix.LiveComponent
   alias Tymeslot.Notifications.ReminderSchedule
-  alias TymeslotWeb.Components.CoreComponents
+  alias TymeslotWeb.Components.CoreComponents.Containers
 
   attr :meeting, :map, required: true
 
@@ -51,35 +52,25 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.RemindersSection do
   @impl LiveComponent
   def render(assigns) do
     ~H"""
-    <div id={@id}>
-      <%!-- When this booking reminds. Its own list, copied from the meeting type
-            when it was booked, so it stays right for a booking made before that
-            setting changed. Released bookings (cancelled, expired) have none
-            left: their reminders were dropped with the booking. --%>
-      <div
+    <%!-- When this booking reminds. Its own list, copied from the meeting type
+          when it was booked, so it stays right for a booking made before that
+          setting changed. Released bookings (cancelled, expired) have none
+          left: their reminders were dropped with the booking. Hidden when
+          empty, so the empty element does not take a cell of the grid. --%>
+    <div id={@id} class={@reminders == [] && "hidden"}>
+      <Containers.detail_line
         :if={@reminders != []}
-        class="mt-8 p-5 bg-neutral-50/50 dark:bg-twilight-indigo-900/40 rounded-token-2xl border-2 border-neutral-300 dark:border-twilight-indigo-800"
+        variant={:tile}
+        icon="hero-bell"
+        label={dgettext("dashboard_bookings", "Reminders")}
       >
-        <%!-- Same box as the card's Attachments above it. --%>
-        <div class="flex items-center gap-4 mb-4">
-          <div class="w-8 h-8 rounded-token-lg bg-white dark:bg-twilight-indigo-950 shadow-sm flex items-center justify-center shrink-0 border border-neutral-300 dark:border-twilight-indigo-700">
-            <CoreComponents.icon name="hero-bell" class="w-4 h-4 text-neutral-400" />
-          </div>
-          <p class="text-token-xs font-black text-neutral-400 uppercase tracking-widest">
-            {dgettext("dashboard_bookings", "Reminders")}
-          </p>
-        </div>
-        <ul class="space-y-2.5">
-          <li :for={reminder <- @reminders} class="flex items-center justify-between gap-3">
-            <span class="text-token-sm font-medium text-neutral-700 dark:text-neutral-200">
-              {reminder_label(reminder)}
-            </span>
-            <span class="text-token-xs font-bold text-neutral-500 dark:text-neutral-400">
-              {reminder_status_label(reminder.status)}
-            </span>
-          </li>
-        </ul>
-      </div>
+        <p :for={reminder <- @reminders} class="text-token-sm">
+          {reminder_label(reminder)}
+          <span class="ml-1 text-token-xs font-bold text-neutral-500 dark:text-neutral-400">
+            {reminder_status_label(reminder.status)}
+          </span>
+        </p>
+      </Containers.detail_line>
     </div>
     """
   end

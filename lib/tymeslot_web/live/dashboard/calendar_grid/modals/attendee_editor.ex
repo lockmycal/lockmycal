@@ -48,10 +48,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.AttendeeEditor do
             :if={@attendees != [] or @pending_attendees != []}
             class="flex flex-wrap gap-1.5 mb-2"
           >
-            <%!-- Existing (invited) attendees — turquoise --%>
+            <%!-- Existing (invited) attendees: turquoise --%>
             <span
               :for={attendee <- @attendees}
-              class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-primary-50 border border-primary-200 text-token-xs text-primary-800"
+              class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-token-full bg-primary-50 border border-primary-200 text-token-xs text-primary-800 dark:bg-primary-900/30"
             >
               {attendee.display_name || attendee.email}
               <button
@@ -59,25 +59,18 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.AttendeeEditor do
                 phx-click="request_remove_attendee"
                 phx-value-email={attendee.email}
                 phx-target={@myself}
-                class="w-4 h-4 rounded-full hover:bg-red-100 flex items-center justify-center transition-colors"
+                class="w-4 h-4 rounded-token-full hover:bg-red-100 flex items-center justify-center transition-colors"
                 aria-label={
                   dgettext("dashboard_calendar_events", "Remove %{email}", email: attendee.email)
                 }
               >
-                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="3"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <.icon name="hero-x-mark-micro" class="w-2.5 h-2.5" />
               </button>
             </span>
-            <%!-- Pending (unsent) attendees — amber dashed --%>
+            <%!-- Pending (unsent) attendees: amber, dashed --%>
             <span
               :for={email <- @pending_attendees}
-              class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-amber-50 border border-dashed border-amber-300 text-token-xs text-amber-800"
+              class="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-token-full bg-amber-50 border border-dashed border-amber-300 text-token-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
             >
               {email}
               <button
@@ -85,17 +78,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.AttendeeEditor do
                 phx-click="remove_pending_attendee"
                 phx-value-email={email}
                 phx-target={@myself}
-                class="w-4 h-4 rounded-full hover:bg-amber-200 flex items-center justify-center transition-colors"
+                class="w-4 h-4 rounded-token-full hover:bg-amber-200 flex items-center justify-center transition-colors"
                 aria-label={dgettext("dashboard_calendar_events", "Remove %{email}", email: email)}
               >
-                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="3"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <.icon name="hero-x-mark-micro" class="w-2.5 h-2.5" />
               </button>
             </span>
           </div>
@@ -138,10 +124,13 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.AttendeeEditor do
             {attendee.display_name || attendee.email}
             <span
               :if={attendee.display_name && attendee.email && attendee.display_name != attendee.email}
-              class="text-token-xs text-neutral-400 ml-1"
+              class="text-token-xs text-neutral-400 ml-1 dark:text-twilight-indigo-300"
             >{attendee.email}</span>
           </div>
-          <p :if={length(@attendees) > 5} class="text-token-xs text-neutral-400 mt-1">
+          <p
+            :if={length(@attendees) > 5}
+            class="text-token-xs text-neutral-400 mt-1 dark:text-twilight-indigo-300"
+          >
             {dngettext(
               "dashboard_calendar_events",
               "+%{count} more",

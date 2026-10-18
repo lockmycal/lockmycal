@@ -32,7 +32,6 @@ msgstr ""
 msgid "Attendee"
 msgstr ""
 
-#: lib/tymeslot_web/live/dashboard/payments_settings/disconnect_modal.ex
 #: lib/tymeslot_web/live/dashboard/payments_settings/refund_modal.ex
 #, elixir-autogen, elixir-format
 msgid "Cancel"
@@ -214,11 +213,6 @@ msgstr ""
 #: lib/tymeslot_web/controllers/dashboard/payments_controller.ex
 #, elixir-autogen, elixir-format
 msgid "Payment setup is temporarily unavailable. Please try again later."
-msgstr ""
-
-#: lib/tymeslot_web/live/dashboard/payments_settings_component.ex
-#, elixir-autogen, elixir-format
-msgid "Payments"
 msgstr ""
 
 #: lib/tymeslot_web/live/dashboard/payments_settings/payments_table.ex
@@ -464,4 +458,9 @@ msgstr ""
 #: lib/tymeslot_web/live/dashboard/payments_settings/status_card.ex
 #, elixir-autogen, elixir-format
 msgid "Stripe needs updated verification details before it can re-enable payments. Open your Stripe dashboard to finish this. (Reason: requirements.past_due)"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/payments_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Payments"
 msgstr ""

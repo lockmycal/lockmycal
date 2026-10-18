@@ -14,19 +14,23 @@ defmodule TymeslotWeb.Dashboard.AnalyticsLive do
 
   alias Tymeslot.Analytics
   alias Tymeslot.Analytics.MetricsCache
+  alias Tymeslot.Utils.DateTimeUtils.TimeFormat
   alias TymeslotWeb.Components.DashboardLayout
   alias TymeslotWeb.Dashboard.AnalyticsLive.DeviceBreakdown
   alias TymeslotWeb.Dashboard.AnalyticsLive.SourcesTable
   alias TymeslotWeb.Dashboard.AnalyticsLive.SummaryCards
   alias TymeslotWeb.Dashboard.AnalyticsLive.VisitsChart
   alias TymeslotWeb.Dashboard.ComponentDispatch
-  alias TymeslotWeb.Helpers.LocaleFormat
+  alias TymeslotWeb.Dashboard.DashboardFormat
+  alias TymeslotWeb.Helpers.PageTitles
 
   @ranges %{"7d" => 7, "30d" => 30, "90d" => 90}
   @default_range "30d"
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
+    socket = assign(socket, :page_title, PageTitles.dashboard_title(:analytics))
+
     cond do
       not Analytics.enabled?() ->
         {:ok,
@@ -127,7 +131,7 @@ defmodule TymeslotWeb.Dashboard.AnalyticsLive do
         feature_placeholder_components={@feature_placeholder_components}
       />
 
-      <div :if={@analytics_allowed} class="space-y-6">
+      <div :if={@analytics_allowed} class="space-y-10 pb-20">
         <.section_header
           icon="hero-chart-bar"
           title={dgettext("dashboard_analytics", "Analytics")}
@@ -139,67 +143,58 @@ defmodule TymeslotWeb.Dashboard.AnalyticsLive do
           }
         />
 
-        <div
-          :if={@partial_window?}
-          class="flex items-start gap-2 rounded-token-lg bg-primary-50 dark:bg-primary-950/40 px-4 py-3 text-token-sm text-neutral-700 dark:text-neutral-300"
-        >
-          <.icon name="hero-information-circle" class="mt-0.5 h-5 w-5 shrink-0 text-primary-500" />
-          <span>
-            {dgettext(
-              "dashboard_analytics",
-              "Booking analytics started collecting on %{date}. Dates before then show no data, so longer ranges will look sparse until more history builds up.",
-              date: format_launch_date(@launch_date)
-            )}
-          </span>
-        </div>
-
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <.subsection_header
-            icon="hero-squares-2x2"
-            title={dgettext("dashboard_analytics", "Summary")}
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <.segmented_control
+            id="analytics-range"
+            value={@range}
+            on_change="set_range"
+            param="range"
+            aria_label={dgettext("dashboard_analytics", "Date range")}
+          >
+            <:option
+              value="7d"
+              label={dgettext("dashboard_analytics", "7 days")}
+              icon="hero-calendar"
+            />
+            <:option
+              value="30d"
+              label={dgettext("dashboard_analytics", "30 days")}
+              icon="hero-calendar-days"
+            />
+            <:option
+              value="90d"
+              label={dgettext("dashboard_analytics", "90 days")}
+              icon="hero-calendar-date-range"
+            />
+          </.segmented_control>
+          <%!-- The arbitrary variant spins the component's icon while a
+                  refresh is in flight; the button itself stays still. --%>
+          <.icon_button
+            icon="hero-arrow-path"
+            label={dgettext("dashboard_analytics", "Refresh analytics")}
+            size={:sm}
+            class={@refreshing? && "[&>svg]:animate-spin"}
+            phx-click="refresh"
           />
-
-          <div class="flex items-center gap-2">
-            <div
-              class="flex bg-white dark:bg-twilight-indigo-950 border-2 border-neutral-300 dark:border-twilight-indigo-800 rounded-token-xl p-1 shadow-sm"
-              role="group"
-              aria-label={dgettext("dashboard_analytics", "Date range")}
-            >
-              <.range_button
-                label={dgettext("dashboard_analytics", "7 days")}
-                value="7d"
-                current={@range}
-                icon="hero-calendar"
-              />
-              <.range_button
-                label={dgettext("dashboard_analytics", "30 days")}
-                value="30d"
-                current={@range}
-                icon="hero-calendar-days"
-              />
-              <.range_button
-                label={dgettext("dashboard_analytics", "90 days")}
-                value="90d"
-                current={@range}
-                icon="hero-calendar-date-range"
-              />
-            </div>
-            <button
-              type="button"
-              phx-click="refresh"
-              title={
-                if @refreshing?,
-                  do: dgettext("dashboard_analytics", "Refreshing…"),
-                  else: dgettext("dashboard_analytics", "Refresh")
-              }
-              aria-label={dgettext("dashboard_analytics", "Refresh analytics")}
-              class="row-action-button row-action-button--icon-only row-action-button--neutral"
-              disabled={@refreshing?}
-            >
-              <.icon name="hero-arrow-path" class={"w-5 h-5 #{if @refreshing?, do: "animate-spin"}"} />
-            </button>
-          </div>
         </div>
+
+        <p
+          :if={@loaded? and @refreshed_at}
+          class="text-token-xs tabular-nums text-neutral-500 dark:text-twilight-indigo-300"
+          aria-live="polite"
+        >
+          {dgettext("dashboard_analytics", "Updated %{time}",
+            time: format_refreshed_at(@refreshed_at, @time_zone, @time_format)
+          )}
+        </p>
+
+        <.info_box :if={@partial_window?} variant={:info}>
+          {dgettext(
+            "dashboard_analytics",
+            "Booking analytics started collecting on %{date}. Dates before then show no data, so longer ranges will look sparse until more history builds up.",
+            date: format_launch_date(@launch_date)
+          )}
+        </.info_box>
 
         <SummaryCards.cards
           visits={@visits}
@@ -209,39 +204,19 @@ defmodule TymeslotWeb.Dashboard.AnalyticsLive do
           loading?={!@loaded?}
         />
 
-        <div class="space-y-1">
-          <p
-            :if={@loaded? and @refreshed_at}
-            class="text-token-sm font-medium text-neutral-600 dark:text-neutral-400"
-            aria-live="polite"
-          >
-            {dgettext("dashboard_analytics", "Updated:")}
-            <span class="font-bold text-neutral-800 dark:text-neutral-200">{format_refreshed_at(
-              @refreshed_at,
-              @time_zone
-            )}</span>
-          </p>
-
-          <p class="text-token-sm text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed">
-            <%!--
-              Be honest about the cookieless model: the daily-rotated fingerprint
-              means a visitor is counted once per UTC day, so multi-day "unique
-              visitors" is a sum of daily uniques rather than truly distinct
-              people, and conversion compares two such counts. Labelled as an
-              estimate so the numbers aren't read as exact.
-            --%>
-            {dgettext(
-              "dashboard_analytics",
-              "Unique visitors and conversion are cookieless estimates: each visitor is counted once per day, so totals over a longer range approximate the number of distinct people. Conversion is the share of visitors who went on to book and is indicative, not exact."
-            )}
-          </p>
-        </div>
-
-        <.subsection_header
-          icon="hero-presentation-chart-line"
-          title={dgettext("dashboard_analytics", "Visits over time")}
-          class="mb-4"
-        />
+        <p class="text-token-xs leading-relaxed text-neutral-500 dark:text-twilight-indigo-300">
+          <%!--
+            Be honest about the cookieless model: the daily-rotated fingerprint
+            means a visitor is counted once per UTC day, so multi-day "unique
+            visitors" is a sum of daily uniques rather than truly distinct
+            people, and conversion compares two such counts. Labelled as an
+            estimate so the numbers aren't read as exact.
+          --%>
+          {dgettext(
+            "dashboard_analytics",
+            "Unique visitors and conversion are cookieless estimates: each visitor is counted once per day, so totals over a longer range approximate the number of distinct people. Conversion is the share of visitors who went on to book and is indicative, not exact."
+          )}
+        </p>
 
         <VisitsChart.chart
           points={@visits_by_day}
@@ -251,50 +226,11 @@ defmodule TymeslotWeb.Dashboard.AnalyticsLive do
           loading?={!@loaded?}
         />
 
-        <.subsection_header
-          icon="hero-device-phone-mobile"
-          title={dgettext("dashboard_analytics", "Devices")}
-          class="mb-4"
-        />
-
         <DeviceBreakdown.breakdown devices={@devices} loading?={!@loaded?} />
-
-        <.subsection_header
-          icon="hero-link"
-          title={dgettext("dashboard_analytics", "Sources")}
-          class="mb-4"
-        />
 
         <SourcesTable.table sources={@sources} loading?={!@loaded?} />
       </div>
     </DashboardLayout.dashboard_layout>
-    """
-  end
-
-  attr :label, :string, required: true
-  attr :value, :string, required: true
-  attr :current, :string, required: true
-  attr :icon, :string, required: true
-
-  defp range_button(assigns) do
-    ~H"""
-    <button
-      type="button"
-      phx-click="set_range"
-      phx-value-range={@value}
-      aria-pressed={@current == @value}
-      class={[
-        "flex items-center gap-1.5 px-3 py-1.5 rounded-token-lg text-token-sm font-black transition-all duration-300 cursor-pointer",
-        if(@current == @value,
-          do: "bg-linear-to-br from-primary-600 to-secondary-600 text-white",
-          else:
-            "text-neutral-500 dark:text-neutral-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-twilight-indigo-900"
-        )
-      ]}
-    >
-      <.icon name={@icon} class={if @current == @value, do: "w-4 h-4 text-white/90", else: "w-4 h-4"} />
-      <span>{@label}</span>
-    </button>
     """
   end
 
@@ -343,12 +279,7 @@ defmodule TymeslotWeb.Dashboard.AnalyticsLive do
     assign(socket, launch_date: launch_date, partial_window?: partial_window?)
   end
 
-  defp format_launch_date(%Date{} = date) do
-    locale = Gettext.get_locale(TymeslotWeb.Gettext)
-    day = String.pad_leading(to_string(date.day), 2, "0")
-    "#{day} #{LocaleFormat.format_month_name(date.month, locale, :short)} #{date.year}"
-  end
-
+  defp format_launch_date(%Date{} = date), do: DashboardFormat.long_date(date)
   defp format_launch_date(_other), do: ""
 
   defp organizer_time_zone(socket) do
@@ -373,12 +304,19 @@ defmodule TymeslotWeb.Dashboard.AnalyticsLive do
     |> assign(:refreshed_at, DateTime.utc_now())
   end
 
-  defp format_refreshed_at(%DateTime{} = dt, time_zone) do
-    case DateTime.shift_zone(dt, time_zone || "Etc/UTC") do
-      {:ok, local} -> Calendar.strftime(local, "%H:%M:%S")
-      {:error, _reason} -> Calendar.strftime(dt, "%H:%M:%S")
-    end
+  # The organiser's own clock, 12- or 24-hour, as on every other dashboard page.
+  defp format_refreshed_at(%DateTime{} = dt, time_zone, time_format) do
+    local =
+      case DateTime.shift_zone(dt, time_zone || "Etc/UTC") do
+        {:ok, local} -> local
+        {:error, _reason} -> dt
+      end
+
+    TimeFormat.format(
+      local,
+      TimeFormat.resolve(time_format, Gettext.get_locale(TymeslotWeb.Gettext))
+    )
   end
 
-  defp format_refreshed_at(_other, _time_zone), do: ""
+  defp format_refreshed_at(_other, _time_zone, _time_format), do: ""
 end

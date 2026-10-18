@@ -97,7 +97,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.TimezoneFormComponent do
       <.subsection_header
         icon="hero-clock"
         title={dgettext("dashboard_profile", "Timezone")}
-        class="mb-3"
+        class="mb-4"
       />
       <TimezoneDropdown.timezone_dropdown
         profile={@profile}
@@ -106,6 +106,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.TimezoneFormComponent do
         timezone_search={@timezone_search}
         target={@myself}
         safe_flags={false}
+        show_label={false}
       />
       <%= for message <- FormValidationHelpers.field_errors(@form_errors, :timezone) do %>
         <p class="text-token-sm text-red-400 mt-1">{message}</p>

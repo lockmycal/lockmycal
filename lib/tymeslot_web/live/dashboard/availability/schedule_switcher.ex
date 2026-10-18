@@ -7,23 +7,26 @@ defmodule TymeslotWeb.Dashboard.Availability.ScheduleSwitcher do
   actions that change the set itself: create, rename, duplicate, promote to
   default, and delete.
 
-  Follows the same shape every other dashboard list uses (see Meetings:
-  `subsection_header` + an "Add" button above a plain tab/list surface)
-  rather than a colour-framed panel — the tabs must still outweigh everything
-  around them, because every schedule renders the same weekly grid below and
-  the strip is the only thing saying which one is being edited, but that no
-  longer needs a schedule-coloured frame to read as "this belongs to the
-  active tab"; the actions that merely *manage* a schedule sit in a menu
-  rather than competing as five buttons. And a schedule only means anything
-  once a meeting type is booked against it, which is decided on a different
-  page entirely, so the strip states which meeting types use the selected
-  schedule rather than leaving that link invisible.
+  Two things drive the layout. The tabs must outweigh everything around them,
+  because every schedule renders the same weekly grid below and the strip is the
+  only thing saying which one is being edited; so the actions that merely
+  *manage* a schedule sit in a menu rather than competing as five buttons. And a
+  schedule only means anything once a meeting type is booked against it, which
+  is decided on a different page entirely, so the strip states which meeting
+  types use the selected schedule rather than leaving that link invisible.
   """
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
 
+  alias TymeslotWeb.Components.CoreComponents.Navigation
+  alias TymeslotWeb.Components.Dashboard.Availability.ScheduleAccents
+
   @doc """
   Renders the schedule tabs above the surface that edits the selected schedule.
+
+  Tabs and content share one bordered box, with the strip as its top edge, so
+  the weekly hours and policy inside it read as belonging to the active tab
+  rather than to the account as a whole.
   """
   attr :schedules, :list, required: true
   attr :selected_schedule, :map, default: nil
@@ -35,40 +38,45 @@ defmodule TymeslotWeb.Dashboard.Availability.ScheduleSwitcher do
 
   @spec schedule_panel(map()) :: Phoenix.LiveView.Rendered.t()
   def schedule_panel(assigns) do
-    assigns = assign(assigns, :can_create, length(assigns.schedules) < assigns.max_schedules)
+    assigns =
+      assigns
+      |> assign(:can_create, length(assigns.schedules) < assigns.max_schedules)
+      |> assign(:tabs_id, "schedule-tabs")
 
     ~H"""
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-      <.subsection_header
-        icon="hero-calendar-days"
-        title={dgettext("dashboard_availability", "Schedules")}
-      />
-      <%!-- Kept in place once the cap is reached rather than removed: a
-      button that greys out says there is a ceiling and what it is, whereas
-      one that disappears just looks like a feature that went missing. --%>
-      <button
-        type="button"
-        disabled={not @can_create}
-        phx-click={@can_create && "show_schedule_form"}
-        phx-value-mode="create"
-        phx-target={@myself}
-        title={limit_hint(@can_create, @max_schedules)}
-        class="btn btn-primary inline-flex items-center gap-2"
-      >
-        <.icon name="hero-plus" class="w-4 h-4" />
-        <span>{dgettext("dashboard_availability", "New schedule")}</span>
-      </button>
-    </div>
-
-    <div class="mb-8">
+    <%!-- A plain card like the page's other blocks: the schedule's colour
+    marks only its tab and dot, so the frame carries no meaning of its own. --%>
+    <div class="card-glass p-0! overflow-hidden">
+      <%!-- Wraps rather than scrolls: the active tab carries a menu, and a
+      scrolling row would clip it. --%>
       <.tab_bar
-        variant={:card}
-        class="max-w-fit"
+        id={@tabs_id}
+        variant={:attached}
+        overflow={:wrap}
+        aria_label={dgettext("dashboard_availability", "Schedules")}
+        class="bg-neutral-50 border-neutral-200 dark:bg-twilight-indigo-900/60 dark:border-twilight-indigo-800"
         active_tab={active_tab(@selected_schedule)}
         target={@myself}
         event="switch_tab"
         tabs={schedule_tabs(@schedules)}
       >
+        <:trailing>
+          <%!-- Kept in place once the cap is reached rather than removed: a
+          button that greys out says there is a ceiling and what it is, whereas
+          one that disappears just looks like a feature that went missing. --%>
+          <.action_button
+            variant={:secondary}
+            icon="hero-plus"
+            disabled={not @can_create}
+            phx-click={@can_create && "show_schedule_form"}
+            phx-value-mode="create"
+            phx-target={@myself}
+            title={limit_hint(@can_create, @max_schedules)}
+          >
+            {dgettext("dashboard_availability", "New schedule")}
+          </.action_button>
+        </:trailing>
+
         <%!-- The menu acts on the schedule whose tab it sits in, so it rides
         inside that tab rather than standing off in the corner, where it read as
         a control over the whole page. --%>
@@ -81,7 +89,7 @@ defmodule TymeslotWeb.Dashboard.Availability.ScheduleSwitcher do
             on_close="close_schedule_menu"
             target={@myself}
             trigger_class="flex items-center justify-center w-8 h-8 rounded-token-lg text-white/80 hover:bg-white/20 hover:text-white transition-all duration-300 focus:outline-hidden focus:ring-2 focus:ring-white/60"
-            class="bg-white dark:bg-twilight-indigo-950 border-2 border-neutral-300 dark:border-twilight-indigo-700 rounded-token-xl shadow-lg py-1 w-56"
+            class="bg-white border-2 border-neutral-100 rounded-token-xl shadow-lg py-1 w-56 dark:bg-twilight-indigo-950 dark:border-twilight-indigo-800"
             aria-label={dgettext("dashboard_availability", "Manage this schedule")}
           >
             <:trigger>
@@ -122,20 +130,30 @@ defmodule TymeslotWeb.Dashboard.Availability.ScheduleSwitcher do
           </.dropdown>
         </:tab_action>
       </.tab_bar>
-    </div>
 
-    <p class="text-token-sm text-neutral-500 font-medium mb-6">
-      {usage_summary(@selected_schedule, @meeting_type_names)}
-    </p>
+      <%!-- Only the selected schedule's panel is ever rendered: it is the
+      surface every tab edits, refilled when the selection changes. --%>
+      <div
+        role={@selected_schedule && "tabpanel"}
+        id={@selected_schedule && Navigation.panel_id(@tabs_id, @selected_schedule.id)}
+        aria-labelledby={@selected_schedule && Navigation.tab_id(@tabs_id, @selected_schedule.id)}
+        class="p-6 sm:p-8 space-y-8"
+      >
+        <p class="text-token-sm text-neutral-500 font-medium dark:text-twilight-indigo-300">
+          {usage_summary(@selected_schedule, @meeting_type_names)}
+        </p>
 
-    <%!-- Spelled out as well as shown on the disabled button, because a
-    title only surfaces on hover and never on a touch screen. --%>
-    <p :if={not @can_create} class="-mt-4 mb-6 text-token-sm text-neutral-400 font-medium">
-      {limit_message(@max_schedules)}
-    </p>
+        <%!-- Spelled out as well as shown on the disabled button, because a
+        title only surfaces on hover and never on a touch screen. --%>
+        <p
+          :if={not @can_create}
+          class="-mt-6 text-token-sm text-neutral-400 font-medium dark:text-twilight-indigo-300"
+        >
+          {limit_message(@max_schedules)}
+        </p>
 
-    <div class="space-y-8">
-      {render_slot(@inner_block)}
+        {render_slot(@inner_block)}
+      </div>
     </div>
     """
   end
@@ -152,8 +170,17 @@ defmodule TymeslotWeb.Dashboard.Availability.ScheduleSwitcher do
   end
 
   defp schedule_tabs(schedules) do
-    Enum.map(schedules, fn schedule ->
-      %{id: to_string(schedule.id), label: tab_label(schedule)}
+    schedules
+    |> Enum.with_index()
+    |> Enum.map(fn {schedule, index} ->
+      accent = ScheduleAccents.at(index)
+
+      %{
+        id: to_string(schedule.id),
+        label: tab_label(schedule),
+        accent: accent.tab,
+        dot: accent.dot
+      }
     end)
   end
 

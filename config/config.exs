@@ -92,9 +92,10 @@ config :tymeslot,
   # Can be configured as a list of provider configs
   analytics_providers: nil,
 
-  # Whether to show "Powered by Tymeslot" branding on scheduling pages.
-  # This should remain false in the standalone open-source version.
-  show_branding: false,
+  # Link of the "Scheduled with <app>" line at the end of every .ics the app
+  # sends (`Tymeslot.Profiles.IcsBranding`). nil leaves the line off; runtime.exs
+  # sets it to https://PHX_HOST outside tests.
+  ics_branding_url: nil,
 
   # Demo provider - no-op by default (can be provided by external layers)
   demo_provider: Tymeslot.Demo.NoOp,
@@ -144,10 +145,13 @@ config :tymeslot, :announcement_catalogs, [Tymeslot.Announcements.Catalog]
 config :tymeslot, :feature_assigns,
   automations_allowed: true,
   custom_questions_allowed: true,
+  group_bookings_allowed: true,
   analytics_allowed: true,
   contacts_allowed: true,
   custom_username_allowed: true,
   custom_booking_link_allowed: true,
+  custom_branding_allowed: true,
+  embed_alias_allowed: true,
   meeting_payments: false
 
 # Dashboard Feature Gates - Maps live_action atoms to feature flag assign keys.
@@ -235,11 +239,27 @@ config :tymeslot, TymeslotWeb.Gettext, default_locale: "en"
 # Locale configuration (single source of truth)
 # All supported languages with their metadata for UI rendering.
 #
-# A locale listed here is a promise: the completeness tests require every gettext
-# domain and every /for profession page to be fully translated into it, and the
-# marketing pages need a `localized_slugs` entry per profession. Add a locale only
-# once its catalogues, its `priv/professions/<locale>/` files, and its URL slugs
-# are all done — see priv/gettext/TRANSLATING.md.
+# A locale listed here is a promise: it appears in the language switcher at
+# once, so every string a user can reach must already exist in it. Adding one
+# takes, in this order:
+#
+#   1. A catalogue for every domain in priv/gettext/, plus a
+#      GLOSSARY.<code>.md settling register and terminology.
+#   2. The per-locale formatting code: month and weekday names, date order and
+#      number separators in `TymeslotWeb.Helpers.LocaleFormat`, the clock in
+#      `Tymeslot.Utils.DateTimeUtils.TimeFormat`, the checkout language in
+#      `Tymeslot.MeetingPayments.CheckoutSessions.stripe_locale/1`, and the flag
+#      in `TymeslotWeb.Components.FlagHelpers`.
+#   3. Every application built on this list. It is read at compile time
+#      elsewhere too, and anything that keeps its own per-locale content
+#      (catalogues, content files, localised URL slugs, images) must cover the
+#      new code before it lands here, or that build fails.
+#   4. Only then, the entry below.
+#
+# The code is a bare language subtag ("pt", never "pt_BR"): `LocalePlug` reduces
+# every request locale to its primary subtag, so a regional code would be listed
+# in the switcher and never selected. Name the variant in `name` instead, and see
+# priv/gettext/TRANSLATING.md for the translator-facing side.
 config :tymeslot, :locales,
   supported: [
     %{code: "en", name: "English", country_code: :gbr},
@@ -248,7 +268,8 @@ config :tymeslot, :locales,
     %{code: "fr", name: "Français", country_code: :fra},
     %{code: "it", name: "Italiano", country_code: :ita},
     %{code: "uk", name: "Українська", country_code: :ukr},
-    %{code: "pl", name: "Polski", country_code: :pol}
+    %{code: "pl", name: "Polski", country_code: :pol},
+    %{code: "pt", name: "Português (Brasil)", country_code: :bra}
   ],
   default: "en"
 
@@ -523,6 +544,10 @@ config :tymeslot, :payments,
     stripe_event_days: 90,
     analytics_event_days: 90,
     payload_days: 30,
+    # How long what invitees gave (names, emails, messages, answers) is kept
+    # after their meeting or poll ends, before it is anonymised. The meeting
+    # rows themselves stay for statistics. See Tymeslot.InviteeData.
+    invitee_data_days: 730,
     # Statutory retention for financial records (booking payments, payment
     # transactions, subscription invoices), in years counted from the end of
     # the financial year a record belongs to. Ten is the longest period common

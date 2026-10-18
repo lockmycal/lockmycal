@@ -9,7 +9,6 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DisplayNameFormComponent do
   alias Tymeslot.Profiles
   alias Tymeslot.Security.InputProcessor
   alias TymeslotWeb.Live.Shared.FormValidationHelpers
-  import TymeslotWeb.Components.CoreComponents
 
   @impl Phoenix.LiveComponent
   def mount(socket) do
@@ -64,10 +63,11 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DisplayNameFormComponent do
     ~H"""
     <div id="display-name-form-container">
       <.subsection_header
+        id="display-name-heading"
         icon="hero-user"
         title={dgettext("dashboard_profile", "Display Name")}
         required
-        class="mb-3"
+        class="mb-4"
       />
       <.form_wrapper
         for={%{}}
@@ -79,6 +79,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DisplayNameFormComponent do
           name="full_name"
           autocomplete="name"
           value={if @profile, do: @profile.full_name || "", else: ""}
+          aria-labelledby="display-name-heading"
           placeholder={dgettext("dashboard_profile", "Enter your full name")}
           required
           errors={FormValidationHelpers.field_errors(@form_errors, :full_name)}

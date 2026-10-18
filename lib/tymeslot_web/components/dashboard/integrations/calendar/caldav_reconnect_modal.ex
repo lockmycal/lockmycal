@@ -25,7 +25,6 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Calendar.CaldavReconnect
   alias Tymeslot.Integrations.Calendar.DisplayHelpers
   alias Tymeslot.Integrations.Calendar.ProviderConfig
   alias Tymeslot.Utils.ChangesetUtils
-  alias TymeslotWeb.Components.CoreComponents
 
   alias TymeslotWeb.Components.Dashboard.Integrations.Calendar.SharedFormComponents,
     as: SharedForm
@@ -251,7 +250,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Calendar.CaldavReconnect
   def render(assigns) do
     ~H"""
     <div id={@id}>
-      <CoreComponents.modal
+      <.modal
         :if={@show}
         id={"#{@id}-modal"}
         show={true}
@@ -282,7 +281,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Calendar.CaldavReconnect
               target={@myself}
             />
         <% end %>
-      </CoreComponents.modal>
+      </.modal>
     </div>
     """
   end
@@ -379,20 +378,20 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Calendar.CaldavReconnect
       <% end %>
 
       <div class="flex justify-end gap-3 pt-4 border-t border-primary-200/30">
-        <CoreComponents.action_button
+        <.action_button
           variant={:secondary}
           phx-click={JS.push("close_reconnect_modal", target: @target)}
         >
           {dgettext("dashboard_calendar_providers", "Cancel")}
-        </CoreComponents.action_button>
-        <CoreComponents.loading_button
+        </.action_button>
+        <.loading_button
           variant={:primary}
           type="submit"
           loading={@is_submitting}
           loading_text={dgettext("dashboard_calendar_providers", "Testing...")}
         >
           {dgettext("dashboard_calendar_providers", "Reconnect")}
-        </CoreComponents.loading_button>
+        </.loading_button>
       </div>
     </form>
     """
@@ -430,7 +429,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Calendar.CaldavReconnect
 
       <div class="space-y-3">
         <h4 class="label">{dgettext("dashboard_calendar_providers", "Select calendars to sync:")}</h4>
-        <div class="brand-card p-4">
+        <div class="brand-card">
           <%= if @payload.calendars == [] do %>
             <p class="text-sm text-neutral-500">
               {dgettext(
@@ -442,7 +441,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Calendar.CaldavReconnect
             <%= for calendar <- @payload.calendars do %>
               <% path = calendar.path %>
               <% name = calendar.name || path %>
-              <div class="flex items-center space-x-3 p-3 rounded-lg hover:bg-white/20 transition-colors">
+              <div class="flex items-center space-x-3 p-3 rounded-token-lg hover:bg-white/20 transition-colors">
                 <.input
                   type="checkbox"
                   name="selected_paths[]"
@@ -464,20 +463,20 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Calendar.CaldavReconnect
       </div>
 
       <div class="flex justify-end gap-3 pt-4 border-t border-primary-200/30">
-        <CoreComponents.action_button
+        <.action_button
           variant={:secondary}
           phx-click={JS.push("close_reconnect_modal", target: @target)}
         >
           {dgettext("dashboard_calendar_providers", "Cancel")}
-        </CoreComponents.action_button>
-        <CoreComponents.loading_button
+        </.action_button>
+        <.loading_button
           variant={:primary}
           type="submit"
           loading={@is_submitting}
           loading_text={dgettext("dashboard_calendar_providers", "Saving...")}
         >
           {dgettext("dashboard_calendar_providers", "Save selection")}
-        </CoreComponents.loading_button>
+        </.loading_button>
       </div>
     </form>
     """

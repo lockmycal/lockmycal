@@ -33,6 +33,7 @@ defmodule Tymeslot.Integrations.AccessRevocation do
   require Logger
 
   alias Tymeslot.Infrastructure.Logging.LogFormat
+  alias Tymeslot.Integrations.AccessRevocationQueries
   alias Tymeslot.Integrations.Calendar.CalendarIntegrationQueries
   alias Tymeslot.Integrations.Google.GoogleOAuthHelper
   alias Tymeslot.Integrations.Video.VideoIntegrationQueries
@@ -134,12 +135,12 @@ defmodule Tymeslot.Integrations.AccessRevocation do
   end
 
   defp shared_with_other_user?(%{provider: :google, account_id: account_id}, user_id) do
-    CalendarIntegrationQueries.account_used_by_other_user?(
+    AccessRevocationQueries.calendar_account_used_by_other_user?(
       @google_calendar_providers,
       account_id,
       user_id
     ) or
-      VideoIntegrationQueries.account_used_by_other_user?(
+      AccessRevocationQueries.video_account_used_by_other_user?(
         @google_video_providers,
         account_id,
         user_id
@@ -147,7 +148,7 @@ defmodule Tymeslot.Integrations.AccessRevocation do
   end
 
   defp shared_with_other_user?(%{provider: :zoom, account_id: account_id}, user_id) do
-    VideoIntegrationQueries.account_used_by_other_user?(["zoom"], account_id, user_id)
+    AccessRevocationQueries.video_account_used_by_other_user?(["zoom"], account_id, user_id)
   end
 
   defp call_provider(%{provider: provider, token: token} = grant) do

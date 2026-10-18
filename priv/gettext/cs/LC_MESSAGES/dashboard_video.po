@@ -127,12 +127,7 @@ msgstr "Základní URL je povinná"
 msgid "Base URL must be text"
 msgstr "Základní URL musí být text"
 
-#: lib/tymeslot_web/components/dashboard/integrations/video/custom_config.ex
 #: lib/tymeslot_web/components/dashboard/integrations/video/edit_video_integration_modal.ex
-#: lib/tymeslot_web/components/dashboard/integrations/video/jitsi_config.ex
-#: lib/tymeslot_web/components/dashboard/integrations/video/kmeet_config.ex
-#: lib/tymeslot_web/components/dashboard/integrations/video/mirotalk_config.ex
-#: lib/tymeslot_web/components/dashboard/integrations/video/nextcloud_talk_config.ex
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr "Zrušit"
@@ -232,11 +227,6 @@ msgstr "Vlastní odkaz na video"
 msgid "Custom meeting URL is required"
 msgstr "Vlastní URL schůzky je povinná"
 
-#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
-#, elixir-autogen, elixir-format
-msgid "Delete integration"
-msgstr "Smazat integraci"
-
 #: lib/tymeslot_web/components/dashboard/integrations/video/jitsi_config.ex
 #, elixir-autogen, elixir-format
 msgid "Deletes the stored App ID and App secret. Links then open the room without a token, which only works on a server that lets anyone in."
@@ -249,8 +239,8 @@ msgstr "Doména nebyla nalezena – zkontrolujte prosím URL"
 
 #: lib/tymeslot_web/components/dashboard/integrations/video/nextcloud_talk_config.ex
 #, elixir-autogen, elixir-format
-msgid "Each booking gets its own public Talk conversation, and guests join from its link without a Nextcloud account. To skip the lobby and moderate, sign in to Nextcloud in your browser as this login name first, with your usual password and any second factor; the app password works only for Tymeslot. Anyone else, other Nextcloud users included, waits in the lobby until the meeting starts. A conversation is deleted when its booking is cancelled, and about a week after the meeting ends."
-msgstr "Každá rezervace dostane vlastní veřejnou konverzaci Talk a hosté se připojují přes její odkaz bez účtu Nextcloud. Chcete-li přeskočit čekárnu a moderovat, přihlaste se nejprve v prohlížeči ke službě Nextcloud pod tímto přihlašovacím jménem, a to svým běžným heslem a případným druhým faktorem; heslo pro aplikaci funguje jen pro LockMyCal. Všichni ostatní, včetně dalších uživatelů Nextcloud, čekají v čekárně, dokud schůzka nezačne. Konverzace se smaže, když je její rezervace zrušena, a také přibližně týden po skončení schůzky."
+msgid "Each booking gets its own public Talk conversation, and guests join from its link without a Nextcloud account. To skip the lobby and moderate, sign in to Nextcloud in your browser as this login name first, with your usual password and any second factor; the app password works only for %{app_name}. Anyone else, other Nextcloud users included, waits in the lobby until the meeting starts. A conversation is deleted when its booking is cancelled, and about a week after the meeting ends."
+msgstr "Každá rezervace dostane vlastní veřejnou konverzaci Talk a hosté se připojují přes její odkaz bez účtu Nextcloud. Chcete-li přeskočit čekárnu a moderovat, přihlaste se nejprve v prohlížeči ke službě Nextcloud pod tímto přihlašovacím jménem, a to svým běžným heslem a případným druhým faktorem; heslo pro aplikaci funguje jen pro %{app_name}. Všichni ostatní, včetně dalších uživatelů Nextcloud, čekají v čekárně, dokud schůzka nezačne. Konverzace se smaže, když je její rezervace zrušena, a také přibližně týden po skončení schůzky."
 
 #: lib/tymeslot_web/components/dashboard/integrations/video/edit_video_integration_modal.ex
 #, elixir-autogen, elixir-format
@@ -829,11 +819,6 @@ msgstr "Otestovat připojení"
 msgid "Testing connection…"
 msgstr "Testování připojení…"
 
-#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
-#, elixir-autogen, elixir-format
-msgid "Testing…"
-msgstr "Testování…"
-
 #: lib/tymeslot_web/live/dashboard/video_settings_component.ex
 #, elixir-autogen, elixir-format
 msgid "That calendar connection is no longer available."
@@ -1159,3 +1144,18 @@ msgstr "Tato verze Nextcloud Talk je příliš stará. %{app_name} vyžaduje Tal
 #, elixir-autogen, elixir-format
 msgid "Video"
 msgstr "Video"
+
+#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
+#, elixir-autogen, elixir-format
+msgid "Delete"
+msgstr "Smazat"
+
+#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
+#, elixir-autogen, elixir-format
+msgid "Delete %{name}"
+msgstr "Smazat %{name}"
+
+#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
+#, elixir-autogen, elixir-format
+msgid "Edit"
+msgstr "Upravit"

@@ -54,7 +54,7 @@ defmodule TymeslotWeb.Dashboard.PaymentsSettings.ConnectCta do
             )}
           </:description>
         </.input>
-        <.action_button type="submit" variant={:primary}>
+        <.action_button type="submit" variant={:primary} class="w-full sm:w-auto">
           <span data-submit-spinner class="hidden items-center gap-2">
             <.spinner /> {dgettext("dashboard_payments", "Connecting…")}
           </span>

@@ -13,6 +13,7 @@ defmodule Tymeslot.Meetings.BookerCalendarSyncTest do
   alias Tymeslot.Integrations.Calendar
   alias Tymeslot.Integrations.Calendar.CreatedEvent
   alias Tymeslot.Integrations.CalendarManagement
+  alias Tymeslot.Meetings
   alias Tymeslot.Meetings.BookerCalendarSync
   alias Tymeslot.Meetings.MeetingQueries
   alias Tymeslot.Workers.BookerCalendarEventWorker
@@ -233,6 +234,64 @@ defmodule Tymeslot.Meetings.BookerCalendarSyncTest do
 
       assert :ok = BookerCalendarSync.sync(meeting.id)
       assert reload(meeting).booker_calendar_id == nil
+    end
+  end
+
+  describe "remove/1" do
+    test "removes the copy of a meeting that still expects one", %{
+      integration: integration,
+      meeting: meeting
+    } do
+      meeting = map_copy(meeting, integration)
+      integration_id = integration.id
+
+      expect(Tymeslot.CalendarMock, :delete_event, fn "copy-event", {^integration_id, _user_id} ->
+        :ok
+      end)
+
+      assert :ok = BookerCalendarSync.remove(meeting)
+      assert reload(meeting).booker_calendar_event_id == nil
+    end
+
+    test "does nothing when no copy was written", %{meeting: meeting} do
+      assert :ok = BookerCalendarSync.remove(meeting)
+    end
+
+    test "reports a copy that could not be removed", %{integration: integration, meeting: meeting} do
+      meeting = map_copy(meeting, integration)
+
+      expect(Tymeslot.CalendarMock, :delete_event, fn _id, _context -> {:error, :timeout} end)
+
+      assert {:error, :timeout} = BookerCalendarSync.remove(meeting)
+      assert reload(meeting).booker_calendar_event_id == "copy-event"
+    end
+  end
+
+  describe "deleting a cancelled meeting" do
+    test "removes the booker's copy first", %{integration: integration, meeting: meeting} do
+      {:ok, meeting} = MeetingQueries.update_meeting(meeting, %{status: "cancelled"})
+      meeting = map_copy(meeting, integration)
+      integration_id = integration.id
+
+      expect(Tymeslot.CalendarMock, :delete_event, fn "copy-event", {^integration_id, _user_id} ->
+        :ok
+      end)
+
+      assert {:ok, _deleted} = Meetings.delete_meeting_for_user(meeting, "jana@example.com")
+      assert {:error, :not_found} = MeetingQueries.get_meeting(meeting.id)
+    end
+
+    test "still deletes the meeting when the copy cannot be removed", %{
+      integration: integration,
+      meeting: meeting
+    } do
+      {:ok, meeting} = MeetingQueries.update_meeting(meeting, %{status: "cancelled"})
+      meeting = map_copy(meeting, integration)
+
+      expect(Tymeslot.CalendarMock, :delete_event, fn _id, _context -> {:error, :timeout} end)
+
+      assert {:ok, _deleted} = Meetings.delete_meeting_for_user(meeting, "jana@example.com")
+      assert {:error, :not_found} = MeetingQueries.get_meeting(meeting.id)
     end
   end
 

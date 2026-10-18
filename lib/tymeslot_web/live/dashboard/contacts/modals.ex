@@ -8,7 +8,9 @@ defmodule TymeslotWeb.Dashboard.Contacts.Modals do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Utils.DateTimeUtils.TimeFormat
-  alias TymeslotWeb.Components.CoreComponents
+  alias TymeslotWeb.Components.CoreComponents.Buttons
+  alias TymeslotWeb.Components.CoreComponents.Icons
+  alias TymeslotWeb.Components.CoreComponents.Modal
   alias TymeslotWeb.Helpers.LocaleFormat
 
   attr :contact, :map, required: true
@@ -17,7 +19,7 @@ defmodule TymeslotWeb.Dashboard.Contacts.Modals do
   @spec delete_contact_modal(map()) :: Phoenix.LiveView.Rendered.t()
   def delete_contact_modal(assigns) do
     ~H"""
-    <CoreComponents.modal
+    <Modal.modal
       id="delete-contact-modal"
       show={true}
       on_cancel={JS.push("hide_delete_modal", target: @target)}
@@ -49,21 +51,21 @@ defmodule TymeslotWeb.Dashboard.Contacts.Modals do
 
       <:footer>
         <div class="flex justify-end gap-3">
-          <CoreComponents.action_button
+          <Buttons.action_button
             variant={:secondary}
             phx-click={JS.push("hide_delete_modal", target: @target)}
           >
             {dgettext("dashboard_contacts", "Cancel")}
-          </CoreComponents.action_button>
-          <CoreComponents.action_button
+          </Buttons.action_button>
+          <Buttons.action_button
             variant={:danger}
             phx-click={JS.push("delete_contact", target: @target)}
           >
             {dgettext("dashboard_contacts", "Delete Contact")}
-          </CoreComponents.action_button>
+          </Buttons.action_button>
         </div>
       </:footer>
-    </CoreComponents.modal>
+    </Modal.modal>
     """
   end
 
@@ -75,7 +77,7 @@ defmodule TymeslotWeb.Dashboard.Contacts.Modals do
   @spec meetings_modal(map()) :: Phoenix.LiveView.Rendered.t()
   def meetings_modal(assigns) do
     ~H"""
-    <CoreComponents.modal
+    <Modal.modal
       id="contact-meetings-modal"
       show={true}
       on_cancel={JS.push("close_meetings_modal", target: @target)}
@@ -106,7 +108,7 @@ defmodule TymeslotWeb.Dashboard.Contacts.Modals do
                   {meeting.title}
                 </div>
                 <div class="text-token-sm text-neutral-600 dark:text-neutral-300 font-medium flex items-center gap-1.5 mt-1">
-                  <CoreComponents.icon name="hero-clock" class="w-4 h-4" />
+                  <Icons.icon name="hero-clock" class="w-4 h-4" />
                   {format_datetime(meeting.start_time, @time_format)}
                 </div>
               </div>
@@ -120,15 +122,15 @@ defmodule TymeslotWeb.Dashboard.Contacts.Modals do
 
       <:footer>
         <div class="flex justify-end">
-          <CoreComponents.action_button
+          <Buttons.action_button
             variant={:primary}
             phx-click={JS.push("close_meetings_modal", target: @target)}
           >
             {dgettext("dashboard_contacts", "Close")}
-          </CoreComponents.action_button>
+          </Buttons.action_button>
         </div>
       </:footer>
-    </CoreComponents.modal>
+    </Modal.modal>
     """
   end
 

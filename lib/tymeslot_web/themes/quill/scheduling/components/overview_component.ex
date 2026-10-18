@@ -13,8 +13,9 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.OverviewComponent do
   alias Tymeslot.Profiles
   alias TymeslotWeb.Themes.Shared.BookingText
   alias TymeslotWeb.Themes.Shared.Components.ApprovalNotice
+  alias TymeslotWeb.Themes.Shared.Components.GroupSession
   alias TymeslotWeb.Themes.Shared.LocalizationHelpers
-  import TymeslotWeb.Components.CoreComponents
+  use TymeslotWeb.Components.CoreComponents
   import TymeslotWeb.Components.FlagHelpers
 
   @impl Phoenix.LiveComponent
@@ -42,6 +43,7 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.OverviewComponent do
   attr :icon, :string, required: true
   attr :selected, :boolean, default: false
   attr :requires_approval, :boolean, default: false
+  attr :meeting_type, :any, default: nil
   attr :target, :any, default: nil
 
   defp duration_card(assigns) do
@@ -68,6 +70,7 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.OverviewComponent do
           <p class="duration-card-description">
             {@description}
           </p>
+          <GroupSession.hint meeting_type={@meeting_type} />
         </div>
         <%= if @icon != "none" do %>
           <%= if String.starts_with?(@icon, "hero-") do %>
@@ -132,6 +135,8 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.OverviewComponent do
                       <.link
                         :if={
                           @username_context not in [nil, ""] and
+                            assigns[:embedded] != true and
+                            not Profiles.embed_alias?(@username_context) and
                             Profiles.public_calendar_enabled?(@organizer_profile)
                         }
                         navigate={~p"/#{@username_context}/calendar"}
@@ -178,6 +183,7 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.OverviewComponent do
                             icon={meeting_type.icon || "hero-clock"}
                             selected={assigns[:selected_duration] == slug}
                             requires_approval={Approval.required?(meeting_type)}
+                            meeting_type={meeting_type}
                             target={@myself}
                           />
                         <% end %>

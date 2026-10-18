@@ -13,7 +13,7 @@ defmodule TymeslotWeb.Registration.SignupComponent do
   import TymeslotWeb.Shared.Auth.ButtonComponents
   import TymeslotWeb.Shared.SocialAuthButtons
   import TymeslotWeb.Shared.PasswordToggleButtonComponent
-  import TymeslotWeb.Components.CoreComponents
+  use TymeslotWeb.Components.CoreComponents
 
   alias Tymeslot.Auth.SignupNotice
   alias Tymeslot.Infrastructure.Config

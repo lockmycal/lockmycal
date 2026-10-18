@@ -10,6 +10,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
   alias Tymeslot.Integrations.Calendar.Recurrence.RRule
   alias TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments
   alias TymeslotWeb.Components.UI.StatusSwitch
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.RecurrenceRule
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
   alias TymeslotWeb.Dashboard.CalendarGrid.Modals.AttendeeEditor
@@ -29,6 +30,12 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
   attr :myself, :any, required: true
   attr :editable, :boolean, default: false
   attr :read_only, :boolean, default: false, doc: "the event's calendar takes no writes"
+
+  attr :time_locked, :boolean,
+    default: false,
+    doc:
+      "A live seat is held on this event's meeting, so its time, recurrence, attendees and deletion are not editable here."
+
   attr :attendee_input, :string, default: ""
   attr :pending_attendees, :list, default: []
   attr :video_integrations, :list, default: []
@@ -99,7 +106,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
         <div class="flex flex-wrap items-center gap-3">
           <div
             data-testid="event-colour-bar"
-            class={"h-1 rounded-full w-10 #{Helpers.color_for_event(assigns, @selected_event)}"}
+            class={"h-1 rounded-token-full w-10 #{Helpers.color_for_event(assigns, @selected_event)}"}
           >
           </div>
           <div
@@ -127,7 +134,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
           <% end_parts = Helpers.datetime_to_local_parts(@selected_event.end_at, @user_timezone) %>
           <%!-- end_date is stored exclusively; the field shows the inclusive last day. --%>
           <FormParts.date_time_range
-            :if={@editable and @selected_event.all_day}
+            :if={@editable and not @time_locked and @selected_event.all_day}
             id_prefix="event-all-day"
             event="update_event_all_day_range"
             target={@myself}
@@ -138,7 +145,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
             all_day={true}
           />
           <FormParts.date_time_range
-            :if={@editable and not @selected_event.all_day}
+            :if={@editable and not @time_locked and not @selected_event.all_day}
             id_prefix="event"
             form_id="event-time-form"
             event="update_event_time"
@@ -148,7 +155,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
             end_date={end_parts.date}
             end_time={end_parts.time}
           />
-          <div :if={@editable} class="flex items-center justify-between gap-4">
+          <div :if={@editable and not @time_locked} class="flex items-center justify-between gap-4">
             <div class="flex items-center gap-3">
               <StatusSwitch.status_switch
                 id="event-all-day"
@@ -168,14 +175,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
               abbr={Helpers.tz_abbr(@user_timezone)}
             />
           </div>
-          <div :if={!@editable}>
+          <div :if={!@editable or @time_locked}>
             <FormParts.section_label>
               {dgettext("dashboard_calendar_events", "Time")}
             </FormParts.section_label>
             <p class="text-token-sm font-medium text-neutral-700 dark:text-neutral-200">
               <span :if={@selected_event.all_day}>{dgettext("dashboard_calendar_events", "All day")}</span>
               <span :if={!@selected_event.all_day}>
-                {Helpers.format_time_range_in_tz(@selected_event, @user_timezone, @time_format)}
+                {Helpers.format_display_time_range(@selected_event, @time_format, @user_timezone)}
                 <span class="text-token-xs font-normal text-neutral-400 ml-1">{Helpers.tz_abbr(
                   @user_timezone
                 )}</span>
@@ -186,6 +193,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
                 Helpers.event_display_date(@selected_event, @user_timezone),
                 @locale
               )}
+            </p>
+            <p
+              :if={@time_locked}
+              class="flex items-start gap-1 text-token-xs text-neutral-500 dark:text-twilight-indigo-300 mt-1"
+              id="event-time-locked-note"
+            >
+              <.icon name="hero-lock-closed-micro" class="w-3 h-3 mt-px shrink-0" />
+              <span>{Shared.seat_lock_message()}</span>
             </p>
           </div>
         </div>
@@ -237,8 +252,9 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
         <%!-- Repeat and reminders: shown, not changed here. --%>
         <div :if={@editable} class="grid gap-4 sm:grid-cols-2">
           <RecurrenceEditor.recurrence_editor
+            :if={not @time_locked}
             recurrence_rule={Map.get(@selected_event, :recurrence_rule)}
-            timezone={Shared.recurrence_timezone(@selected_event, @user_timezone)}
+            timezone={RecurrenceRule.recurrence_timezone(@selected_event, @user_timezone)}
             myself={@myself}
             change_event="update_event_recurrence"
             read_only={true}
@@ -253,9 +269,9 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
         </div>
         <div
           :if={
-            !@editable and
-              (recurrence_summary(@selected_event, @user_timezone) != nil or
-                 (Map.get(@selected_event, :reminders) || []) != [])
+            ((!@editable or @time_locked) and
+               recurrence_summary(@selected_event, @user_timezone) != nil) or
+              (!@editable and (Map.get(@selected_event, :reminders) || []) != [])
           }
           class="grid gap-4 sm:grid-cols-2"
         >
@@ -267,7 +283,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
               {recurrence_summary(@selected_event, @user_timezone)}
             </p>
           </div>
-          <div :if={(Map.get(@selected_event, :reminders) || []) != []}>
+          <div :if={!@editable and (Map.get(@selected_event, :reminders) || []) != []}>
             <FormParts.section_label>
               {dgettext("dashboard_calendar_events", "Reminder")}
             </FormParts.section_label>
@@ -360,7 +376,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
 
         <%!-- Attendees --%>
         <AttendeeEditor.attendee_editor
-          editable={@editable}
+          editable={@editable and not @time_locked}
           attendees={@attendees}
           pending_attendees={@pending_attendees}
           attendee_input={@attendee_input}
@@ -378,7 +394,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
             {dgettext("dashboard_calendar_events", "Cancel")}
           </.action_button>
           <.action_button
-            :if={@editable}
+            :if={@editable and not @time_locked}
             variant={:danger}
             phx-click="request_delete_event"
             phx-target={@myself}
@@ -410,7 +426,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.EventDetailModal do
     case Map.get(event, :recurrence_rule) do
       rule when is_binary(rule) and rule != "" ->
         rule
-        |> RRule.parse(timezone: Shared.recurrence_timezone(event, user_timezone))
+        |> RRule.parse(timezone: RecurrenceRule.recurrence_timezone(event, user_timezone))
         |> RecurrenceEditor.summary()
 
       _none ->

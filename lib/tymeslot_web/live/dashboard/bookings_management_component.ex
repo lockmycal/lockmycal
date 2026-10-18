@@ -53,6 +53,11 @@ defmodule TymeslotWeb.Dashboard.BookingsManagementComponent do
     "update_create_recurrence" => {QuickAddMeeting, :update_create_recurrence},
     "add_create_reminder" => {QuickAddMeeting, :add_create_reminder},
     "remove_create_reminder" => {QuickAddMeeting, :remove_create_reminder},
+    "meeting_add_quick_reminder" => {QuickAddMeeting, :meeting_add_quick_reminder},
+    "meeting_add_reminder" => {QuickAddMeeting, :meeting_add_reminder},
+    "meeting_remove_reminder" => {QuickAddMeeting, :meeting_remove_reminder},
+    "meeting_toggle_custom_reminder" => {QuickAddMeeting, :meeting_toggle_custom_reminder},
+    "meeting_update_reminder_input" => {QuickAddMeeting, :meeting_update_reminder_input},
     "add_create_attendee" => {QuickAddMeeting, :add_create_attendee},
     "remove_create_attendee" => {QuickAddMeeting, :remove_create_attendee},
     "update_create_attendee_input" => {QuickAddMeeting, :update_create_attendee_input},
@@ -597,18 +602,15 @@ defmodule TymeslotWeb.Dashboard.BookingsManagementComponent do
     user_email = socket.assigns.current_user.email
 
     with {:ok, validated_id} <- validate_meeting_id(params),
-         {:ok, meeting} <- fetch_meeting_for_user(validated_id, user_email),
+         {:ok, meeting} <- Meetings.get_meeting_for_user(validated_id, user_email),
          :ok <- policy_fun.(meeting) do
-      {:ok, meeting}
+      # A group meeting's modals and flashes speak of its participants.
+      {:ok, Meetings.with_live_participants(meeting)}
     else
       {:error, :not_found} -> {:error, :not_found, nil}
       {:error, reason} when is_map(reason) -> {:error, :validation_failed, reason}
       {:error, reason} -> {:error, :policy_blocked, reason}
     end
-  end
-
-  defp fetch_meeting_for_user(id, user_email) do
-    Meetings.get_meeting_for_user(id, user_email)
   end
 
   @valid_filters ["upcoming", "past", "cancelled", "awaiting_approval"]

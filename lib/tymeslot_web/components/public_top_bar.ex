@@ -9,7 +9,9 @@ defmodule TymeslotWeb.Components.PublicTopBar do
   booking theme's dark glass palette instead of the dashboard's light one.
   Given the organizer's `username`, the logo links to their booking page.
   The logo uses `variant: :dark` (a light-coloured wordmark) so it stays
-  legible against that dark background.
+  legible against that dark background. Given a `brand_logo_url` (the
+  organizer's own logo, `Tymeslot.Profiles.BrandLogo.display_url/1`), that
+  image replaces the app logo.
 
   Rendered from a single place (here) so `TymeslotWeb.Themes.Quill.Scheduling.Wrapper`,
   `TymeslotWeb.Themes.Rhythm.Scheduling.Wrapper`, and `TymeslotWeb.Public.CalendarLive`
@@ -23,7 +25,7 @@ defmodule TymeslotWeb.Components.PublicTopBar do
   alias Tymeslot.Infrastructure.Config
   alias TymeslotWeb.Live.Shared.DocsUrl
 
-  import TymeslotWeb.Components.CoreComponents, only: [icon: 1]
+  import TymeslotWeb.Components.CoreComponents.Icons, only: [icon: 1]
   import TymeslotWeb.Components.CoreComponents.Brand
   import TymeslotWeb.Components.LanguageSwitcher
 
@@ -35,11 +37,15 @@ defmodule TymeslotWeb.Components.PublicTopBar do
   attr :embedded, :boolean, default: false
   attr :username, :string, default: nil, doc: "organizer whose booking page the logo links to"
 
+  attr :brand_logo_url, :string,
+    default: nil,
+    doc: "organizer's own logo, shown instead of the app logo"
+
   @spec public_top_bar(map()) :: Phoenix.LiveView.Rendered.t()
   def public_top_bar(assigns) do
     ~H"""
     <div class="public-top-bar-wrapper">
-      <nav class="public-top-bar">
+      <nav class={["public-top-bar", @embedded && "public-top-bar--embedded"]}>
         <div class="public-top-bar-brand">
           <%!-- Not linked when embedded: the link would leave the embed's token behind. --%>
           <%= if @username not in [nil, ""] and not @embedded do %>
@@ -49,39 +55,41 @@ defmodule TymeslotWeb.Components.PublicTopBar do
               aria-label={dgettext("common", "Booking page")}
               title={dgettext("common", "Booking page")}
             >
-              <.logo mode={:full} variant={:dark} img_class="h-9 sm:h-12" />
+              <.top_bar_logo brand_logo_url={@brand_logo_url} />
             </.link>
           <% else %>
-            <.logo mode={:full} variant={:dark} img_class="h-9 sm:h-12" />
+            <.top_bar_logo brand_logo_url={@brand_logo_url} />
           <% end %>
         </div>
 
-        <div class="public-top-bar-actions">
-          <%= unless @embedded do %>
-            <.top_bar_icon_link
-              href={DocsUrl.home_url()}
-              icon="hero-question-mark-circle"
-              label={dgettext("common", "Documentation")}
-            />
-            <.top_bar_icon_link
-              :if={website_url = Config.website_url()}
-              href={website_url}
-              icon="hero-globe-alt"
-              label={dgettext("common", "Website")}
-            />
-            <%= if @current_user do %>
-              <.link navigate={~p"/dashboard"} class="public-top-bar-link public-top-bar-link-outline">
-                {dgettext("common", "Dashboard")}
+        <%!-- Embedded, the bar carries only the logo, centred: the widget
+             follows the visitor's browser language (`LocalePlug`), so it
+             offers no switcher, and the account links belong to this site,
+             not the one embedding it. --%>
+        <div :if={!@embedded} class="public-top-bar-actions">
+          <.top_bar_icon_link
+            href={DocsUrl.home_url()}
+            icon="hero-question-mark-circle"
+            label={dgettext("common", "Documentation")}
+          />
+          <.top_bar_icon_link
+            :if={website_url = Config.website_url()}
+            href={website_url}
+            icon="hero-globe-alt"
+            label={dgettext("common", "Website")}
+          />
+          <%= if @current_user do %>
+            <.link navigate={~p"/dashboard"} class="public-top-bar-link public-top-bar-link-outline">
+              {dgettext("common", "Dashboard")}
+            </.link>
+          <% else %>
+            <.link href={~p"/auth/login"} class="public-top-bar-link public-top-bar-link-outline">
+              {dgettext("common", "Login")}
+            </.link>
+            <%= if Config.registration_enabled?() do %>
+              <.link href={~p"/auth/signup"} class="public-top-bar-link public-top-bar-link-primary">
+                {dgettext("common", "Get Started")}
               </.link>
-            <% else %>
-              <.link href={~p"/auth/login"} class="public-top-bar-link public-top-bar-link-outline">
-                {dgettext("common", "Login")}
-              </.link>
-              <%= if Config.registration_enabled?() do %>
-                <.link href={~p"/auth/signup"} class="public-top-bar-link public-top-bar-link-primary">
-                  {dgettext("common", "Get Started")}
-                </.link>
-              <% end %>
             <% end %>
           <% end %>
           <.language_switcher
@@ -93,6 +101,24 @@ defmodule TymeslotWeb.Components.PublicTopBar do
         </div>
       </nav>
     </div>
+    """
+  end
+
+  attr :brand_logo_url, :string, default: nil
+
+  defp top_bar_logo(%{brand_logo_url: url} = assigns) when is_binary(url) do
+    ~H"""
+    <img
+      src={@brand_logo_url}
+      alt={dgettext("common", "Organizer logo")}
+      class="public-top-bar-custom-logo h-9 sm:h-12 w-auto max-w-48 sm:max-w-64 object-contain"
+    />
+    """
+  end
+
+  defp top_bar_logo(assigns) do
+    ~H"""
+    <.logo mode={:full} variant={:dark} img_class="h-9 sm:h-12" />
     """
   end
 

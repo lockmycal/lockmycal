@@ -8,7 +8,7 @@ defmodule TymeslotWeb.Themes.Quill.Meeting.CancelConfirmed do
   alias Phoenix.LiveView.JS
   alias TymeslotWeb.Themes.Quill.Scheduling.Wrapper
 
-  import TymeslotWeb.Components.CoreComponents
+  use TymeslotWeb.Components.CoreComponents
 
   attr :theme_customization, :map, required: true
   attr :custom_css, :string, required: true
@@ -29,6 +29,7 @@ defmodule TymeslotWeb.Themes.Quill.Meeting.CancelConfirmed do
       show_language_switcher={true}
       current_user={assigns[:current_user]}
       username_context={assigns[:username_context]}
+      brand_logo_url={assigns[:brand_logo_url]}
     >
       <div class="min-h-screen flex items-center justify-center px-4 py-8">
         <div class="w-full max-w-md">

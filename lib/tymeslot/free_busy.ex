@@ -176,17 +176,28 @@ defmodule Tymeslot.FreeBusy do
 
   # Every non-reminder event of the user's active calendars in the window,
   # whatever its transparency or status, minus the events of the meetings in
-  # `opts[:exclude_linked_to]`.
+  # `opts[:exclude_linked_to]`. Events of a subscription set to count every
+  # event as busy come out busy.
   defp window_events(user_id, window_start, window_end, opts) do
     excluded = opts |> Keyword.get(:exclude_linked_to, []) |> Meetings.calendar_identifier_set()
+    integrations = CalendarIntegrationQueries.list_active_for_user(user_id)
+    all_busy_ids = MapSet.new(for %{all_events_busy: true, id: id} <- integrations, do: id)
 
-    user_id
-    |> CalendarIntegrationQueries.list_active_for_user()
+    integrations
     |> Enum.map(& &1.id)
     |> CalendarEventQueries.in_range({window_start, window_end})
     |> Enum.reject(
       &(CalendarEvent.reminder?(&1) or Meetings.linked_to_calendar_event?(&1, excluded))
     )
+    |> Enum.map(&apply_all_events_busy(&1, all_busy_ids))
+  end
+
+  # This reads the event cache directly rather than through
+  # `Ics.Provider.list_events/2`, so it applies a subscription's
+  # `all_events_busy` itself, or a holiday that blocks bookings would be
+  # published as free.
+  defp apply_all_events_busy(%CalendarEvent{calendar_integration_id: id} = event, all_busy_ids) do
+    if MapSet.member?(all_busy_ids, id), do: CalendarEvent.as_busy(event), else: event
   end
 
   @doc """

@@ -132,7 +132,12 @@ defmodule Tymeslot.Integrations.Calendar.Exchange.RequestsTest do
       assert Soap.xpath(
                doc,
                ~x"//m:GetItem/m:ItemShape/t:AdditionalProperties/t:FieldURI/@FieldURI"sl
-             ) == ["calendar:IsCancelled", "calendar:StartTimeZone"]
+             ) == [
+               "calendar:IsCancelled",
+               "calendar:StartTimeZone",
+               "item:ReminderIsSet",
+               "item:ReminderMinutesBeforeStart"
+             ]
     end
 
     test "does not request MIME content" do

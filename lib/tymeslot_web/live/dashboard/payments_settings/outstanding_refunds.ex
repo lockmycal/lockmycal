@@ -47,7 +47,7 @@ defmodule TymeslotWeb.Dashboard.PaymentsSettings.OutstandingRefunds do
     ~H"""
     <div :if={@payments != []} id="outstanding-refunds">
       <.detail_card title={dgettext("dashboard_payments", "Refunds outstanding")}>
-        <p class="text-token-sm text-tymeslot-700 mb-4">
+        <p class="text-token-sm text-neutral-700 mb-4">
           {dgettext(
             "dashboard_payments",
             "These bookings were cancelled while you still held the attendee's money. Cancelling never refunds on its own."
@@ -59,7 +59,7 @@ defmodule TymeslotWeb.Dashboard.PaymentsSettings.OutstandingRefunds do
             "Your Stripe account is not connected, so these refunds have to be issued from your Stripe dashboard. The money is still owed."
           )}
         </.info_box>
-        <p :if={@total_count > length(@payments)} class="text-token-sm text-tymeslot-500 mb-4">
+        <p :if={@total_count > length(@payments)} class="text-token-sm text-neutral-500 mb-4">
           {dgettext(
             "dashboard_payments",
             "Showing the %{shown} oldest of %{total} outstanding refunds.",
@@ -69,7 +69,7 @@ defmodule TymeslotWeb.Dashboard.PaymentsSettings.OutstandingRefunds do
         </p>
         <div class="overflow-x-auto">
           <table class="w-full">
-            <thead class="text-left text-token-sm text-tymeslot-500 border-b border-tymeslot-100">
+            <thead class="text-left text-token-sm text-neutral-500 border-b border-neutral-100">
               <tr>
                 <th class="p-2">{dgettext("dashboard_payments", "Cancelled")}</th>
                 <th class="p-2">{dgettext("dashboard_payments", "Attendee")}</th>
@@ -79,7 +79,7 @@ defmodule TymeslotWeb.Dashboard.PaymentsSettings.OutstandingRefunds do
               </tr>
             </thead>
             <tbody>
-              <tr :for={p <- @payments} class="border-b border-tymeslot-50">
+              <tr :for={p <- @payments} class="border-b border-neutral-50">
                 <td class="p-2 text-token-sm">{format_cancelled_at(p.meeting)}</td>
                 <td class="p-2 text-token-sm">{p.attendee_email}</td>
                 <td class="p-2 text-token-sm">{p.meeting_type_name}</td>
@@ -87,19 +87,19 @@ defmodule TymeslotWeb.Dashboard.PaymentsSettings.OutstandingRefunds do
                   {format_amount(MeetingPayments.refundable_remaining_cents(p), p.currency)}
                 </td>
                 <td class="p-2 text-right">
-                  <button
+                  <.action_button
                     :if={can_refund_here?(p, @account)}
-                    type="button"
-                    class="text-token-sm text-turquoise-700 font-semibold underline"
+                    variant={:secondary}
+                    size={:sm}
                     phx-click="open_refund_modal"
                     phx-value-id={p.id}
                     phx-target={@myself}
                   >
                     {dgettext("dashboard_payments", "Refund")}
-                  </button>
+                  </.action_button>
                   <span
                     :if={not can_refund_here?(p, @account)}
-                    class="text-token-xs text-tymeslot-500"
+                    class="text-token-xs text-neutral-500"
                   >
                     {dgettext("dashboard_payments", "Refund in Stripe")}
                   </span>
@@ -132,9 +132,10 @@ defmodule TymeslotWeb.Dashboard.PaymentsSettings.OutstandingRefunds do
   # not arise; it is tolerated rather than raising, because an empty cell beats
   # a 500 on the payments screen.
   defp format_cancelled_at(%{cancelled_at: %DateTime{} = cancelled_at}) do
-    locale = Gettext.get_locale(TymeslotWeb.Gettext)
-    month = LocaleFormat.format_month_name(cancelled_at.month, locale, :short)
-    "#{cancelled_at.day} #{month} #{cancelled_at.year}"
+    LocaleFormat.format_short_date_with_year(
+      cancelled_at,
+      Gettext.get_locale(TymeslotWeb.Gettext)
+    )
   end
 
   defp format_cancelled_at(_meeting), do: ""

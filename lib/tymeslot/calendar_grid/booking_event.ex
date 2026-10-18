@@ -16,6 +16,11 @@ defmodule Tymeslot.CalendarGrid.BookingEvent do
   user with no calendar integration at all. A booking awaiting approval is the
   exception: it replaces its synced tentative hold and takes that hold's
   `calendar_integration_id`/`provider_calendar_id`.
+
+  A group meeting has no attendee: its people are its live participants,
+  carried in `participants` (empty for a one-to-one booking), with its
+  `capacity` and the `seats_taken` (participants plus their guests) beside
+  them. A one-to-one booking keeps a capacity of 1 and no seat count.
   """
 
   @enforce_keys [:id, :meeting_id, :summary, :start_at, :end_at]
@@ -33,6 +38,9 @@ defmodule Tymeslot.CalendarGrid.BookingEvent do
     :attendee_email,
     :join_url,
     :provider_event_id,
+    participants: [],
+    capacity: 1,
+    seats_taken: 0,
     all_day: false,
     attendee_attachments: [],
     calendar_integration_id: nil,
@@ -58,6 +66,9 @@ defmodule Tymeslot.CalendarGrid.BookingEvent do
           attendee_email: String.t() | nil,
           join_url: String.t() | nil,
           provider_event_id: String.t() | nil,
+          participants: [%{name: String.t() | nil, email: String.t()}],
+          capacity: pos_integer(),
+          seats_taken: non_neg_integer(),
           all_day: false,
           attendee_attachments: [map()],
           calendar_integration_id: pos_integer() | nil,

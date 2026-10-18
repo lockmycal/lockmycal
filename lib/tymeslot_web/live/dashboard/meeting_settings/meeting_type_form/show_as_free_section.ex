@@ -21,34 +21,26 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.ShowAsFreeSectio
   def show_as_free_section(assigns) do
     ~H"""
     <section class="space-y-4">
-      <div class="flex items-center gap-2">
-        <.icon name="hero-calendar-days" class="w-5 h-5 text-primary-500" />
-        <h3 class="text-token-base font-semibold text-neutral-800 dark:text-neutral-100">
-          {dgettext("dashboard_meeting_form", "Calendar availability")}
-        </h3>
-      </div>
+      <.subsection_header
+        icon="hero-calendar-days"
+        title={dgettext("dashboard_meeting_form", "Calendar availability")}
+      />
 
-      <div class="card-glass p-4 flex items-center justify-between gap-4 flex-wrap">
-        <div class="min-w-0 flex-1 space-y-1">
-          <p class="text-token-sm font-medium text-neutral-700 dark:text-neutral-200">
-            {dgettext("dashboard_meeting_form", "Show these bookings as free on my calendar")}
-          </p>
-          <p class="text-token-sm text-neutral-500 dark:text-twilight-indigo-200">
-            {dgettext(
-              "dashboard_meeting_form",
-              "The event is still created, but marked as free time so it doesn't block other bookings or appear busy to people who can see your availability."
-            )}
-          </p>
-        </div>
-        <.enabled_toggle
-          active={@show_as_free}
-          click_event="toggle_show_as_free"
-          target={@myself}
-          aria_label={
-            dgettext("dashboard_meeting_form", "Show these bookings as free on my calendar")
-          }
-        />
-      </div>
+      <.setting_row
+        id="show-as-free-toggle"
+        control={:switch}
+        label={dgettext("dashboard_meeting_form", "Show these bookings as free on my calendar")}
+        description={
+          dgettext(
+            "dashboard_meeting_form",
+            "The event is still created, but marked as free time so it doesn't block other bookings or appear busy to people who can see your availability."
+          )
+        }
+        checked={@show_as_free}
+        phx-value-state={to_string(!@show_as_free)}
+        on_change="toggle_show_as_free"
+        target={@myself}
+      />
     </section>
     """
   end

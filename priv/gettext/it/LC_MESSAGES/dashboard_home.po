@@ -33,12 +33,13 @@ msgid_plural "+%{count} more"
 msgstr[0] "+%{count} altro"
 msgstr[1] "+%{count} altri"
 
-#: lib/tymeslot_web/live/dashboard/dashboard_overview_formatters.ex
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/source_pill.ex
 #, elixir-autogen, elixir-format
-msgid "All day"
-msgstr "Tutto il giorno"
+msgid "Booking"
+msgstr "Prenotazione"
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/source_pill.ex
 #, elixir-autogen, elixir-format
 msgid "Calendar"
 msgstr "Calendario"
@@ -52,12 +53,6 @@ msgstr "Collega un calendario per vedere qui la tua intera agenda"
 #, elixir-autogen, elixir-format
 msgid "Invalid redirect URL"
 msgstr "URL di reindirizzamento non valido"
-
-#: lib/tymeslot_web/live/dashboard/calendar_up_next_strip.ex
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Join"
-msgstr "Partecipa"
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
 #, elixir-autogen, elixir-format
@@ -86,11 +81,6 @@ msgstr "Prossimo"
 #, elixir-autogen, elixir-format
 msgid "View calendar"
 msgstr "Visualizza calendario"
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "View details for %{title}"
-msgstr "Visualizza i dettagli di %{title}"
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview_formatters.ex
 #, elixir-autogen, elixir-format
@@ -122,6 +112,13 @@ msgstr "poi"
 msgid "today"
 msgstr "oggi"
 
+#: lib/tymeslot/agenda.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} participant"
+msgid_plural "%{count} participants"
+msgstr[0] "%{count} partecipante"
+msgstr[1] "%{count} partecipanti"
+
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #, elixir-autogen, elixir-format
 msgid "%{count} active"
@@ -136,6 +133,11 @@ msgid_plural "%{count} need attention"
 msgstr[0] "%{count} richiede attenzione"
 msgstr[1] "%{count} richiedono attenzione"
 
+#: lib/tymeslot_web/live/dashboard/dashboard_overview_formatters.ex
+#, elixir-autogen, elixir-format
+msgid "All day"
+msgstr "Tutto il giorno"
+
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #, elixir-autogen, elixir-format
 msgid "Availability"
@@ -147,6 +149,11 @@ msgstr "Disponibilità"
 msgid "Awaiting approval"
 msgstr "In attesa di approvazione"
 
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Awaiting host approval"
+msgstr "In attesa di approvazione dell'host"
+
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #, elixir-autogen, elixir-format
 msgid "Bookings"
@@ -157,6 +164,11 @@ msgstr "Prenotazioni"
 msgid "Calendars"
 msgstr "Calendari"
 
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Coming up tomorrow"
+msgstr "In programma domani"
+
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #, elixir-autogen, elixir-format
 msgid "Conversion"
@@ -166,6 +178,11 @@ msgstr "Conversione"
 #, elixir-autogen, elixir-format
 msgid "Copy booking link"
 msgstr "Copia il link di prenotazione"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
+#, elixir-autogen, elixir-format
+msgid "Create a meeting"
+msgstr "Crea una riunione"
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #, elixir-autogen, elixir-format
@@ -182,6 +199,11 @@ msgstr "Visite giornaliere degli ultimi 7 giorni"
 msgid "Integrations"
 msgstr "Integrazioni"
 
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Join"
+msgstr "Partecipa"
+
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #, elixir-autogen, elixir-format
 msgid "Last 7 days"
@@ -192,10 +214,25 @@ msgstr "Ultimi 7 giorni"
 msgid "Meeting types"
 msgstr "Tipi di riunione"
 
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Next appointment"
+msgstr "Prossimo appuntamento"
+
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #, elixir-autogen, elixir-format
 msgid "Not connected"
 msgstr "Non collegato"
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Nothing on your plate today."
+msgstr "Niente in programma oggi."
+
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Nothing scheduled for tomorrow."
+msgstr "Niente in programma per domani."
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #, elixir-autogen, elixir-format
@@ -237,6 +274,11 @@ msgstr "Questa settimana"
 msgid "Video"
 msgstr "Video"
 
+#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "View details for %{title}"
+msgstr "Visualizza i dettagli di %{title}"
+
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
 #, elixir-autogen, elixir-format
 msgid "Visits"
@@ -264,40 +306,10 @@ msgstr "Benvenuto, %{name}!"
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
 #, elixir-autogen, elixir-format
-msgid "Coming up tomorrow"
-msgstr "In programma domani"
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Nothing on your plate today."
-msgstr "Niente in programma oggi."
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Nothing scheduled for tomorrow."
-msgstr "Niente in programma per domani."
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Your day today"
-msgstr "La tua giornata"
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Next appointment"
-msgstr "Prossimo appuntamento"
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/widgets.ex
-#, elixir-autogen, elixir-format
-msgid "Create a meeting"
-msgstr "Crea una riunione"
-
-#: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
-#, elixir-autogen, elixir-format
 msgid "What's ahead"
 msgstr "Cosa ti aspetta"
 
 #: lib/tymeslot_web/live/dashboard/dashboard_overview/component_view.ex
 #, elixir-autogen, elixir-format
-msgid "Awaiting host approval"
-msgstr "In attesa di approvazione dell'host"
+msgid "Your day today"
+msgstr "La tua giornata"

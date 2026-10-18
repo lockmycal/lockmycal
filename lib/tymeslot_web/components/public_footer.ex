@@ -15,7 +15,7 @@ defmodule TymeslotWeb.Components.PublicFooter do
 
   alias Tymeslot.Infrastructure.Config
 
-  import TymeslotWeb.Components.CoreComponents, only: [icon: 1]
+  import TymeslotWeb.Components.CoreComponents.Icons, only: [icon: 1]
 
   attr :embedded, :boolean, default: false
 

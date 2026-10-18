@@ -783,7 +783,7 @@ end
 - `:selected_duration`, `:selected_date`, `:selected_time`
 - `:available_slots`, `:loading_slots`, `:calendar_error`
 - `:timezone_dropdown_open`, `:timezone_search`
-- `:reschedule_meeting_uid`, `:is_rescheduling`, `:meeting_uid`
+- `:reschedule_meeting_uid`, `:is_rescheduling`, `:meeting_uid`, `:seat_calendar_url` (a booked group seat's own calendar file; `Shared.CalendarDownload.href/1` picks the confirmation step's link from these)
 - `:name`, `:email`, `:submitting`, `:submission_processed`
 
 ### BookingFlow
@@ -1027,7 +1027,7 @@ defmodule TymeslotWeb.Themes.Aurora.Scheduling.Wrapper do
   attr :current_state, :atom, default: nil
   attr :language_dropdown_open, :boolean, default: nil
   attr :organizer_user_id, :integer, default: nil
-  attr :should_show_branding, :boolean, default: false
+  attr :brand_logo_url, :string, default: nil
   attr :show_language_switcher, :boolean, default: nil
   slot :inner_block, required: true
 
@@ -1177,7 +1177,7 @@ def render(assigns) do
     language_dropdown_open={assigns[:language_dropdown_open]}
     current_state={assigns[:current_state]}
     organizer_user_id={@organizer_user_id}
-    should_show_branding={assigns[:should_show_branding]}
+    brand_logo_url={assigns[:brand_logo_url]}
   >
     <%= if assigns[:scheduling_error_message] do %>
       <.live_component
@@ -1329,6 +1329,7 @@ Tymeslot booking pages support internationalization (i18n) with automatic browse
 - 🇮🇹 Italian (`it`)
 - 🇨🇿 Czech (`cs`)
 - 🇵🇱 Polish (`pl`)
+- 🇧🇷 Brazilian Portuguese (`pt`)
 
 ### Language Switcher Integration
 

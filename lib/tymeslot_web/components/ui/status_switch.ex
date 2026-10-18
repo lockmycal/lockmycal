@@ -7,6 +7,8 @@ defmodule TymeslotWeb.Components.UI.StatusSwitch do
   """
   use Phoenix.Component
 
+  alias TymeslotWeb.Components.CoreComponents.Icons
+
   attr :id, :string, required: true, doc: "Unique identifier for the switch"
   attr :checked, :boolean, required: true, doc: "Current state of the switch"
   attr :size, :atom, default: :medium, values: [:small, :medium, :large], doc: "Size variant"
@@ -14,9 +16,6 @@ defmodule TymeslotWeb.Components.UI.StatusSwitch do
   attr :target, :any, default: nil, doc: "Phoenix LiveView target"
   attr :disabled, :boolean, default: false, doc: "Disabled state"
   attr :class, :string, default: "", doc: "Additional CSS classes"
-
-  # Optional attributes for custom values
-  attr :phx_value_id, :string, default: nil, doc: "Custom phx-value-id attribute"
 
   attr :aria_label, :string,
     default: nil,
@@ -27,8 +26,7 @@ defmodule TymeslotWeb.Components.UI.StatusSwitch do
     doc:
       "Whether the slider shows the check/X glyph — off for a plain flat knob (App settings style)"
 
-  attr :rest, :global, doc: "Extra attributes, e.g. a caller-specific phx-value-* key"
-
+  attr :rest, :global, doc: "Further attributes (`phx-value-*`, `aria-labelledby`, `data-testid`)"
   @spec status_switch(map()) :: Phoenix.LiveView.Rendered.t()
   def status_switch(assigns) do
     ~H"""
@@ -36,7 +34,6 @@ defmodule TymeslotWeb.Components.UI.StatusSwitch do
       type="button"
       phx-click={@on_change}
       phx-target={@target}
-      phx-value-id={@phx_value_id}
       disabled={@disabled}
       class={[
         "status-toggle",
@@ -53,7 +50,7 @@ defmodule TymeslotWeb.Components.UI.StatusSwitch do
     >
       <span class={[
         "status-toggle-slider",
-        slider_state_class(@checked),
+        slider_state_class(@checked, @size),
         slider_size_class(@size)
       ]}>
         <%= if @show_icon do %>
@@ -62,15 +59,7 @@ defmodule TymeslotWeb.Components.UI.StatusSwitch do
             "status-toggle-icon",
             icon_visibility_class(!@checked)
           ]}>
-            <svg class={["status-icon", icon_size_class(@size)]} fill="none" viewBox="0 0 12 12">
-              <path
-                d="M4 8l2-2m0 0l2-2M6 6L4 4m2 2l2 2"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            <Icons.icon name="hero-x-mark-micro" class={"status-icon " <> icon_size_class(@size)} />
           </span>
 
           <%!-- Active icon (checkmark) --%>
@@ -78,13 +67,10 @@ defmodule TymeslotWeb.Components.UI.StatusSwitch do
             "status-toggle-icon",
             icon_visibility_class(@checked)
           ]}>
-            <svg
-              class={["status-icon status-icon--white", icon_size_class(@size)]}
-              fill="currentColor"
-              viewBox="0 0 12 12"
-            >
-              <path d="M3.707 5.293a1 1 0 00-1.414 1.414l1.414-1.414zM5 7l-.707.707a1 1 0 001.414 0L5 7zm4.707-3.293a1 1 0 00-1.414-1.414l1.414 1.414zm-7.414 2l2 2 1.414-1.414-2-2-1.414 1.414zm3.414 2l4-4-1.414-1.414-4 4 1.414 1.414z" />
-            </svg>
+            <Icons.icon
+              name="hero-check-micro"
+              class={"status-icon status-icon--white " <> icon_size_class(@size)}
+            />
           </span>
         <% end %>
       </span>
@@ -93,17 +79,13 @@ defmodule TymeslotWeb.Components.UI.StatusSwitch do
   end
 
   # Size-based styling functions
-  defp size_class(:small) do
-    "h-5 w-9 border border-neutral-300"
-  end
-
-  defp size_class(:medium) do
-    "h-6 w-11 border-2"
-  end
-
-  defp size_class(:large) do
-    "h-7 w-12 border-2"
-  end
+  # The border colour comes from the state class (`status-toggle--active` /
+  # `--inactive`); a colour utility here would override it, since utilities win
+  # over `@layer components`. The 1px inline padding gives the 16px knob the
+  # same gap on every side of the 18px-high track.
+  defp size_class(:small), do: "h-5 w-9 border px-px"
+  defp size_class(:medium), do: "h-6 w-11 border-2"
+  defp size_class(:large), do: "h-7 w-12 border-2"
 
   defp slider_size_class(:small), do: "h-4 w-4"
   defp slider_size_class(:medium), do: "h-5 w-5"
@@ -117,8 +99,12 @@ defmodule TymeslotWeb.Components.UI.StatusSwitch do
   defp state_class(true), do: "status-toggle--active"
   defp state_class(false), do: "status-toggle--inactive"
 
-  defp slider_state_class(true), do: "status-toggle-slider--active"
-  defp slider_state_class(false), do: ""
+  # The slider travels the track's inner width less its own: 2.25rem - 2px -
+  # 1rem on the small track, 2.75rem - 4px - 1.25rem on the medium and
+  # 3rem - 4px - 1.5rem on the large.
+  defp slider_state_class(true, :small), do: "translate-x-4"
+  defp slider_state_class(true, _size), do: "translate-x-5"
+  defp slider_state_class(false, _size), do: nil
 
   defp icon_visibility_class(true), do: "status-toggle-icon--visible"
   defp icon_visibility_class(false), do: "status-toggle-icon--hidden"

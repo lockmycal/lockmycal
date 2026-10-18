@@ -17,6 +17,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.ContactsSettingsFormComponent do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Profiles
+  alias TymeslotWeb.Components.Dashboard.ProNotice
 
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
@@ -82,11 +83,9 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.ContactsSettingsFormComponent do
         title={dgettext("dashboard_profile", "Contact Collection")}
         class="mb-3"
       />
-      <div class="input p-4">
-        <p class="text-token-sm font-medium text-neutral-500 text-center">
-          {dgettext("dashboard_profile", "Only available on the Pro plan and above.")}
-        </p>
-      </div>
+      <ProNotice.pro_notice>
+        {dgettext("dashboard_profile", "Only available on the Pro plan and above.")}
+      </ProNotice.pro_notice>
     </div>
     """
   end

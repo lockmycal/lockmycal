@@ -9,9 +9,12 @@ defmodule Tymeslot.Agenda do
   owns no storage of its own.
   """
 
+  use Gettext, backend: TymeslotWeb.Gettext
+
   alias Tymeslot.Agenda.Day
   alias Tymeslot.Agenda.Entry
   alias Tymeslot.CalendarGrid
+  alias Tymeslot.CalendarGrid.BookingEvent
   alias Tymeslot.Integrations.Calendar
   alias Tymeslot.Integrations.Calendar.Appearance
   alias Tymeslot.Integrations.Calendar.EventColour
@@ -81,6 +84,67 @@ defmodule Tymeslot.Agenda do
     }
   end
 
+  @doc """
+  Normalises one calendar grid event into an `Entry`, so the grid's agenda list
+  and booking modal render through the same components as the overview.
+
+  Takes a booking projection (`BookingEvent`) or a cached provider event, with
+  its own start and end (not one clamped to a single day). A missing title stays
+  `nil` here, for the caller to label; nothing is resolved against the
+  organiser's calendar names or colour overrides, which the grid applies itself.
+  """
+  @spec entry_for_grid_event(BookingEvent.t() | map(), String.t()) :: Entry.t()
+  def entry_for_grid_event(%BookingEvent{} = booking, timezone) do
+    tz = normalize_timezone(timezone)
+
+    %Entry{
+      id: "meeting-" <> to_string(booking.meeting_id),
+      source: :tymeslot,
+      title: presence(booking.summary),
+      day: to_local_date(booking.start_at, tz),
+      start_at: booking.start_at,
+      end_at: booking.end_at,
+      all_day?: false,
+      location: presence(booking.location),
+      join_url: presence(booking.join_url),
+      who: presence(booking.attendee_name),
+      who_email: presence(booking.attendee_email),
+      source_id: booking.meeting_id,
+      target: {:meeting, booking.meeting_id}
+    }
+  end
+
+  def entry_for_grid_event(event, timezone) do
+    tz = normalize_timezone(timezone)
+    {day, start_at, end_at} = grid_event_span(event, tz)
+
+    %Entry{
+      id: "event-" <> to_string(event.id),
+      source: :external,
+      title: presence(Map.get(event, :summary)),
+      day: day,
+      start_at: start_at,
+      end_at: end_at,
+      all_day?: event.all_day == true,
+      location: presence(Map.get(event, :location)),
+      join_url: presence(Map.get(event, :video_link)),
+      who: organiser_name(Map.get(event, :organiser)),
+      colour: Map.get(event, :colour),
+      source_id: event.id,
+      target: {:external, Map.get(event, :calendar_integration_id), Map.get(event, :uid)}
+    }
+  end
+
+  # An all-day event is held by its dates where it has them, as on the agenda;
+  # an event the grid built in memory may only carry its instants.
+  defp grid_event_span(%{all_day: true, start_date: %Date{} = start_date} = event, tz) do
+    end_date = Map.get(event, :end_date) || Date.add(start_date, 1)
+    {start_date, local_midnight(start_date, tz), local_midnight(end_date, tz)}
+  end
+
+  defp grid_event_span(event, tz),
+    do: {to_local_date(event.start_at, tz), event.start_at, event.end_at}
+
   # --- Gathering & merging ---------------------------------------------------
 
   defp gather_entries(
@@ -92,7 +156,10 @@ defmodule Tymeslot.Agenda do
     # Live confirmed bookings plus requests awaiting approval (shown marked as
     # such), excluding slots voided by a pending reschedule request; cancelled
     # and otherwise pending ones have no place on the agenda.
-    meetings = Meetings.list_upcoming_agenda_meetings_for_user(user.email, @meeting_limit)
+    meetings =
+      user.email
+      |> Meetings.list_upcoming_agenda_meetings_for_user(@meeting_limit)
+      |> Meetings.with_live_participants()
 
     # Bookings synced to the calendar reappear as provider events; dedup on the
     # shared identifier so the (richer) Tymeslot copy is the one we keep.
@@ -172,7 +239,8 @@ defmodule Tymeslot.Agenda do
       all_day?: false,
       location: presence(meeting.location),
       join_url: join_url(meeting, attending?),
-      who: presence(if attending?, do: meeting.organizer_name, else: meeting.attendee_name),
+      who: who(meeting, attending?),
+      who_email: who_email(meeting, attending?),
       calendar:
         calendar_name(meeting.calendar_integration_id, meeting.calendar_path, calendar_names),
       colour: nil,
@@ -194,8 +262,7 @@ defmodule Tymeslot.Agenda do
   defp join_url(meeting, true = _attending?),
     do: presence(meeting.attendee_video_url) || presence(meeting.meeting_url)
 
-  defp join_url(meeting, false = _attending?),
-    do: presence(meeting.organizer_video_url) || presence(meeting.meeting_url)
+  defp join_url(meeting, false = _attending?), do: Meetings.organizer_join_url(meeting)
 
   defp entry_from_event(%{all_day: true} = event, tz, {calendar_names, palette}) do
     end_date = event.end_date || Date.add(event.start_date, 1)
@@ -203,7 +270,7 @@ defmodule Tymeslot.Agenda do
     %Entry{
       id: "event-" <> to_string(event.id),
       source: :external,
-      title: presence(event.summary) || "Busy",
+      title: presence(event.summary),
       day: event.start_date,
       start_at: local_midnight(event.start_date, tz),
       end_at: local_midnight(end_date, tz),
@@ -224,7 +291,7 @@ defmodule Tymeslot.Agenda do
     %Entry{
       id: "event-" <> to_string(event.id),
       source: :external,
-      title: presence(event.summary) || "Busy",
+      title: presence(event.summary),
       day: to_local_date(event.start_at, tz),
       start_at: event.start_at,
       end_at: end_at,
@@ -250,6 +317,39 @@ defmodule Tymeslot.Agenda do
       Map.get(palette.calendars, {event.calendar_integration_id, event.provider_calendar_id}) ||
       Map.get(palette.integrations, event.calendar_integration_id, EventColour.fallback_class())
   end
+
+  # Who a booking is with. A booking the user made elsewhere is with its
+  # organiser. A group meeting has no attendee: one live participant is named,
+  # several are counted (the list query loads only the live ones).
+  defp who(meeting, true = _attending?), do: presence(meeting.organizer_name)
+
+  defp who(meeting, false = _attending?) do
+    if Meetings.group?(meeting),
+      do: participants_label(meeting.participants),
+      else: presence(meeting.attendee_name)
+  end
+
+  # The address beside `who`: a group meeting has one only while a single
+  # participant is named, since a count of several has no one address.
+  defp who_email(meeting, true = _attending?), do: presence(meeting.organizer_email)
+
+  defp who_email(meeting, false = _attending?) do
+    if Meetings.group?(meeting),
+      do: participants_email(meeting.participants),
+      else: presence(meeting.attendee_email)
+  end
+
+  defp participants_email([participant]), do: presence(participant.email)
+  defp participants_email(_participants), do: nil
+
+  defp participants_label([participant]), do: presence(participant.name)
+
+  defp participants_label(participants) when is_list(participants) and participants != [] do
+    count = length(participants)
+    dngettext("dashboard_home", "%{count} participant", "%{count} participants", count)
+  end
+
+  defp participants_label(_none), do: nil
 
   # --- Helpers ---------------------------------------------------------------
 

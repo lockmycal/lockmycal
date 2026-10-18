@@ -4,6 +4,7 @@ defmodule Tymeslot.Emails.Templates.SocialSignupConfirmationTest do
   @moduletag :auth
 
   alias Tymeslot.Emails.Templates.SocialSignupConfirmation
+  alias Tymeslot.Infrastructure.Config
 
   @url "https://example.com/auth/oauth/confirm/token"
   @recipient %{email: "new@example.com", name: "Ada"}
@@ -14,7 +15,7 @@ defmodule Tymeslot.Emails.Templates.SocialSignupConfirmationTest do
 
     assert html =~ ~s(href="#{@url}")
     assert text =~ @url
-    assert text =~ "signing up for Tymeslot with GitHub"
+    assert text =~ "signing up for #{Config.app_name()} with GitHub"
     assert text =~ "no account will be created"
   end
 

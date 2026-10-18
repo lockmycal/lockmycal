@@ -4,8 +4,8 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackCard do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Slack.SlackIntegrationSchema
+  alias TymeslotWeb.Components.Dashboard.Integrations.Shared.IntegrationCard
   alias TymeslotWeb.Components.Icons.IconComponents
-  alias TymeslotWeb.Components.UI.StatusSwitch
   alias TymeslotWeb.Dashboard.Automation.Helpers, as: AutomationHelpers
 
   attr :integration, :map, required: true
@@ -24,211 +24,131 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackCard do
 
   @spec slack_card(map()) :: Phoenix.LiveView.Rendered.t()
   def slack_card(assigns) do
-    assigns = assign(assigns, :status, SlackIntegrationSchema.status(assigns.integration))
+    status = SlackIntegrationSchema.status(assigns.integration)
+    {tone, pulse, label} = status_presentation(status)
+
+    assigns = assign(assigns, status: status, tone: tone, pulse: pulse, label: label)
 
     ~H"""
-    <div class={[
-      "card-glass p-4",
-      if(@status == :active, do: "card-glass-available", else: "card-glass-unavailable")
-    ]}>
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-        <div class="flex min-w-0 flex-1 items-center gap-4">
-          <IconComponents.icon
-            name={:slack}
-            class="w-5 h-5 text-neutral-600 dark:text-neutral-300 shrink-0"
-          />
-
-          <div class="min-w-0 flex-1">
-            <h3 class="truncate text-token-base font-semibold text-neutral-800 dark:text-neutral-100">
-              {@integration.name}
-            </h3>
-            <p class="mt-0.5 truncate text-token-sm text-neutral-500">
-              {location_label(@integration)}
-            </p>
-            <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-token-xs text-neutral-500">
-              <%= if @status == :pending_oauth do %>
-                <span class="text-amber-600 font-medium">
-                  {dgettext("dashboard_automation_chat", "Pick a channel to finish setup.")}
-                </span>
-              <% else %>
-                <span :for={event <- @integration.events} class="inline-flex items-center gap-1">
-                  <div class={[
-                    "w-1.5 h-1.5 rounded-full",
-                    if(@status == :active, do: "bg-primary-500", else: "bg-neutral-300")
-                  ]} />
-                  {event}
-                </span>
-                <span class="inline-flex items-center gap-1 text-neutral-400">
-                  <.icon name="hero-clock" class="w-3.5 h-3.5" />
-                  {last_triggered_label(@integration, @time_format)}
-                </span>
-                <span :if={@status == :auto_disabled} class="text-red-600 font-medium">
-                  {dgettext("dashboard_automation_chat", "Disabled: %{reason}",
-                    reason: disabled_reason_label(@integration.disabled_reason)
-                  )}
-                </span>
-              <% end %>
-            </div>
-          </div>
-
-          <.status_badge status={@status} />
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2 sm:justify-end">
-          <StatusSwitch.status_switch
-            :if={@status in [:active, :paused]}
-            id={"slack-toggle-#{@integration.id}"}
-            checked={@integration.is_active}
-            on_change={@on_toggle}
-            target={@target}
-            phx_value_id={"#{@integration.id}"}
-            size={:small}
-            show_icon={false}
-          />
-
-          <button
-            :if={@status == :pending_oauth && @on_pick_channel}
-            phx-click={@on_pick_channel}
-            class="row-action-button row-action-button--icon-only row-action-button--neutral"
-            title={dgettext("dashboard_automation_chat", "Pick a channel")}
-            aria-label={dgettext("dashboard_automation_chat", "Pick a channel")}
-          >
-            <.icon name="hero-hashtag" class="w-5 h-5" />
-          </button>
-
-          <button
-            :if={@status == :pending_oauth && @integration.app_mode == "oauth" && @on_reconnect}
-            phx-click={@on_reconnect}
-            class="row-action-button row-action-button--icon-only row-action-button--neutral"
-            title={dgettext("dashboard_automation_chat", "Reconnect")}
-            aria-label={dgettext("dashboard_automation_chat", "Reconnect")}
-          >
-            <.icon name="hero-arrow-path" class="w-5 h-5" />
-          </button>
-
-          <button
-            :if={@status == :auto_disabled && @on_reenable}
-            phx-click={@on_reenable}
-            class="row-action-button row-action-button--icon-only row-action-button--neutral"
-            title={dgettext("dashboard_automation_chat", "Re-enable")}
-            aria-label={dgettext("dashboard_automation_chat", "Re-enable")}
-          >
-            <.icon name="hero-arrow-path" class="w-5 h-5" />
-          </button>
-
-          <button
-            :if={@status in [:active, :paused]}
-            phx-click={@on_test}
-            disabled={@testing || @status != :active}
-            class="row-action-button row-action-button--icon-only row-action-button--neutral"
-            title={test_button_title(@status, @testing)}
-            aria-label={test_button_title(@status, @testing)}
-          >
-            <%= if @testing do %>
-              <.icon name="hero-arrow-path" class="w-5 h-5 animate-spin" />
-            <% else %>
-              <.icon name="hero-bolt" class="w-5 h-5" />
-            <% end %>
-          </button>
-
-          <button
-            :if={@status != :pending_oauth}
-            phx-click={@on_view_deliveries}
-            class="row-action-button row-action-button--icon-only row-action-button--neutral"
-            title={dgettext("dashboard_automation_chat", "View delivery logs")}
-            aria-label={dgettext("dashboard_automation_chat", "View delivery logs")}
-          >
-            <.icon name="hero-document-text" class="w-5 h-5" />
-          </button>
-
-          <button
-            :if={@status != :pending_oauth}
-            phx-click={@on_edit}
-            class="row-action-button row-action-button--icon-only row-action-button--neutral"
-            title={dgettext("dashboard_automation_chat", "Edit")}
-            aria-label={dgettext("dashboard_automation_chat", "Edit")}
-          >
-            <.icon name="hero-pencil-square" class="w-5 h-5" />
-          </button>
-
-          <button
-            :if={@on_disconnect && @integration.app_mode == "oauth" && @integration.channel_id}
-            phx-click={@on_disconnect}
-            class="row-action-button row-action-button--icon-only row-action-button--neutral"
-            title={dgettext("dashboard_automation_chat", "Disconnect Slack")}
-            aria-label={dgettext("dashboard_automation_chat", "Disconnect Slack")}
-          >
-            <.icon name="hero-link-slash" class="w-5 h-5" />
-          </button>
-
-          <button
-            phx-click={@on_delete}
-            class="row-action-button row-action-button--danger"
-            title={dgettext("dashboard_automation_chat", "Delete")}
-            aria-label={dgettext("dashboard_automation_chat", "Delete")}
-          >
-            <.icon name="hero-trash" class="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-    </div>
+    <IntegrationCard.integration_card
+      id={"#{@integration.id}"}
+      title={@integration.name}
+      status={{@tone, @label}}
+      pulse={@pulse}
+      summary={location_label(@integration)}
+      active={@status != :paused and @status != :auto_disabled}
+      toggle_event={if(@status in [:active, :paused], do: @on_toggle)}
+      toggle_id={"slack-toggle-#{@integration.id}"}
+      target={@target}
+      tags={@integration.events}
+      notice={notice(@status, @integration)}
+      notice_tone={(@status == :auto_disabled && :danger) || :warning}
+    >
+      <:icon><IconComponents.icon name={:slack} class="w-6 h-6" /></:icon>
+      <:last_activity :if={@status != :pending_oauth && @integration.last_triggered_at}>
+        {dgettext("dashboard_automation_chat", "Last triggered: %{time}",
+          time: AutomationHelpers.format_datetime(@integration.last_triggered_at, @time_format)
+        )}
+      </:last_activity>
+      <:last_activity :if={@status != :pending_oauth && !@integration.last_triggered_at} muted>
+        {dgettext("dashboard_automation_chat", "Never triggered")}
+      </:last_activity>
+      <:actions>
+        <.action_button
+          :if={@status == :pending_oauth && @on_pick_channel}
+          size={:sm}
+          phx-click={@on_pick_channel}
+        >
+          {dgettext("dashboard_automation_chat", "Pick a channel")}
+        </.action_button>
+        <%!-- Restarts OAuth from scratch for an install still waiting on a channel. --%>
+        <.action_button
+          :if={@status == :pending_oauth && @integration.app_mode == "oauth" && @on_reconnect}
+          variant={:secondary}
+          size={:sm}
+          icon="hero-arrow-path"
+          phx-click={@on_reconnect}
+        >
+          {dgettext("dashboard_automation_chat", "Reconnect")}
+        </.action_button>
+        <.loading_button
+          :if={@status in [:active, :paused]}
+          variant={:secondary}
+          size={:sm}
+          icon="hero-bolt"
+          loading={@testing}
+          loading_text={dgettext("dashboard_automation_chat", "Testing")}
+          disabled={@status != :active}
+          phx-click={@on_test}
+        >
+          {dgettext("dashboard_automation_chat", "Test")}
+        </.loading_button>
+        <.action_button
+          :if={@status == :auto_disabled && @on_reenable}
+          size={:sm}
+          phx-click={@on_reenable}
+        >
+          {dgettext("dashboard_automation_chat", "Re-enable")}
+        </.action_button>
+        <.action_button
+          :if={@status != :pending_oauth}
+          variant={:secondary}
+          size={:sm}
+          icon="hero-document-text"
+          phx-click={@on_view_deliveries}
+        >
+          {dgettext("dashboard_automation_chat", "Logs")}
+        </.action_button>
+      </:actions>
+      <:end_actions>
+        <.icon_button
+          :if={@status != :pending_oauth}
+          icon="hero-pencil-square"
+          label={dgettext("dashboard_automation_chat", "Edit")}
+          phx-click={@on_edit}
+        />
+        <%!-- OAuth installs only, once a channel is set. --%>
+        <.icon_button
+          :if={@on_disconnect && @integration.app_mode == "oauth" && @integration.channel_id}
+          icon="hero-no-symbol"
+          variant={:warning}
+          label={dgettext("dashboard_automation_chat", "Disconnect Slack")}
+          phx-click={@on_disconnect}
+        />
+        <.icon_button
+          icon="hero-trash"
+          variant={:danger}
+          label={dgettext("dashboard_automation_chat", "Delete %{name}", name: @integration.name)}
+          tooltip={dgettext("dashboard_automation_chat", "Delete")}
+          phx-click={@on_delete}
+        />
+      </:end_actions>
+    </IntegrationCard.integration_card>
     """
   end
 
-  attr :status, :atom, required: true
+  defp status_presentation(:pending_oauth),
+    do: {:warning, true, dgettext("dashboard_automation_chat", "Channel needed")}
 
-  defp status_badge(%{status: :pending_oauth} = assigns) do
-    ~H"""
-    <span class="shrink-0 inline-flex items-center gap-1.5 rounded-token-full px-2.5 py-1 text-token-xs font-semibold bg-amber-50 border border-amber-200 text-amber-700">
-      <span class="h-1.5 w-1.5 rounded-token-full bg-amber-500 animate-pulse" aria-hidden="true"></span>
-      {dgettext("dashboard_automation_chat", "Channel needed")}
-    </span>
-    """
-  end
+  defp status_presentation(:active),
+    do: {:success, false, dgettext("dashboard_automation_chat", "Active")}
 
-  defp status_badge(%{status: :active} = assigns) do
-    ~H"""
-    <span class="shrink-0 inline-flex items-center gap-1.5 rounded-token-full px-2.5 py-1 text-token-xs font-semibold bg-emerald-50 border border-emerald-200 text-emerald-700">
-      <span class="h-1.5 w-1.5 rounded-token-full bg-emerald-500" aria-hidden="true"></span>
-      {dgettext("dashboard_automation_chat", "Active")}
-    </span>
-    """
-  end
+  defp status_presentation(:paused),
+    do: {:neutral, false, dgettext("dashboard_automation_chat", "Paused")}
 
-  defp status_badge(%{status: :paused} = assigns) do
-    ~H"""
-    <span class="shrink-0 inline-flex items-center gap-1.5 rounded-token-full px-2.5 py-1 text-token-xs font-semibold bg-neutral-50 dark:bg-twilight-indigo-900/60 border border-neutral-300 text-neutral-800 dark:text-neutral-100">
-      <span class="h-1.5 w-1.5 rounded-token-full bg-neutral-400" aria-hidden="true"></span>
-      {dgettext("dashboard_automation_chat", "Paused")}
-    </span>
-    """
-  end
+  defp status_presentation(:auto_disabled),
+    do: {:danger, false, dgettext("dashboard_automation_chat", "Disabled")}
 
-  defp status_badge(%{status: :auto_disabled} = assigns) do
-    ~H"""
-    <span class="shrink-0 inline-flex items-center gap-1.5 rounded-token-full px-2.5 py-1 text-token-xs font-semibold bg-red-50 border border-red-200 text-red-700">
-      <span class="h-1.5 w-1.5 rounded-token-full bg-red-500" aria-hidden="true"></span>
-      {dgettext("dashboard_automation_chat", "Disabled")}
-    </span>
-    """
-  end
+  defp notice(:pending_oauth, _integration),
+    do: dgettext("dashboard_automation_chat", "Pick a channel to finish setup.")
 
-  defp last_triggered_label(%{last_triggered_at: nil}, _time_format),
-    do: dgettext("dashboard_automation_chat", "Never triggered")
+  defp notice(:auto_disabled, integration),
+    do:
+      dgettext("dashboard_automation_chat", "Disabled: %{reason}",
+        reason: disabled_reason_label(integration.disabled_reason)
+      )
 
-  defp last_triggered_label(%{last_triggered_at: %DateTime{} = dt}, time_format) do
-    dgettext("dashboard_automation_chat", "Last triggered %{time}",
-      time: AutomationHelpers.format_datetime(dt, time_format)
-    )
-  end
-
-  defp test_button_title(:active, true), do: dgettext("dashboard_automation_chat", "Testing...")
-
-  defp test_button_title(:active, false),
-    do: dgettext("dashboard_automation_chat", "Test Connection")
-
-  defp test_button_title(_status, _testing),
-    do: dgettext("dashboard_automation_chat", "Enable to test")
+  defp notice(_status, _integration), do: nil
 
   # Renders the human-readable destination for the integration: workspace and
   # channel for OAuth installs, or "Custom webhook" with channel hint for

@@ -9,7 +9,6 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.CreateExecution do
   alias Tymeslot.CalendarGrid
   alias Tymeslot.CalendarGrid.EventCreation
   alias Tymeslot.Integrations.Calendar.Recurrence.RRule
-  alias Tymeslot.Utils.ReminderUtils
   alias TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.CreateFormState
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared
@@ -148,10 +147,24 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.CreateExecution do
       calendar_integration_id: creating[:integration_id],
       calendar_id: creating[:calendar_id],
       video_integration_id: creating[:video_integration_id],
-      reminders: ReminderUtils.from_calendar_reminders(creating[:reminders] || []),
+      reminders: meeting_reminders(creating),
       organizer_note: creating[:organizer_note],
       attendee_locale: creating[:locale]
     }
+  end
+
+  @doc """
+  What the reminder picker holds, or nothing at all. Nothing is an answer
+  here: a quick-added meeting sends the reminders the host picked and no
+  others, so an untouched picker means no reminder email. Shared with the
+  Meetings page's quick-add dialog.
+  """
+  @spec meeting_reminders(map()) :: [map()]
+  def meeting_reminders(creating) do
+    case creating[:meeting_reminders] do
+      %{reminders: reminders} -> reminders
+      _unset -> []
+    end
   end
 
   # All-day events round-trip start/end as Dates (and `all_day: true`) so the
@@ -308,6 +321,9 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.CreateExecution do
   # A queued create will be replayed on the next sync; anything else is final.
   defp create_failed_message(%{retry: :queued}),
     do: dgettext("dashboard_calendar_events", "Create failed - queued to retry on next sync")
+
+  defp create_failed_message(%{reason: :day_missing_in_some_months}),
+    do: EditWorkflow.month_end_refused_message()
 
   defp create_failed_message(_failure),
     do: dgettext("dashboard_calendar_events", "Failed to create event")

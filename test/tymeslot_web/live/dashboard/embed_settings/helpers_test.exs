@@ -288,6 +288,67 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.HelpersTest do
     end
   end
 
+  describe "embed_code/2 — one meeting type" do
+    test "inline snippet emits data-meeting" do
+      code =
+        Helpers.embed_code("inline", %{
+          username: "alice",
+          base_url: "https://x.test",
+          meeting: "intro-call"
+        })
+
+      assert code =~ ~s(data-meeting="intro-call")
+    end
+
+    test "popup and floating snippets pass the meeting in the JS options" do
+      assigns = %{username: "alice", base_url: "https://x.test", meeting: "intro-call"}
+
+      assert Helpers.embed_code("popup", assigns) =~ "meeting: 'intro-call'"
+      assert Helpers.embed_code("floating", assigns) =~ "meeting: 'intro-call'"
+    end
+
+    test "link snippet points at the meeting type's page, before the query" do
+      code =
+        Helpers.embed_code("link", %{
+          booking_url: "https://x.test/alice",
+          meeting: "intro-call",
+          locale: "de"
+        })
+
+      assert code =~ ~s(href="https://x.test/alice/intro-call?locale=de")
+    end
+
+    test "a blank or malformed meeting leaves every snippet on the overview" do
+      for meeting <- ["", nil, "../admin", "Intro", "it's"] do
+        assigns = %{
+          username: "alice",
+          base_url: "https://x.test",
+          booking_url: "https://x.test/alice",
+          meeting: meeting
+        }
+
+        refute Helpers.embed_code("inline", assigns) =~ "data-meeting"
+        refute Helpers.embed_code("popup", assigns) =~ "meeting:"
+        assert Helpers.embed_code("link", assigns) =~ ~s(href="https://x.test/alice")
+      end
+    end
+  end
+
+  describe "embed_code/2 — widget alias" do
+    test "an alias stands where the username would" do
+      assigns = %{username: "_k7m2xqa4b", base_url: "https://x.test"}
+
+      assert Helpers.embed_code("inline", assigns) =~ ~s(data-username="_k7m2xqa4b")
+      assert Helpers.embed_code("popup", assigns) =~ "open('_k7m2xqa4b'"
+    end
+
+    test "a malformed alias is replaced, like a malformed username" do
+      code = Helpers.embed_code("inline", %{username: "_Bad'alias", base_url: "https://x.test"})
+
+      assert code =~ ~s(data-username="invalid-username")
+    end
+  end
+
   describe "embed_code/2 — language parameter" do
     test "inline snippet emits data-locale when a language is chosen" do
       assigns = %{username: "alice", base_url: "https://x.test", locale: "de"}

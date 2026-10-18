@@ -7,6 +7,7 @@ defmodule Tymeslot.Telegram.TelegramIntegrationSchemaTest do
   import Ecto.Changeset
   import Tymeslot.Factory
 
+  alias Tymeslot.Notifications.EventTypes
   alias Tymeslot.Security.Encryption
   alias Tymeslot.Telegram.TelegramIntegrationSchema
 
@@ -263,12 +264,8 @@ defmodule Tymeslot.Telegram.TelegramIntegrationSchemaTest do
   end
 
   describe "valid_events/0" do
-    test "returns the list of valid event types" do
-      events = TelegramIntegrationSchema.valid_events()
-      assert "meeting.created" in events
-      assert "meeting.cancelled" in events
-      assert "meeting.rescheduled" in events
-      assert length(events) >= 3
+    test "accepts every event a webhook can subscribe to" do
+      assert TelegramIntegrationSchema.valid_events() == EventTypes.all()
     end
   end
 

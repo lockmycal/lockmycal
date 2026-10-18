@@ -10,7 +10,7 @@ defmodule TymeslotWeb.Dashboard.Admin.SiteBannerRows do
   `SettingsView` to stay under the module line-count budget, same as
   `TymeslotWeb.Dashboard.Admin.EmailBrandingRows`, and like that module it
   reuses `SettingsView.row_header/1`/`text_input_classes/2` (and here
-  `setting_row/1` for the toggles) so every row looks identical.
+  `admin_setting_row/1` for the toggles) so every row looks identical.
 
   Every control writes through the same `"save_setting"`/`"set_setting"`
   events as the rest of the page, handled by
@@ -91,7 +91,7 @@ defmodule TymeslotWeb.Dashboard.Admin.SiteBannerRows do
         />
         <.colour_row colour={@colour} target={@target} />
 
-        <SettingsView.setting_row
+        <SettingsView.admin_setting_row
           :for={key <- @toggle_keys}
           key={key}
           effective_values={@effective_values}

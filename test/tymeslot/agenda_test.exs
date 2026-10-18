@@ -12,7 +12,6 @@ defmodule Tymeslot.AgendaTest do
   alias Tymeslot.Agenda.Entry
   alias Tymeslot.CalendarGrid
   alias Tymeslot.Integrations.Calendar.Appearance
-  alias Tymeslot.Integrations.Calendar.EventColourOverrides
   alias Tymeslot.Utils.DateTimeUtils
 
   setup do
@@ -148,6 +147,25 @@ defmodule Tymeslot.AgendaTest do
       assert Enum.find(entries(day), &(&1.title == "Team sync")).calendar == "Work Google"
     end
 
+    test "carries a booking's attendee and their email", %{user: user, tomorrow: tomorrow} do
+      booking(user, at(tomorrow, ~T[12:00:00]),
+        title: "Client call",
+        attendee_name: "Ada Lovelace",
+        attendee_email: "ada@example.com"
+      )
+
+      assert [%Entry{who: "Ada Lovelace", who_email: "ada@example.com"}] =
+               entries(Agenda.day_agenda(user, "Etc/UTC"))
+    end
+
+    test "names a titleless booking and leaves a missing event title for the presentation to label",
+         %{user: user, tomorrow: tomorrow} do
+      booking(user, at(tomorrow, ~T[12:00:00]), title: "  ")
+      external_event(user, at(tomorrow, ~T[13:00:00]), summary: nil)
+
+      assert titles(Agenda.day_agenda(user, "Etc/UTC")) == ["Meeting", nil]
+    end
+
     test "surfaces the earliest timed entry as the hero and excludes it from the groups",
          %{user: user, tomorrow: tomorrow} do
       booking(user, at(tomorrow, ~T[14:00:00]), title: "Later")
@@ -158,6 +176,56 @@ defmodule Tymeslot.AgendaTest do
       assert day.next.title == "Sooner"
       assert Enum.map(day.tomorrow, & &1.title) == ["Later"]
       refute "Sooner" in Enum.map(day.tomorrow, & &1.title)
+    end
+  end
+
+  describe "day_agenda/2 who a booking is with" do
+    # A group meeting keeps no attendee of its own, so the agenda had no one
+    # to name and showed the booking with nobody.
+    defp group_booking(user, start, participants) do
+      meeting =
+        insert(:group_meeting,
+          organizer_email: user.email,
+          title: "Workshop",
+          capacity: 4,
+          start_time: start,
+          end_time: DateTime.add(start, 3600, :second)
+        )
+
+      for {name, live?} <- participants do
+        insert(:participant,
+          meeting: meeting,
+          name: name,
+          cancelled_at: if(live?, do: nil, else: DateTime.utc_now(:second))
+        )
+      end
+
+      meeting
+    end
+
+    test "a group meeting with one live participant names them", %{user: user, tomorrow: tomorrow} do
+      group_booking(user, at(tomorrow, ~T[12:00:00]), [{"Ada", true}, {"Gone", false}])
+
+      assert [%{title: "Workshop", who: "Ada"}] = entries(Agenda.day_agenda(user, "Etc/UTC"))
+    end
+
+    test "a group meeting with several live participants counts them", %{
+      user: user,
+      tomorrow: tomorrow
+    } do
+      group_booking(user, at(tomorrow, ~T[12:00:00]), [
+        {"Ada", true},
+        {"Ben", true},
+        {"Gone", false}
+      ])
+
+      assert [%{who: "2 participants"}] = entries(Agenda.day_agenda(user, "Etc/UTC"))
+    end
+
+    test "a solo booking still names its attendee", %{user: user, tomorrow: tomorrow} do
+      booking(user, at(tomorrow, ~T[12:00:00]), attendee_name: "Solo Sam")
+
+      assert [%{who: "Solo Sam"}] = entries(Agenda.day_agenda(user, "Etc/UTC"))
     end
   end
 
@@ -443,87 +511,7 @@ defmodule Tymeslot.AgendaTest do
     end
   end
 
-  describe "Entry.covers?/3" do
-    test "a same-day timed entry covers only its day" do
-      entry = timed_entry(~D[2026-07-02], ~U[2026-07-02 11:00:00Z])
-
-      assert Entry.covers?(entry, ~D[2026-07-02], "Etc/UTC")
-      refute Entry.covers?(entry, ~D[2026-07-03], "Etc/UTC")
-      refute Entry.covers?(entry, ~D[2026-07-01], "Etc/UTC")
-    end
-
-    test "an overnight timed entry covers the day it started and the next" do
-      entry = timed_entry(~D[2026-07-02], ~U[2026-07-03 01:00:00Z])
-
-      assert Entry.covers?(entry, ~D[2026-07-02], "Etc/UTC")
-      assert Entry.covers?(entry, ~D[2026-07-03], "Etc/UTC")
-      refute Entry.covers?(entry, ~D[2026-07-04], "Etc/UTC")
-    end
-
-    test "a multi-day all-day entry covers each day in [start, end), end exclusive" do
-      # start_date 2 Jul, end_date 5 Jul → end_at is local midnight of 5 Jul.
-      entry = all_day_entry(~D[2026-07-02], ~U[2026-07-05 00:00:00Z])
-
-      assert Entry.covers?(entry, ~D[2026-07-02], "Etc/UTC")
-      assert Entry.covers?(entry, ~D[2026-07-04], "Etc/UTC")
-      refute Entry.covers?(entry, ~D[2026-07-05], "Etc/UTC")
-      refute Entry.covers?(entry, ~D[2026-07-01], "Etc/UTC")
-    end
-  end
-
-  describe "day_agenda/2 per-event colour and source id" do
-    test "an external entry carries the provider colour and its cached-row id", %{
-      user: user,
-      tomorrow: tomorrow
-    } do
-      event =
-        external_event(user, at(tomorrow, ~T[13:00:00]),
-          summary: "Coloured",
-          uid: "uid-colour-1",
-          colour: "blueberry"
-        )
-
-      entry = find_entry(Agenda.day_agenda(user, "Etc/UTC"), "Coloured")
-
-      assert entry.colour == "blueberry"
-      assert entry.source_id == event.id
-    end
-
-    # The calendar grid shows no per-event colour override, so the agenda
-    # doesn't either — the two would otherwise disagree.
-    test "ignores a stored colour override", %{user: user, tomorrow: tomorrow} do
-      event =
-        external_event(user, at(tomorrow, ~T[13:00:00]),
-          summary: "Coloured",
-          uid: "uid-colour-2",
-          colour: "blueberry"
-        )
-
-      {:ok, _override} =
-        EventColourOverrides.set(
-          user.id,
-          {:external, event.calendar_integration_id, "uid-colour-2"},
-          "tomato"
-        )
-
-      assert find_entry(Agenda.day_agenda(user, "Etc/UTC"), "Coloured").colour == "blueberry"
-    end
-
-    test "a booking entry carries its meeting id", %{user: user, tomorrow: tomorrow} do
-      meeting = booking(user, at(tomorrow, ~T[12:00:00]), title: "Client call")
-
-      assert find_entry(Agenda.day_agenda(user, "Etc/UTC"), "Client call").source_id ==
-               meeting.id
-    end
-  end
-
   # --- Helpers ---------------------------------------------------------------
-
-  defp find_entry(day, title) do
-    [day.next | day.today ++ day.tomorrow]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.find(&(&1.title == title))
-  end
 
   # No meeting information by default, so an entry is titled by its own title
   # (what these tests identify it by) under the default title source.
@@ -586,30 +574,6 @@ defmodule Tymeslot.AgendaTest do
         end_at: nil
       ] ++ opts
     )
-  end
-
-  defp timed_entry(day, end_at) do
-    %Entry{
-      id: "t",
-      source: :external,
-      title: "t",
-      day: day,
-      start_at: DateTime.new!(day, ~T[10:00:00], "Etc/UTC"),
-      end_at: end_at,
-      all_day?: false
-    }
-  end
-
-  defp all_day_entry(start_date, end_at) do
-    %Entry{
-      id: "a",
-      source: :external,
-      title: "a",
-      day: start_date,
-      start_at: DateTime.new!(start_date, ~T[00:00:00], "Etc/UTC"),
-      end_at: end_at,
-      all_day?: true
-    }
   end
 
   defp at(date, time), do: DateTime.new!(date, time, "Etc/UTC")

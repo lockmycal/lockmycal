@@ -6,6 +6,8 @@ defmodule Tymeslot.MeetingTypes.ReminderValidation do
   settings attached to meeting types.
   """
 
+  import Ecto.Changeset, only: [add_error: 3, add_error: 4, get_change: 2]
+
   alias Tymeslot.Utils.ReminderUtils
 
   @max_reminders 3
@@ -123,4 +125,63 @@ defmodule Tymeslot.MeetingTypes.ReminderValidation do
     seconds = ReminderUtils.reminder_interval_seconds(v, u)
     seconds > @max_reminder_seconds
   end
+
+  @doc """
+  Validates a meeting type changeset's `:reminder_config` change against the
+  reminder policy (`check_policy/2`), judging only what the change adds to the
+  reminders the meeting type already held. Errors land on `:reminder_config`.
+  """
+  @spec validate_changeset(Ecto.Changeset.t()) :: Ecto.Changeset.t()
+  def validate_changeset(changeset) do
+    case get_change(changeset, :reminder_config) do
+      nil ->
+        changeset
+
+      reminders when is_list(reminders) ->
+        validate_reminder_list(changeset, reminders)
+
+      _other ->
+        add_error(changeset, :reminder_config, "must be a list of reminder settings")
+    end
+  end
+
+  # The count is checked before the entries, so an oversized list reports that
+  # rather than whichever of its entries happens to be malformed.
+  defp validate_reminder_list(changeset, reminders) do
+    normalized = Enum.map(reminders, &ReminderUtils.normalize_reminder/1)
+
+    result =
+      cond do
+        length(reminders) > @max_reminders ->
+          {:error, :too_many}
+
+        Enum.any?(normalized, &match?({:error, _reason}, &1)) ->
+          {:error, :invalid}
+
+        true ->
+          normalized
+          |> Enum.map(fn {:ok, reminder} -> reminder end)
+          |> check_policy(ReminderUtils.normalize_reminders(changeset.data.reminder_config))
+      end
+
+    case result do
+      :ok -> changeset
+      {:error, reason} -> add_reminder_error(changeset, reason)
+    end
+  end
+
+  defp add_reminder_error(changeset, :too_many),
+    do:
+      add_error(changeset, :reminder_config, "cannot have more than %{count} reminders",
+        count: @max_reminders
+      )
+
+  defp add_reminder_error(changeset, :invalid),
+    do: add_error(changeset, :reminder_config, "contains invalid reminder settings")
+
+  defp add_reminder_error(changeset, :duplicate),
+    do: add_error(changeset, :reminder_config, "contains duplicate reminders")
+
+  defp add_reminder_error(changeset, :exceeds_max),
+    do: add_error(changeset, :reminder_config, "cannot be set for more than 1 year in advance")
 end

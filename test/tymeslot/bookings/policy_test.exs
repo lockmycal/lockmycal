@@ -536,4 +536,50 @@ defmodule Tymeslot.Bookings.PolicyTest do
       assert attrs.reminders == []
     end
   end
+
+  describe "build_meeting_attributes/1 action links" do
+    setup do
+      stub(Tymeslot.CalendarMock, :get_booking_integration_info, fn _client ->
+        {:ok, %{integration_id: 1, calendar_path: "primary"}}
+      end)
+
+      :ok
+    end
+
+    defp build_link_attrs(profile_attrs, via_embed_alias) do
+      user = insert(:user)
+      insert(:profile, Map.merge(%{user: user, username: "linkhost"}, profile_attrs))
+
+      params = %{
+        meeting_uid: "meeting-uid",
+        start_datetime: DateTime.add(DateTime.utc_now(), 3600, :second),
+        end_datetime: DateTime.add(DateTime.utc_now(), 5400, :second),
+        duration_minutes: 30,
+        form_data: %{"name" => "Jane Doe", "email" => "jane@example.com"},
+        organizer_user_id: user.id,
+        user_timezone: "UTC",
+        attendee_locale: "en",
+        via_embed_alias: via_embed_alias
+      }
+
+      Policy.build_meeting_attributes(BuildParams.new(params))
+    end
+
+    test "a booking through the hidden widget address gets its links under that address" do
+      attrs = build_link_attrs(%{embed_alias: "_linkaddr"}, true)
+
+      assert attrs.view_url =~ "/_linkaddr/meeting/meeting-uid"
+      assert attrs.reschedule_url =~ "/_linkaddr/meeting/meeting-uid/reschedule"
+      assert attrs.cancel_url =~ "/_linkaddr/meeting/meeting-uid/cancel"
+    end
+
+    test "a booking from the public page keeps the username, alias or not" do
+      assert build_link_attrs(%{embed_alias: "_linkaddr"}, false).view_url =~
+               "/linkhost/meeting/meeting-uid"
+    end
+
+    test "with the alias gone by the time of booking, the links use the username" do
+      assert build_link_attrs(%{}, true).view_url =~ "/linkhost/meeting/meeting-uid"
+    end
+  end
 end

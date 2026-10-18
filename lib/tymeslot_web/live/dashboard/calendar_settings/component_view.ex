@@ -16,6 +16,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.ComponentView do
 
   alias Phoenix.LiveView.JS
   alias Tymeslot.Dashboard.CalendarSettingsSection
+  alias Tymeslot.Infrastructure.Config
   alias TymeslotWeb.Components.Dashboard.Integrations.Calendar.CaldavReconnectModal
   alias TymeslotWeb.Components.Dashboard.Integrations.Calendar.CalendarSelectionModal
   alias TymeslotWeb.Components.Dashboard.Integrations.Calendar.ConnectionLimit
@@ -43,6 +44,11 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.ComponentView do
           )
         }
       />
+
+      <%!-- With nothing connected, the empty state below carries the action. --%>
+      <div :if={@integrations != []} class="flex justify-end">
+        <.connect_button myself={@myself} disabled={@connection_limit.reached?} />
+      </div>
 
       <div class="space-y-12">
         <div class="space-y-6">
@@ -147,31 +153,40 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.ComponentView do
 
   defp no_calendars_yet(assigns) do
     ~H"""
-    <div class="card-glass p-10 text-center">
-      <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-token-2xl bg-primary-50 text-primary-500">
-        <.icon name="hero-calendar-days" class="h-7 w-7" />
-      </div>
-      <h3 class="text-token-lg font-semibold text-neutral-800 dark:text-neutral-100">
-        {dgettext("dashboard_calendar_settings", "No calendars connected yet")}
-      </h3>
-      <p class="mx-auto mt-1 max-w-md pb-2 text-token-sm text-neutral-500 dark:text-twilight-indigo-200">
-        {dgettext(
+    <.empty_state
+      icon="hero-calendar-days"
+      size={:lg}
+      data-testid="calendars-empty"
+      title={dgettext("dashboard_calendar_settings", "No calendars connected yet")}
+      description={
+        dgettext(
           "dashboard_calendar_settings",
-          "Connect a calendar so Tymeslot can read your availability and stop meetings being booked when you're already busy."
-        )}
-      </p>
-      <button
-        phx-click="show_picker"
-        phx-target={@myself}
-        class="btn btn-primary"
-        disabled={@limit_reached}
-      >
-        <.icon name="hero-plus" class="w-4 h-4" /> {dgettext(
-          "dashboard_calendar_settings",
-          "Connect a calendar"
-        )}
-      </button>
-    </div>
+          "Connect a calendar so %{app_name} can read your availability and stop meetings being booked when you're already busy.",
+          app_name: Config.app_name()
+        )
+      }
+    >
+      <:action><.connect_button myself={@myself} disabled={@limit_reached} /></:action>
+    </.empty_state>
+    """
+  end
+
+  # The header and the empty state offer the same action, so it is defined once.
+  attr :myself, :any, required: true
+  attr :disabled, :boolean, default: false
+
+  defp connect_button(assigns) do
+    ~H"""
+    <.action_button
+      size={:sm}
+      icon="hero-plus"
+      class="shrink-0"
+      disabled={@disabled}
+      phx-click="show_picker"
+      phx-target={@myself}
+    >
+      {dgettext("dashboard_calendar_settings", "Connect a calendar")}
+    </.action_button>
     """
   end
 end

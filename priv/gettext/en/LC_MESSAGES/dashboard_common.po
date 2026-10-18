@@ -22,6 +22,7 @@ msgid "Add a meeting type so guests have something to book"
 msgstr ""
 
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
 #, elixir-autogen, elixir-format
 msgid "Analytics"
 msgstr ""
@@ -39,6 +40,7 @@ msgid "Availability"
 msgstr ""
 
 #: lib/tymeslot/integrations/calendar/display_helpers.ex
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_details.ex
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
 #, elixir-autogen, elixir-format
 msgid "Calendar"
@@ -71,6 +73,7 @@ msgid "General"
 msgstr ""
 
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
 #, elixir-autogen, elixir-format
 msgid "Integrations"
 msgstr ""
@@ -99,17 +102,18 @@ msgstr ""
 msgid "Pro"
 msgstr ""
 
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Profile"
+msgstr ""
+
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
 #, elixir-autogen, elixir-format
 msgid "Scheduling"
 msgstr ""
 
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
-#, elixir-autogen, elixir-format
-msgid "Setup recommended"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
 #, elixir-autogen, elixir-format
 msgid "Theme"
 msgstr ""
@@ -175,16 +179,6 @@ msgstr ""
 #: lib/tymeslot/scheduling/link_access_policy.ex
 #, elixir-autogen, elixir-format
 msgid "Set a username in Settings to enable this feature"
-msgstr ""
-
-#: lib/tymeslot_web/helpers/page_titles.ex
-#, elixir-autogen, elixir-format
-msgid "Settings"
-msgstr ""
-
-#: lib/tymeslot_web/helpers/page_titles.ex
-#, elixir-autogen, elixir-format
-msgid "Theme Selection"
 msgstr ""
 
 #: lib/tymeslot_web/components/icons/provider_icon.ex
@@ -351,7 +345,7 @@ msgid "Meeting type (optional)"
 msgstr ""
 
 #: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
-#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#: lib/tymeslot_web/live/dashboard/polls/poll_list.ex
 #, elixir-autogen, elixir-format
 msgid "New poll"
 msgstr ""
@@ -402,6 +396,7 @@ msgid "Poll link copied to clipboard!"
 msgstr ""
 
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
 #: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
 #, elixir-autogen, elixir-format
 msgid "Polls"
@@ -522,11 +517,6 @@ msgstr[1] ""
 
 #: lib/tymeslot_web/live/dashboard/polls/cancel_poll_modal.ex
 #, elixir-autogen, elixir-format
-msgid "Cancel this poll?"
-msgstr ""
-
-#: lib/tymeslot_web/live/dashboard/polls/cancel_poll_modal.ex
-#, elixir-autogen, elixir-format
 msgid "Keep poll"
 msgstr ""
 
@@ -582,6 +572,137 @@ msgstr ""
 msgid "Save changes"
 msgstr ""
 
+#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
+#, elixir-autogen, elixir-format
+msgid "This time falls within your time off, so it can't be confirmed while that stays in place."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
+#, elixir-autogen, elixir-format
+msgid "This time falls within your time off. Change or remove the time off to confirm it."
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Locations"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_row.ex
+#, elixir-autogen, elixir-format
+msgid "%{event}, %{time}"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/dashboard_format.ex
+#, elixir-autogen, elixir-format
+msgid "%{hours} hr"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/dashboard_format.ex
+#, elixir-autogen, elixir-format
+msgid "%{hours} hr %{mins} min"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/dashboard_format.ex
+#, elixir-autogen, elixir-format
+msgid "%{minutes} min"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/dashboard_format.ex
+#, elixir-autogen, elixir-format
+msgid "(No title)"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/dashboard_format.ex
+#, elixir-autogen, elixir-format
+msgid "All day"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_details.ex
+#, elixir-autogen, elixir-format
+msgid "Booked through your %{app_name} page"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_details.ex
+#, elixir-autogen, elixir-format
+msgid "External calendar"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_details.ex
+#, elixir-autogen, elixir-format
+msgid "In progress"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/join_link.ex
+#, elixir-autogen, elixir-format
+msgid "Join meeting"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_details.ex
+#, elixir-autogen, elixir-format
+msgid "Location"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_details.ex
+#, elixir-autogen, elixir-format
+msgid "Manage booking"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_row.ex
+#, elixir-autogen, elixir-format
+msgid "Now"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_details.ex
+#, elixir-autogen, elixir-format
+msgid "Time"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/dashboard_format.ex
+#, elixir-autogen, elixir-format
+msgid "Today"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/dashboard_format.ex
+#, elixir-autogen, elixir-format
+msgid "Tomorrow"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_details.ex
+#, elixir-autogen, elixir-format
+msgid "Video call"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_details.ex
+#, elixir-autogen, elixir-format
+msgid "Video meeting"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_row.ex
+#, elixir-autogen, elixir-format
+msgid "View details for %{title}"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_details.ex
+#, elixir-autogen, elixir-format
+msgid "When"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/appointments/appointment_details.ex
+#, elixir-autogen, elixir-format
+msgid "With"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/dashboard_format.ex
+#, elixir-autogen, elixir-format
+msgid "%{date}, %{time}"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "%{first}–%{last} of %{total}"
+msgstr ""
+
 #: lib/tymeslot_web/helpers/page_titles.ex
 #, elixir-autogen, elixir-format
 msgid "Admin"
@@ -603,19 +724,20 @@ msgstr ""
 msgid "App Settings"
 msgstr ""
 
-#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/components/dashboard_layout.ex
 #, elixir-autogen, elixir-format
-msgid "Workflow"
-msgstr ""
-
-#: lib/tymeslot_web/components/user_dropdown_component.ex
-#, elixir-autogen, elixir-format
-msgid "My Profile"
+msgid "Appearance"
 msgstr ""
 
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
 #, elixir-autogen, elixir-format
-msgid "You have meetings awaiting approval"
+msgid "Audit log"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
+#, elixir-autogen, elixir-format
+msgid "Booking page"
 msgstr ""
 
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
@@ -625,29 +747,13 @@ msgid "Calendars"
 msgstr ""
 
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
-#: lib/tymeslot_web/helpers/page_titles.ex
-#, elixir-autogen, elixir-format
-msgid "Video"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard_sidebar.ex
 #, elixir-autogen, elixir-format
 msgid "Contacts"
 msgstr ""
 
-#: lib/tymeslot_web/components/dashboard/contact_picker.ex
+#: lib/tymeslot_web/components/dashboard_layout.ex
 #, elixir-autogen, elixir-format
-msgid "No matching contacts"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard/contact_picker.ex
-#, elixir-autogen, elixir-format
-msgid "Pick from contacts"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard_sidebar.ex
-#, elixir-autogen, elixir-format
-msgid "Users"
+msgid "Dark"
 msgstr ""
 
 #: lib/tymeslot_web/components/core_components/buttons.ex
@@ -656,71 +762,15 @@ msgstr ""
 msgid "Disabled"
 msgstr ""
 
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Documentation"
+msgstr ""
+
 #: lib/tymeslot_web/components/core_components/buttons.ex
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/location_editor_component.ex
 #, elixir-autogen, elixir-format
 msgid "Enabled"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard/locale_tab_switcher.ex
-#, elixir-autogen, elixir-format
-msgid "Language"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard_sidebar.ex
-#: lib/tymeslot_web/helpers/page_titles.ex
-#, elixir-autogen, elixir-format
-msgid "Audit log"
-msgstr ""
-
-#: lib/tymeslot_web/live/dashboard/polls/poll_form.ex
-#, elixir-autogen, elixir-format
-msgid "This time falls within your time off, so it can't be confirmed while that stays in place."
-msgstr ""
-
-#: lib/tymeslot_web/live/dashboard/polls/polls_component.ex
-#, elixir-autogen, elixir-format
-msgid "This time falls within your time off. Change or remove the time off to confirm it."
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard/pagination.ex
-#, elixir-autogen, elixir-format
-msgid "%{first}–%{last} of %{total}"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard/pagination.ex
-#, elixir-autogen, elixir-format
-msgid "First page"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard/pagination.ex
-#, elixir-autogen, elixir-format
-msgid "Last page"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard/pagination.ex
-#, elixir-autogen, elixir-format
-msgid "Next page"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard/pagination.ex
-#, elixir-autogen, elixir-format
-msgid "Pagination"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard/pagination.ex
-#, elixir-autogen, elixir-format
-msgid "Previous page"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard/pagination.ex
-#, elixir-autogen, elixir-format
-msgid "Rows per page"
-msgstr ""
-
-#: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
-#, elixir-autogen, elixir-format
-msgid "Booking page"
 msgstr ""
 
 #: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
@@ -728,9 +778,29 @@ msgstr ""
 msgid "Enter at least one email address."
 msgstr ""
 
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "First page"
+msgstr ""
+
 #: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
 #, elixir-autogen, elixir-format
 msgid "Invalid email address: %{emails}"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/locale_tab_switcher.ex
+#, elixir-autogen, elixir-format
+msgid "Language"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "Last page"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Light"
 msgstr ""
 
 #: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
@@ -750,14 +820,49 @@ msgstr ""
 msgid "Meeting type: %{name}"
 msgstr ""
 
+#: lib/tymeslot_web/components/user_dropdown_component.ex
+#, elixir-autogen, elixir-format
+msgid "My Profile"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "Next page"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/contact_picker.ex
+#, elixir-autogen, elixir-format
+msgid "No matching contacts"
+msgstr ""
+
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
 #, elixir-autogen, elixir-format
 msgid "Open booking page"
 msgstr ""
 
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "Pagination"
+msgstr ""
+
 #: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
 #, elixir-autogen, elixir-format
 msgid "Personal message (optional)"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/contact_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Pick from contacts"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Powered by %{app_name}"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "Previous page"
 msgstr ""
 
 #: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
@@ -768,6 +873,16 @@ msgstr ""
 #: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
 #, elixir-autogen, elixir-format
 msgid "Recipients"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Report a bug"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/pagination.ex
+#, elixir-autogen, elixir-format
+msgid "Rows per page"
 msgstr ""
 
 #: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
@@ -792,14 +907,55 @@ msgstr ""
 msgid "Separate multiple addresses with commas. Up to %{max} recipients."
 msgstr ""
 
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Setup recommended"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Source code"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "System"
+msgstr ""
+
 #: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
 #, elixir-autogen, elixir-format
 msgid "The message can be at most %{max} characters long."
 msgstr ""
 
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Users"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/helpers/page_titles.ex
+#, elixir-autogen, elixir-format
+msgid "Video"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard_layout.ex
+#, elixir-autogen, elixir-format
+msgid "Website"
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "Workflow"
+msgstr ""
+
 #: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
 #, elixir-autogen, elixir-format
 msgid "You can send to at most %{max} addresses at once."
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#, elixir-autogen, elixir-format
+msgid "You have meetings awaiting approval"
 msgstr ""
 
 #: lib/tymeslot_web/live/dashboard/shared/share_links_modal_component.ex
@@ -812,53 +968,12 @@ msgstr ""
 msgid "name@example.com, other@example.com"
 msgstr ""
 
-#: lib/tymeslot_web/components/dashboard_sidebar.ex
+#: lib/tymeslot_web/live/dashboard/polls/cancel_poll_modal.ex
 #, elixir-autogen, elixir-format
-msgid "Source code"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard_layout.ex
-#, elixir-autogen, elixir-format
-msgid "Documentation"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard_layout.ex
-#, elixir-autogen, elixir-format
-msgid "Website"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard_layout.ex
-#, elixir-autogen, elixir-format
-msgid "Appearance"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard_layout.ex
-#, elixir-autogen, elixir-format
-msgid "Dark"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard_layout.ex
-#, elixir-autogen, elixir-format
-msgid "Light"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard_layout.ex
-#, elixir-autogen, elixir-format
-msgid "System"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard_layout.ex
-#, elixir-autogen, elixir-format
-msgid "Report a bug"
-msgstr ""
-
-#: lib/tymeslot_web/components/dashboard_layout.ex
-#, elixir-autogen, elixir-format
-msgid "Powered by %{app_name}"
+msgid "Cancel this poll"
 msgstr ""
 
 #: lib/tymeslot_web/components/dashboard_sidebar.ex
-#: lib/tymeslot_web/helpers/page_titles.ex
 #, elixir-autogen, elixir-format
-msgid "Locations"
+msgid "View Page"
 msgstr ""

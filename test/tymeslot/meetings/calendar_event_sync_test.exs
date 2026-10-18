@@ -133,8 +133,6 @@ defmodule Tymeslot.Meetings.CalendarEventSyncTest do
       assert updated_meeting.calendar_sync_status == "externally_deleted"
     end
 
-    # Issue #104: a concurrent update job (enqueued once the video room
-    # attached) wrote the event first, so the create's `If-None-Match: *` 412s.
     test "updates from a fresh read when the event already exists at the meeting's UID" do
       %{meeting: meeting} = setup_calendar_scenario()
       uid = meeting.calendar_uid

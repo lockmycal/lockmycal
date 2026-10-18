@@ -110,14 +110,16 @@ defmodule Tymeslot.Integrations.Calendar.Exchange.Requests do
   the operation when the window is empty, and the guard makes forgetting that
   fail here rather than a round trip later.
 
-  Two properties are asked for on top of `BaseShape=Default`, which returns
-  neither: `calendar:IsCancelled`, so a cancelled meeting stops blocking the
-  organiser's diary, and `calendar:StartTimeZone`, which is the only exact way
-  to recover an all-day event's own calendar day. Asking is free against a
+  Four properties are asked for on top of `BaseShape=Default`, which does not
+  return them reliably: `calendar:IsCancelled`, so a cancelled meeting stops
+  blocking the organiser's diary, `calendar:StartTimeZone`, which is the only
+  exact way to recover an all-day event's own calendar day, and
+  `item:ReminderIsSet` / `item:ReminderMinutesBeforeStart`, the item's one
+  reminder. Asking is free against a
   server that does not implement them. Unsupported properties are dropped from
   the response rather than faulted, which was confirmed against a live
-  grommunio server: it answers `NoError` and simply omits both elements, while
-  a real Exchange server answers them. The normaliser therefore treats both as
+  grommunio server: it answers `NoError` and simply omits the unsupported elements, while
+  a real Exchange server answers them. The normaliser therefore treats them as
   optional and gains correctness wherever they arrive.
   """
   @spec get_item([{String.t(), String.t()}, ...]) :: String.t()
@@ -134,6 +136,8 @@ defmodule Tymeslot.Integrations.Calendar.Exchange.Requests do
         <t:AdditionalProperties>
           <t:FieldURI FieldURI="calendar:IsCancelled"/>
           <t:FieldURI FieldURI="calendar:StartTimeZone"/>
+          <t:FieldURI FieldURI="item:ReminderIsSet"/>
+          <t:FieldURI FieldURI="item:ReminderMinutesBeforeStart"/>
         </t:AdditionalProperties>
       </m:ItemShape>
       <m:ItemIds>#{item_ids}</m:ItemIds>

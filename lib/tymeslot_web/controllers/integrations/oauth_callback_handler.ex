@@ -23,6 +23,7 @@ defmodule TymeslotWeb.Integrations.OAuthCallbackHandler do
   alias Phoenix.Controller
   alias Plug.Conn
   alias Tymeslot.Auth.ErrorFormatter
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Integrations.Calendar
   alias Tymeslot.Integrations.Video
@@ -184,8 +185,9 @@ defmodule TymeslotWeb.Integrations.OAuthCallbackHandler do
   defp failure_message(:calendar_scope_missing, config) do
     dgettext(
       "dashboard_integrations",
-      "%{service} wasn't connected because Calendar permission was not granted. Please try again and tick the box for \"See, edit, share, and permanently delete all the calendars you can access using Google Calendar\" - Tymeslot needs this to create meetings and Google Meet links.",
-      service: config.name
+      "%{service} wasn't connected because Calendar permission was not granted. Please try again and tick the box for \"See, edit, share, and permanently delete all the calendars you can access using Google Calendar\" - %{app_name} needs this to create meetings and Google Meet links.",
+      service: config.name,
+      app_name: Config.app_name()
     )
   end
 
@@ -214,7 +216,8 @@ defmodule TymeslotWeb.Integrations.OAuthCallbackHandler do
       config.microsoft? and MicrosoftOAuth.microsoft_admin_consent_error?(description) ->
         dgettext(
           "dashboard_integrations",
-          "Your Microsoft organisation requires admin approval before Tymeslot can be connected. Please ask your IT administrator to grant consent for the app."
+          "Your Microsoft organisation requires admin approval before %{app_name} can be connected. Please ask your IT administrator to grant consent for the app.",
+          app_name: Config.app_name()
         )
 
       error == "access_denied" ->

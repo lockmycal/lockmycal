@@ -9,12 +9,6 @@ defmodule Tymeslot.Mocks.Subscription do
 
   @spec setup(keyword()) :: term()
   def setup(opts \\ []) do
-    show_branding = Keyword.get(opts, :show_branding, true)
-
-    stub(Tymeslot.Payments.SubscriptionManagerMock, :should_show_branding?, fn _user_id ->
-      show_branding
-    end)
-
     stub_subscriptions_provider(opts)
   end
 

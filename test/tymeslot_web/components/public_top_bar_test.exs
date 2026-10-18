@@ -71,6 +71,23 @@ defmodule TymeslotWeb.Components.PublicTopBarTest do
       refute html =~ ~s(href="/jane")
       refute html =~ ~s(aria-label="Booking page")
     end
+
+    test "is the app logo without an organizer logo" do
+      html = render_bar(%{username: "jane"})
+
+      assert html =~ "/images/brand/"
+      refute html =~ "public-top-bar-custom-logo"
+    end
+
+    test "is the organizer's own logo when one is given, still linking to their page" do
+      html =
+        render_bar(%{username: "jane", brand_logo_url: "/uploads/branding/profiles/1/logo-x.png"})
+
+      assert html =~ ~s(src="/uploads/branding/profiles/1/logo-x.png")
+      assert html =~ ~s(alt="Organizer logo")
+      assert html =~ ~s(href="/jane")
+      refute html =~ "/images/brand/"
+    end
   end
 
   describe "docs and website links" do

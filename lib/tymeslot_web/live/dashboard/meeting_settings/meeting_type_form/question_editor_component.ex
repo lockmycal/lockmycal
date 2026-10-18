@@ -23,7 +23,6 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
   alias Tymeslot.CustomFields.FieldDefinition
   alias Tymeslot.CustomFields.FieldOption
   alias Tymeslot.Locales
-  alias TymeslotWeb.Components.CoreComponents
   alias TymeslotWeb.Components.Dashboard.LocaleTabSwitcher
   alias TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm
   alias TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionTranslations
@@ -208,7 +207,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
   def render(assigns) do
     ~H"""
     <div id={"question-editor-wrapper-#{@id}"}>
-      <CoreComponents.modal
+      <.modal
         id={"question-editor-#{@id}"}
         show
         on_cancel={JS.push("cancel", target: @myself)}
@@ -239,7 +238,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
           />
 
           <div :if={@active_translation_locale == Locales.default_locale()} class="space-y-4">
-            <CoreComponents.input
+            <.input
               name="definition[label]"
               value={field_value(@changeset, :label)}
               id="definition_label"
@@ -255,9 +254,9 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
               <:description>
                 {dgettext("dashboard_meeting_form", "The question shown to the booker.")}
               </:description>
-            </CoreComponents.input>
+            </.input>
 
-            <CoreComponents.input
+            <.input
               name="definition[help_text]"
               value={field_value(@changeset, :help_text)}
               id="definition_help_text"
@@ -277,9 +276,9 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
                   "Shown below the question - use it to clarify what you're asking or give an example."
                 )}
               </:description>
-            </CoreComponents.input>
+            </.input>
 
-            <CoreComponents.input
+            <.input
               name="definition[type]"
               value={field_value(@changeset, :type)}
               id="definition_type"
@@ -290,7 +289,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
               <:description>
                 {dgettext("dashboard_meeting_form", "Controls how the booker enters their answer.")}
               </:description>
-            </CoreComponents.input>
+            </.input>
 
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0 flex-1">
@@ -319,7 +318,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
                   myself={@myself}
                 />
               <% "note" -> %>
-                <CoreComponents.input
+                <.input
                   name="definition[body]"
                   value={field_value(@changeset, :body)}
                   id="definition_body"
@@ -344,10 +343,10 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
                       "The notice the booker must read and confirm before they can continue."
                     )}
                   </:description>
-                </CoreComponents.input>
+                </.input>
               <% t when t in ~w(number date time) -> %>
                 <div class="grid grid-cols-2 gap-3">
-                  <CoreComponents.input
+                  <.input
                     name="definition[min]"
                     value={field_value(@changeset, :min)}
                     id="definition_min"
@@ -356,8 +355,8 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
                     errors={FormValidationHelpers.field_errors(@field_errors, :min)}
                   >
                     <:description>{bound_min_hint(t)}</:description>
-                  </CoreComponents.input>
-                  <CoreComponents.input
+                  </.input>
+                  <.input
                     name="definition[max]"
                     value={field_value(@changeset, :max)}
                     id="definition_max"
@@ -366,7 +365,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
                     errors={FormValidationHelpers.field_errors(@field_errors, :max)}
                   >
                     <:description>{bound_max_hint(t)}</:description>
-                  </CoreComponents.input>
+                  </.input>
                 </div>
               <% _ -> %>
                 <%!-- No type-specific fields for short_text, yes_no, phone, url --%>
@@ -385,22 +384,22 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
                   )}
                 </p>
                 <div class="flex gap-2">
-                  <CoreComponents.action_button
+                  <.action_button
                     type="button"
                     variant={:secondary}
                     phx-click="cancel_type_change"
                     phx-target={@myself}
                   >
                     {dgettext("dashboard_meeting_form", "Cancel")}
-                  </CoreComponents.action_button>
-                  <CoreComponents.action_button
+                  </.action_button>
+                  <.action_button
                     type="button"
                     variant={:primary}
                     phx-click="confirm_type_change"
                     phx-target={@myself}
                   >
                     {dgettext("dashboard_meeting_form", "Yes, change type")}
-                  </CoreComponents.action_button>
+                  </.action_button>
                 </div>
               </div>
             <% end %>
@@ -408,7 +407,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
 
           <div :if={@active_translation_locale != Locales.default_locale()} class="space-y-4">
             <% translation = QuestionTranslations.current(@changeset, @active_translation_locale) %>
-            <CoreComponents.input
+            <.input
               name="definition[translation][label]"
               value={(translation && translation.label) || ""}
               type="text"
@@ -419,9 +418,9 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
               <:description>
                 {dgettext("dashboard_meeting_form", "The question shown to the booker.")}
               </:description>
-            </CoreComponents.input>
+            </.input>
 
-            <CoreComponents.input
+            <.input
               name="definition[translation][help_text]"
               value={(translation && translation.help_text) || ""}
               type="text"
@@ -435,9 +434,9 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
                   "Shown below the question - use it to clarify what you're asking or give an example."
                 )}
               </:description>
-            </CoreComponents.input>
+            </.input>
 
-            <CoreComponents.input
+            <.input
               :if={field_value(@changeset, :type) == "note"}
               name="definition[translation][body]"
               value={(translation && translation.body) || ""}
@@ -453,7 +452,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
                   "The notice the booker must read and confirm before they can continue."
                 )}
               </:description>
-            </CoreComponents.input>
+            </.input>
           </div>
 
           <div
@@ -465,7 +464,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
             class="space-y-2"
           >
             <p class="label">{dgettext("dashboard_meeting_form", "Options")}</p>
-            <CoreComponents.input
+            <.input
               :for={{option, index} <- Enum.with_index(options_list(@changeset))}
               name={"definition[translation][options][#{index}]"}
               value={QuestionTranslations.option_label(option, @active_translation_locale)}
@@ -476,20 +475,20 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
           </div>
 
           <div class="flex justify-end gap-2 pt-2">
-            <CoreComponents.action_button
+            <.action_button
               type="button"
               variant={:secondary}
               phx-click="cancel"
               phx-target={@myself}
             >
               {dgettext("dashboard_meeting_form", "Cancel")}
-            </CoreComponents.action_button>
-            <CoreComponents.action_button type="submit" variant={:primary}>
+            </.action_button>
+            <.action_button type="submit" variant={:primary}>
               {dgettext("dashboard_meeting_form", "Save question")}
-            </CoreComponents.action_button>
+            </.action_button>
           </div>
         </.form>
-      </CoreComponents.modal>
+      </.modal>
     </div>
     """
   end
@@ -541,25 +540,29 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
               phx-value-field="options"
               phx-target={@myself}
             />
-            <button
-              type="button"
-              class="shrink-0 p-1 rounded text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+            <.icon_button
+              icon="hero-x-mark"
+              variant={:danger}
+              size={:sm}
+              class="shrink-0"
+              label={dgettext("dashboard_meeting_form", "Remove option")}
               phx-click="remove_option"
               phx-value-index={index}
               phx-target={@myself}
-              aria-label={dgettext("dashboard_meeting_form", "Remove option")}
-            >×</button>
+            />
           </div>
         <% end %>
       </div>
-      <button
-        type="button"
-        class="mt-2 flex items-center gap-1.5 text-token-sm font-medium text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:text-neutral-50"
+      <.action_button
+        variant={:ghost}
+        size={:sm}
+        icon="hero-plus"
+        class="mt-2"
         phx-click="add_option"
         phx-target={@myself}
       >
-        + {dgettext("dashboard_meeting_form", "Add option")}
-      </button>
+        {dgettext("dashboard_meeting_form", "Add option")}
+      </.action_button>
       <%= for error <- FormValidationHelpers.field_errors(@field_errors, :options) do %>
         <p class="field-error">{translate_options_error(error)}</p>
       <% end %>

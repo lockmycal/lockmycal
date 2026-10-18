@@ -42,7 +42,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.UsernameChangeModal do
           <div class="w-10 h-10 rounded-token-xl flex items-center justify-center border bg-amber-50 border-amber-100">
             <.icon name="hero-exclamation-triangle" class="w-6 h-6 text-amber-500" />
           </div>
-          <span class="text-token-xl font-black text-tymeslot-900 tracking-tight">
+          <span class="text-token-xl font-black text-neutral-900 tracking-tight">
             {dgettext("dashboard_profile", "Change your URL to %{username}?",
               username: @pending_username
             )}
@@ -59,11 +59,11 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.UsernameChangeModal do
           )}
         </.info_box>
 
-        <p class="text-tymeslot-700 font-medium">
+        <p class="text-neutral-700 font-medium">
           {dgettext("dashboard_profile", "This breaks:")}
         </p>
 
-        <ul class="space-y-2 text-tymeslot-600">
+        <ul class="space-y-2 text-neutral-600">
           <li class="flex items-start gap-2">
             <.icon name="hero-x-mark-mini" class="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
             <span>
@@ -92,7 +92,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.UsernameChangeModal do
           </li>
         </ul>
 
-        <p class="text-token-sm text-tymeslot-500 font-medium">
+        <p class="text-token-sm text-neutral-500 font-medium">
           {dgettext(
             "dashboard_profile",
             "Once released, %{username} can be claimed by anyone else.",
@@ -103,23 +103,22 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.UsernameChangeModal do
 
       <:footer>
         <div class="flex gap-4">
-          <button
-            type="button"
+          <.action_button
+            variant={:secondary}
+            class="flex-1"
             phx-click="cancel_username_change"
             phx-target={@myself}
-            class="btn-secondary flex-1 py-4"
           >
             {dgettext("common", "Cancel")}
-          </button>
-          <button
-            type="button"
+          </.action_button>
+          <.action_button
+            class="flex-1"
             phx-click="confirm_username_change"
             phx-target={@myself}
             phx-disable-with={dgettext("dashboard_profile", "Saving...")}
-            class="btn-primary flex-1 py-4"
           >
             {dgettext("dashboard_profile", "Change URL")}
-          </button>
+          </.action_button>
         </div>
       </:footer>
     </.modal>

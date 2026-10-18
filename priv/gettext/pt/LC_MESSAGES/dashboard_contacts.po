@@ -1,0 +1,223 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: pt\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "%{date} at %{time}"
+msgstr "%{date} às %{time}"
+
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "%{name} will be removed from your contacts. This does not affect their past or upcoming meetings."
+msgstr "%{name} será removido dos seus contatos. Isso não afeta as reuniões passadas nem as futuras."
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Actions"
+msgstr "Ações"
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Add Contact"
+msgstr "Adicionar contato"
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Add contact"
+msgstr "Adicionar contato"
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "Close"
+msgstr "Fechar"
+
+#: lib/tymeslot/contacts/csv_export.ex
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Company"
+msgstr "Empresa"
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact Details"
+msgstr "Detalhes do contato"
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact added"
+msgstr "Contato adicionado"
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact deleted"
+msgstr "Contato excluído"
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact not found"
+msgstr "Contato não encontrado"
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact updated"
+msgstr "Contato atualizado"
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contacts"
+msgstr "Contatos"
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Contacts from new bookings will appear here, or add one manually."
+msgstr "Os contatos de novos agendamentos aparecerão aqui, ou adicione um manualmente."
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contacts is available on Pro plans."
+msgstr "Contatos está disponível nos planos Pro."
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contacts is available on the Pro plan."
+msgstr "Contatos está disponível no Plano Pro."
+
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "Delete Contact"
+msgstr "Excluir contato"
+
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "Delete Contact?"
+msgstr "Excluir contato?"
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Delete contact"
+msgstr "Excluir contato"
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Edit Contact"
+msgstr "Editar contato"
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Edit contact"
+msgstr "Editar contato"
+
+#: lib/tymeslot/contacts/csv_export.ex
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Email"
+msgstr "E-mail"
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to delete contact"
+msgstr "Não foi possível excluir o contato"
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Keep track of the people who book with you."
+msgstr "Acompanhe as pessoas que agendam com você."
+
+#: lib/tymeslot/contacts/csv_export.ex
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Name"
+msgstr "Nome"
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "No contacts match your search."
+msgstr "Nenhum contato corresponde à sua busca."
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "No contacts yet"
+msgstr "Nenhum contato ainda"
+
+#: lib/tymeslot_web/live/dashboard/contacts/modals.ex
+#, elixir-autogen, elixir-format
+msgid "No meetings yet"
+msgstr "Nenhuma reunião ainda"
+
+#: lib/tymeslot/contacts/csv_export.ex
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Note"
+msgstr "Aviso"
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "People who booked with you, captured automatically from new bookings."
+msgstr "Pessoas que agendaram com você, registradas automaticamente a partir dos novos agendamentos."
+
+#: lib/tymeslot/contacts/csv_export.ex
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Phone"
+msgstr "Telefone"
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Private to you — visible only on this contact's row and form."
+msgstr "Visível só para você: aparece apenas na linha e no formulário deste contato."
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Saving..."
+msgstr "Salvando…"
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Search contacts"
+msgstr "Buscar contatos"
+
+#: lib/tymeslot_web/live/dashboard/contacts/hub_component.ex
+#, elixir-autogen, elixir-format
+msgid "Unable to perform this action. Please try again."
+msgstr "Não foi possível fazer isso. Tente novamente."
+
+#: lib/tymeslot_web/live/dashboard/contacts/form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Update Contact"
+msgstr "Atualizar contato"
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "View meetings"
+msgstr "Ver reuniões"
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Contact List"
+msgstr "Lista de contatos"
+
+#: lib/tymeslot_web/live/dashboard/contacts/list_view.ex
+#, elixir-autogen, elixir-format
+msgid "Export CSV"
+msgstr "Exportar CSV"

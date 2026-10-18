@@ -26,7 +26,7 @@ defmodule TymeslotWeb.MeetingRequestLive.View do
   @spec page(map()) :: Phoenix.LiveView.Rendered.t()
   def page(assigns) do
     ~H"""
-    <div class="min-h-screen bg-tymeslot-50 px-4 py-12">
+    <div class="min-h-screen bg-neutral-50 px-4 py-12">
       <div class="mx-auto w-full max-w-2xl">
         <.glass_morphism_card>
           <div class="p-6 sm:p-8">
@@ -52,36 +52,46 @@ defmodule TymeslotWeb.MeetingRequestLive.View do
     ~H"""
     <div>
       <.section_header
+        level={1}
         title={dgettext("booking_manage", "Booking request")}
         icon="hero-inbox-arrow-down"
       />
 
-      <p class="mt-2 text-token-base text-tymeslot-600">
+      <p class="mt-2 text-token-base text-neutral-600">
         {dgettext("booking_manage", "%{name} would like to book time with you.",
           name: @meeting.attendee_name
         )}
       </p>
 
-      <div class="mt-6 space-y-3">
-        <.detail_row label={dgettext("booking_manage", "When")} value={when_line(@meeting)} />
-        <.detail_row label={dgettext("booking_manage", "Duration")} value={duration_line(@meeting)} />
-        <.detail_row
-          label={dgettext("booking_manage", "Type")}
-          value={@meeting.meeting_type || dgettext("booking_manage", "Meeting")}
-        />
-        <.detail_row label={dgettext("booking_manage", "From")} value={from_line(@meeting)} />
-        <.detail_row
+      <div class="mt-6 space-y-4">
+        <.detail_line icon="hero-calendar" label={dgettext("booking_manage", "When")}>
+          {when_line(@meeting)}
+        </.detail_line>
+        <.detail_line icon="hero-clock" label={dgettext("booking_manage", "Duration")}>
+          {duration_line(@meeting)}
+        </.detail_line>
+        <.detail_line icon="hero-tag" label={dgettext("booking_manage", "Type")}>
+          {@meeting.meeting_type || dgettext("booking_manage", "Meeting")}
+        </.detail_line>
+        <.detail_line icon="hero-user" label={dgettext("booking_manage", "From")}>
+          {from_line(@meeting)}
+        </.detail_line>
+        <.detail_line
           :if={@meeting.attendee_message not in [nil, ""]}
+          icon="hero-chat-bubble-left-ellipsis"
           label={dgettext("booking_manage", "Message")}
-          value={@meeting.attendee_message}
-        />
+        >
+          {@meeting.attendee_message}
+        </.detail_line>
         <%!-- Names only: this page is reached through a token link, while the
              files themselves are served to the signed-in organiser only. --%>
-        <.detail_row
+        <.detail_line
           :if={@meeting.attendee_attachments != []}
+          icon="hero-paper-clip"
           label={dgettext("booking_manage", "Attachments")}
-          value={Enum.map_join(@meeting.attendee_attachments, ", ", & &1["filename"])}
-        />
+        >
+          {Enum.map_join(@meeting.attendee_attachments, ", ", & &1["filename"])}
+        </.detail_line>
       </div>
 
       <.info_box :if={@meeting.approval_deadline_at} variant={:warning} class="mt-6">
@@ -112,7 +122,7 @@ defmodule TymeslotWeb.MeetingRequestLive.View do
         </.action_button>
       </div>
 
-      <div :if={@choosing == :decline} class="mt-6 border-t border-tymeslot-200 pt-6">
+      <div :if={@choosing == :decline} class="mt-6 border-t border-neutral-200 pt-6">
         <form id="decline-request-form" phx-submit="decline">
           <.input
             type="textarea"
@@ -160,7 +170,7 @@ defmodule TymeslotWeb.MeetingRequestLive.View do
 
       <h1 class="display-md mt-6">{outcome_title(@state)}</h1>
 
-      <p class="mt-3 text-token-base text-tymeslot-600">
+      <p class="mt-3 text-token-base text-neutral-600">
         {outcome_body(@state, @meeting)}
       </p>
     </div>

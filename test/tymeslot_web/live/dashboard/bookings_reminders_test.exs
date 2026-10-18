@@ -55,7 +55,7 @@ defmodule TymeslotWeb.Dashboard.BookingsRemindersTest do
       assert html =~ "Not yet sent"
     end
 
-    test "the reminders box has dark-mode colours, like the Attachments box", %{
+    test "the reminders tile has dark-mode colours, like the other detail tiles", %{
       conn: conn,
       user: user
     } do
@@ -64,9 +64,21 @@ defmodule TymeslotWeb.Dashboard.BookingsRemindersTest do
       {:ok, view, _html} = live(conn, ~p"/dashboard/meetings")
       html = view |> element("#meeting-reminders-#{meeting.id}") |> render()
 
-      assert html =~ "dark:bg-twilight-indigo-900/40"
-      assert html =~ "dark:border-twilight-indigo-800"
+      assert html =~ "dark:bg-primary-950/30"
+      assert html =~ "dark:text-twilight-indigo-300"
       assert html =~ "dark:text-neutral-200"
+      assert html =~ "dark:text-neutral-400"
+    end
+
+    test "the reminders tile sits in the details grid, after the meeting type", %{
+      conn: conn,
+      user: user
+    } do
+      meeting = reminding_booking(user, "Ada Lovelace", 1)
+
+      {:ok, view, _html} = live(conn, ~p"/dashboard/meetings")
+
+      assert has_element?(view, "[data-testid='meeting-type'] ~ #meeting-reminders-#{meeting.id}")
     end
 
     test "a reminder scheduling was refused for is not promised", %{conn: conn, user: user} do

@@ -16,6 +16,10 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid do
   attr :booking_url, :string, required: true
   attr :embed_layout, :string, default: "column"
   attr :embed_locale, :string, default: ""
+  attr :embed_meeting, :string, default: ""
+  attr :embed_background_mode, :string, default: "default"
+  attr :embed_background_color, :string, default: "#ffffff"
+  attr :meeting_type_options, :list, default: []
   attr :initial_height, :any, default: nil
   attr :max_width, :any, default: nil
   attr :myself, :any, required: true
@@ -28,6 +32,10 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid do
     <.customise_panel
       embed_layout={@embed_layout}
       embed_locale={@embed_locale}
+      embed_meeting={@embed_meeting}
+      embed_background_mode={@embed_background_mode}
+      embed_background_color={@embed_background_color}
+      meeting_type_options={@meeting_type_options}
       initial_height={@initial_height}
       max_width={@max_width}
       myself={@myself}
@@ -36,6 +44,12 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid do
     <.subsection_header
       icon="hero-squares-2x2"
       title={dgettext("dashboard_embed", "Style Selection")}
+      description={
+        dgettext(
+          "dashboard_embed",
+          "Pick the style to try in the Live Preview. Each style has its own code below, so you can copy any of them."
+        )
+      }
       class="mb-4"
     />
 
@@ -46,28 +60,28 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid do
         title={dgettext("dashboard_embed", "Inline Embed")}
         description={dgettext("dashboard_embed", "Embed directly into your webpage")}
         badge={dgettext("dashboard_embed", "Recommended")}
-        badge_class="bg-primary-100 text-primary-700"
+        badge_tone={:brand}
         myself={@myself}
       >
         <:preview>
-          <div class="bg-white rounded shadow-sm p-4">
+          <div class="bg-white rounded shadow-sm p-4 dark:bg-twilight-indigo-900">
             <div class="flex items-center space-x-2 mb-3">
-              <div class="w-3 h-3 rounded-full bg-red-400"></div>
-              <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
-              <div class="w-3 h-3 rounded-full bg-green-400"></div>
+              <div class="w-3 h-3 rounded-token-full bg-red-400"></div>
+              <div class="w-3 h-3 rounded-token-full bg-yellow-400"></div>
+              <div class="w-3 h-3 rounded-token-full bg-green-400"></div>
             </div>
             <div class="space-y-2">
-              <div class="h-2 bg-neutral-200 rounded w-3/4"></div>
-              <div class="h-2 bg-neutral-200 rounded w-1/2"></div>
-              <div class="mt-4 p-3 bg-linear-to-br from-primary-50 to-secondary-50 border-2 border-primary-200 rounded-token-lg">
+              <div class="h-2 bg-neutral-200 rounded dark:bg-twilight-indigo-700 w-3/4"></div>
+              <div class="h-2 bg-neutral-200 rounded dark:bg-twilight-indigo-700 w-1/2"></div>
+              <div class="mt-4 p-3 bg-linear-to-br from-primary-50 to-secondary-50 border-2 border-primary-200 rounded-token-lg dark:from-primary-950/40 dark:to-secondary-950/40 dark:border-primary-800">
                 <div class="flex items-center space-x-2">
-                  <.icon name="hero-calendar" class="w-4 h-4 text-primary-600" />
-                  <div class="text-token-xs font-semibold text-primary-700">
+                  <.icon name="hero-calendar" class="w-4 h-4 text-primary-600 dark:text-primary-300" />
+                  <div class="text-token-xs font-semibold text-primary-700 dark:text-primary-300">
                     {dgettext("dashboard_embed", "Your booking widget here")}
                   </div>
                 </div>
               </div>
-              <div class="h-2 bg-neutral-200 rounded w-2/3"></div>
+              <div class="h-2 bg-neutral-200 rounded dark:bg-twilight-indigo-700 w-2/3"></div>
             </div>
           </div>
         </:preview>
@@ -89,25 +103,25 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid do
         title={dgettext("dashboard_embed", "Popup Modal")}
         description={dgettext("dashboard_embed", "Trigger a modal overlay with a button")}
         badge={dgettext("dashboard_embed", "Popular")}
-        badge_class="bg-tertiary-100 text-tertiary-700"
+        badge_tone={:info}
         myself={@myself}
       >
         <:preview>
-          <div class="bg-white rounded shadow-sm p-4">
+          <div class="bg-white rounded shadow-sm p-4 dark:bg-twilight-indigo-900">
             <div class="flex items-center space-x-2 mb-3">
-              <div class="w-3 h-3 rounded-full bg-red-400"></div>
-              <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
-              <div class="w-3 h-3 rounded-full bg-green-400"></div>
+              <div class="w-3 h-3 rounded-token-full bg-red-400"></div>
+              <div class="w-3 h-3 rounded-token-full bg-yellow-400"></div>
+              <div class="w-3 h-3 rounded-token-full bg-green-400"></div>
             </div>
             <div class="space-y-2">
-              <div class="h-2 bg-neutral-200 rounded w-3/4"></div>
-              <div class="h-2 bg-neutral-200 rounded w-1/2"></div>
+              <div class="h-2 bg-neutral-200 rounded dark:bg-twilight-indigo-700 w-3/4"></div>
+              <div class="h-2 bg-neutral-200 rounded dark:bg-twilight-indigo-700 w-1/2"></div>
               <div class="mt-4 flex justify-center">
                 <div class="px-4 py-2 text-white text-token-xs font-bold rounded-token-lg shadow-lg bg-primary-600">
                   {dgettext("dashboard_embed", "Book a Meeting →")}
                 </div>
               </div>
-              <div class="h-2 bg-neutral-200 rounded w-2/3"></div>
+              <div class="h-2 bg-neutral-200 rounded dark:bg-twilight-indigo-700 w-2/3"></div>
             </div>
           </div>
         </:preview>
@@ -128,25 +142,25 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid do
         title={dgettext("dashboard_embed", "Direct Link")}
         description={dgettext("dashboard_embed", "Simple link to your booking page")}
         badge={dgettext("dashboard_embed", "Easiest")}
-        badge_class="bg-neutral-100 dark:bg-twilight-indigo-800 text-neutral-700 dark:text-neutral-200"
+        badge_tone={:neutral}
         myself={@myself}
       >
         <:preview>
-          <div class="bg-white rounded shadow-sm p-4">
+          <div class="bg-white rounded shadow-sm p-4 dark:bg-twilight-indigo-900">
             <div class="flex items-center space-x-2 mb-3">
-              <div class="w-3 h-3 rounded-full bg-red-400"></div>
-              <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
-              <div class="w-3 h-3 rounded-full bg-green-400"></div>
+              <div class="w-3 h-3 rounded-token-full bg-red-400"></div>
+              <div class="w-3 h-3 rounded-token-full bg-yellow-400"></div>
+              <div class="w-3 h-3 rounded-token-full bg-green-400"></div>
             </div>
             <div class="space-y-2">
-              <div class="h-2 bg-neutral-200 rounded w-3/4"></div>
-              <div class="h-2 bg-neutral-200 rounded w-1/2"></div>
+              <div class="h-2 bg-neutral-200 rounded dark:bg-twilight-indigo-700 w-3/4"></div>
+              <div class="h-2 bg-neutral-200 rounded dark:bg-twilight-indigo-700 w-1/2"></div>
               <div class="mt-4">
-                <div class="text-token-xs text-primary-600 underline font-medium">
+                <div class="text-token-xs text-primary-600 underline font-medium dark:text-primary-300">
                   {dgettext("dashboard_embed", "Schedule a meeting with me →")}
                 </div>
               </div>
-              <div class="h-2 bg-neutral-200 rounded w-2/3"></div>
+              <div class="h-2 bg-neutral-200 rounded dark:bg-twilight-indigo-700 w-2/3"></div>
             </div>
           </div>
         </:preview>
@@ -166,27 +180,27 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid do
         selected={@selected_embed_type == "floating"}
         title={dgettext("dashboard_embed", "Floating Button")}
         description={dgettext("dashboard_embed", "Fixed button in corner of page")}
-        badge={dgettext("dashboard_embed", "Pro")}
-        badge_class="bg-purple-100 text-purple-700"
+        badge={dgettext("dashboard_embed", "Expert")}
+        badge_tone={:brand}
         myself={@myself}
       >
         <:preview>
-          <div class="mb-0 bg-neutral-50 rounded-token-lg p-0 relative overflow-hidden">
-            <div class="bg-white rounded shadow-sm p-4">
+          <div class="mb-0 bg-neutral-50 rounded-token-lg p-0 relative overflow-hidden dark:bg-twilight-indigo-950">
+            <div class="bg-white rounded shadow-sm p-4 dark:bg-twilight-indigo-900">
               <div class="flex items-center space-x-2 mb-3">
-                <div class="w-3 h-3 rounded-full bg-red-400"></div>
-                <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
-                <div class="w-3 h-3 rounded-full bg-green-400"></div>
+                <div class="w-3 h-3 rounded-token-full bg-red-400"></div>
+                <div class="w-3 h-3 rounded-token-full bg-yellow-400"></div>
+                <div class="w-3 h-3 rounded-token-full bg-green-400"></div>
               </div>
               <div class="space-y-2">
-                <div class="h-2 bg-neutral-200 rounded w-3/4"></div>
-                <div class="h-2 bg-neutral-200 rounded w-1/2"></div>
-                <div class="h-2 bg-neutral-200 rounded w-2/3"></div>
+                <div class="h-2 bg-neutral-200 rounded dark:bg-twilight-indigo-700 w-3/4"></div>
+                <div class="h-2 bg-neutral-200 rounded dark:bg-twilight-indigo-700 w-1/2"></div>
+                <div class="h-2 bg-neutral-200 rounded dark:bg-twilight-indigo-700 w-2/3"></div>
               </div>
             </div>
             <%!-- Floating button preview --%>
             <div class="absolute bottom-4 right-4">
-              <div class="w-8 h-8 rounded-full shadow-lg flex items-center justify-center bg-primary-600">
+              <div class="w-8 h-8 rounded-token-full shadow-lg flex items-center justify-center bg-primary-600">
                 <.icon name="hero-calendar" class="w-4 h-4 text-white" />
               </div>
             </div>
@@ -206,133 +220,182 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid do
     """
   end
 
-  # Customisation panel — controls that drive every card's generated snippet.
-  # Three knobs:
+  # Customisation panel — controls that drive every card's generated snippet:
   #   - layout: "column" (default — wide canvas, adapts to any container) or
   #     "default" (centred-with-cap, for standalone-style placements)
+  #   - language: forced booking-page locale, or "Auto"
+  #   - meeting type: pins the widget to one type (`data-meeting`), or the overview
+  #   - background: the theme's own, transparent, or a picked colour (`data-background`)
   #   - initial-height: placeholder height (px) shown before the iframe auto-resizes
   #   - max-width: container max-width (px) for inline + popup + floating
   attr :embed_layout, :string, required: true
   attr :embed_locale, :string, required: true
+  attr :embed_meeting, :string, required: true
+  attr :embed_background_mode, :string, required: true
+  attr :embed_background_color, :string, required: true
+  attr :meeting_type_options, :list, required: true
   attr :initial_height, :any, required: true
   attr :max_width, :any, required: true
   attr :myself, :any, required: true
 
   defp customise_panel(assigns) do
     ~H"""
-    <div class="mb-6">
-      <.subsection_header
-        icon="hero-adjustments-horizontal"
-        title={dgettext("dashboard_embed", "Customise")}
-        class="mb-4"
-      />
-
-      <div class="card-glass">
-        <p class="mb-4 text-token-sm text-neutral-600 dark:text-neutral-300">
-          {dgettext(
-            "dashboard_embed",
-            "Updates every snippet below. Defaults work for most embeds - adjust when your site needs them."
-          )}
-        </p>
-
-        <.form
-          for={%{}}
-          as={:customise}
-          id="embed-customisation-form"
-          phx-change="update_customisation"
-          phx-target={@myself}
-          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
-        >
-          <%!-- Layout --%>
-          <div>
-            <.input
-              type="select"
-              id="embed-layout"
-              name="customise[layout]"
-              label={dgettext("dashboard_embed", "Layout")}
-              options={[
-                {dgettext(
-                   "dashboard_embed",
-                   "Column - wide canvas, fills the container (recommended)"
-                 ), "column"},
-                {dgettext(
-                   "dashboard_embed",
-                   "Default - centred with a ~640px cap (standalone-style)"
-                 ), "default"}
-              ]}
-              value={@embed_layout}
-            />
-            <p class="mt-2 text-token-xs text-neutral-500">
-              {dgettext(
-                "dashboard_embed",
-                "Column adapts to any container width. Default centres the booker - useful when you want a self-contained card inside a wide page."
-              )}
-            </p>
-          </div>
-
-          <%!-- Language --%>
-          <div>
-            <.input
-              type="select"
-              id="embed-language"
-              name="customise[locale]"
-              label={dgettext("dashboard_embed", "Language")}
-              options={[
-                {dgettext("dashboard_embed", "Auto - visitor's browser"), ""}
-                | Helpers.language_options()
-              ]}
-              value={@embed_locale}
-            />
-            <p class="mt-2 text-token-xs text-neutral-500">
-              {dgettext(
-                "dashboard_embed",
-                "Language for the booking page. Auto follows each visitor's browser preference."
-              )}
-            </p>
-          </div>
-
-          <%!-- Initial height --%>
-          <div>
-            <.input
-              type="number"
-              id="embed-initial-height"
-              name="customise[initial_height]"
-              label={dgettext("dashboard_embed", "Initial height (px)")}
-              min="200"
-              max="2000"
-              step="50"
-              placeholder="400"
-              value={@initial_height}
-              phx-debounce="blur"
-            />
-            <p class="mt-2 text-token-xs text-neutral-500">
-              {dgettext(
-                "dashboard_embed",
-                "Placeholder shown before the iframe auto-resizes. Inline only."
-              )}
-            </p>
-          </div>
-
-          <%!-- Max width --%>
-          <div>
-            <.input
-              type="number"
-              id="embed-max-width"
-              name="customise[max_width]"
-              label={dgettext("dashboard_embed", "Max width (px)")}
-              min="200"
-              max="2000"
-              step="50"
-              placeholder="1000"
-              value={@max_width}
-              phx-debounce="blur"
-            />
-            <p class="mt-2 text-token-xs text-neutral-500">
-              {dgettext("dashboard_embed", "Container max-width. Modal popup defaults to 1000px.")}
-            </p>
-          </div>
-        </.form>
+    <div class="mb-6 bg-white border-2 border-neutral-200 rounded-token-lg p-6 dark:bg-twilight-indigo-950 dark:border-twilight-indigo-800">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-token-lg font-semibold text-neutral-900 dark:text-neutral-50">
+            {dgettext("dashboard_embed", "Customise")}
+          </h2>
+          <p class="text-token-sm text-neutral-600 mt-1 dark:text-neutral-300">
+            {dgettext(
+              "dashboard_embed",
+              "Updates every snippet below. Defaults work for most embeds - adjust when your site needs them."
+            )}
+          </p>
+        </div>
       </div>
+
+      <.form
+        for={%{}}
+        as={:customise}
+        id="embed-customisation-form"
+        phx-change="update_customisation"
+        phx-target={@myself}
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+      >
+        <%!-- Meeting type --%>
+        <.input
+          type="select"
+          id="embed-meeting"
+          name="customise[meeting]"
+          label={dgettext("dashboard_embed", "Meeting type")}
+          options={[
+            {dgettext("dashboard_embed", "All - the list of your meeting types"), ""}
+            | @meeting_type_options
+          ]}
+          value={@embed_meeting}
+        >
+          <:description>
+            {dgettext(
+              "dashboard_embed",
+              "Pick one to open its booking page directly. Without a choice, visitors see the meeting types marked \"Show in embedded widget\"."
+            )}
+          </:description>
+        </.input>
+
+        <%!-- Background --%>
+        <.input
+          type="select"
+          id="embed-background-mode"
+          name="customise[background_mode]"
+          label={dgettext("dashboard_embed", "Background")}
+          options={[
+            {dgettext("dashboard_embed", "Theme default"), "default"},
+            {dgettext("dashboard_embed", "Transparent - your page shows through"), "transparent"},
+            {dgettext("dashboard_embed", "Custom colour"), "color"}
+          ]}
+          value={@embed_background_mode}
+        >
+          <:description>
+            {dgettext(
+              "dashboard_embed",
+              "Replaces the booking page's background inside the widget only. Your public booking page keeps its own."
+            )}
+          </:description>
+        </.input>
+
+        <.input
+          :if={@embed_background_mode == "color"}
+          type="color"
+          id="embed-background-color"
+          name="customise[background_color]"
+          label={dgettext("dashboard_embed", "Background colour")}
+          value={@embed_background_color}
+        />
+
+        <%!-- Layout --%>
+        <.input
+          type="select"
+          id="embed-layout"
+          name="customise[layout]"
+          label={dgettext("dashboard_embed", "Layout")}
+          options={[
+            {dgettext("dashboard_embed", "Column - wide canvas, fills the container (recommended)"),
+             "column"},
+            {dgettext("dashboard_embed", "Default - centred with a ~640px cap (standalone-style)"),
+             "default"}
+          ]}
+          value={@embed_layout}
+        >
+          <:description>
+            {dgettext(
+              "dashboard_embed",
+              "Column adapts to any container width. Default centres the booker - useful when you want a self-contained card inside a wide page."
+            )}
+          </:description>
+        </.input>
+
+        <%!-- Language --%>
+        <.input
+          type="select"
+          id="embed-language"
+          name="customise[locale]"
+          label={dgettext("dashboard_embed", "Language")}
+          options={[
+            {dgettext("dashboard_embed", "Auto - visitor's browser"), ""}
+            | Helpers.language_options()
+          ]}
+          value={@embed_locale}
+        >
+          <:description>
+            {dgettext(
+              "dashboard_embed",
+              "Language for the booking page. Auto follows each visitor's browser preference."
+            )}
+          </:description>
+        </.input>
+
+        <%!-- No step: the server accepts any pixel value in range, and a
+        stored width like 320 or 1024 is not a multiple of anything round.
+        A step here would make the form unsubmittable for whoever already
+        has one. --%>
+        <%!-- Initial height --%>
+        <.input
+          type="number"
+          id="embed-initial-height"
+          name="customise[initial_height]"
+          label={dgettext("dashboard_embed", "Initial height (px)")}
+          min="200"
+          max="2000"
+          placeholder="400"
+          value={@initial_height}
+          phx-debounce="blur"
+        >
+          <:description>
+            {dgettext(
+              "dashboard_embed",
+              "Placeholder shown before the iframe auto-resizes. Inline only."
+            )}
+          </:description>
+        </.input>
+
+        <%!-- Max width --%>
+        <.input
+          type="number"
+          id="embed-max-width"
+          name="customise[max_width]"
+          label={dgettext("dashboard_embed", "Max width (px)")}
+          min="200"
+          max="2000"
+          placeholder="1000"
+          value={@max_width}
+          phx-debounce="blur"
+        >
+          <:description>
+            {dgettext("dashboard_embed", "Container max-width. Modal popup defaults to 1000px.")}
+          </:description>
+        </.input>
+      </.form>
     </div>
     """
   end
@@ -346,19 +409,18 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid do
   attr :title, :string, required: true
   attr :description, :string, required: true
   attr :badge, :string, default: nil
-  attr :badge_class, :string, default: nil
+  attr :badge_tone, :atom, default: :neutral
   attr :myself, :any, required: true
 
   defp embed_option_card(assigns) do
     ~H"""
     <div
       class={[
-        "embed-option-card card-glass cursor-pointer group relative transition-all duration-300 border-2",
+        "embed-option-card cursor-pointer group relative min-w-0 rounded-token-2xl border-2",
         if(@selected,
-          do:
-            "glass-gradient border-primary-400 shadow-2xl shadow-primary-500/20 ring-4 ring-primary-50",
+          do: "border-primary-500 shadow-md",
           else:
-            "border-neutral-300 hover:border-primary-200 hover:shadow-xl hover:shadow-neutral-200/50"
+            "border-neutral-200 hover:border-primary-300 dark:border-twilight-indigo-800 dark:hover:border-primary-700"
         )
       ]}
       phx-click="select_embed_type"
@@ -368,22 +430,19 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid do
     >
       <div
         :if={@selected}
-        class="absolute -top-3 -right-3 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white shadow-lg z-10"
+        class="absolute -top-3 -right-3 w-8 h-8 bg-primary-600 rounded-token-full flex items-center justify-center text-white shadow-lg z-10"
       >
         <.icon name="hero-check" class="w-5 h-5" />
       </div>
       <div class="p-6">
         <div class="flex items-start justify-between mb-4">
           <div>
-            <h3 class="text-token-xl font-bold text-neutral-900 dark:text-neutral-50">{@title}</h3>
-            <p class="text-token-sm text-neutral-600 dark:text-neutral-300 mt-1">{@description}</p>
+            <h2 class="text-token-lg font-semibold text-neutral-900 dark:text-neutral-50">
+              {@title}
+            </h2>
+            <p class="text-token-sm text-neutral-600 mt-1 dark:text-neutral-300">{@description}</p>
           </div>
-          <span
-            :if={@badge}
-            class={["px-3 py-1 text-token-xs font-semibold rounded-full", @badge_class]}
-          >
-            {@badge}
-          </span>
+          <.pill :if={@badge} tone={@badge_tone} size={:sm} uppercase>{@badge}</.pill>
         </div>
 
         <%!-- Preview --%>
@@ -391,19 +450,20 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid do
           {render_slot(@preview)}
         </div>
 
-        <%!-- Code Snippet --%>
-        <div class="relative">
-          <pre class="bg-neutral-900 text-neutral-100 rounded-token-lg p-4 pr-20 text-token-xs whitespace-pre-wrap break-all"><code class="block"><%= @code |> render_slot() |> Phoenix.HTML.Safe.to_iodata() |> IO.iodata_to_binary() |> String.split("\n") |> Enum.map_join("\n", &String.trim/1) |> String.trim() |> Phoenix.HTML.raw() %></code></pre>
-          <button
-            type="button"
+        <%!-- Code Snippet: lines keep their shape and scroll sideways inside
+              the block rather than breaking mid-token. The Copy button sits
+              above the block, so it never covers a line. --%>
+        <div class="flex justify-end mb-2">
+          <.action_button
+            size={:sm}
             phx-click="copy_code"
             phx-value-type={@type}
             phx-target={@myself}
-            class="absolute top-2 right-2 px-3 py-1 bg-primary-600 hover:bg-primary-700 text-white text-token-xs font-semibold rounded transition-colors"
           >
             {dgettext("dashboard_embed", "Copy")}
-          </button>
+          </.action_button>
         </div>
+        <pre class="bg-neutral-100 text-neutral-800 border border-neutral-300 dark:bg-twilight-indigo-950 dark:text-neutral-100 dark:border-twilight-indigo-800 rounded-token-lg p-4 text-token-xs whitespace-pre overflow-x-auto"><code class="block"><%= @code |> render_slot() |> Phoenix.HTML.Safe.to_iodata() |> IO.iodata_to_binary() |> String.split("\n") |> Enum.map_join("\n", &String.trim/1) |> String.trim() |> Phoenix.HTML.raw() %></code></pre>
 
         <div class="mt-4 flex items-start space-x-2 text-token-xs text-neutral-700 dark:text-neutral-200">
           <.icon name="hero-information-circle" class="w-4 h-4 text-primary-600 shrink-0 mt-0.5" />

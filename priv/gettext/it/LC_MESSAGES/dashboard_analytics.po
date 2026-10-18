@@ -38,11 +38,6 @@ msgstr "7 giorni"
 msgid "90 days"
 msgstr "90 giorni"
 
-#: lib/tymeslot_web/live/dashboard/analytics_live.ex
-#, elixir-autogen, elixir-format
-msgid "Analytics"
-msgstr "Statistiche"
-
 #: lib/tymeslot_web/live/dashboard/analytics_live/visits_chart.ex
 #, elixir-autogen, elixir-format
 msgid "Bar chart showing daily visit counts for the selected date range."
@@ -94,7 +89,7 @@ msgstr "Intervallo di date"
 msgid "Desktop"
 msgstr "Desktop"
 
-#: lib/tymeslot_web/live/dashboard/analytics_live.ex
+#: lib/tymeslot_web/live/dashboard/analytics_live/device_breakdown.ex
 #, elixir-autogen, elixir-format
 msgid "Devices"
 msgstr "Dispositivi"
@@ -103,18 +98,6 @@ msgstr "Dispositivi"
 #, elixir-autogen, elixir-format
 msgid "Mobile"
 msgstr "Mobile"
-
-#: lib/tymeslot_web/live/dashboard/analytics_live/device_breakdown.ex
-#: lib/tymeslot_web/live/dashboard/analytics_live/sources_table.ex
-#: lib/tymeslot_web/live/dashboard/analytics_live/visits_chart.ex
-#, elixir-autogen, elixir-format
-msgid "No traffic in this period yet."
-msgstr "Ancora nessun traffico in questo periodo."
-
-#: lib/tymeslot_web/live/dashboard/analytics_live.ex
-#, elixir-autogen, elixir-format
-msgid "Refresh"
-msgstr "Aggiorna"
 
 #: lib/tymeslot_web/live/dashboard/analytics_live.ex
 #, elixir-autogen, elixir-format
@@ -152,7 +135,6 @@ msgstr "Sconosciuto"
 msgid "Visits"
 msgstr "Visite"
 
-#: lib/tymeslot_web/live/dashboard/analytics_live.ex
 #: lib/tymeslot_web/live/dashboard/analytics_live/visits_chart.ex
 #, elixir-autogen, elixir-format
 msgid "Visits over time"
@@ -160,25 +142,32 @@ msgstr "Visite nel tempo"
 
 #: lib/tymeslot_web/live/dashboard/analytics_live.ex
 #, elixir-autogen, elixir-format
-msgid "Refreshing…"
-msgstr "Aggiornamento…"
-
-#: lib/tymeslot_web/live/dashboard/analytics_live.ex
-#, elixir-autogen, elixir-format
-msgid "Sources"
-msgstr "Fonti"
-
-#: lib/tymeslot_web/live/dashboard/analytics_live.ex
-#, elixir-autogen, elixir-format
-msgid "Summary"
-msgstr "Riepilogo"
+msgid "Analytics"
+msgstr "Statistiche"
 
 #: lib/tymeslot_web/live/dashboard/analytics_live.ex
 #, elixir-autogen, elixir-format
 msgid "Track visits, bookings, and conversion for your scheduling page."
 msgstr "Monitora visite, prenotazioni e conversioni della tua pagina di prenotazione."
 
+#: lib/tymeslot_web/live/dashboard/analytics_live/device_breakdown.ex
+#: lib/tymeslot_web/live/dashboard/analytics_live/sources_table.ex
+#: lib/tymeslot_web/live/dashboard/analytics_live/visits_chart.ex
+#, elixir-autogen, elixir-format
+msgid "No traffic in this period yet"
+msgstr "Ancora nessun traffico in questo periodo"
+
+#: lib/tymeslot_web/live/dashboard/analytics_live/summary_cards.ex
+#, elixir-autogen, elixir-format
+msgid "No visits yet"
+msgstr "Ancora nessuna visita"
+
+#: lib/tymeslot_web/live/dashboard/analytics_live/sources_table.ex
+#, elixir-autogen, elixir-format
+msgid "Traffic sources"
+msgstr "Sorgenti di traffico"
+
 #: lib/tymeslot_web/live/dashboard/analytics_live.ex
 #, elixir-autogen, elixir-format
-msgid "Updated:"
-msgstr "Aggiornato:"
+msgid "Updated %{time}"
+msgstr "Aggiornato %{time}"

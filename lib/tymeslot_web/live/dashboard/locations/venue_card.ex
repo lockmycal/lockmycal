@@ -15,30 +15,31 @@ defmodule TymeslotWeb.Dashboard.Locations.VenueCard do
   @spec venue_card(map()) :: Phoenix.LiveView.Rendered.t()
   def venue_card(assigns) do
     ~H"""
-    <div
-      class="card-glass p-4 flex items-start gap-3"
+    <.card
+      padding={:sm}
+      class="flex items-start gap-3"
       data-testid="venue-card"
       data-venue-id={@venue.id}
       data-id={@venue.id}
       draggable="true"
     >
-      <span class="drag-handle cursor-grab active:cursor-grabbing text-neutral-400 shrink-0 mt-0.5">
+      <span class="drag-handle cursor-grab active:cursor-grabbing text-neutral-400 shrink-0 mt-0.5 dark:text-twilight-indigo-300">
         <.icon name="hero-bars-2" class="w-4 h-4" />
       </span>
       <.icon name="hero-map-pin" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
       <div class="flex-1 min-w-0">
-        <h3 class="text-token-base font-semibold text-neutral-800 dark:text-neutral-100 truncate">
+        <h2 class="text-token-lg font-semibold text-neutral-900 truncate dark:text-neutral-50">
           {@venue.name}
-        </h3>
+        </h2>
         <%!-- Kept on one line: under whitespace-pre-line, any line break
              around the text would render as an empty line. --%>
         <p
           :if={@venue.description}
-          class="mt-1 text-token-sm text-neutral-600 dark:text-neutral-300 whitespace-pre-line break-words"
+          class="mt-1 text-token-sm text-neutral-600 whitespace-pre-line break-words dark:text-neutral-300"
           phx-no-format
         >{@venue.description}</p>
         <p
-          class="mt-1 text-token-xs text-neutral-500 dark:text-twilight-indigo-200"
+          class="mt-1 text-token-xs text-neutral-500 dark:text-twilight-indigo-300"
           data-testid="venue-usage"
         >
           {usage_label(@usage)}
@@ -46,30 +47,25 @@ defmodule TymeslotWeb.Dashboard.Locations.VenueCard do
       </div>
 
       <div class="flex shrink-0 items-center gap-2">
-        <button
-          type="button"
+        <.icon_button
+          icon="hero-pencil-square"
+          size={:sm}
+          label={dgettext("dashboard_meeting_types", "Edit")}
           phx-click="edit_venue"
           phx-value-id={@venue.id}
           phx-target={@myself}
-          class="row-action-button row-action-button--icon-only row-action-button--neutral"
-          title={dgettext("dashboard_meeting_types", "Edit")}
-          aria-label={dgettext("dashboard_meeting_types", "Edit")}
-        >
-          <.icon name="hero-pencil-square" class="w-5 h-5" />
-        </button>
-        <button
-          type="button"
+        />
+        <.icon_button
+          icon="hero-trash"
+          variant={:danger}
+          size={:sm}
+          label={dgettext("dashboard_meeting_types", "Delete")}
           phx-click="delete_venue"
           phx-value-id={@venue.id}
           phx-target={@myself}
-          class="row-action-button row-action-button--danger"
-          title={dgettext("dashboard_meeting_types", "Delete")}
-          aria-label={dgettext("dashboard_meeting_types", "Delete")}
-        >
-          <.icon name="hero-trash" class="w-5 h-5" />
-        </button>
+        />
       </div>
-    </div>
+    </.card>
     """
   end
 
