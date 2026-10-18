@@ -30,6 +30,8 @@ defmodule Tymeslot.Security.FieldValidators.TLDList do
   The remaining three lists are curated by hand and documented on the sync task.
   """
 
+  alias Tymeslot.Infrastructure.Config
+
   @tld_json_path Path.join([__DIR__, "../../../../priv/tlds.json"])
   @external_resource @tld_json_path
 
@@ -185,7 +187,7 @@ defmodule Tymeslot.Security.FieldValidators.TLDList do
 
       :no_suggestion ->
         "#{label} has an unrecognised domain ending (.#{tld}). If it is correct, " <>
-          "this version of Tymeslot predates it and needs updating."
+          "this version of #{Config.app_name()} predates it and needs updating."
     end
   end
 

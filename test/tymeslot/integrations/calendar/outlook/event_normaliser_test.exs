@@ -41,6 +41,24 @@ defmodule Tymeslot.Integrations.Calendar.Outlook.EventNormaliserTest do
   end
 
   describe "normalise_events/2" do
+    test "maps a switched-on reminder and drops a switched-off one" do
+      assert {:ok, [on]} =
+               EventNormaliser.normalise_events(
+                 [build_raw_event(%{"isReminderOn" => true, "reminderMinutesBeforeStart" => 30})],
+                 @context
+               )
+
+      assert on.reminders == [%{method: :popup, minutes_before: 30}]
+
+      assert {:ok, [off]} =
+               EventNormaliser.normalise_events(
+                 [build_raw_event(%{"isReminderOn" => false})],
+                 @context
+               )
+
+      assert off.reminders == []
+    end
+
     test "converts a standard timed event with correct fields" do
       raw = build_raw_event()
 

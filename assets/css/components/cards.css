@@ -193,3 +193,25 @@ html.dark .card-glass-primary {
     padding: 1rem;
   }
 }
+
+/* <.card> variants (Containers.card/1). `flat` is a card inside another card or a
+   row in a list of settings; `muted` a recessed surface for secondary
+   information; `interactive` only tints the border, since lifting a card on hover
+   reads as clickable. */
+.card-glass--flat {
+  @apply border-neutral-200 dark:border-twilight-indigo-800 rounded-xl;
+}
+
+.card-glass--muted {
+  @apply bg-neutral-50 dark:bg-twilight-indigo-950 border-neutral-200 dark:border-twilight-indigo-800 rounded-xl;
+}
+
+.card-glass--interactive {
+  @apply cursor-pointer;
+}
+
+@media (hover: hover) {
+  .card-glass--interactive:hover {
+    @apply border-primary-300 dark:border-twilight-indigo-600;
+  }
+}

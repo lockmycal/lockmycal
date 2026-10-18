@@ -12,7 +12,8 @@ defmodule TymeslotWeb.Dashboard.Availability.DayCardComponent do
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
 
-  alias Tymeslot.Utils.DateTimeUtils.TimeFormat
+  alias Tymeslot.Availability.Window
+  alias Tymeslot.Utils.DateTimeUtils
   alias Tymeslot.Validation.Constraints
   alias TymeslotWeb.Components.Shared.TimeOptions
   alias TymeslotWeb.Components.UI.StatusSwitch
@@ -24,6 +25,12 @@ defmodule TymeslotWeb.Dashboard.Availability.DayCardComponent do
   attr :day_name, :string, required: true
   attr :break_duration_presets, :list, required: true
   attr :form_errors, :map, required: true
+  attr :hours_errors, :map, default: %{}
+
+  attr :refused_hours, :map,
+    default: %{},
+    doc: "per day, the start and end last picked and refused, shown until the day saves"
+
   attr :show_add_break_form, :any, required: true
   attr :open_menu_day, :any, required: true
   attr :time_format, :string, required: true
@@ -35,26 +42,34 @@ defmodule TymeslotWeb.Dashboard.Availability.DayCardComponent do
       assigns
       |> assign(:day, assigns.day_availability.day_of_week)
       |> assign(:breaks, breaks_of(assigns.day_availability))
+      |> assign(:hours_errors_for_day, hours_errors_for(assigns))
+      |> assign_hours_inputs()
       |> assign(:break_times, break_times(assigns.day_availability, assigns.time_format))
 
     ~H"""
     <div class={[
-      "card-glass rounded-token-xl p-0 transition-colors duration-200",
+      "card-glass rounded-token-xl p-0! transition-colors duration-200",
       if(@day_availability.is_available, do: "card-glass-available", else: "card-glass-unavailable")
     ]}>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
         <StatusSwitch.status_switch
-          id={"day-toggle-#{@day}"}
-          checked={@day_availability.is_available}
-          size={:medium}
+          id={"day-available-toggle-#{@day}"}
+          checked={@day_availability.is_available == true}
           on_change="toggle_day_available"
           target={@myself}
           show_icon={false}
           aria_label={toggle_label(@day_availability.is_available, @day_name)}
+          class="shrink-0"
           phx-value-day={@day}
         />
 
-        <span class="w-24 shrink-0 font-bold text-token-sm text-neutral-900 dark:text-neutral-50">
+        <span class={[
+          "w-24 shrink-0 font-bold text-token-sm",
+          if(@day_availability.is_available,
+            do: "text-neutral-900 dark:text-neutral-50",
+            else: "text-neutral-500 dark:text-twilight-indigo-300"
+          )
+        ]}>
           {@day_name}
         </span>
 
@@ -64,25 +79,42 @@ defmodule TymeslotWeb.Dashboard.Availability.DayCardComponent do
             phx-change="update_day_hours"
             phx-target={@myself}
             phx-debounce="500"
-            class="day-hours-inline flex items-center gap-2 shrink-0"
+            class={
+              [
+                "day-hours-inline flex items-center gap-2 shrink-0",
+                # On a phone the two selects share the row instead of pushing
+                # the end time past the card's edge.
+                "max-sm:w-full max-sm:shrink max-sm:min-w-0",
+                "max-sm:[&>div]:min-w-0 max-sm:[&>div]:flex-1 max-sm:[&_.input]:w-full!"
+              ]
+            }
           >
             <input type="hidden" name="day" value={@day} />
             <.input
               type="select"
               name="start"
               options={TimeOptions.time_options(@time_format)}
-              value={BreakHelpers.format_time(@day_availability.start_time)}
+              value={@start_value}
               aria-label={dgettext("dashboard_availability", "Start Time")}
             />
             <span class="text-neutral-400">–</span>
             <.input
               type="select"
               name="end"
-              options={TimeOptions.time_options(@time_format)}
-              value={BreakHelpers.format_time(@day_availability.end_time)}
+              options={@end_options}
+              value={@end_value}
+              prompt={is_nil(@end_value) && dgettext("dashboard_availability", "End")}
               aria-label={dgettext("dashboard_availability", "End Time")}
+              aria-describedby={hours_describedby(@day, @day_availability, @hours_errors_for_day)}
             />
           </form>
+          <span
+            :if={runs_past_midnight?(@day_availability)}
+            id={"day-end-hint-#{@day}"}
+            class="text-token-xs text-neutral-500 shrink-0 dark:text-twilight-indigo-300"
+          >
+            {dgettext("dashboard_availability", "Ends the next day")}
+          </span>
 
           <form
             id={"day-max-minutes-form-#{@day}"}
@@ -104,36 +136,34 @@ defmodule TymeslotWeb.Dashboard.Availability.DayCardComponent do
           <div class="flex flex-wrap items-center gap-2 grow">
             <span
               :for={break <- @breaks}
-              class="inline-flex items-center gap-2 rounded-token-lg bg-neutral-50 dark:bg-twilight-indigo-900/60 border border-neutral-300 px-2 py-1 text-token-xs font-bold text-neutral-600 dark:text-neutral-300"
+              class="inline-flex items-center gap-2 rounded-token-lg bg-neutral-50 dark:bg-twilight-indigo-900/60 border border-neutral-300 dark:border-neutral-600 px-2 py-1 text-token-xs font-bold text-neutral-600 dark:text-neutral-300"
             >
               {break.label || dgettext("dashboard_availability", "Break")}
               <span class="text-primary-600 font-medium">
-                {TimeFormat.format(break.start_time, @time_format)} - {TimeFormat.format(
-                  break.end_time,
-                  @time_format
-                )}
+                {BreakHelpers.break_time_label(@day_availability, break, @time_format)}
               </span>
-              <button
+              <.icon_button
+                icon="hero-x-mark"
+                variant={:danger}
+                size={:sm}
+                label={dgettext("dashboard_availability", "Delete Break")}
                 phx-click="show_delete_break_modal"
                 phx-value-break_id={break.id}
                 phx-target={@myself}
-                class="text-neutral-300 hover:text-red-500 transition-colors"
-                aria-label={dgettext("dashboard_availability", "Delete Break")}
-              >
-                <.icon name="hero-x-mark-micro" class="w-3.5 h-3.5" />
-              </button>
+              />
             </span>
 
-            <button
+            <.action_button
               :if={@show_add_break_form != @day}
+              variant={:ghost}
+              size={:sm}
+              icon="hero-plus"
               phx-click="show_add_break_form"
               phx-value-day={@day}
               phx-target={@myself}
-              class="inline-flex items-center gap-1 rounded-token-lg px-2 py-1 text-token-xs font-bold text-neutral-400 hover:text-primary-700 hover:bg-primary-50 transition-colors"
             >
-              <.icon name="hero-plus-micro" class="w-3.5 h-3.5" />
               {dgettext("dashboard_availability", "Add Break")}
-            </button>
+            </.action_button>
           </div>
 
           <.dropdown
@@ -185,6 +215,15 @@ defmodule TymeslotWeb.Dashboard.Availability.DayCardComponent do
         <% end %>
       </div>
 
+      <p
+        :for={message <- @hours_errors_for_day}
+        id={"day-hours-errors-#{@day}"}
+        role="alert"
+        class="px-4 pb-3 text-token-sm text-red-600"
+      >
+        {message}
+      </p>
+
       <%!-- The add-break form drops below its day rather than inline, so the
       row keeps its height until the user asks for it. Fields are top-aligned:
       bottom-aligning them lets a validation message under one field push every
@@ -234,19 +273,16 @@ defmodule TymeslotWeb.Dashboard.Availability.DayCardComponent do
           <%!-- Empty label of the same shape as the fields', so the buttons sit
           on the input line without hard-coding the label's height. --%>
           <span class="label" aria-hidden="true">&nbsp;</span>
-          <div class="flex gap-2">
-            <button type="submit" class="btn btn-primary py-3 px-4 text-token-sm whitespace-nowrap">
+          <div class="flex items-center gap-2">
+            <.action_button type="submit">
               {dgettext("dashboard_availability", "Add")}
-            </button>
-            <button
-              type="button"
+            </.action_button>
+            <.icon_button
+              icon="hero-x-mark"
+              label={dgettext("dashboard_availability", "Cancel")}
               phx-click="hide_add_break_form"
               phx-target={@myself}
-              class="btn btn-secondary py-3 px-3"
-              aria-label={dgettext("dashboard_availability", "Cancel")}
-            >
-              <.icon name="hero-x-mark-mini" class="w-4 h-4" />
-            </button>
+            />
           </div>
         </div>
       </form>
@@ -260,9 +296,10 @@ defmodule TymeslotWeb.Dashboard.Availability.DayCardComponent do
   # A break lives inside its day, so the pickers only offer that window: the
   # "from" list stops one slot short of the day's end and the "until" list
   # starts one slot after its beginning, which leaves ordering as the only way
-  # left to pick an invalid pair.
-  defp break_times(%{start_time: %Time{} = from, end_time: %Time{} = to}, time_format) do
-    slots = TimeOptions.time_options_between(from, to, time_format)
+  # left to pick an invalid pair. Hours that run past midnight are walked
+  # through it, in order.
+  defp break_times(%{start_time: %Time{}, end_time: %Time{}} = day_availability, time_format) do
+    slots = TimeOptions.window_options(day_availability, time_format)
 
     %{start: Enum.drop(slots, -1), end: Enum.drop(slots, 1)}
   end
@@ -279,6 +316,58 @@ defmodule TymeslotWeb.Dashboard.Availability.DayCardComponent do
 
   defp max_minutes_label(day_name),
     do: dgettext("dashboard_availability", "Maximum meeting time on %{day}", day: day_name)
+
+  defp hours_errors_for(%{hours_errors: errors, day_availability: %{day_of_week: day}}),
+    do: errors |> Map.get(day, %{}) |> Map.values() |> Enum.uniq()
+
+  defp hours_describedby(day, day_availability, errors) do
+    ids =
+      Enum.reject(
+        [
+          if(runs_past_midnight?(day_availability), do: "day-end-hint-#{day}"),
+          if(errors != [], do: "day-hours-errors-#{day}")
+        ],
+        &is_nil/1
+      )
+
+    if ids == [], do: nil, else: Enum.join(ids, " ")
+  end
+
+  defp end_value(day_availability),
+    do: Window.format_end(day_availability.end_time, day_availability.ends_next_day)
+
+  # The hours selects show the day's saved hours, or the times last picked and
+  # refused. End options always follow the start shown. A refused end that is
+  # not among them (an end before the new start, without its "(+1)") leaves
+  # the end select blank rather than showing a time that no longer fits, so
+  # the error beneath asks for a pick the select can still offer.
+  defp assign_hours_inputs(%{day: day, day_availability: day_availability} = assigns) do
+    refused = Map.get(assigns.refused_hours, day, %{})
+    saved_start = BreakHelpers.format_time(day_availability.start_time)
+    start_value = refused["start"] || saved_start
+
+    start_time =
+      case DateTimeUtils.parse_hhmm(start_value) do
+        {:ok, time} -> time
+        {:error, _reason} -> day_availability.start_time
+      end
+
+    wanted_end = refused["end"] || end_value(day_availability)
+    end_options = TimeOptions.end_options(start_time, assigns.time_format, wanted_end)
+
+    assign(assigns,
+      start_value: start_value,
+      end_options: end_options,
+      end_value: if(Enum.any?(end_options, &(elem(&1, 1) == wanted_end)), do: wanted_end)
+    )
+  end
+
+  # Hours ending exactly at midnight already read clearly as "00:00 (+1)" in
+  # the end select; the hint is for hours that carry on into the next day.
+  defp runs_past_midnight?(%{ends_next_day: true, end_time: %Time{} = end_time}),
+    do: Time.compare(end_time, ~T[00:00:00]) == :gt
+
+  defp runs_past_midnight?(_day_availability), do: false
 
   defp toggle_label(true, day_name),
     do: dgettext("dashboard_availability", "Stop taking bookings on %{day}", day: day_name)

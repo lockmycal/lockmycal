@@ -18,7 +18,8 @@ defmodule TymeslotWeb.Themes.Shared.Components.OwnCalendar do
   use Phoenix.Component
   use Gettext, backend: TymeslotWeb.Gettext
 
-  import TymeslotWeb.Components.CoreComponents, only: [icon: 1, input: 1]
+  import TymeslotWeb.Components.CoreComponents.Forms, only: [input: 1]
+  import TymeslotWeb.Components.CoreComponents.Icons, only: [icon: 1]
 
   alias Tymeslot.Infrastructure.Config
 

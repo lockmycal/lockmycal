@@ -39,6 +39,24 @@ defmodule Tymeslot.MeetingTypes.MeetingTypeQueries do
   end
 
   @doc """
+  Gets the meeting types listed in a user's embedded booking widget (active and
+  `show_in_embed`), ordered by sort_order. Independent of `is_private`: a type
+  can be listed in the widget while hidden from the public overview, and the
+  other way round.
+  """
+  @spec list_embed_meeting_types(integer()) :: [MeetingTypeSchema.t()]
+  def list_embed_meeting_types(user_id) do
+    query =
+      from(mt in MeetingTypeSchema,
+        where: mt.user_id == ^user_id and mt.is_active == true and mt.show_in_embed == true,
+        order_by: [asc: mt.sort_order, asc: mt.name],
+        preload: [:video_integration, :calendar_integration]
+      )
+
+    Repo.all(query)
+  end
+
+  @doc """
   Gets all meeting types for a user (active and inactive), ordered by sort_order.
   """
   @spec list_all_meeting_types(integer()) :: [MeetingTypeSchema.t()]
@@ -122,7 +140,8 @@ defmodule Tymeslot.MeetingTypes.MeetingTypeQueries do
   end
 
   @doc """
-  Updates a meeting type's private visibility using a focused changeset.
+  Updates a meeting type's visibility flags (`is_private`, `show_in_embed`) using a
+  focused changeset.
   """
   @spec set_visibility(MeetingTypeSchema.t(), map()) ::
           {:ok, MeetingTypeSchema.t()} | {:error, Ecto.Changeset.t()}

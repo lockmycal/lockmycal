@@ -41,26 +41,29 @@ defmodule TymeslotWeb.Components.DashboardSidebar do
     <div
       id="dashboard-sidebar-overlay"
       class="lg:hidden fixed inset-0 bg-black/50 z-30 dashboard-sidebar-overlay hidden"
-      phx-click={close_sidebar_js()}
+      phx-click={dismiss_sidebar_js()}
     >
     </div>
 
     <aside
       id="dashboard-sidebar"
       data-tour="sidebar-nav"
-      class="dashboard-sidebar lg:w-64 w-80 h-screen lg:h-full overflow-y-auto lg:shrink-0 lg:relative fixed top-0 left-0 z-40 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out"
+      phx-hook="SidebarEscape"
+      data-dismiss={dismiss_sidebar_js()}
+      class="dashboard-sidebar lg:w-64 w-80 h-screen lg:h-full overflow-y-auto overscroll-contain [scrollbar-width:thin] lg:shrink-0 lg:relative fixed top-0 left-0 z-40 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out"
     >
       <div class="p-6">
         <%!-- Mobile Close Button --%>
         <div class="lg:hidden flex items-center justify-between mb-6">
-          <TymeslotWeb.Components.CoreComponents.logo
+          <TymeslotWeb.Components.CoreComponents.Brand.logo
             mode={:full}
             variant={:auto}
             img_class="h-9 sm:h-12"
           />
           <button
+            type="button"
             class="dashboard-sidebar-close p-3 rounded-xl bg-neutral-50 border-2 border-neutral-300 hover:bg-red-50 hover:border-red-100 transition-all"
-            phx-click={close_sidebar_js()}
+            phx-click={dismiss_sidebar_js()}
             aria-label={dgettext("dashboard_common", "Close sidebar")}
           >
             <.icon name="hero-x-mark" class="w-6 h-6 text-neutral-700 dark:text-neutral-200" />
@@ -104,10 +107,14 @@ defmodule TymeslotWeb.Components.DashboardSidebar do
           </button>
         </div>
         <div :if={!LinkAccessPolicy.can_link?(@profile, @integration_status)} class="mb-6 flex gap-2">
+          <%!-- `aria-disabled` rather than `disabled`, so each control stays
+                focusable and its tooltip still explains why the link is
+                unavailable. The accessible name stays the action. --%>
           <button
-            :for={icon <- ["hero-arrow-top-right-on-square", "hero-clipboard", "hero-envelope"]}
+            :for={{icon, label} <- unavailable_link_actions()}
             type="button"
-            disabled
+            aria-disabled="true"
+            aria-label={label}
             class="flex-1 flex items-center justify-center px-4 py-4 rounded-2xl bg-neutral-200 dark:bg-twilight-indigo-800 text-neutral-500 dark:text-twilight-indigo-300 cursor-not-allowed opacity-60 border border-neutral-200 dark:border-twilight-indigo-800"
             title={LinkAccessPolicy.disabled_tooltip(@profile, @integration_status)}
           >
@@ -439,6 +446,22 @@ defmodule TymeslotWeb.Components.DashboardSidebar do
     %JS{}
     |> JS.remove_class("dashboard-sidebar-open", to: "#dashboard-sidebar")
     |> JS.add_class("hidden", to: "#dashboard-sidebar-overlay")
+    |> JS.set_attribute({"aria-expanded", "false"}, to: "#dashboard-sidebar-toggle")
+  end
+
+  # Dismissing the drawer (Escape, the close button, the backdrop) hands focus
+  # back to the menu toggle that opened it. Following a nav link does not: that
+  # navigates, and focus belongs to the new page.
+  defp dismiss_sidebar_js do
+    JS.focus(close_sidebar_js(), to: "#dashboard-sidebar-toggle")
+  end
+
+  defp unavailable_link_actions do
+    [
+      {"hero-arrow-top-right-on-square", dgettext("dashboard_common", "View Page")},
+      {"hero-clipboard", dgettext("dashboard_common", "Copy link to clipboard")},
+      {"hero-envelope", dgettext("dashboard_common", "Send links by email")}
+    ]
   end
 
   # Private component for navigation links
@@ -460,6 +483,7 @@ defmodule TymeslotWeb.Components.DashboardSidebar do
       patch={@patch}
       navigate={@navigate}
       phx-click={close_sidebar_js()}
+      aria-current={if @current == @action, do: "page"}
       {@rest}
       class={[
         "dashboard-nav-link flex items-center space-x-3 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200",

@@ -21,9 +21,8 @@ defmodule TymeslotWeb.Dashboard.DashboardOverviewComponent do
   alias Tymeslot.Agenda.Entry
   alias Tymeslot.Dashboard.OverviewStats
   alias TymeslotWeb.Dashboard.AgendaTimeline
+  alias TymeslotWeb.Dashboard.DashboardFormat
   alias TymeslotWeb.Dashboard.DashboardOverview.ComponentView
-
-  import TymeslotWeb.Dashboard.DashboardOverviewFormatters
 
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
@@ -42,7 +41,7 @@ defmodule TymeslotWeb.Dashboard.DashboardOverviewComponent do
   # domain pops the hero out of its day group; here we fold it back in so the
   # spine shows where "next" actually sits, and mark it by id for the cockpit.
   defp assign_agenda_view(socket, %Day{} = agenda, now) do
-    today = local_date(now, agenda.timezone)
+    today = DashboardFormat.local_date(now, agenda.timezone)
     next_id = agenda.next && agenda.next.id
 
     {all_day_today, timed_today} =

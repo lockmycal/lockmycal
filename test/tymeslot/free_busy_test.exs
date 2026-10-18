@@ -119,13 +119,51 @@ defmodule Tymeslot.FreeBusyTest do
                )
     end
 
+    test "publishes free events as busy from a subscription that counts every event as busy",
+         %{profile: profile} do
+      subscription =
+        insert(:calendar_integration,
+          user: profile.user,
+          provider: "ics_url",
+          all_events_busy: true
+        )
+
+      insert(:provider_calendar_event,
+        calendar_integration: subscription,
+        provider: "ics_url",
+        start_at: ~U[2030-06-03 09:00:00Z],
+        end_at: ~U[2030-06-03 10:00:00Z],
+        transparency: "transparent",
+        status: "confirmed"
+      )
+
+      insert(:provider_calendar_event,
+        calendar_integration: subscription,
+        provider: "ics_url",
+        start_at: ~U[2030-06-04 09:00:00Z],
+        end_at: ~U[2030-06-04 10:00:00Z],
+        transparency: "transparent",
+        status: "cancelled"
+      )
+
+      assert [{s, e}] =
+               FreeBusy.busy_intervals(
+                 profile,
+                 ~U[2030-05-01 00:00:00Z],
+                 ~U[2030-07-01 00:00:00Z]
+               )
+
+      assert DateTime.truncate(s, :second) == ~U[2030-06-03 09:00:00Z]
+      assert DateTime.truncate(e, :second) == ~U[2030-06-03 10:00:00Z]
+    end
+
     test "maps all-day events to midnight-to-midnight in the profile's own timezone", %{
       profile: profile,
       integration: integration
     } do
-      # Factory profile is Europe/Tallinn (EEST, UTC+3 in June) — a full day
+      # Factory profile is Europe/Prague (CEST, UTC+2 in June) — a full day
       # there is NOT midnight-to-midnight UTC, so the asserted bounds are
-      # offset by 3 hours. Anchoring all-day events to UTC midnight instead
+      # offset by 2 hours. Anchoring all-day events to UTC midnight instead
       # would block the wrong hours for every non-UTC organiser.
       insert(:provider_calendar_event,
         calendar_integration: integration,
@@ -142,8 +180,8 @@ defmodule Tymeslot.FreeBusyTest do
         FreeBusy.busy_intervals(profile, ~U[2030-05-01 00:00:00Z], ~U[2030-07-01 00:00:00Z])
 
       assert [{s, e}] = intervals
-      assert s == ~U[2030-06-02 21:00:00Z]
-      assert e == ~U[2030-06-03 21:00:00Z]
+      assert s == ~U[2030-06-02 22:00:00Z]
+      assert e == ~U[2030-06-03 22:00:00Z]
     end
   end
 

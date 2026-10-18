@@ -15,6 +15,7 @@ defmodule TymeslotWeb.EmbedBlockedHTML do
 
   attr :csp_nonce, :string, default: nil
   attr :parent_origin, :string, default: nil
+  attr :reason, :atom, default: :origin, values: [:origin, :meeting_type]
 
   @spec index(map()) :: Phoenix.LiveView.Rendered.t()
   def index(assigns) do
@@ -46,7 +47,16 @@ defmodule TymeslotWeb.EmbedBlockedHTML do
         </style>
       </head>
       <body data-parent-origin={@parent_origin}>
-        <main class="ts-card">
+        <main :if={@reason == :meeting_type} class="ts-card">
+          <h1>{dgettext("embed", "This meeting type isn’t available")}</h1>
+          <p>
+            {dgettext(
+              "embed",
+              "It may have been renamed, paused or removed. Please contact the organiser."
+            )}
+          </p>
+        </main>
+        <main :if={@reason == :origin} class="ts-card">
           <h1>{dgettext("embed", "This booking page can’t be embedded here")}</h1>
           <p>
             {dgettext(

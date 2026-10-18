@@ -6,6 +6,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.AllDayRow do
 
   alias TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
+  alias TymeslotWeb.Dashboard.DashboardFormat
 
   @allday_visible_limit 2
 
@@ -36,14 +37,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.AllDayRow do
           id={"allday-event-#{event.id}-#{@day}"}
           phx-hook="StopClickPropagation"
           class={"rounded px-1 text-token-xs truncate cursor-pointer #{Helpers.event_block_class(@assigns_ref, event)}"}
-          phx-click="show_event"
-          phx-value-event-id={event.id}
-          phx-target={@myself}
-          role="button"
-          tabindex="0"
+          {Helpers.open_event_attrs(event, keys: :hook, target: @myself)}
           aria-label={
             dgettext("dashboard_calendar", "All-day: %{event}",
-              event: event.summary || dgettext("dashboard_calendar", "Untitled event")
+              event: DashboardFormat.title(event.summary)
             )
           }
         >
@@ -56,8 +53,9 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.AllDayRow do
             :if={(Map.get(event, :reminders) || []) != []}
             name="hero-bell-micro"
             class="inline-block w-3 h-3 opacity-70 mr-0.5 align-text-bottom"
-          /><AttendeeAttachments.marker attachments={Map.get(event, :attendee_attachments)} />{event.summary ||
-            dgettext("dashboard_calendar", "(No title)")}
+          /><AttendeeAttachments.marker attachments={Map.get(event, :attendee_attachments)} />{DashboardFormat.title(
+            event.summary
+          )}
         </div>
         <span
           :if={@hidden_count > 0}
@@ -70,13 +68,9 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.AllDayRow do
         <div
           :for={event <- @hidden}
           class={"rounded px-1 text-token-xs truncate cursor-pointer #{Helpers.event_block_class(@assigns_ref, event)}"}
-          phx-click="show_event"
-          phx-value-event-id={event.id}
-          phx-target={@myself}
-          role="button"
-          tabindex="0"
+          {Helpers.open_event_attrs(event, keys: :hook, target: @myself)}
         >
-          {event.summary || dgettext("dashboard_calendar", "(No title)")}
+          {DashboardFormat.title(event.summary)}
         </div>
       </div>
     </details>

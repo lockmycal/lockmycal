@@ -13,9 +13,16 @@ defmodule Tymeslot.Mocks.Email do
     send_result = Keyword.get(opts, :send_result, :ok)
 
     Tymeslot.EmailServiceMock
+    |> stub_meeting_emails(send_result)
+    |> stub_account_emails(send_result)
+  end
+
+  defp stub_meeting_emails(mock, send_result) do
+    mock
     |> stub(:send_appointment_confirmation_to_organizer, fn _email, _details -> send_result end)
     |> stub(:send_appointment_confirmation_to_attendee, fn _email, _details -> send_result end)
     |> stub(:send_guest_confirmation, fn _email, _details -> send_result end)
+    |> stub(:send_seat_update_to_organizer, fn _variant, _email, _details -> send_result end)
     |> stub(:send_appointment_confirmations, fn _details -> {send_result, send_result} end)
     |> stub(:send_reschedule_email_to_organizer, fn _email, _details -> send_result end)
     |> stub(:send_reschedule_email_to_attendee, fn _email, _details -> send_result end)
@@ -27,6 +34,12 @@ defmodule Tymeslot.Mocks.Email do
     |> stub(:send_appointment_cancellation, fn _email, _details -> send_result end)
     |> stub(:send_cancellation_emails, fn _details -> {send_result, send_result} end)
     |> stub(:send_calendar_sync_error, fn _meeting, _error -> send_result end)
+    |> stub(:send_reschedule_request, fn _meeting -> send_result end)
+    |> stub(:send_video_room_failed, fn _meeting -> {:ok, :sent} end)
+  end
+
+  defp stub_account_emails(mock, send_result) do
+    mock
     |> stub(:send_email_verification, fn _user, _url -> send_result end)
     |> stub(:send_password_reset, fn _user, _url -> send_result end)
     |> stub(:send_no_password_to_reset, fn _user, _url -> send_result end)
@@ -37,7 +50,5 @@ defmodule Tymeslot.Mocks.Email do
     |> stub(:send_email_change_confirmations, fn _user, _old, _new ->
       {send_result, send_result}
     end)
-    |> stub(:send_reschedule_request, fn _meeting -> send_result end)
-    |> stub(:send_video_room_failed, fn _meeting -> {:ok, :sent} end)
   end
 end

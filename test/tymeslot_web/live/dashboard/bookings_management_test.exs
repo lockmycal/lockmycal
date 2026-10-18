@@ -87,7 +87,7 @@ defmodule TymeslotWeb.Dashboard.BookingsManagementTest do
       {:ok, view, _html} = live(conn, ~p"/dashboard/meetings")
 
       assert render(view) =~ "Active Meeting"
-      assert render(view) =~ "Join Meeting"
+      assert render(view) =~ "Join meeting"
       assert render(view) =~ "https://tymeslot.com/join/active"
     end
 
@@ -115,7 +115,7 @@ defmodule TymeslotWeb.Dashboard.BookingsManagementTest do
 
       {:ok, view, _html} = live(conn, ~p"/dashboard/meetings")
 
-      assert render(view) =~ "Meeting Type"
+      assert render(view) =~ "Meeting type"
       assert render(view) =~ "Kitchen consultation"
     end
 

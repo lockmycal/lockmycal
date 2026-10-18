@@ -32,6 +32,10 @@ defmodule Tymeslot.Integrations.Calendar.CalendarIntegrationQueries do
   @doc """
   Gets all active calendar integrations across all users.
   Used for health checks and monitoring.
+
+  Credentials are deliberately left encrypted: the sweep only needs the id,
+  user and provider, and decrypting every row would let a single row that no
+  longer decrypts (a changed key, corrupt bytes) abort the whole listing.
   """
   @spec list_all_active() :: list(CalendarIntegrationSchema.t())
   def list_all_active do
@@ -39,7 +43,6 @@ defmodule Tymeslot.Integrations.Calendar.CalendarIntegrationQueries do
     |> where([c], c.is_active == true)
     |> order_by([c], asc: c.name)
     |> Repo.all()
-    |> Enum.map(&CalendarIntegrationSchema.decrypt_credentials/1)
   end
 
   @doc """
@@ -80,24 +83,6 @@ defmodule Tymeslot.Integrations.Calendar.CalendarIntegrationQueries do
     |> order_by([c], desc: c.is_active, asc: c.name)
     |> Repo.all()
     |> Enum.map(&CalendarIntegrationSchema.decrypt_credentials/1)
-  end
-
-  @doc """
-  Whether a user other than `user_id` has an integration on the same provider
-  account (`provider_account_id`) under any of `providers`.
-
-  Revoking OAuth access at Google or Zoom ends the grant for the whole
-  provider account, so account deletion checks this before revoking and
-  leaves the grant alone while someone else still depends on it.
-  """
-  @spec account_used_by_other_user?([String.t()], String.t(), integer()) :: boolean()
-  def account_used_by_other_user?(providers, provider_account_id, user_id)
-      when is_binary(provider_account_id) do
-    CalendarIntegrationSchema
-    |> where([c], c.provider in ^providers)
-    |> where([c], c.provider_account_id == ^provider_account_id)
-    |> where([c], c.user_id != ^user_id)
-    |> Repo.exists?()
   end
 
   @doc """

@@ -167,12 +167,17 @@ defmodule TymeslotWeb.Components.DashboardLayout do
               <%= if @show_sidebar_toggle do %>
                 <%!-- Mobile Menu Button --%>
                 <button
+                  id="dashboard-sidebar-toggle"
+                  type="button"
                   class="lg:hidden dashboard-mobile-menu-toggle flex items-center justify-center w-12 h-12 rounded-xl bg-neutral-50 dark:bg-twilight-indigo-900 border-2 border-neutral-300 dark:border-twilight-indigo-700 hover:bg-primary-50 dark:hover:bg-twilight-indigo-800 hover:border-primary-100 dark:hover:border-twilight-indigo-600 transition-all shrink-0"
                   phx-click={
                     JS.toggle_class("dashboard-sidebar-open", to: "#dashboard-sidebar")
                     |> JS.toggle_class("hidden", to: "#dashboard-sidebar-overlay")
+                    |> JS.toggle_attribute({"aria-expanded", "true", "false"})
                   }
                   aria-label={dgettext("dashboard_common", "Toggle sidebar")}
+                  aria-controls="dashboard-sidebar"
+                  aria-expanded="false"
                 >
                   <svg
                     class="w-6 h-6 text-neutral-700 dark:text-twilight-indigo-200"
@@ -193,7 +198,7 @@ defmodule TymeslotWeb.Components.DashboardLayout do
 
               <%!-- Logo with Icon and Text --%>
               <div class="flex items-center space-x-3 min-w-0">
-                <TymeslotWeb.Components.CoreComponents.logo
+                <TymeslotWeb.Components.CoreComponents.Brand.logo
                   mode={:full}
                   variant={:auto}
                   img_class="h-9 sm:h-12 shrink min-w-0"

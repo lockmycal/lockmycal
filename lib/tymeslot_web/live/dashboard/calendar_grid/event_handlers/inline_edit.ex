@@ -11,6 +11,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.InlineEdit do
   alias Tymeslot.Meetings.AttendeeNotifications
   alias Tymeslot.Security.UniversalSanitizer
   alias TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.RecurrenceRule
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.SeriesMove
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers
@@ -110,12 +111,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.InlineEdit do
 
         with {:ok, {start_date, start_time, end_date, end_time}} <- parse_time_inputs(params),
              :ok <- EditWorkflow.assert_event_writable(socket, event),
+             :ok <- Shared.check_seat_lock(socket, event),
              :ok <- Shared.check_edit_rate_limit(socket),
              {:ok, new_start} <- Shared.to_utc(start_date, start_time.hour, start_time.minute, tz),
              {:ok, raw_end} <- Shared.to_utc(end_date, end_time.hour, end_time.minute, tz) do
           apply_time_change(socket, event, new_start, raw_end)
         else
-          {:error, reason} = error when reason in [:unauthorized, :read_only] ->
+          {:error, reason} = error
+          when reason in [:unauthorized, :read_only, :group_booking] ->
             Shared.flash_guard_error(socket, error)
 
           {:error, :rate_limited, _message} = error ->
@@ -147,12 +150,14 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.InlineEdit do
 
       event ->
         with :ok <- EditWorkflow.assert_event_writable(socket, event),
+             :ok <- Shared.check_seat_lock(socket, event),
              :ok <- Shared.check_edit_rate_limit(socket) do
           optimistic_event = AllDay.toggle(event, socket.assigns.user_timezone)
 
           push_all_day_change(socket, event, optimistic_event)
         else
-          {:error, reason} = error when reason in [:unauthorized, :read_only] ->
+          {:error, reason} = error
+          when reason in [:unauthorized, :read_only, :group_booking] ->
             Shared.flash_guard_error(socket, error)
 
           {:error, :rate_limited, _message} = error ->
@@ -172,6 +177,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.InlineEdit do
         with {:ok, start_date} <- Date.from_iso8601(params["start-date"]),
              {:ok, end_date} <- parse_end_date(params["end-date"], start_date),
              :ok <- EditWorkflow.assert_event_writable(socket, event),
+             :ok <- Shared.check_seat_lock(socket, event),
              :ok <- Shared.check_edit_rate_limit(socket) do
           # The form presents inclusive dates; storage keeps `end_date`
           # exclusive, so a single-day range (start == end) is stored as +1.
@@ -185,7 +191,8 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.InlineEdit do
             push_all_day_change(socket, event, optimistic_event)
           end
         else
-          {:error, reason} = error when reason in [:unauthorized, :read_only] ->
+          {:error, reason} = error
+          when reason in [:unauthorized, :read_only, :group_booking] ->
             Shared.flash_guard_error(socket, error)
 
           {:error, :rate_limited, _message} = error ->
@@ -268,10 +275,10 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.InlineEdit do
         event_context = %{
           all_day: Map.get(event, :all_day, false),
           start_date: AllDay.start_date(event),
-          timezone: Shared.recurrence_timezone(event, socket.assigns.user_timezone)
+          timezone: RecurrenceRule.recurrence_timezone(event, socket.assigns.user_timezone)
         }
 
-        case Shared.compose_recurrence_rule(params, event_context) do
+        case RecurrenceRule.compose_recurrence_rule(params, event_context) do
           {:error, :until_before_start} = error ->
             Shared.flash_guard_error(socket, error)
 
@@ -280,11 +287,12 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.InlineEdit do
               {:noreply, socket}
             else
               with :ok <- EditWorkflow.assert_event_writable(socket, event),
+                   :ok <- Shared.check_seat_lock(socket, event),
                    :ok <- Shared.check_edit_rate_limit(socket) do
                 push_recurrence_change(socket, event, new_rule)
               else
                 {:error, reason} = error
-                when reason in [:unauthorized, :read_only] ->
+                when reason in [:unauthorized, :read_only, :group_booking] ->
                   Shared.flash_guard_error(socket, error)
 
                 {:error, :rate_limited, _message} = error ->
@@ -545,7 +553,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.InlineEdit do
   # timezone to end the chosen day in: the event's own, which is the calendar
   # the series sits on.
   defp push_all_day_change(socket, original_event, optimistic_event) do
-    timezone = Shared.recurrence_timezone(original_event, socket.assigns.user_timezone)
+    timezone = RecurrenceRule.recurrence_timezone(original_event, socket.assigns.user_timezone)
 
     result =
       Shared.apply_optimistic_update(socket, optimistic_event, fn s ->

@@ -41,6 +41,12 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* Embedded widget: the bar carries only the logo (no actions, no language
+   switcher; see PublicTopBar), centred. */
+.public-top-bar--embedded {
+  justify-content: center;
+}
+
 .public-top-bar-brand {
   display: flex;
   align-items: center;

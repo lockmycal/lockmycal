@@ -35,6 +35,12 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.ComponentView do
           }
         />
 
+        <div class="flex justify-end mb-6">
+          <.action_button icon="hero-plus" phx-click="show_create_form" phx-target={@myself}>
+            {dgettext("dashboard_bookings", "Add meeting")}
+          </.action_button>
+        </div>
+
         <div class="mb-10">
           <MeetingListComponents.filter_tabs
             active={@filter}
@@ -44,22 +50,6 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.ComponentView do
             cancelled_count={@cancelled_count}
             target={@myself}
           />
-        </div>
-
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <.subsection_header
-            icon="hero-queue-list"
-            title={dgettext("dashboard_bookings", "Meetings List")}
-          />
-          <button
-            type="button"
-            phx-click="show_create_form"
-            phx-target={@myself}
-            class="btn btn-primary"
-          >
-            <.icon name="hero-plus" class="w-5 h-5" />
-            {dgettext("dashboard_bookings", "Add meeting")}
-          </button>
         </div>
 
         <MeetingListComponents.meetings_list
@@ -82,15 +72,6 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.ComponentView do
           loading_more={@loading_more}
           target={@myself}
         />
-
-        <div :if={@is_empty} class="mt-16">
-          <.subsection_header
-            icon="hero-calendar-days"
-            title={dgettext("dashboard_bookings", "Meeting Management")}
-            class="mb-6"
-          />
-          <MeetingListComponents.info_panel />
-        </div>
       </div>
 
       <CreateEventModal.create_event_modal

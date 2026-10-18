@@ -110,11 +110,15 @@ defmodule TymeslotWeb.MeetingRequestLiveTest do
     test "shows the request without deciding anything", %{conn: conn} do
       meeting = held_meeting()
 
-      {:ok, _view, html} = live(conn, request_path(meeting))
+      {:ok, view, html} = live(conn, request_path(meeting))
 
       assert html =~ "Alex Guest"
-      assert html =~ "Hoping to talk about Q4."
       assert html =~ "Approve booking"
+
+      # The details sit on the light card in the theme's own text colour, so
+      # none of them is painted white.
+      assert has_element?(view, "div.text-neutral-800", "Hoping to talk about Q4.")
+      refute render(view) =~ "color: white"
 
       # The whole point: a crawler that fetched this URL has not answered.
       assert reload(meeting).status == "awaiting_approval"
@@ -137,14 +141,14 @@ defmodule TymeslotWeb.MeetingRequestLiveTest do
 
     test "shows the host's own timezone rather than the invitee's", %{conn: conn} do
       # No profile is inserted for the host, so `Profiles.get_user_timezone/1`
-      # falls back to "Europe/Tallinn" — distinct from the invitee's
+      # falls back to "Europe/Prague" — distinct from the invitee's
       # "America/New_York" set by the meeting factory, so the two cannot be
       # confused for each other in the assertion below.
       meeting = held_meeting(%{attendee_timezone: "America/New_York"})
 
       {:ok, _view, html} = live(conn, request_path(meeting))
 
-      assert html =~ "Europe/Tallinn"
+      assert html =~ "Europe/Prague"
       refute html =~ "America/New_York"
     end
   end

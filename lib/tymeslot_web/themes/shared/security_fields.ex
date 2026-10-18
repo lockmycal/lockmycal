@@ -6,7 +6,7 @@ defmodule TymeslotWeb.Themes.Shared.SecurityFields do
   whichever the admin has configured — see
   `Tymeslot.Infrastructure.Security.BotProtection`) fields to prevent spam
   and bot submissions. The honeypot these forms also carry is
-  `TymeslotWeb.Components.CoreComponents.honeypot_field/1`, shared with every
+  `TymeslotWeb.Components.CoreComponents.Forms.honeypot_field/1`, shared with every
   other public form.
   """
   use Phoenix.Component

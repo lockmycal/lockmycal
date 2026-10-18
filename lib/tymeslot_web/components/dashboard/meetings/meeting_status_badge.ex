@@ -22,7 +22,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingStatusBadge do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Meetings.MeetingState
-  alias TymeslotWeb.Components.CoreComponents
+  alias TymeslotWeb.Components.CoreComponents.Feedback
   alias TymeslotWeb.Components.Dashboard.Meetings.Helpers
 
   @typep variant ::
@@ -33,8 +33,6 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingStatusBadge do
            | :awaiting_payment
            | :completed
            | :scheduled
-
-  @base_classes "inline-flex items-center gap-1.5 px-3 py-1 text-token-xs font-black uppercase tracking-wider rounded-full border shadow-sm"
 
   attr :meeting, :map, required: true
 
@@ -48,15 +46,15 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingStatusBadge do
 
     assigns =
       assign(assigns,
-        classes: badge_classes(variant),
+        tone: badge_tone(variant),
         icon: badge_icon(variant),
         label: badge_label(variant, assigns.organizer?)
       )
 
     ~H"""
-    <span class={@classes}>
-      <CoreComponents.icon name={@icon} class="w-3 h-3" /> {@label}
-    </span>
+    <Feedback.pill tone={@tone} size={:sm} icon={@icon}>
+      {@label}
+    </Feedback.pill>
     """
   end
 
@@ -83,37 +81,14 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.MeetingStatusBadge do
     end
   end
 
-  @spec badge_classes(variant()) :: String.t()
-  defp badge_classes(:cancelled),
-    do:
-      @base_classes <>
-        " bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-100 dark:border-red-800"
-
-  defp badge_classes(:expired),
-    do: @base_classes <> " bg-tymeslot-100 text-tymeslot-500 border-tymeslot-200"
-
-  defp badge_classes(:awaiting_new_time),
-    do:
-      @base_classes <>
-        " bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-800"
-
-  defp badge_classes(:awaiting_approval),
-    do:
-      @base_classes <>
-        " bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-800"
-
-  defp badge_classes(:awaiting_payment),
-    do: @base_classes <> " bg-amber-50 text-amber-700 border-amber-100"
-
-  defp badge_classes(:completed),
-    do:
-      @base_classes <>
-        " bg-neutral-100 dark:bg-twilight-indigo-900 text-neutral-600 dark:text-neutral-400 border-neutral-300 dark:border-twilight-indigo-700"
-
-  defp badge_classes(:scheduled),
-    do:
-      @base_classes <>
-        " bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800"
+  @spec badge_tone(variant()) :: atom()
+  defp badge_tone(:cancelled), do: :danger
+  defp badge_tone(:expired), do: :neutral
+  defp badge_tone(:awaiting_new_time), do: :warning
+  defp badge_tone(:awaiting_approval), do: :warning
+  defp badge_tone(:awaiting_payment), do: :warning
+  defp badge_tone(:completed), do: :neutral
+  defp badge_tone(:scheduled), do: :success
 
   @spec badge_icon(variant()) :: String.t()
   defp badge_icon(:cancelled), do: "hero-x-mark"

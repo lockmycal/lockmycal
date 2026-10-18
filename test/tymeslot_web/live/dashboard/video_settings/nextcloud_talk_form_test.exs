@@ -20,6 +20,7 @@ defmodule TymeslotWeb.Dashboard.VideoSettings.NextcloudTalkFormTest do
   alias Ecto.Changeset
   alias Plug.Test
   alias Tymeslot.HTTPClientMock
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Integrations.Video
   alias Tymeslot.Integrations.Video.VideoIntegrationSchema
   alias Tymeslot.Repo
@@ -45,7 +46,7 @@ defmodule TymeslotWeb.Dashboard.VideoSettings.NextcloudTalkFormTest do
       view = open_talk_form(conn)
       html = render(view)
       assert html =~ "sign in to Nextcloud in your browser as this login name first"
-      assert html =~ "the app password works only for Tymeslot"
+      assert html =~ "the app password works only for #{Config.app_name()}"
       assert html =~ "about a week after the meeting ends"
 
       # A password manager must not take the pair for a sign-in to Tymeslot.

@@ -8,6 +8,7 @@
 import { initializeBundle } from "./bundle_utils"
 import { lazyHook } from "../dynamic_hooks"
 import { ServerUrlField } from "../hooks/server_url_field"
+import { installKeyboardClick } from "../keyboard_click"
 
 // Define dashboard-specific hooks (lazy-loaded to minimize initial bundle size,
 // except where a hook is too small for a separate request to pay for itself)
@@ -29,6 +30,9 @@ const DashboardHooks = {
   AgendaCountdown: lazyHook("AgendaCountdown", () => import("../hooks/agenda_countdown").then(m => m.AgendaCountdown)),
   AppearanceToggle: lazyHook("AppearanceToggle", () => import("../hooks/appearance_hook").then(m => m.AppearanceToggle)),
 };
+
+// Enter and Space on agenda rows and cards that act as buttons.
+installKeyboardClick(document);
 
 // Initialize bundle with shared utility (handles retry logic, errors, telemetry)
 initializeBundle("dashboard", DashboardHooks).catch(error => {

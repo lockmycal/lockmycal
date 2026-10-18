@@ -47,11 +47,6 @@ msgstr "%{minutes} min"
 msgid "%{months} months in advance"
 msgstr "do %{months} mies. naprzód"
 
-#: lib/tymeslot_web/themes/shared/localization_helpers.ex
-#, elixir-autogen, elixir-format
-msgid "%{month} %{day}, %{year}"
-msgstr "%{day} %{month} %{year}"
-
 #: lib/tymeslot_web/themes/quill/scheduling/components/confirmation_component.ex
 #, elixir-autogen, elixir-format
 msgid "%{name}, your meeting %{organizer} has been rescheduled."
@@ -787,11 +782,6 @@ msgstr "Usuń gościa %{email}"
 
 #: lib/tymeslot_web/themes/shared/guest_booking.ex
 #, elixir-autogen, elixir-format
-msgid "You can add up to %{count} guests."
-msgstr "Maksymalna liczba gości: %{count}."
-
-#: lib/tymeslot_web/themes/shared/guest_booking.ex
-#, elixir-autogen, elixir-format
 msgid "You don't need to add your own email as a guest."
 msgstr "Nie musisz dodawać własnego adresu e-mail jako gościa."
 
@@ -1301,137 +1291,6 @@ msgstr "Ta rezerwacja została odwołana, więc spotkanie się nie odbędzie."
 msgid "This booking wasn't accepted, so it won't be going ahead."
 msgstr "Ta rezerwacja nie została przyjęta, więc spotkanie się nie odbędzie."
 
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "%{username}'s calendar"
-msgstr "Kalendarz użytkownika %{username}"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "+%{count} more"
-msgstr "+%{count} więcej"
-
-#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "+420 123 456 789"
-msgstr "+48 123 456 789"
-
-#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "Acme Inc."
-msgstr "Acme Sp. z o.o."
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "All day"
-msgstr "Cały dzień"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Book %{date}"
-msgstr "Zarezerwuj – %{date}"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Busy"
-msgstr "Zajęty"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Busy (%{time})"
-msgstr "Zajęty (%{time})"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Click a day to see available times and book."
-msgstr "Kliknij dzień, aby zobaczyć dostępne godziny i zarezerwować termin."
-
-#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
-#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "Company Name"
-msgstr "Nazwa firmy"
-
-#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
-#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "Meeting Information"
-msgstr "Informacje o spotkaniu"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Next month"
-msgstr "Następny miesiąc"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "No such organiser."
-msgstr "Nie ma takiego organizatora."
-
-#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
-#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "Phone Number"
-msgstr "Numer telefonu"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Previous month"
-msgstr "Poprzedni miesiąc"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Today"
-msgstr "Dziś"
-
-#: lib/tymeslot_web/themes/quill/scheduling/components/overview_component.ex
-#: lib/tymeslot_web/themes/rhythm/scheduling/components/overview_component.ex
-#, elixir-autogen, elixir-format
-msgid "View full calendar"
-msgstr "Zobacz cały kalendarz"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Pending approval"
-msgstr "Oczekuje na zatwierdzenie"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Pending approval (%{time})"
-msgstr "Oczekuje na zatwierdzenie (%{time})"
-
-#: lib/tymeslot_web/themes/quill/payment_processing/live.ex
-#: lib/tymeslot_web/themes/rhythm/payment_processing/live.ex
-#, elixir-autogen, elixir-format
-msgid "Create new booking"
-msgstr "Utwórz nową rezerwację"
-
-#: lib/tymeslot_web/themes/shared/security_fields.ex
-#, elixir-autogen, elixir-format
-msgid "This site is protected by Cloudflare Turnstile and the Cloudflare %{privacy_link} and %{terms_link} apply."
-msgstr "Tę stronę chroni Cloudflare Turnstile – obowiązują %{privacy_link} i %{terms_link} Cloudflare."
-
-#: lib/tymeslot/custom_fields/custom_fields.ex
-#: lib/tymeslot/custom_fields/validator.ex
-#, elixir-autogen, elixir-format
-msgid "Answer is too long"
-msgstr "Odpowiedź jest za długa"
-
-#: lib/tymeslot/custom_fields/validator.ex
-#, elixir-autogen, elixir-format
-msgid "Unknown field type"
-msgstr "Nieznany typ pola"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Not blocking (%{time})"
-msgstr "Nie blokuje (%{time})"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Not blocking bookings"
-msgstr "Nie blokuje rezerwacji"
-
 #: lib/tymeslot_web/themes/shared/booking_location.ex
 #, elixir-autogen, elixir-format
 msgid "Enter the number we should call you on."
@@ -1473,31 +1332,6 @@ msgstr "Która usługa wideo?"
 msgid "Your phone number"
 msgstr "Numer telefonu"
 
-#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "Enter your company name"
-msgstr "Podaj nazwę firmy"
-
-#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "Enter your phone number"
-msgstr "Podaj numer telefonu"
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "This calendar is not public."
-msgstr "Ten kalendarz nie jest publiczny."
-
-#: lib/tymeslot_web/themes/shared/components/location_field.ex
-#, elixir-autogen, elixir-format
-msgid "The host will call your number"
-msgstr "Organizator zadzwoni na twój numer"
-
-#: lib/tymeslot_web/themes/shared/components/location_field.ex
-#, elixir-autogen, elixir-format
-msgid "The join link will arrive by email"
-msgstr "Link do dołączenia przyjdzie e-mailem"
-
 #: lib/tymeslot_web/themes/core/dispatcher.ex
 #, elixir-autogen, elixir-format
 msgid "Reload page"
@@ -1523,10 +1357,180 @@ msgstr "Adres zostanie ustalony z tobą po rezerwacji."
 msgid "Which location?"
 msgstr "Która lokalizacja?"
 
+#: lib/tymeslot_web/live/scheduling/handlers/booking_error_message.ex
+#, elixir-autogen, elixir-format
+msgid "This booking has already been cancelled or moved."
+msgstr "Ta rezerwacja została już odwołana lub przeniesiona."
+
+#: lib/tymeslot_web/live/scheduling/handlers/booking_error_message.ex
+#, elixir-autogen, elixir-format
+msgid "This is a group booking, so each participant moves their own spot from their confirmation email."
+msgstr "To rezerwacja grupowa, więc każdy uczestnik samodzielnie przenosi swoje miejsce za pomocą e-maila z potwierdzeniem."
+
+#: lib/tymeslot_web/themes/shared/guest_booking.ex
+#, elixir-autogen, elixir-format
+msgid "This time only has room for %{count} of your guests, so the rest were removed."
+msgid_plural "This time only has room for %{count} of your guests, so the rest were removed."
+msgstr[0] "W tym terminie jest miejsce tylko dla %{count} z Twoich gości, pozostali zostali usunięci."
+msgstr[1] "W tym terminie jest miejsce tylko dla %{count} z Twoich gości, pozostali zostali usunięci."
+msgstr[2] "W tym terminie jest miejsce tylko dla %{count} z Twoich gości, pozostali zostali usunięci."
+
+#: lib/tymeslot_web/live/scheduling/handlers/booking_error_message.ex
+#, elixir-autogen, elixir-format
+msgid "You already have a spot at this time. Check your email for your booking confirmation."
+msgstr "Masz już zarezerwowane miejsce w tym terminie. Potwierdzenie rezerwacji znajdziesz w skrzynce e-mail."
+
+#: lib/tymeslot_web/themes/shared/guest_booking.ex
+#, elixir-autogen, elixir-format
+msgid "You can add up to %{count} guest."
+msgid_plural "You can add up to %{count} guests."
+msgstr[0] "Możesz dodać maksymalnie %{count} gościa."
+msgstr[1] "Możesz dodać maksymalnie %{count} gości."
+msgstr[2] "Możesz dodać maksymalnie %{count} gości."
+
+#: lib/tymeslot_web/live/scheduling/handlers/booking_error_message.ex
+#, elixir-autogen, elixir-format
+msgid "This spot can no longer be moved. Cancel it and book a new time instead, or contact the host."
+msgstr "Tego miejsca nie można już przenieść. Anuluj je i zarezerwuj nowy termin albo skontaktuj się z gospodarzem."
+
+#: lib/tymeslot_web/themes/shared/components/group_session.ex
+#, elixir-autogen, elixir-format
+msgid "Group session · up to %{count} person"
+msgid_plural "Group session · up to %{count} people"
+msgstr[0] "Sesja grupowa · do %{count} osoby"
+msgstr[1] "Sesja grupowa · do %{count} osób"
+msgstr[2] "Sesja grupowa · do %{count} osób"
+
+#: lib/tymeslot_web/themes/shared/components/group_session.ex
+#, elixir-autogen, elixir-format
+msgid "Group session: you have one of %{count} spot."
+msgid_plural "Group session: you have one of %{count} spots."
+msgstr[0] "Sesja grupowa: masz jedno z %{count} miejsc."
+msgstr[1] "Sesja grupowa: masz jedno z %{count} miejsc."
+msgstr[2] "Sesja grupowa: masz jedno z %{count} miejsc."
+
+#: lib/tymeslot_web/themes/shared/components/group_session.ex
+#, elixir-autogen, elixir-format
+msgid "Moving your spot on %{datetime}. Pick a new time below."
+msgstr "Przenosisz swoje miejsce z terminu %{datetime}. Wybierz poniżej nowy termin."
+
+#: lib/tymeslot_web/live/scheduling/handlers/booking_error_message.ex
+#, elixir-autogen, elixir-format
+msgid "This is your current time. Pick a different time to move your spot."
+msgstr "To jest Twój obecny termin. Wybierz inny termin, aby przenieść swoje miejsce."
+
+#: lib/tymeslot_web/themes/shared/seat_move_link.ex
+#, elixir-autogen, elixir-format
+msgid "This link to move your spot has already been used. You can book a new time below."
+msgstr "Ten link do przeniesienia miejsca został już użyty. Poniżej możesz zarezerwować nowy termin."
+
+#: lib/tymeslot_web/themes/shared/localization_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Ends %{time} on %{weekday} %{day} %{month}"
+msgstr "Koniec: %{weekday}, %{day} %{month}, %{time}"
+
+#: lib/tymeslot/meeting_types/location_selection.ex
+#, elixir-autogen, elixir-format
+msgid "Phone call"
+msgstr "Rozmowa telefoniczna"
+
+#: lib/tymeslot/meeting_types/location_selection.ex
+#, elixir-autogen, elixir-format
+msgid "Somewhere else"
+msgstr "Inne miejsce"
+
+#: lib/tymeslot_web/themes/shared/components/seat_badge.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} spot left"
+msgid_plural "%{count} spots left"
+msgstr[0] "Zostało %{count} miejsce"
+msgstr[1] "Zostały %{count} miejsca"
+msgstr[2] "Zostało %{count} miejsc"
+
+#: lib/tymeslot_web/themes/shared/components/seat_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Almost full"
+msgstr "Mało miejsc"
+
+#: lib/tymeslot_web/themes/shared/components/seat_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Filling up"
+msgstr "Zapełnia się"
+
+#: lib/tymeslot_web/themes/shared/components/seat_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Plenty left"
+msgstr "Dużo miejsc"
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "+420 123 456 789"
+msgstr "+48 123 456 789"
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Acme Inc."
+msgstr "Acme Sp. z o.o."
+
+#: lib/tymeslot/custom_fields/custom_fields.ex
+#: lib/tymeslot/custom_fields/validator.ex
+#, elixir-autogen, elixir-format
+msgid "Answer is too long"
+msgstr "Odpowiedź jest za długa"
+
+#: lib/tymeslot_web/live/public/calendar_live.ex
+#, elixir-autogen, elixir-format
+msgid "Click a day to see available times and book."
+msgstr "Kliknij dzień, aby zobaczyć dostępne godziny i zarezerwować termin."
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Company Name"
+msgstr "Nazwa firmy"
+
 #: lib/tymeslot_web/themes/shared/components/own_calendar.ex
 #, elixir-autogen, elixir-format
 msgid "Create an account"
 msgstr "Utwórz konto"
+
+#: lib/tymeslot_web/themes/quill/payment_processing/live.ex
+#: lib/tymeslot_web/themes/rhythm/payment_processing/live.ex
+#, elixir-autogen, elixir-format
+msgid "Create new booking"
+msgstr "Utwórz nową rezerwację"
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Enter your company name"
+msgstr "Podaj nazwę firmy"
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Enter your phone number"
+msgstr "Podaj numer telefonu"
+
+#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#, elixir-autogen, elixir-format
+msgid "Have an account? Sign in before booking and the meeting is saved straight to your calendar too."
+msgstr "Masz konto? Zaloguj się przed rezerwacją, a spotkanie zostanie od razu zapisane również w Twoim kalendarzu."
+
+#: lib/tymeslot_web/themes/shared/components/group_session.ex
+#, elixir-autogen, elixir-format
+msgid "Invitation only"
+msgstr "Tylko na zaproszenie"
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Information"
+msgstr "Informacje o spotkaniu"
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Phone Number"
+msgstr "Numer telefonu"
 
 #: lib/tymeslot_web/themes/shared/components/own_calendar.ex
 #, elixir-autogen, elixir-format
@@ -1543,7 +1547,33 @@ msgstr "Zapisz w moim domyślnym kalendarzu (%{calendar})"
 msgid "Sign in"
 msgstr "Zaloguj się"
 
-#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#: lib/tymeslot_web/themes/shared/components/location_field.ex
 #, elixir-autogen, elixir-format
-msgid "Have an account? Sign in before booking and the meeting is saved straight to your calendar too."
-msgstr "Masz konto? Zaloguj się przed rezerwacją, a spotkanie zostanie od razu zapisane również w Twoim kalendarzu."
+msgid "The host will call your number"
+msgstr "Organizator zadzwoni na twój numer"
+
+#: lib/tymeslot_web/themes/shared/components/location_field.ex
+#, elixir-autogen, elixir-format
+msgid "The join link will arrive by email"
+msgstr "Link do dołączenia przyjdzie e-mailem"
+
+#: lib/tymeslot_web/live/scheduling/handlers/booking_error_message.ex
+#, elixir-autogen, elixir-format
+msgid "This meeting is by invitation only, and this email address is not on the guest list. Use the address you were invited with, or contact the host."
+msgstr "To spotkanie jest tylko na zaproszenie, a tego adresu e-mail nie ma na liście zaproszonych. Użyj adresu, na który dostałeś zaproszenie, lub skontaktuj się z organizatorem."
+
+#: lib/tymeslot_web/themes/shared/security_fields.ex
+#, elixir-autogen, elixir-format
+msgid "This site is protected by Cloudflare Turnstile and the Cloudflare %{privacy_link} and %{terms_link} apply."
+msgstr "Tę stronę chroni Cloudflare Turnstile – obowiązują %{privacy_link} i %{terms_link} Cloudflare."
+
+#: lib/tymeslot/custom_fields/validator.ex
+#, elixir-autogen, elixir-format
+msgid "Unknown field type"
+msgstr "Nieznany typ pola"
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/overview_component.ex
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/overview_component.ex
+#, elixir-autogen, elixir-format
+msgid "View full calendar"
+msgstr "Zobacz cały kalendarz"

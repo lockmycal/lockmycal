@@ -94,7 +94,7 @@ defmodule TymeslotWeb.Plugs.SecurityHeadersPlug do
         {"'none'", "DENY"}
 
       username ->
-        case Profiles.get_profile_by_username(username) do
+        case Profiles.get_profile_by_handle(username) do
           %{} = profile ->
             {frame_ancestors, x_frame_options} =
               build_security_headers(profile.allowed_embed_domains, is_preview)

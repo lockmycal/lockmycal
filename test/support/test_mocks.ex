@@ -88,8 +88,7 @@ defmodule Tymeslot.TestMocks do
 
   ### 3. Subscription Manager (SaaS)
 
-      setup_subscription_mocks()  # Default: show branding
-      setup_subscription_mocks(show_branding: false)
+      setup_subscription_mocks()
 
   ### 4. All Services
 

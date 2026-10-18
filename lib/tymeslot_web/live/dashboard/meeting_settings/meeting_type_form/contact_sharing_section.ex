@@ -24,50 +24,37 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.ContactSharingSe
   def contact_sharing_section(assigns) do
     ~H"""
     <section class="space-y-4">
-      <div class="flex items-center gap-2">
-        <.icon name="hero-identification" class="w-5 h-5 text-primary-500" />
-        <h3 class="text-token-base font-semibold text-neutral-800 dark:text-neutral-100">
-          {dgettext("dashboard_meeting_form", "Your contact details")}
-        </h3>
-      </div>
-
-      <div class="card-glass p-4 space-y-4">
-        <p class="text-token-sm text-neutral-500 dark:text-twilight-indigo-200">
-          {dgettext(
+      <.subsection_header
+        icon="hero-identification"
+        title={dgettext("dashboard_meeting_form", "Your contact details")}
+        description={
+          dgettext(
             "dashboard_meeting_form",
             "A booker signed in to their account gets this meeting in their own calendar and dashboard, under your name. Choose what else they see."
-          )}
-        </p>
+          )
+        }
+      />
 
-        <div class="flex items-center justify-between gap-4">
-          <p class="text-token-sm font-medium text-neutral-700 dark:text-neutral-200">
-            {dgettext("dashboard_meeting_form", "Show my email to signed-in bookers")}
-          </p>
-          <.enabled_toggle
-            active={@show_email_to_bookers}
-            click_event="toggle_show_email_to_bookers"
-            target={@myself}
-            aria_label={dgettext("dashboard_meeting_form", "Show my email to signed-in bookers")}
-          />
-        </div>
+      <.setting_row
+        id="show-email-to-bookers-toggle"
+        control={:switch}
+        label={dgettext("dashboard_meeting_form", "Show my email to signed-in bookers")}
+        checked={@show_email_to_bookers}
+        phx-value-state={to_string(!@show_email_to_bookers)}
+        on_change="toggle_show_email_to_bookers"
+        target={@myself}
+      />
 
-        <div class="flex items-center justify-between gap-4">
-          <div class="min-w-0 flex-1 space-y-1">
-            <p class="text-token-sm font-medium text-neutral-700 dark:text-neutral-200">
-              {dgettext("dashboard_meeting_form", "Show my phone to signed-in bookers")}
-            </p>
-            <p class="text-token-sm text-neutral-500 dark:text-twilight-indigo-200">
-              {dgettext("dashboard_meeting_form", "The phone number from your profile.")}
-            </p>
-          </div>
-          <.enabled_toggle
-            active={@show_phone_to_bookers}
-            click_event="toggle_show_phone_to_bookers"
-            target={@myself}
-            aria_label={dgettext("dashboard_meeting_form", "Show my phone to signed-in bookers")}
-          />
-        </div>
-      </div>
+      <.setting_row
+        id="show-phone-to-bookers-toggle"
+        control={:switch}
+        label={dgettext("dashboard_meeting_form", "Show my phone to signed-in bookers")}
+        description={dgettext("dashboard_meeting_form", "The phone number from your profile.")}
+        checked={@show_phone_to_bookers}
+        phx-value-state={to_string(!@show_phone_to_bookers)}
+        on_change="toggle_show_phone_to_bookers"
+        target={@myself}
+      />
     </section>
     """
   end

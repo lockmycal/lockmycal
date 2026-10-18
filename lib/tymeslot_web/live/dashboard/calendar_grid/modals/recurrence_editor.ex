@@ -25,7 +25,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.Integrations.Calendar.Recurrence.RRule
-  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.RecurrenceRule
   alias TymeslotWeb.Dashboard.CalendarGrid.Modals.FormParts
 
   attr :recurrence_rule, :string, default: nil
@@ -48,7 +48,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
       |> assign(:interval, parsed[:interval] || 1)
       |> assign(:by_day, parsed[:by_day] || [])
       |> assign(:end_type, end_type(parsed))
-      |> assign(:count, parsed[:count] || Shared.default_recurrence_count())
+      |> assign(:count, parsed[:count] || RecurrenceRule.default_recurrence_count())
       |> assign(:until, until_value(parsed[:until]))
       |> assign(:weekdays, weekdays())
       |> assign(:freq_options, freq_options())
@@ -94,7 +94,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
                 min="1"
                 max="999"
                 value={@interval}
-                class="w-16 rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1"
+                class="w-16 rounded-token-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1"
               />
               <span class="text-token-xs text-neutral-600 dark:text-twilight-indigo-200">{interval_unit(
                 @freq
@@ -105,7 +105,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
               <label
                 :for={{day, label} <- @weekdays}
                 class={[
-                  "px-2 py-1 rounded-md border text-token-xs transition-all select-none",
+                  "px-2 py-1 rounded-token-md border text-token-xs transition-all select-none",
                   "cursor-pointer",
                   weekday_label_class(day in @by_day)
                 ]}
@@ -124,7 +124,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
             <div class="flex flex-wrap items-center gap-2">
               <select
                 name="end_type"
-                class="rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1"
+                class="rounded-token-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1"
               >
                 <option value="never" selected={@end_type == "never"}>
                   {dgettext("dashboard_calendar_events", "Never ends")}
@@ -144,7 +144,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
                   min="1"
                   max="999"
                   value={@count}
-                  class="w-16 rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1"
+                  class="w-16 rounded-token-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1"
                 />
                 <span class="text-token-xs text-neutral-600 dark:text-twilight-indigo-200">{dngettext(
                   "dashboard_calendar_events",
@@ -159,7 +159,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Modals.RecurrenceEditor do
                 type="date"
                 name="until"
                 value={@until}
-                class="rounded-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1"
+                class="rounded-token-md border-neutral-300 dark:border-twilight-indigo-700 dark:bg-twilight-indigo-900/60 text-token-xs text-neutral-700 dark:text-twilight-indigo-100 focus:border-primary-500 focus:ring-primary-500 py-1"
               />
             </div>
           </div>

@@ -1112,6 +1112,75 @@ describe('parameter allowlist enforcement', () => {
   })
 })
 
+describe('background option', () => {
+  const backgroundParam = (root) =>
+    new URL(root.querySelector('iframe').src).searchParams.get('background')
+
+  test.each([['transparent'], ['#F5F5F5']])('passes %j to the booking page', (background) => {
+    const container = document.createElement('div')
+    container.id = 'background-ok'
+    document.body.appendChild(container)
+
+    window.TymeslotBooking.embed('#background-ok', 'alice', { background })
+
+    expect(backgroundParam(container)).toBe(background)
+  })
+
+  test.each([['red'], ['#fff'], ['url(evil)'], ['#12345g']])('drops %j', (background) => {
+    const container = document.createElement('div')
+    container.id = 'background-bad'
+    document.body.appendChild(container)
+
+    window.TymeslotBooking.embed('#background-bad', 'alice', { background })
+
+    expect(backgroundParam(container)).toBeNull()
+  })
+})
+
+describe('meeting option (one meeting type)', () => {
+  const iframePath = (root) => new URL(root.querySelector('iframe').src).pathname
+
+  test('embed() with a meeting slug opens that type\'s page', () => {
+    const container = document.createElement('div')
+    container.id = 'meeting-inline'
+    document.body.appendChild(container)
+
+    window.TymeslotBooking.embed('#meeting-inline', 'alice', { meeting: 'intro-call' })
+
+    expect(iframePath(container)).toBe('/alice/intro-call')
+  })
+
+  test('open() with a meeting slug opens that type\'s page in the modal', () => {
+    window.TymeslotBooking.open('alice', { meeting: 'intro-call' })
+
+    expect(iframePath(document.getElementById('tymeslot-modal'))).toBe('/alice/intro-call')
+  })
+
+  test('the floating button passes the meeting slug to the modal', () => {
+    window.TymeslotBooking.initFloating('alice', { meeting: 'intro-call' })
+    document.getElementById('tymeslot-floating-button').click()
+
+    expect(iframePath(document.getElementById('tymeslot-modal'))).toBe('/alice/intro-call')
+  })
+
+  test.each([
+    ['../admin'],
+    ['Intro-Call'],
+    ['intro call'],
+    ['intro-'],
+    ['a/b'],
+    ['']
+  ])('ignores the malformed slug %j and shows the overview', (meeting) => {
+    const container = document.createElement('div')
+    container.id = 'meeting-reject'
+    document.body.appendChild(container)
+
+    window.TymeslotBooking.embed('#meeting-reject', 'alice', { meeting })
+
+    expect(iframePath(container)).toBe('/alice')
+  })
+})
+
 describe('showError()', () => {
   test('renders error message in a container element', () => {
     const container = document.createElement('div')

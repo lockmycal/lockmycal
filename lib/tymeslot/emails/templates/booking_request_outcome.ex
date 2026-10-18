@@ -88,9 +88,10 @@ defmodule Tymeslot.Emails.Templates.BookingRequestOutcome do
           stage_subtitle: preheader({variant, kind}, meeting)
         )
 
-      MjmlEmail.base_email()
+      MjmlEmail.base_email(organizer_user_id: meeting.organizer_user_id)
       |> to({meeting.attendee_name, meeting.attendee_email})
       |> from({meeting.organizer_name, MjmlEmail.fetch_from_email()})
+      |> MjmlEmail.put_reply_to(meeting.organizer_name, meeting.organizer_email)
       |> subject(
         Sanitise.sanitize_for_header(
           subject_line(

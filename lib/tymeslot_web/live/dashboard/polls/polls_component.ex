@@ -84,33 +84,23 @@ defmodule TymeslotWeb.Dashboard.Polls.PollsComponent do
   def render(assigns) do
     ~H"""
     <div class="space-y-10 pb-20">
-      <%!-- Header --%>
       <.section_header
         icon="hero-hand-raised"
         title={dgettext("dashboard_common", "Polls")}
-        class="mb-4"
+        subtitle={
+          dgettext(
+            "dashboard_common",
+            "Find a time that works for everyone. Propose a few slots and let your guests vote."
+          )
+        }
       />
 
-      <p class="text-neutral-600 dark:text-neutral-300 mb-6">
-        {dgettext(
-          "dashboard_common",
-          "Find a time that works for everyone. Propose a few slots and let your guests vote."
-        )}
-      </p>
+      <%!-- With no polls yet, the empty state below carries the action. --%>
+      <div :if={!@show_form and @polls != []} class="flex justify-end">
+        <PollList.new_poll_button myself={@myself} data-testid="new-poll" />
+      </div>
 
       <div id="polls-container" class="space-y-6">
-        <div :if={!@show_form} class="flex justify-end">
-          <button
-            type="button"
-            phx-click="new_poll"
-            phx-target={@myself}
-            class="btn btn-primary inline-flex items-center gap-1"
-          >
-            <.icon name="hero-plus" class="w-4 h-4" />
-            {dgettext("dashboard_common", "New poll")}
-          </button>
-        </div>
-
         <.live_component
           :if={@show_form}
           module={PollForm}
@@ -136,6 +126,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollsComponent do
           profile={@profile}
           integration_status={@integration_status}
           meetings_path={~p"/dashboard/meetings"}
+          time_format={@time_format}
           myself={@myself}
         />
 
@@ -148,6 +139,7 @@ defmodule TymeslotWeb.Dashboard.Polls.PollsComponent do
         />
 
         <PollList.poll_list
+          :if={!@show_form or @polls != []}
           polls={@polls}
           profile={@profile}
           integration_status={@integration_status}

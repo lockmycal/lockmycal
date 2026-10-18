@@ -48,6 +48,10 @@ defmodule Tymeslot.Integrations.Video.VideoIntegrationQueries do
   @doc """
   Gets all active video integrations across all users.
   Used for health checks and monitoring.
+
+  Credentials are deliberately left encrypted: the sweep only needs the id,
+  user, provider and base URL, and decrypting every row would let a single
+  row that no longer decrypts abort the whole listing.
   """
   @spec list_all_active() :: list(VideoIntegrationSchema.t())
   def list_all_active do
@@ -56,7 +60,6 @@ defmodule Tymeslot.Integrations.Video.VideoIntegrationQueries do
     |> where([v], v.is_active == true)
     |> order_by([v], asc: v.name)
     |> Repo.all()
-    |> Enum.map(&VideoIntegrationSchema.decrypt_credentials/1)
   end
 
   @doc """
@@ -86,16 +89,6 @@ defmodule Tymeslot.Integrations.Video.VideoIntegrationQueries do
     |> order_by([v], desc: v.is_active, asc: v.name)
     |> Repo.all()
     |> Enum.map(&VideoIntegrationSchema.decrypt_credentials/1)
-  end
-
-  @doc "Video counterpart of `CalendarIntegrationQueries.account_used_by_other_user?/3`."
-  @spec account_used_by_other_user?([String.t()], String.t(), integer()) :: boolean()
-  def account_used_by_other_user?(providers, account_id, user_id) when is_binary(account_id) do
-    VideoIntegrationSchema
-    |> exclude_deleted()
-    |> where([v], v.provider in ^providers and v.provider_account_id == ^account_id)
-    |> where([v], v.user_id != ^user_id)
-    |> Repo.exists?()
   end
 
   @doc """

@@ -50,6 +50,51 @@ defmodule Tymeslot.Profiles.ProfileQueries do
   end
 
   @doc """
+  Gets a profile by its booking widget alias, with the user preloaded.
+  Returns {:ok, profile} or {:error, :not_found}.
+  """
+  @spec get_by_embed_alias_with_user(String.t()) ::
+          {:ok, ProfileSchema.t()} | {:error, :not_found}
+  def get_by_embed_alias_with_user(embed_alias) when is_binary(embed_alias) do
+    query = from(p in ProfileSchema, where: p.embed_alias == ^embed_alias, preload: [:user])
+
+    case Repo.one(query) do
+      nil -> {:error, :not_found}
+      profile -> {:ok, profile}
+    end
+  end
+
+  @doc """
+  Whether a booking widget alias is held by any profile.
+  """
+  @spec embed_alias_taken?(String.t()) :: boolean()
+  def embed_alias_taken?(embed_alias) when is_binary(embed_alias) do
+    Repo.exists?(from(p in ProfileSchema, where: p.embed_alias == ^embed_alias))
+  end
+
+  @doc """
+  Sets (or clears, with `nil`) the profile's booking widget alias.
+  """
+  @spec update_embed_alias(ProfileSchema.t(), String.t() | nil) ::
+          {:ok, ProfileSchema.t()} | {:error, Ecto.Changeset.t()}
+  def update_embed_alias(%ProfileSchema{} = profile, embed_alias) do
+    profile
+    |> ProfileSchema.embed_alias_changeset(%{embed_alias: embed_alias})
+    |> Repo.update()
+  end
+
+  @doc """
+  Saves the Embed & Share page's Customise choices.
+  """
+  @spec update_embed_settings(ProfileSchema.t(), map()) ::
+          {:ok, ProfileSchema.t()} | {:error, Ecto.Changeset.t()}
+  def update_embed_settings(%ProfileSchema{} = profile, settings) when is_map(settings) do
+    profile
+    |> ProfileSchema.embed_settings_changeset(%{embed_settings: settings})
+    |> Repo.update()
+  end
+
+  @doc """
   Updates the booking page's introductory text and its on/off switch.
   """
   @spec update_booking_text(ProfileSchema.t(), map()) ::
@@ -249,6 +294,17 @@ defmodule Tymeslot.Profiles.ProfileQueries do
   def update_avatar(%ProfileSchema{} = profile, filename) do
     changeset = ProfileSchema.changeset(profile, %{avatar: filename})
     Repo.update(changeset)
+  end
+
+  @doc """
+  Sets or clears (`nil`) the profile's logo path (`Tymeslot.Profiles.BrandLogo`).
+  """
+  @spec update_brand_logo_path(ProfileSchema.t(), String.t() | nil) ::
+          {:ok, ProfileSchema.t()} | {:error, Ecto.Changeset.t()}
+  def update_brand_logo_path(%ProfileSchema{} = profile, path) do
+    profile
+    |> ProfileSchema.brand_logo_changeset(%{brand_logo_path: path})
+    |> Repo.update()
   end
 
   @doc """

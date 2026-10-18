@@ -10,6 +10,7 @@ defmodule Tymeslot.Telegram do
   require Logger
 
   alias Tymeslot.Features
+  alias Tymeslot.Meetings.SeatView
   alias Tymeslot.Repo
   alias Tymeslot.Security.SharedSecret
   alias Tymeslot.Telegram.{API, MessageBuilder, TelegramDeliverySchema, TelegramIntegrationSchema}
@@ -176,7 +177,12 @@ defmodule Tymeslot.Telegram do
   def trigger_integration(integration, event_type, meeting) do
     if TelegramIntegrationSchema.should_be_active?(integration) and
          TelegramIntegrationSchema.subscribed_to?(integration, event_type) do
-      TelegramWorker.schedule_delivery(integration.id, event_type, meeting.id)
+      TelegramWorker.schedule_delivery(
+        integration.id,
+        event_type,
+        meeting.id,
+        SeatView.participant_id(meeting)
+      )
     else
       {:error, :integration_not_active}
     end
@@ -392,6 +398,11 @@ defmodule Tymeslot.Telegram do
   # Events & Feature Checks
   # ============================================================================
 
+  @doc """
+  The events an integration can subscribe to, with the labels and descriptions
+  the webhook form shows: the same list, so no channel offers fewer events or
+  untranslated ones.
+  """
   @spec available_events() :: [
           %{
             required(:value) => String.t(),
@@ -399,25 +410,7 @@ defmodule Tymeslot.Telegram do
             required(:description) => String.t()
           }
         ]
-  def available_events do
-    [
-      %{
-        value: "meeting.created",
-        label: "Meeting Created",
-        description: "Triggered when a new booking is created"
-      },
-      %{
-        value: "meeting.cancelled",
-        label: "Meeting Cancelled",
-        description: "Triggered when a booking is cancelled"
-      },
-      %{
-        value: "meeting.rescheduled",
-        label: "Meeting Rescheduled",
-        description: "Triggered when a booking time is changed"
-      }
-    ]
-  end
+  defdelegate available_events, to: Tymeslot.Webhooks
 
   @spec shared_bot_mode?() :: boolean()
   def shared_bot_mode? do

@@ -8,10 +8,10 @@ export const Flash = {
     // LiveView's window listener as a click away from the modal and close the
     // dialog the flash is reporting on. The flash handles its own clicks
     // instead: stopped here, before they bubble to the window, then dismissed
-    // with its own phx-click commands.
+    // by running its own phx-click commands.
     this.dismiss = () => {
       const commands = this.el.getAttribute("phx-click");
-      if (commands) this.js().exec(commands);
+      if (commands) this.liveSocket.execJS(this.el, commands);
     };
     this.onClick = (e) => {
       e.stopPropagation();
@@ -19,7 +19,10 @@ export const Flash = {
     };
     this.el.addEventListener("click", this.onClick);
 
-    // Auto-dismiss after 6 seconds
+    // Auto-dismiss after 6 seconds the same way, not by clicking the flash: a
+    // synthetic click bubbles to the window like a real one, so every open
+    // dialog's `phx-click-away` would read it as a click outside and close.
+    // A flash rendered without a close command has no `phx-click` and stays.
     this.timer = setTimeout(() => {
       if (this.el.dataset.close !== "false") {
         this.dismiss();

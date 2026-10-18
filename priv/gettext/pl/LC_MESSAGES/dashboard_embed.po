@@ -99,11 +99,6 @@ msgstr "Najprostsze"
 
 #: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
 #, elixir-autogen, elixir-format
-msgid "Embed & Share"
-msgstr "Osadzanie i udostępnianie"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
-#, elixir-autogen, elixir-format
 msgid "Embed Options"
 msgstr "Opcje osadzania"
 
@@ -201,11 +196,6 @@ msgstr "Okno modalne"
 #, elixir-autogen, elixir-format
 msgid "Previewing: %{type} Mode"
 msgstr "Podgląd: tryb %{type}"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Pro"
-msgstr "Pro"
 
 #: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
 #, elixir-autogen, elixir-format
@@ -411,3 +401,139 @@ msgstr "Tylko podgląd: ten link otwiera się w trybie testowym i przestaje dzia
 #, elixir-autogen, elixir-format
 msgid "The preview is disabled because your booking link is currently deactivated."
 msgstr "Podgląd jest wyłączony, bo link do rezerwacji jest obecnie nieaktywny."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Embed & Share"
+msgstr "Osadzanie i udostępnianie"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Embed settings"
+msgstr "Ustawienia osadzania"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/security_section.ex
+#, elixir-autogen, elixir-format
+msgid "Remove %{domain}"
+msgstr "Usuń %{domain}"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "All - the list of your meeting types"
+msgstr "Wszystkie - lista Twoich typów spotkań"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting type"
+msgstr "Typ spotkania"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Pick one to open its booking page directly. Without a choice, visitors see the meeting types marked \"Show in embedded widget\"."
+msgstr "Wybierz jeden, aby od razu otworzyć jego stronę rezerwacji. Bez wyboru odwiedzający zobaczą typy spotkań oznaczone \"Pokaż w osadzonym widgecie\"."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
+#, elixir-autogen, elixir-format
+msgid "Create a hidden address"
+msgstr "Utwórz ukryty adres"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update the widget address"
+msgstr "Nie udało się zmienić adresu widgetu"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
+#, elixir-autogen, elixir-format
+msgid "Generate a new address"
+msgstr "Wygeneruj nowy adres"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
+#, elixir-autogen, elixir-format
+msgid "Generate a new address?"
+msgstr "Wygenerować nowy adres?"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
+#, elixir-autogen, elixir-format
+msgid "Hidden widget address"
+msgstr "Ukryty adres widgetu"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
+#, elixir-autogen, elixir-format
+msgid "Remove"
+msgstr "Usuń"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
+#, elixir-autogen, elixir-format
+msgid "Remove the hidden address?"
+msgstr "Usunąć ukryty adres?"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
+#, elixir-autogen, elixir-format
+msgid "The current address stops working at once. Every website that embeds the widget with it must get the new embed code."
+msgstr "Obecny adres od razu przestanie działać. Każda strona, która osadza z nim widget, musi dostać nowy kod osadzania."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
+#, elixir-autogen, elixir-format
+msgid "The embed code on the Embed Options tab already uses this address."
+msgstr "Kod osadzania na karcie Opcje osadzania już używa tego adresu."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
+#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "The hidden widget address is only available on the Pro plan and above."
+msgstr "Ukryty adres widgetu jest dostępny tylko w planie Pro i wyższych."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
+#, elixir-autogen, elixir-format
+msgid "Use a random address in the widget instead of your username, so the code on your website does not reveal your public booking page. Through it, visitors see only the meeting types shown in the widget and the ones hidden from your public page."
+msgstr "Użyj w widgecie losowego adresu zamiast nazwy użytkownika, aby kod na Twojej stronie nie ujawniał publicznej strony rezerwacji. Przez niego odwiedzający widzą tylko typy spotkań pokazane w widgecie i te ukryte na stronie publicznej."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Widget address updated"
+msgstr "Adres widgetu zaktualizowany"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Background"
+msgstr "Tło"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Background colour"
+msgstr "Kolor tła"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Custom colour"
+msgstr "Własny kolor"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Replaces the booking page's background inside the widget only. Your public booking page keeps its own."
+msgstr "Zastępuje tło strony rezerwacji tylko w widgecie. Twoja publiczna strona rezerwacji zachowuje własne."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Theme default"
+msgstr "Jak w motywie"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Transparent - your page shows through"
+msgstr "Przezroczyste - widać Twoją stronę"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to save the embed settings"
+msgstr "Nie udało się zapisać ustawień osadzania"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Pick the style to try in the Live Preview. Each style has its own code below, so you can copy any of them."
+msgstr "Wybierz styl, który chcesz wypróbować w Podglądzie na żywo. Każdy styl ma poniżej własny kod, więc możesz skopiować dowolny z nich."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Expert"
+msgstr "Ekspert"

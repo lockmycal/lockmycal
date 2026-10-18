@@ -10,6 +10,7 @@ defmodule Tymeslot.Agenda.ColoursTest do
 
   alias Tymeslot.Agenda
   alias Tymeslot.Integrations.Calendar.Appearance
+  alias Tymeslot.Integrations.Calendar.EventColourOverrides
 
   setup do
     {:ok, user: insert(:user), tomorrow: Date.add(Date.utc_today(), 1)}
@@ -64,6 +65,52 @@ defmodule Tymeslot.Agenda.ColoursTest do
 
       assert find_entry(Agenda.day_agenda(user, "Etc/UTC"), "Team sync").colour_class ==
                "bg-calendar-1"
+    end
+  end
+
+  describe "day_agenda/2 per-event colour and source id" do
+    test "an external entry carries the provider colour and its cached-row id", %{
+      user: user,
+      tomorrow: tomorrow
+    } do
+      event =
+        external_event(user, at(tomorrow, ~T[13:00:00]),
+          summary: "Coloured",
+          uid: "uid-colour-1",
+          colour: "blueberry"
+        )
+
+      entry = find_entry(Agenda.day_agenda(user, "Etc/UTC"), "Coloured")
+
+      assert entry.colour == "blueberry"
+      assert entry.source_id == event.id
+    end
+
+    # The calendar grid shows no per-event colour override, so the agenda
+    # doesn't either — the two would otherwise disagree.
+    test "ignores a stored colour override", %{user: user, tomorrow: tomorrow} do
+      event =
+        external_event(user, at(tomorrow, ~T[13:00:00]),
+          summary: "Coloured",
+          uid: "uid-colour-2",
+          colour: "blueberry"
+        )
+
+      {:ok, _override} =
+        EventColourOverrides.set(
+          user.id,
+          {:external, event.calendar_integration_id, "uid-colour-2"},
+          "tomato"
+        )
+
+      assert find_entry(Agenda.day_agenda(user, "Etc/UTC"), "Coloured").colour == "blueberry"
+    end
+
+    test "a booking entry carries its meeting id", %{user: user, tomorrow: tomorrow} do
+      meeting = booking(user, at(tomorrow, ~T[12:00:00]), title: "Client call")
+
+      assert find_entry(Agenda.day_agenda(user, "Etc/UTC"), "Client call").source_id ==
+               meeting.id
     end
   end
 

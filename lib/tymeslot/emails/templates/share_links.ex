@@ -43,7 +43,7 @@ defmodule Tymeslot.Emails.Templates.ShareLinks do
           stage_title: headline
         )
 
-      MjmlEmail.base_email()
+      MjmlEmail.base_email(organizer_user_id: user.id)
       |> to(recipient_email)
       |> reply_to({host_name, user.email})
       |> subject(

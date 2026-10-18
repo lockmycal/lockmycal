@@ -55,7 +55,7 @@ defmodule Tymeslot.Analytics.UtmExtractor do
   @ad_networks @click_id_networks |> Map.values() |> Enum.uniq()
 
   # The scheduling flow re-appends `tracking_params` to the query string
-  # when it navigates between routes (`TymeslotWeb.Themes.Shared.TrackingHelpers.tracking_path/2`),
+  # when it navigates between routes (`TymeslotWeb.Themes.Shared.BookingTracking.tracking_path/2`),
   # so `ad_network` has to survive a round trip through the URL. Only the
   # network names above are accepted, so a hand-written value can never
   # smuggle anything else in.

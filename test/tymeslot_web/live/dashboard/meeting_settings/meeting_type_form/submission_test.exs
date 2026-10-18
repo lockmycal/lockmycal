@@ -3,6 +3,8 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.SubmissionTest d
 
   @moduletag :meeting_types
 
+  alias Tymeslot.CustomFields.{FieldDefinition, FieldDefinitionTranslation, FieldOption}
+  alias Tymeslot.CustomFields.FieldOptionTranslation
   alias Tymeslot.MeetingTypes.LocationOption
   alias TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.Submission
 
@@ -123,6 +125,61 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.SubmissionTest d
         )
 
       refute Map.has_key?(params, "custom_fields")
+    end
+
+    # Custom questions are re-serialised from the in-memory structs on every
+    # save, so a translation missing here is silently lost.
+    test "serialises a question's translations" do
+      params =
+        Submission.build_params(
+          base_assigns(%{
+            custom_fields: [
+              %FieldDefinition{
+                id: "q1",
+                type: "short_text",
+                label: "Company",
+                translations: [
+                  %FieldDefinitionTranslation{
+                    id: "t1",
+                    locale: "de",
+                    label: "Firma",
+                    help_text: "Ihre Firma"
+                  }
+                ]
+              }
+            ]
+          })
+        )
+
+      assert [%{"translations" => [translation]}] = params["custom_fields"]
+
+      assert %{"locale" => "de", "label" => "Firma", "help_text" => "Ihre Firma"} =
+               translation
+    end
+
+    test "serialises an option's translations" do
+      params =
+        Submission.build_params(
+          base_assigns(%{
+            custom_fields: [
+              %FieldDefinition{
+                id: "q1",
+                type: "single_select",
+                label: "Size",
+                options: [
+                  %FieldOption{
+                    key: "small",
+                    label: "Small",
+                    translations: [%FieldOptionTranslation{locale: "de", label: "Klein"}]
+                  }
+                ]
+              }
+            ]
+          })
+        )
+
+      assert [%{"options" => [%{"translations" => translations}]}] = params["custom_fields"]
+      assert translations == [%{"locale" => "de", "label" => "Klein"}]
     end
 
     test "includes payment fields only when charges are enabled" do

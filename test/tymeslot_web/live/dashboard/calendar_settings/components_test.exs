@@ -44,7 +44,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.ComponentsTest do
       assert html =~ "My Calendar"
     end
 
-    test "shows the connect button when every calendar is paused" do
+    test "shows only the paused group when every calendar is paused" do
       assigns = %{
         integrations: [integration(1, false)],
         is_refreshing: false,
@@ -54,10 +54,11 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.ComponentsTest do
       html = render_component(&Components.connected_calendars_section/1, assigns)
       assert html =~ "Paused Calendars"
       refute html =~ "Active for Conflict Checking"
-      assert count_connect_buttons(html) == 1
     end
 
-    test "shows the connect button only once when active and paused calendars exist" do
+    # The page header owns the connect action, so it stays reachable whatever
+    # the connected calendars' state.
+    test "leaves the connect action to the page header" do
       assigns = %{
         integrations: [integration(1, true), integration(2, false)],
         is_refreshing: false,
@@ -65,7 +66,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.ComponentsTest do
       }
 
       html = render_component(&Components.connected_calendars_section/1, assigns)
-      assert count_connect_buttons(html) == 1
+      assert count_connect_buttons(html) == 0
     end
   end
 

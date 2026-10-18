@@ -51,11 +51,6 @@ msgstr ""
 msgid "%{months} months in advance"
 msgstr ""
 
-#: lib/tymeslot_web/themes/shared/localization_helpers.ex
-#, elixir-autogen, elixir-format
-msgid "%{month} %{day}, %{year}"
-msgstr ""
-
 #: lib/tymeslot_web/themes/quill/scheduling/components/confirmation_component.ex
 #, elixir-autogen, elixir-format
 msgid "%{name}, your meeting %{organizer} has been rescheduled."
@@ -791,11 +786,6 @@ msgstr ""
 
 #: lib/tymeslot_web/themes/shared/guest_booking.ex
 #, elixir-autogen, elixir-format
-msgid "You can add up to %{count} guests."
-msgstr ""
-
-#: lib/tymeslot_web/themes/shared/guest_booking.ex
-#, elixir-autogen, elixir-format
 msgid "You don't need to add your own email as a guest."
 msgstr ""
 
@@ -1304,137 +1294,6 @@ msgstr ""
 msgid "This booking wasn't accepted, so it won't be going ahead."
 msgstr ""
 
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "%{username}'s calendar"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "+%{count} more"
-msgstr ""
-
-#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "+420 123 456 789"
-msgstr ""
-
-#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "Acme Inc."
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "All day"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Book %{date}"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Busy"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Busy (%{time})"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Click a day to see available times and book."
-msgstr ""
-
-#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
-#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "Company Name"
-msgstr ""
-
-#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
-#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "Meeting Information"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Next month"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "No such organiser."
-msgstr ""
-
-#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
-#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "Phone Number"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Previous month"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Today"
-msgstr ""
-
-#: lib/tymeslot_web/themes/quill/scheduling/components/overview_component.ex
-#: lib/tymeslot_web/themes/rhythm/scheduling/components/overview_component.ex
-#, elixir-autogen, elixir-format
-msgid "View full calendar"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Pending approval"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Pending approval (%{time})"
-msgstr ""
-
-#: lib/tymeslot_web/themes/quill/payment_processing/live.ex
-#: lib/tymeslot_web/themes/rhythm/payment_processing/live.ex
-#, elixir-autogen, elixir-format
-msgid "Create new booking"
-msgstr ""
-
-#: lib/tymeslot_web/themes/shared/security_fields.ex
-#, elixir-autogen, elixir-format
-msgid "This site is protected by Cloudflare Turnstile and the Cloudflare %{privacy_link} and %{terms_link} apply."
-msgstr ""
-
-#: lib/tymeslot/custom_fields/custom_fields.ex
-#: lib/tymeslot/custom_fields/validator.ex
-#, elixir-autogen, elixir-format
-msgid "Answer is too long"
-msgstr ""
-
-#: lib/tymeslot/custom_fields/validator.ex
-#, elixir-autogen, elixir-format
-msgid "Unknown field type"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Not blocking (%{time})"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "Not blocking bookings"
-msgstr ""
-
 #: lib/tymeslot_web/themes/shared/booking_location.ex
 #, elixir-autogen, elixir-format
 msgid "Enter the number we should call you on."
@@ -1476,31 +1335,6 @@ msgstr ""
 msgid "Your phone number"
 msgstr ""
 
-#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "Enter your company name"
-msgstr ""
-
-#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
-#, elixir-autogen, elixir-format
-msgid "Enter your phone number"
-msgstr ""
-
-#: lib/tymeslot_web/live/public/calendar_live.ex
-#, elixir-autogen, elixir-format
-msgid "This calendar is not public."
-msgstr ""
-
-#: lib/tymeslot_web/themes/shared/components/location_field.ex
-#, elixir-autogen, elixir-format
-msgid "The host will call your number"
-msgstr ""
-
-#: lib/tymeslot_web/themes/shared/components/location_field.ex
-#, elixir-autogen, elixir-format
-msgid "The join link will arrive by email"
-msgstr ""
-
 #: lib/tymeslot_web/themes/core/dispatcher.ex
 #, elixir-autogen, elixir-format
 msgid "Reload page"
@@ -1526,9 +1360,174 @@ msgstr ""
 msgid "Which location?"
 msgstr ""
 
+#: lib/tymeslot_web/live/scheduling/handlers/booking_error_message.ex
+#, elixir-autogen, elixir-format
+msgid "This booking has already been cancelled or moved."
+msgstr ""
+
+#: lib/tymeslot_web/live/scheduling/handlers/booking_error_message.ex
+#, elixir-autogen, elixir-format
+msgid "This is a group booking, so each participant moves their own spot from their confirmation email."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/guest_booking.ex
+#, elixir-autogen, elixir-format
+msgid "This time only has room for %{count} of your guests, so the rest were removed."
+msgid_plural "This time only has room for %{count} of your guests, so the rest were removed."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/tymeslot_web/live/scheduling/handlers/booking_error_message.ex
+#, elixir-autogen, elixir-format
+msgid "You already have a spot at this time. Check your email for your booking confirmation."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/guest_booking.ex
+#, elixir-autogen, elixir-format
+msgid "You can add up to %{count} guest."
+msgid_plural "You can add up to %{count} guests."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/tymeslot_web/live/scheduling/handlers/booking_error_message.ex
+#, elixir-autogen, elixir-format
+msgid "This spot can no longer be moved. Cancel it and book a new time instead, or contact the host."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/group_session.ex
+#, elixir-autogen, elixir-format
+msgid "Group session · up to %{count} person"
+msgid_plural "Group session · up to %{count} people"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/tymeslot_web/themes/shared/components/group_session.ex
+#, elixir-autogen, elixir-format
+msgid "Group session: you have one of %{count} spot."
+msgid_plural "Group session: you have one of %{count} spots."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/tymeslot_web/themes/shared/components/group_session.ex
+#, elixir-autogen, elixir-format
+msgid "Moving your spot on %{datetime}. Pick a new time below."
+msgstr ""
+
+#: lib/tymeslot_web/live/scheduling/handlers/booking_error_message.ex
+#, elixir-autogen, elixir-format
+msgid "This is your current time. Pick a different time to move your spot."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/seat_move_link.ex
+#, elixir-autogen, elixir-format
+msgid "This link to move your spot has already been used. You can book a new time below."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/localization_helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Ends %{time} on %{weekday} %{day} %{month}"
+msgstr ""
+
+#: lib/tymeslot/meeting_types/location_selection.ex
+#, elixir-autogen, elixir-format
+msgid "Phone call"
+msgstr ""
+
+#: lib/tymeslot/meeting_types/location_selection.ex
+#, elixir-autogen, elixir-format
+msgid "Somewhere else"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/seat_badge.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} spot left"
+msgid_plural "%{count} spots left"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/tymeslot_web/themes/shared/components/seat_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Almost full"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/seat_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Filling up"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/seat_badge.ex
+#, elixir-autogen, elixir-format
+msgid "Plenty left"
+msgstr ""
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "+420 123 456 789"
+msgstr ""
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Acme Inc."
+msgstr ""
+
+#: lib/tymeslot/custom_fields/custom_fields.ex
+#: lib/tymeslot/custom_fields/validator.ex
+#, elixir-autogen, elixir-format
+msgid "Answer is too long"
+msgstr ""
+
+#: lib/tymeslot_web/live/public/calendar_live.ex
+#, elixir-autogen, elixir-format
+msgid "Click a day to see available times and book."
+msgstr ""
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Company Name"
+msgstr ""
+
 #: lib/tymeslot_web/themes/shared/components/own_calendar.ex
 #, elixir-autogen, elixir-format
 msgid "Create an account"
+msgstr ""
+
+#: lib/tymeslot_web/themes/quill/payment_processing/live.ex
+#: lib/tymeslot_web/themes/rhythm/payment_processing/live.ex
+#, elixir-autogen, elixir-format
+msgid "Create new booking"
+msgstr ""
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Enter your company name"
+msgstr ""
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Enter your phone number"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#, elixir-autogen, elixir-format
+msgid "Have an account? Sign in before booking and the meeting is saved straight to your calendar too."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/group_session.ex
+#, elixir-autogen, elixir-format
+msgid "Invitation only"
+msgstr ""
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Information"
+msgstr ""
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/booking_component.ex
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Phone Number"
 msgstr ""
 
 #: lib/tymeslot_web/themes/shared/components/own_calendar.ex
@@ -1546,7 +1545,33 @@ msgstr ""
 msgid "Sign in"
 msgstr ""
 
-#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#: lib/tymeslot_web/themes/shared/components/location_field.ex
 #, elixir-autogen, elixir-format
-msgid "Have an account? Sign in before booking and the meeting is saved straight to your calendar too."
+msgid "The host will call your number"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/location_field.ex
+#, elixir-autogen, elixir-format
+msgid "The join link will arrive by email"
+msgstr ""
+
+#: lib/tymeslot_web/live/scheduling/handlers/booking_error_message.ex
+#, elixir-autogen, elixir-format
+msgid "This meeting is by invitation only, and this email address is not on the guest list. Use the address you were invited with, or contact the host."
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/security_fields.ex
+#, elixir-autogen, elixir-format
+msgid "This site is protected by Cloudflare Turnstile and the Cloudflare %{privacy_link} and %{terms_link} apply."
+msgstr ""
+
+#: lib/tymeslot/custom_fields/validator.ex
+#, elixir-autogen, elixir-format
+msgid "Unknown field type"
+msgstr ""
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/overview_component.ex
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/overview_component.ex
+#, elixir-autogen, elixir-format
+msgid "View full calendar"
 msgstr ""

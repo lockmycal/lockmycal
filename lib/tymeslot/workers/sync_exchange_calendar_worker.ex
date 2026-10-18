@@ -169,6 +169,7 @@ defmodule Tymeslot.Workers.SyncExchangeCalendarWorker do
 
   require Logger
 
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Infrastructure.ExpectedJobOutcome
   alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Integrations.Calendar.CalDAV.Errors, as: CalDAVErrors
@@ -387,7 +388,7 @@ defmodule Tymeslot.Workers.SyncExchangeCalendarWorker do
       integration,
       dgettext_noop(
         "dashboard_calendar_providers",
-        "Tymeslot needs the mailbox's email address to read its free/busy time. Please reconnect the integration and provide it."
+        "The mailbox's email address is needed to read its free/busy time. Please reconnect the integration and provide it."
       ),
       @no_mailbox
     )
@@ -514,7 +515,8 @@ defmodule Tymeslot.Workers.SyncExchangeCalendarWorker do
   defp error_message(:no_response_code) do
     dgettext(
       "dashboard_calendar_providers",
-      "The Exchange server answered the free/busy request with nothing Tymeslot could read. Retrying rather than treating your diary as free."
+      "The Exchange server answered the free/busy request with nothing %{app_name} could read. Retrying rather than treating your diary as free.",
+      app_name: Config.app_name()
     )
   end
 

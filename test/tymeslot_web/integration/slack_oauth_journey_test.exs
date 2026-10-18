@@ -130,11 +130,6 @@ defmodule TymeslotWeb.Integration.SlackOAuthJourneyTest do
       user = insert(:user)
       {:ok, user} = OnboardingQueries.mark_onboarding_complete(user)
 
-      # Stub subscription and email mocks that the dashboard LiveView needs
-      stub(Tymeslot.Payments.SubscriptionManagerMock, :should_show_branding?, fn _user_id ->
-        true
-      end)
-
       # Stub the Slack conversations.list API call triggered by the channel-picker
       # async load when the LiveView mounts with ?slack_pending=<id>.
       stub(Tymeslot.HTTPClientMock, :get, fn _url, _headers, _opts ->

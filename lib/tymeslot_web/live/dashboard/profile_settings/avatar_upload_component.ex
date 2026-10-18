@@ -135,20 +135,22 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.AvatarUploadComponent do
       phx-hook="AutoUpload"
     >
       <.subsection_header
+        size={:lg}
+        level={2}
         icon="hero-photo"
         title={dgettext("dashboard_profile", "Profile Picture")}
-        class="justify-center"
+        class="text-left"
       />
 
       <div class="relative inline-block mb-8" id="avatar-upload-section">
-        <div class="w-40 h-40 rounded-4xl overflow-hidden bg-neutral-100 border-4 border-white shadow-2xl relative z-10 mx-auto">
+        <div class="w-40 h-40 rounded-token-5xl overflow-hidden bg-neutral-100 border-4 border-white shadow-2xl relative z-10 mx-auto dark:bg-twilight-indigo-800">
           <img
             src={Profiles.avatar_url(@profile, :thumb)}
             alt={Profiles.avatar_alt_text(@profile)}
             class="w-full h-full object-cover"
           />
         </div>
-        <div class="absolute inset-0 bg-primary-400 blur-2xl opacity-20 rounded-full scale-75 transition-opacity">
+        <div class="absolute inset-0 bg-primary-400 blur-2xl opacity-20 rounded-token-full scale-75 transition-opacity">
         </div>
       </div>
 
@@ -167,15 +169,8 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.AvatarUploadComponent do
                   upload={@uploads.avatar}
                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                 />
-                <div class="btn btn-primary w-full flex items-center justify-center gap-2 py-4 whitespace-nowrap">
-                  <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2.5"
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                    />
-                  </svg>
+                <div class={[button_classes(:primary), "w-full"]}>
+                  <.icon name="hero-cloud-arrow-up" class="w-5 h-5 shrink-0" />
                   <span>
                     {if @uploads.avatar.entries != [],
                       do: dgettext("dashboard_profile", "Uploading..."),
@@ -184,29 +179,22 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.AvatarUploadComponent do
                 </div>
               </div>
             <% else %>
-              <div class="btn btn-primary w-full opacity-50 cursor-not-allowed py-4">
+              <div class={[button_classes(:primary), "w-full opacity-50"]} aria-disabled="true">
                 {dgettext("dashboard_profile", "Upload New")}
               </div>
             <% end %>
           </div>
 
           <%= if @profile.avatar do %>
-            <button
-              type="button"
+            <.action_button
+              variant={:danger_soft}
+              icon="hero-trash"
+              class="w-full"
               phx-click="show"
               phx-target="#delete-avatar-modal"
-              class="btn btn-danger w-full py-4 flex items-center justify-center gap-2 whitespace-nowrap"
             >
-              <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2.5"
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-              <span>{dgettext("dashboard_profile", "Delete Photo")}</span>
-            </button>
+              {dgettext("dashboard_profile", "Delete Photo")}
+            </.action_button>
           <% end %>
 
           <button type="submit" id="avatar-submit-btn" class="hidden">
@@ -221,15 +209,8 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.AvatarUploadComponent do
         <%!-- Upload progress --%>
         <%= if @uploads && @uploads[:avatar] do %>
           <%= for err <- upload_errors(@uploads.avatar) do %>
-            <div class="mt-4 p-3 bg-red-50 border border-red-100 rounded-token-xl text-red-600 text-xs font-bold flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2.5"
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+            <div class="mt-4 p-3 bg-red-50 border border-red-100 rounded-token-xl text-red-600 text-xs font-bold flex items-center gap-2 dark:bg-red-950/40">
+              <.icon name="hero-exclamation-circle" class="w-4 h-4" />
               {Phoenix.Naming.humanize(err)}
             </div>
           <% end %>
@@ -244,7 +225,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.AvatarUploadComponent do
                 </span>
                 <span class="text-primary-600 font-black text-xs">{entry.progress}%</span>
               </div>
-              <div class="bg-white rounded-full h-2 overflow-hidden shadow-inner">
+              <div class="bg-white rounded-token-full h-2 overflow-hidden shadow-inner dark:bg-twilight-indigo-950">
                 <div
                   class="bg-linear-to-r from-primary-500 to-secondary-500 h-full transition-all duration-300"
                   style={"width: #{entry.progress}%"}
@@ -254,15 +235,8 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.AvatarUploadComponent do
             </div>
 
             <%= for err <- upload_errors(@uploads.avatar, entry) do %>
-              <div class="mt-2 p-3 bg-red-50 border border-red-100 rounded-token-xl text-red-600 text-xs font-bold flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2.5"
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+              <div class="mt-2 p-3 bg-red-50 border border-red-100 rounded-token-xl text-red-600 text-xs font-bold flex items-center gap-2 dark:bg-red-950/40">
+                <.icon name="hero-exclamation-circle" class="w-4 h-4" />
                 {Phoenix.Naming.humanize(err)}
               </div>
             <% end %>

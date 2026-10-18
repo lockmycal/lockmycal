@@ -111,6 +111,144 @@
   @apply bg-transparent border border-neutral-300 dark:border-twilight-indigo-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-twilight-indigo-800;
 }
 
+/* A control kept focusable for its tooltip but inert: aria-disabled rather
+   than disabled, which a <label> or <div> styled as a button cannot take. */
+.action-button[aria-disabled="true"],
+.icon-button[aria-disabled="true"] {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.action-button--sm {
+  @apply relative px-3 py-1.5 gap-1.5 text-token-sm rounded-token-md;
+}
+
+.action-button--lg {
+  @apply px-8 py-3.5 text-token-lg;
+}
+
+/* A destructive action beside a primary one: red text and outline, no fill,
+   so it never outweighs the action the page is for. Solid red stays for the
+   confirm button inside a confirmation modal. */
+.action-button--danger-soft {
+  @apply bg-white dark:bg-twilight-indigo-900 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400;
+}
+
+.action-button--danger-soft:hover:not(:disabled, [aria-disabled="true"]) {
+  @apply border-red-400 text-red-700 bg-red-50 dark:bg-red-950/40;
+}
+
+.action-button--danger-soft:focus-visible {
+  @apply ring-red-500;
+}
+
+.action-button--ghost {
+  @apply bg-transparent text-neutral-600 dark:text-neutral-300;
+}
+
+.action-button--ghost:hover:not(:disabled, [aria-disabled="true"]) {
+  @apply bg-neutral-100 dark:bg-twilight-indigo-800 text-primary-700;
+}
+
+/* Additive rather than destructive (adding guests): green, so it reads apart
+   from both the primary and the red cancel beside it. */
+.action-button--success {
+  @apply bg-emerald-600 text-white;
+}
+
+.action-button--success:hover:not(:disabled, [aria-disabled="true"]) {
+  @apply bg-emerald-700;
+}
+
+/* On a dark or brand-coloured surface, where the primary would vanish into the
+   background. */
+.action-button--on-dark {
+  @apply bg-white text-primary-700;
+}
+
+.action-button--on-dark:hover:not(:disabled, [aria-disabled="true"]) {
+  @apply bg-primary-50;
+}
+
+.action-button--on-dark:focus-visible {
+  @apply ring-white ring-offset-primary-700;
+}
+
+/* Icon Buttons: <.icon_button>, a square icon-only control. */
+.icon-button {
+  @apply relative inline-flex items-center justify-center shrink-0 rounded-token-lg border transition-all cursor-pointer touch-manipulation disabled:opacity-60 disabled:cursor-not-allowed;
+}
+
+.icon-button:focus-visible {
+  @apply outline-hidden ring-2 ring-primary-500 ring-offset-2;
+}
+
+.icon-button--md {
+  @apply h-9 w-9;
+}
+
+.icon-button--sm {
+  @apply h-8 w-8;
+}
+
+/* On touch screens, stretch the hit area of the compact controls (icon
+   buttons, small action buttons, the status switch and the check toggle) to
+   at least 44px around the visual tile, without changing its size or the
+   layout around it. Each host is `position: relative`. */
+@media (pointer: coarse) {
+  .icon-button::before,
+  .action-button--sm::before,
+  .status-toggle::before,
+  .check-toggle::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+
+.icon-button--neutral {
+  @apply bg-white dark:bg-twilight-indigo-900 text-neutral-700 dark:text-neutral-200 border-neutral-300 dark:border-twilight-indigo-700;
+}
+
+.icon-button--neutral:hover:not(:disabled, [aria-disabled="true"]) {
+  @apply bg-neutral-100 dark:bg-twilight-indigo-800;
+}
+
+/* Upstream's action that needs the owner's attention (Upgrade, a due
+   Reconnect), in the fork's `row-action-button--attention` colours. */
+.icon-button--warning {
+  @apply bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-200 border-amber-200 dark:border-amber-800;
+}
+
+.icon-button--warning:hover:not(:disabled, [aria-disabled="true"]) {
+  @apply bg-amber-100 dark:bg-amber-900/40;
+}
+
+/* Same box as --neutral, so an edit and a delete control side by side
+   read as a pair; only the hover says which one destroys. */
+.icon-button--danger {
+  @apply bg-white dark:bg-twilight-indigo-900 text-neutral-500 dark:text-neutral-400 border-neutral-300 dark:border-twilight-indigo-700;
+}
+
+.icon-button--danger:hover:not(:disabled, [aria-disabled="true"]) {
+  @apply text-red-500 bg-red-50 border-red-200 dark:bg-red-950/40 dark:border-red-800;
+}
+
+.icon-button--danger:focus-visible {
+  @apply ring-red-500;
+}
+
+.icon-button--warning {
+  @apply bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-200 border-amber-200 dark:border-amber-800;
+}
+
+.icon-button--warning:hover:not(:disabled, [aria-disabled="true"]) {
+  @apply bg-amber-100 dark:bg-amber-900/40;
+}
+
 /* Small-screen action button sizing */
 @media (max-width: 640px) {
   .action-button {

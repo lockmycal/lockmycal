@@ -11,6 +11,7 @@ defmodule TymeslotWeb.Dashboard.MeetingTypeFormAttachmentsTest do
 
   import Phoenix.LiveViewTest
   import Tymeslot.DashboardTestHelpers
+  import Tymeslot.Factory
 
   alias Tymeslot.AppSettings
   alias Tymeslot.MeetingTypes
@@ -30,10 +31,15 @@ defmodule TymeslotWeb.Dashboard.MeetingTypeFormAttachmentsTest do
     :ok
   end
 
-  defp open_new_form(conn) do
+  # The switch sits on the Booking Rules tab, which only exists once the
+  # meeting type does, and every change there auto-saves.
+  defp open_form(conn, meeting_type) do
     {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
-    view |> element("button", "Add Meeting Type") |> render_click()
-    view |> element("button[aria-label='Remove reminder']") |> render_click()
+
+    view
+    |> element("button[phx-click='edit_type'][phx-value-id='#{meeting_type.id}']")
+    |> render_click()
+
     view
   end
 
@@ -51,27 +57,21 @@ defmodule TymeslotWeb.Dashboard.MeetingTypeFormAttachmentsTest do
         max_booking_attachments: 2
       })
 
-    view = open_new_form(conn)
+    meeting_type = insert(:meeting_type, user: user, name: "With files")
+    view = open_form(conn, meeting_type)
     refute has_element?(view, "#meeting-type-attachment-limits")
 
     html = switch(view, "true")
     assert html =~ "PDF, DOCX"
     assert html =~ "7 MB"
 
-    view
-    |> form("form[phx-submit='save_meeting_type']", %{
-      "meeting_type" => %{"name" => "With files", "duration" => "30"}
-    })
-    |> render_submit()
-
-    assert %{allow_attachments: true} =
-             Enum.find(MeetingTypes.get_all_meeting_types(user.id), &(&1.name == "With files"))
+    assert %{allow_attachments: true} = MeetingTypes.get_meeting_type(meeting_type.id, user.id)
   end
 
-  test "is disabled when the admin allows no file type", %{conn: conn} do
+  test "is disabled when the admin allows no file type", %{conn: conn, user: user} do
     {:ok, _settings} = AppSettings.update(%{booking_attachment_types: []})
 
-    html = render(open_new_form(conn))
+    html = render(open_form(conn, insert(:meeting_type, user: user)))
     assert html =~ "switched file attachments off"
   end
 end

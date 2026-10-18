@@ -506,45 +506,54 @@ defmodule Tymeslot.Integrations.Calendar.ICalNormaliser do
   defp map_partstat(_other), do: :needs_action
 
   defp map_reminders(nil), do: []
-  defp map_reminders(alarms) when is_list(alarms), do: Enum.map(alarms, &map_alarm/1)
-  defp map_reminders(alarm) when is_map(alarm), do: [map_alarm(alarm)]
+
+  defp map_reminders(alarms) when is_list(alarms),
+    do: alarms |> Enum.map(&map_alarm/1) |> Enum.reject(&is_nil/1)
+
+  defp map_reminders(alarm) when is_map(alarm), do: map_reminders([alarm])
   defp map_reminders(_other), do: []
 
-  defp map_alarm(%{"trigger" => trigger}) when is_binary(trigger) do
-    %{method: :popup, minutes_before: parse_trigger_minutes(trigger)}
-  end
+  defp map_alarm(%{"trigger" => trigger} = alarm) when is_binary(trigger),
+    do: build_reminder(trigger, alarm["action"])
 
-  defp map_alarm(%{trigger: trigger}) when is_binary(trigger) do
-    %{method: :popup, minutes_before: parse_trigger_minutes(trigger)}
-  end
+  defp map_alarm(%{trigger: trigger} = alarm) when is_binary(trigger),
+    do: build_reminder(trigger, alarm[:action])
 
-  defp map_alarm(_other), do: %{method: :popup, minutes_before: 15}
+  defp map_alarm(_other), do: nil
 
-  # Parses an iCal TRIGGER duration like "-PT15M" or "-PT1H" into minutes.
-  defp parse_trigger_minutes(trigger) do
-    stripped = String.replace(trigger, ~r/^-?PT?/, "")
-
-    cond do
-      String.contains?(stripped, "H") ->
-        case Integer.parse(String.replace(stripped, ~r/H.*/, "")) do
-          {h, _rest} -> h * 60
-          :error -> 15
-        end
-
-      String.contains?(stripped, "M") ->
-        case Integer.parse(String.replace(stripped, "M", "")) do
-          {m, _rest} -> m
-          :error -> 15
-        end
-
-      String.contains?(stripped, "S") ->
-        case Integer.parse(String.replace(stripped, "S", "")) do
-          {s, _rest} -> div(s, 60)
-          :error -> 15
-        end
-
-      true ->
-        15
+  # A trigger after the start, or at an absolute time, has no "minutes before"
+  # to show, so the alarm is left out rather than given an invented lead time.
+  defp build_reminder(trigger, action) do
+    case parse_trigger_minutes(trigger) do
+      {:ok, minutes} -> %{method: alarm_method(action), minutes_before: minutes}
+      :error -> nil
     end
   end
+
+  defp alarm_method(action) when is_binary(action),
+    do: if(String.upcase(action) == "EMAIL", do: :email, else: :popup)
+
+  defp alarm_method(_other), do: :popup
+
+  # Parses an RFC 5545 §3.3.6 duration trigger before the start ("-PT15M",
+  # "-P1D", "-P1DT2H30M") into whole minutes.
+  @trigger_duration ~r/^-P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/
+
+  defp parse_trigger_minutes(trigger) do
+    case Regex.run(@trigger_duration, String.trim(trigger)) do
+      [_match | parts] ->
+        [weeks, days, hours, minutes, seconds] =
+          parts
+          |> Enum.concat(List.duplicate("", 5 - length(parts)))
+          |> Enum.map(&duration_part/1)
+
+        {:ok, weeks * 10_080 + days * 1_440 + hours * 60 + minutes + div(seconds, 60)}
+
+      nil ->
+        :error
+    end
+  end
+
+  defp duration_part(""), do: 0
+  defp duration_part(digits), do: String.to_integer(digits)
 end

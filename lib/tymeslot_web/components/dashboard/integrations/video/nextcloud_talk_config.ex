@@ -16,12 +16,12 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Video.NextcloudTalkConfi
   use TymeslotWeb, :live_component
   use Gettext, backend: TymeslotWeb.Gettext
 
+  alias Tymeslot.Infrastructure.Config
   alias TymeslotWeb.Components.Dashboard.Integrations.Shared.UIComponents
 
   alias TymeslotWeb.Components.Dashboard.Integrations.Video.SharedFormComponents,
     as: SharedForm
 
-  alias TymeslotWeb.Components.Icons.ProviderIcon
   alias TymeslotWeb.Dashboard.VideoSettings.FormInput
   alias TymeslotWeb.Live.Shared.FormValidationHelpers
 
@@ -53,20 +53,14 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Video.NextcloudTalkConfi
   def render(assigns) do
     ~H"""
     <div id="nextcloud-talk-video-config-modal" class="space-y-6">
-      <div class="flex items-center gap-4 mb-2">
-        <ProviderIcon.provider_icon provider="nextcloud_talk" type="video" size="large" />
-        <div>
-          <h3 class="text-token-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">
-            {dgettext("dashboard_video", "Nextcloud Talk")}
-          </h3>
-          <p class="text-token-sm text-neutral-500 font-medium">
-            {dgettext(
-              "dashboard_video",
-              "A Talk conversation on your own Nextcloud for every booking"
-            )}
-          </p>
-        </div>
-      </div>
+      <UIComponents.provider_config_header
+        provider="nextcloud_talk"
+        type="video"
+        title={dgettext("dashboard_video", "Nextcloud Talk")}
+        tagline={
+          dgettext("dashboard_video", "A Talk conversation on your own Nextcloud for every booking")
+        }
+      />
 
       <div
         :if={@nextcloud_calendars != []}
@@ -89,16 +83,15 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Video.NextcloudTalkConfi
           aria-describedby="nextcloud_talk_copy_help"
           class="flex flex-wrap gap-2"
         >
-          <button
+          <.action_button
             :for={calendar <- @nextcloud_calendars}
-            type="button"
+            variant={:secondary}
             phx-click="copy_nextcloud_login"
             phx-value-id={calendar.id}
             phx-target={@target}
-            class="btn-secondary"
           >
             {dgettext("dashboard_video", "Copy from %{name}", name: calendar.name)}
-          </button>
+          </.action_button>
         </div>
       </div>
 
@@ -136,7 +129,8 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Video.NextcloudTalkConfi
         <p class="text-token-xs text-neutral-500 leading-relaxed">
           {dgettext(
             "dashboard_video",
-            "Each booking gets its own public Talk conversation, and guests join from its link without a Nextcloud account. To skip the lobby and moderate, sign in to Nextcloud in your browser as this login name first, with your usual password and any second factor; the app password works only for Tymeslot. Anyone else, other Nextcloud users included, waits in the lobby until the meeting starts. A conversation is deleted when its booking is cancelled, and about a week after the meeting ends."
+            "Each booking gets its own public Talk conversation, and guests join from its link without a Nextcloud account. To skip the lobby and moderate, sign in to Nextcloud in your browser as this login name first, with your usual password and any second factor; the app password works only for %{app_name}. Anyone else, other Nextcloud users included, waits in the lobby until the meeting starts. A conversation is deleted when its booking is cancelled, and about a week after the meeting ends.",
+            app_name: Config.app_name()
           )}
         </p>
 
@@ -144,17 +138,10 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Video.NextcloudTalkConfi
           <SharedForm.error_banner error={error} />
         <% end %>
 
-        <div class="flex justify-between items-center pt-4 border-t border-neutral-300">
-          <button
-            type="button"
-            phx-click="back_to_providers"
-            phx-target={@target}
-            class="btn-secondary"
-          >
-            {dgettext("dashboard_video", "Cancel")}
-          </button>
-          <UIComponents.form_submit_button saving={@saving} />
-        </div>
+        <UIComponents.form_actions
+          target={@target}
+          saving={@saving}
+        />
       </form>
     </div>
     """

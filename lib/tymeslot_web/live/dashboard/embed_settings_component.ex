@@ -8,11 +8,14 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettingsComponent do
 
   alias Ecto.Changeset
   alias Tymeslot.Locales
+  alias Tymeslot.MeetingTypes
   alias Tymeslot.Profiles
   alias Tymeslot.Scheduling.LinkAccessPolicy
   alias Tymeslot.Security.RateLimiter
   alias Tymeslot.Utils.UrlBuilder
+  alias TymeslotWeb.Components.CoreComponents.Navigation
   alias TymeslotWeb.Endpoint
+  alias TymeslotWeb.Live.Dashboard.EmbedSettings.AliasSection
   alias TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers
   alias TymeslotWeb.Live.Dashboard.EmbedSettings.LivePreview
   alias TymeslotWeb.Live.Dashboard.EmbedSettings.OptionsGrid
@@ -59,17 +62,16 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettingsComponent do
       |> assign(:base_url, base_url)
       |> assign(:username, username)
       |> assign(:theme_id, theme_id)
-      |> assign(:booking_url, UrlBuilder.booking_url(username))
       |> assign(:is_ready, is_ready)
       |> assign(:error_reason, error_reason)
       |> assign(:allowed_domains, allowed_domains)
-      |> assign_new(:selected_embed_type, fn -> "inline" end)
+      |> assign(:embed_alias_allowed, Map.get(assigns, :embed_alias_allowed, true))
+      |> assign_widget_address(profile)
+      |> assign_new(:alias_change, fn -> nil end)
       |> assign_new(:embed_script_url, fn -> ~p"/embed.js" end)
       |> assign_new(:active_tab, fn -> "options" end)
-      |> assign_new(:embed_layout, fn -> "column" end)
-      |> assign_new(:embed_locale, fn -> "" end)
-      |> assign_new(:initial_height, fn -> nil end)
-      |> assign_new(:max_width, fn -> nil end)
+      |> assign_customisation_defaults()
+      |> drop_unlinkable_meeting()
       # Minted once per mounted component, not per update: the hook re-creates
       # the iframe whenever a dataset value it watches changes, so a token that
       # churned would throw the organiser back to step one mid-preview. It
@@ -84,7 +86,6 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettingsComponent do
   def render(assigns) do
     ~H"""
     <div class="space-y-10 pb-20">
-      <%!-- Header --%>
       <.section_header
         icon="hero-code-bracket"
         title={dgettext("dashboard_embed", "Embed & Share")}
@@ -96,54 +97,101 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettingsComponent do
         }
       />
 
-      <%!-- Tabbed Interface --%>
-      <.tabs active_tab={@active_tab} target={@myself}>
-        <:tab
-          id="options"
-          label={dgettext("dashboard_embed", "Embed Options")}
-          icon="hero-code-bracket"
-        >
+      <div class="space-y-6">
+        <.tab_bar
+          id="embed-settings-tabs"
+          active_tab={@active_tab}
+          target={@myself}
+          aria_label={dgettext("dashboard_embed", "Embed settings")}
+          tabs={[
+            %{
+              id: "options",
+              label: dgettext("dashboard_embed", "Embed Options"),
+              icon: "hero-code-bracket"
+            },
+            %{
+              id: "security",
+              label: dgettext("dashboard_embed", "Security"),
+              icon: "hero-lock-closed"
+            },
+            %{
+              id: "preview",
+              label: dgettext("dashboard_embed", "Live Preview"),
+              icon: "hero-video-camera"
+            }
+          ]}
+        />
+
+        <.embed_panel id="options" active_tab={@active_tab}>
           <OptionsGrid.options_grid
             selected_embed_type={@selected_embed_type}
-            username={@username}
+            username={@embed_handle}
             base_url={@base_url}
             booking_url={@booking_url}
             embed_layout={@embed_layout}
             embed_locale={@embed_locale}
+            embed_meeting={@embed_meeting}
+            embed_background_mode={@embed_background_mode}
+            embed_background_color={@embed_background_color}
+            meeting_type_options={@meeting_type_options}
             initial_height={@initial_height}
             max_width={@max_width}
             myself={@myself}
           />
-        </:tab>
+        </.embed_panel>
 
-        <:tab id="security" label={dgettext("dashboard_embed", "Security")} icon="hero-lock-closed">
+        <.embed_panel id="security" active_tab={@active_tab}>
           <SecuritySection.security_section
             allowed_domains={@allowed_domains}
             myself={@myself}
           />
-        </:tab>
+          <AliasSection.alias_section
+            embed_alias={@profile.embed_alias}
+            embed_alias_allowed={@embed_alias_allowed}
+            alias_change={@alias_change}
+            myself={@myself}
+          />
+        </.embed_panel>
 
-        <:tab
-          id="preview"
-          label={dgettext("dashboard_embed", "Live Preview")}
-          icon="hero-video-camera"
-        >
+        <.embed_panel id="preview" active_tab={@active_tab}>
           <LivePreview.live_preview
             selected_embed_type={@selected_embed_type}
-            username={@username}
+            username={@embed_handle}
             base_url={@base_url}
             preview_token={@preview_token}
             embed_script_url={@embed_script_url}
             embed_layout={@embed_layout}
             embed_locale={@embed_locale}
+            embed_meeting={@embed_meeting}
+            embed_background={Helpers.embed_background(assigns)}
             initial_height={@initial_height}
             max_width={@max_width}
             is_ready={@is_ready}
             error_reason={@error_reason}
             myself={@myself}
           />
-        </:tab>
-      </.tabs>
+        </.embed_panel>
+      </div>
+    </div>
+    """
+  end
+
+  attr :id, :string, required: true
+  attr :active_tab, :string, required: true
+  slot :inner_block, required: true
+
+  # Every panel stays rendered and only the selected one shows, so the live
+  # preview keeps its loaded frame while another tab is open.
+  defp embed_panel(assigns) do
+    ~H"""
+    <div
+      role="tabpanel"
+      id={Navigation.panel_id("embed-settings-tabs", @id)}
+      aria-labelledby={Navigation.tab_id("embed-settings-tabs", @id)}
+      hidden={@active_tab != @id}
+      class="animate-in fade-in slide-in-from-bottom-4 duration-500"
+    >
+      {render_slot(@inner_block)}
     </div>
     """
   end
@@ -170,16 +218,16 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettingsComponent do
 
   def handle_event("select_embed_type", %{"type" => type}, socket)
       when type in @valid_embed_types do
-    {:noreply, assign(socket, :selected_embed_type, type)}
+    {:noreply, socket |> assign(:selected_embed_type, type) |> save_customisation()}
   end
 
   def handle_event("select_embed_type", _params, socket),
     do: reject_invalid_event("select_embed_type", socket)
 
-  # Customisation knobs surfaced to the embedder: layout, initial-height,
-  # and max-width. Phoenix LiveView requires phx-change to fire from inside
-  # a <form>, so the panel posts a `customise[...]` map with all three
-  # values on every change. Validation happens at the snippet helper
+  # Customisation knobs surfaced to the embedder: layout, language, meeting
+  # type, initial-height and max-width. Phoenix LiveView requires phx-change
+  # to fire from inside a <form>, so the panel posts a `customise[...]` map
+  # with all of them on every change. Validation happens at the snippet helper
   # boundary so nothing invalid ever reaches the rendered output.
   def handle_event("update_customisation", %{"customise" => params}, socket) do
     layout =
@@ -204,8 +252,11 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettingsComponent do
      socket
      |> assign(:embed_layout, layout)
      |> assign(:embed_locale, locale)
+     |> assign(:embed_meeting, customised_meeting(socket, params["meeting"]))
+     |> assign_customised_background(params)
      |> assign(:initial_height, blank_to_nil(params["initial_height"]))
-     |> assign(:max_width, blank_to_nil(params["max_width"]))}
+     |> assign(:max_width, blank_to_nil(params["max_width"]))
+     |> save_customisation()}
   end
 
   def handle_event("update_customisation", _params, socket),
@@ -263,14 +314,180 @@ defmodule TymeslotWeb.Live.Dashboard.EmbedSettingsComponent do
     )
   end
 
+  def handle_event("generate_embed_alias", _params, socket),
+    do: change_embed_alias(socket, &Profiles.generate_embed_alias/1)
+
+  def handle_event("ask_embed_alias_change", %{"change" => change}, socket)
+      when change in ["regenerate", "remove"] do
+    {:noreply, assign(socket, :alias_change, String.to_existing_atom(change))}
+  end
+
+  def handle_event("ask_embed_alias_change", _params, socket),
+    do: reject_invalid_event("ask_embed_alias_change", socket)
+
+  def handle_event("cancel_embed_alias_change", _params, socket),
+    do: {:noreply, assign(socket, :alias_change, nil)}
+
+  def handle_event("confirm_embed_alias_change", _params, socket) do
+    change =
+      case socket.assigns.alias_change do
+        :remove -> &Profiles.clear_embed_alias/1
+        _regenerate -> &Profiles.generate_embed_alias/1
+      end
+
+    change_embed_alias(assign(socket, :alias_change, nil), change)
+  end
+
   defp reject_invalid_event(event_name, socket) do
     Logger.warning("handle_event received invalid or missing parameter", event: event_name)
     {:noreply, socket}
   end
 
+  # Every snippet (the direct link too) and the preview address the widget by
+  # its alias when there is one. The meeting type choices follow, since the
+  # alias reaches fewer types.
+  defp assign_widget_address(socket, profile) do
+    embed_handle = profile.embed_alias || profile.username
+
+    socket
+    |> assign(:embed_handle, embed_handle)
+    |> assign(:booking_url, UrlBuilder.booking_url(embed_handle))
+    |> assign(:meeting_type_options, meeting_type_options(profile))
+  end
+
+  # `{name, slug}` choices for pinning the widget to one meeting type: the
+  # types a direct link reaches (through the alias, when the widget uses one),
+  # so a pinned widget never opens on a notice.
+  defp meeting_type_options(profile) do
+    profile.user_id
+    |> MeetingTypes.get_linkable_meeting_types()
+    |> Enum.filter(&(is_nil(profile.embed_alias) or MeetingTypes.reachable_via_alias?(&1)))
+    |> Enum.map(&{&1.name, MeetingTypes.effective_slug(&1)})
+  end
+
+  # The Customise panel's choices: restored from the profile when the
+  # component mounts, then kept across updates from the parent.
+  defp assign_customisation_defaults(socket) do
+    if Map.has_key?(socket.assigns, :embed_layout) do
+      socket
+    else
+      assign(socket, Helpers.restore_settings(socket.assigns.profile.embed_settings))
+    end
+  end
+
+  # Saves the Customise choices whenever they differ from what is stored, so
+  # they survive a reload. The parent gets the updated profile, as with every
+  # other write on this page.
+  defp save_customisation(socket) do
+    settings = Helpers.stored_settings(socket.assigns)
+    profile = socket.assigns.profile
+
+    if settings == (profile.embed_settings || %{}) do
+      socket
+    else
+      case Profiles.update_embed_settings(profile, settings) do
+        {:ok, updated_profile} ->
+          send(self(), {:profile_updated, updated_profile})
+          assign(socket, :profile, updated_profile)
+
+        {:error, _changeset} ->
+          Flash.error(dgettext("dashboard_embed", "Failed to save the embed settings"))
+          socket
+      end
+    end
+  end
+
+  # "default" keeps the theme's background, "transparent" lets the embedding
+  # page show through, "color" uses the picked colour. A tampered mode or a
+  # colour that is not `#rrggbb` keeps the current choice.
+  defp assign_customised_background(socket, params) do
+    mode =
+      if params["background_mode"] in Helpers.background_modes(),
+        do: params["background_mode"],
+        else: socket.assigns.embed_background_mode
+
+    color =
+      if is_binary(params["background_color"]) and
+           Regex.match?(~r/^#[0-9a-fA-F]{6}$/, params["background_color"]),
+         do: String.downcase(params["background_color"]),
+         else: socket.assigns.embed_background_color
+
+    socket
+    |> assign(:embed_background_mode, mode)
+    |> assign(:embed_background_color, color)
+  end
+
+  # "" is the overview; anything but one of the offered slugs keeps the
+  # current choice, as a tampered layout or locale does.
+  defp customised_meeting(_socket, ""), do: ""
+
+  defp customised_meeting(socket, slug) when is_binary(slug) do
+    if valid_meeting?(socket, slug), do: slug, else: socket.assigns.embed_meeting
+  end
+
+  defp customised_meeting(socket, _missing), do: socket.assigns.embed_meeting
+
+  # A pinned type that has since been deactivated, paused or renamed would
+  # leave the snippet and the preview opening on the "not available" notice.
+  defp drop_unlinkable_meeting(socket) do
+    if valid_meeting?(socket, socket.assigns.embed_meeting),
+      do: socket,
+      else: assign(socket, :embed_meeting, "")
+  end
+
+  defp valid_meeting?(socket, slug),
+    do: Enum.any?(socket.assigns.meeting_type_options, fn {_name, s} -> s == slug end)
+
   defp blank_to_nil(""), do: nil
   defp blank_to_nil(nil), do: nil
   defp blank_to_nil(value), do: value
+
+  # Same write budget as the domain list: both change how the widget can be
+  # embedded, from the same page.
+  defp change_embed_alias(socket, change) do
+    with :ok <- alias_rate_limit(socket.assigns.current_user.id),
+         {:ok, updated_profile} <- change.(socket.assigns.profile) do
+      send(self(), {:profile_updated, updated_profile})
+      Flash.info(dgettext("dashboard_embed", "Widget address updated"))
+
+      {:noreply,
+       socket
+       |> assign(:profile, updated_profile)
+       |> assign_widget_address(updated_profile)
+       |> drop_unlinkable_meeting()}
+    else
+      {:error, :rate_limited} ->
+        Flash.error(
+          dgettext(
+            "dashboard_embed",
+            "Too many updates. Please wait a moment before trying again."
+          )
+        )
+
+        {:noreply, socket}
+
+      {:error, reason} when reason in [:insufficient_plan, :pro_required] ->
+        Flash.error(
+          dgettext(
+            "dashboard_embed",
+            "The hidden widget address is only available on the Pro plan and above."
+          )
+        )
+
+        {:noreply, socket}
+
+      {:error, _reason} ->
+        Flash.error(dgettext("dashboard_embed", "Failed to update the widget address"))
+        {:noreply, socket}
+    end
+  end
+
+  defp alias_rate_limit(user_id) do
+    case RateLimiter.check_embed_domain_update_rate_limit(user_id) do
+      :ok -> :ok
+      {:error, :rate_limited, _message} -> {:error, :rate_limited}
+    end
+  end
 
   defp perform_domain_update(socket, domains_payload, success_message) do
     user_id = socket.assigns.current_user.id

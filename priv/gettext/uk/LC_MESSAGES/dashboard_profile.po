@@ -31,12 +31,6 @@ msgstr "Аватар успішно видалено"
 msgid "Avatar updated successfully"
 msgstr "Аватар успішно оновлено"
 
-#: lib/tymeslot_web/components/dashboard/profile/delete_avatar_modal.ex
-#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
-#, elixir-autogen, elixir-format
-msgid "Cancel"
-msgstr "Скасувати"
-
 #: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Choose a unique username for your personal booking page."
@@ -106,11 +100,6 @@ msgstr "Обробка..."
 #, elixir-autogen, elixir-format
 msgid "Profile Picture"
 msgstr "Фото профілю"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings_component.ex
-#, elixir-autogen, elixir-format
-msgid "Profile Settings"
-msgstr "Налаштування профілю"
 
 #: lib/tymeslot_web/live/dashboard/profile_settings/username_change_modal.ex
 #: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
@@ -261,6 +250,21 @@ msgstr "посилання в уже надісланих листах-підт�
 msgid "your booking page and every event link on it"
 msgstr "вашу сторінку бронювання та всі посилання на події на ній"
 
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "This username is already taken"
+msgstr "Це ім'я користувача вже зайняте"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "This username is reserved"
+msgstr "Це ім'я користувача зарезервоване"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "\"System\" follows your device's light/dark setting."
+msgstr "«Системний» слідує налаштуванню світлого/темного режиму вашого пристрою."
+
 #: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "%{count} day ago"
@@ -285,10 +289,35 @@ msgstr[0] "%{count} хвилину тому"
 msgstr[1] "%{count} хвилини тому"
 msgstr[2] "%{count} хвилин тому"
 
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "+420 123 456 789"
+msgstr "+420 123 456 789"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "A nightly job permanently deletes your own cancelled meetings once they've been cancelled for longer than this delay. This cannot be undone."
+msgstr "Нічне завдання остаточно видаляє ваші власні скасовані зустрічі, щойно вони були скасовані довше за цю затримку. Цю дію не можна скасувати."
+
 #: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "A verification email has been sent to"
 msgstr "Лист із підтвердженням надіслано на"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Acme Inc."
+msgstr "Acme Inc."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Appearance"
+msgstr "Вигляд"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Appearance updated"
+msgstr "Вигляд оновлено"
 
 #: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
 #, elixir-autogen, elixir-format
@@ -305,15 +334,65 @@ msgstr "Автентифікація здійснюється через %{provi
 msgid "Automatic"
 msgstr "Автоматично"
 
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Automatically delete cancelled meetings?"
+msgstr "Автоматично видаляти скасовані зустрічі?"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr "Скасувати"
+
 #: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Cancel email change"
 msgstr "Скасувати зміну електронної пошти"
 
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled Meetings"
+msgstr "Скасовані зустрічі"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled meetings will no longer be deleted automatically"
+msgstr "Скасовані зустрічі більше не видалятимуться автоматично"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cancelled meetings will now be deleted automatically after the configured delay"
+msgstr "Скасовані зустрічі тепер видалятимуться автоматично після налаштованої затримки"
+
 #: lib/tymeslot_web/live/dashboard/profile_settings/language_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Changes the language of this admin dashboard. Does not affect the language visitors see on your booking page."
 msgstr "Змінює мову цієї адміністративної панелі. Не впливає на мову, яку відвідувачі бачать на вашій сторінці бронювання."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Choose how the dashboard looks"
+msgstr "Виберіть, як має виглядати панель керування"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cleanup delay must be between %{min} and %{max} days"
+msgstr "Затримка очищення має бути від %{min} до %{max} днів"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Cleanup delay updated"
+msgstr "Затримку очищення оновлено"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Collect contacts?"
+msgstr "Збирати контакти?"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Company"
+msgstr "Компанія"
 
 #: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
 #, elixir-autogen, elixir-format
@@ -324,6 +403,36 @@ msgstr "Підтвердити новий пароль"
 #, elixir-autogen, elixir-format
 msgid "Confirm your new password"
 msgstr "Підтвердьте новий пароль"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact Collection"
+msgstr "Збір контактів"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact Details"
+msgstr "Контактні дані"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact collection is available on the Pro plan and above."
+msgstr "Збір контактів доступний у тарифі Pro і вище."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Contact details updated"
+msgstr "Контактні дані оновлено"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Controls how bookings are titled on your dashboard overview and calendar and in your connected calendar: by the meeting information your guest entered when booking, or by the meeting type. Bookings without meeting information always show the meeting type. The event description in your connected calendar always carries all the details. Events already in your calendar change the next time they are updated."
+msgstr "Визначає, як називаються бронювання в огляді та календарі панелі, а також у підключеному календарі: за інформацією про зустріч, яку гість указав під час бронювання, або за типом зустрічі. Бронювання без інформації про зустріч завжди показують тип зустрічі. Опис події в підключеному календарі завжди містить усі подробиці. Події, які вже є в календарі, зміняться під час наступного оновлення."
+
+#: lib/tymeslot_web/controllers/auth/account_deletion_controller.ex
+#, elixir-autogen, elixir-format
+msgid "Could not delete your account. Please try again."
+msgstr "Не вдалося видалити ваш обліковий запис. Спробуйте ще раз."
 
 #: lib/tymeslot_web/live/dashboard/profile_settings/language_form_component.ex
 #, elixir-autogen, elixir-format
@@ -340,6 +449,41 @@ msgstr "Поточний пароль"
 #, elixir-autogen, elixir-format
 msgid "Current email:"
 msgstr "Поточна електронна пошта:"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Current password is incorrect"
+msgstr "Поточний пароль неправильний"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Custom URL is available on the Pro plan and above."
+msgstr "Власна URL-адреса доступна лише в тарифі Pro і вище."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Danger zone"
+msgstr "Небезпечна зона"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Dark"
+msgstr "Темний"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Delete account"
+msgstr "Видалити обліковий запис"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Delete after (days since cancellation)"
+msgstr "Видалити через (днів після скасування)"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Deleting..."
+msgstr "Видалення..."
 
 #: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
 #, elixir-autogen, elixir-format
@@ -362,6 +506,41 @@ msgstr "Зміни електронної пошти керуються чере
 msgid "Enter your current password"
 msgstr "Введіть поточний пароль"
 
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update appearance"
+msgstr "Не вдалося оновити вигляд"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update cancelled meeting cleanup setting"
+msgstr "Не вдалося оновити налаштування очищення скасованих зустрічей"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update cleanup delay"
+msgstr "Не вдалося оновити затримку очищення"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update contact collection setting"
+msgstr "Не вдалося оновити налаштування збору контактів"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update contact details"
+msgstr "Не вдалося оновити контактні дані"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update meeting titles"
+msgstr "Не вдалося оновити назви зустрічей"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/avatar_upload_component.ex
+#, elixir-autogen, elixir-format
+msgid "JPG, PNG, GIF or WebP. Max 300KB."
+msgstr "JPG, PNG, GIF або WebP. Максимум 300 КБ."
+
 #: lib/tymeslot_web/live/dashboard/profile_settings/language_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Language"
@@ -377,10 +556,50 @@ msgstr "Мовні налаштування збережено."
 msgid "Last changed:"
 msgstr "Востаннє змінено:"
 
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Light"
+msgstr "Світлий"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Manage your account, contact details, and scheduling preferences."
+msgstr "Керуйте своїм обліковим записом, контактними даними та налаштуваннями планування."
+
 #: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Managed through your %{provider} account — email changes aren't available for social login accounts."
 msgstr "Керується через ваш обліковий запис %{provider} — зміни електронної пошти недоступні для облікових записів соціальних мереж."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Information"
+msgstr "Інформація про зустріч"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Titles"
+msgstr "Назви зустрічей"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting titles updated"
+msgstr "Назви зустрічей оновлено"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting type"
+msgstr "Тип зустрічі"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Microsoft does not let us withdraw your consent for %{app_name}. To remove it, open myapps.microsoft.com and remove %{app_name} from your apps."
+msgstr "Microsoft не дозволяє нам відкликати вашу згоду для %{app_name}. Щоб її зняти, відкрийте myapps.microsoft.com і видаліть %{app_name} зі своїх застосунків."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Name bookings by"
+msgstr "Називати бронювання за"
 
 #: lib/tymeslot_web/live/dashboard/profile_settings/account_security_helpers.ex
 #, elixir-autogen, elixir-format
@@ -397,6 +616,22 @@ msgstr "Нова електронна адреса"
 msgid "New Password"
 msgstr "Новий пароль"
 
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "New bookings will no longer be added to your contacts"
+msgstr "Нові бронювання більше не додаватимуться до ваших контактів"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "New bookings will now be added to your contacts"
+msgstr "Нові бронювання тепер додаватимуться до ваших контактів"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Only available on the Pro plan and above."
+msgstr "Доступно лише в тарифі Pro і вище."
+
 #: lib/tymeslot_web/live/dashboard/profile_settings/password_settings_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Password"
@@ -407,20 +642,70 @@ msgstr "Пароль"
 msgid "Password authentication is not available for %{provider} login"
 msgstr "Автентифікація за паролем недоступна для входу через %{provider}"
 
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Permanently delete my account"
+msgstr "Назавжди видалити мій обліковий запис"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Permanently delete your account and all your data, including your meeting history. This cannot be undone."
+msgstr "Назавжди видаляє ваш обліковий запис і всі ваші дані, включно з історією зустрічей. Цю дію неможливо скасувати."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Phone"
+msgstr "Телефон"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Profile Settings"
+msgstr "Налаштування профілю"
+
 #: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Sent %{time}"
 msgstr "Надіслано %{time}"
 
-#: lib/tymeslot_web/live/dashboard/profile_settings/time_format_form_component.ex
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
 #, elixir-autogen, elixir-format
-msgid "Set time format"
-msgstr "Налаштувати формат часу"
+msgid "Set appearance"
+msgstr "Встановити вигляд"
 
-#: lib/tymeslot_web/live/dashboard/profile_settings/time_format_form_component.ex
+#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
 #, elixir-autogen, elixir-format
-msgid "Set your preferred time format"
-msgstr "Налаштуйте бажаний формат часу"
+msgid "Set automatic cancelled meeting cleanup"
+msgstr "Налаштувати автоматичне очищення скасованих зустрічей"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Set contact collection"
+msgstr "Налаштувати збір контактів"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Set meeting titles"
+msgstr "Налаштувати назви зустрічей"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "System"
+msgstr "Системний"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "This does not match your account email address"
+msgstr "Не збігається з адресою електронної пошти вашого облікового запису"
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "This permanently deletes your account, your profile, meeting types, integrations and your whole meeting history. This cannot be undone."
+msgstr "Це назавжди видалить ваш обліковий запис, профіль, типи зустрічей, інтеграції та всю історію зустрічей. Цю дію неможливо скасувати."
+
+#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#, elixir-autogen, elixir-format
+msgid "Type %{email} to confirm"
+msgstr "Введіть %{email} для підтвердження"
 
 #: lib/tymeslot_web/live/dashboard/profile_settings/account_security_forms.ex
 #, elixir-autogen, elixir-format
@@ -437,236 +722,15 @@ msgstr "Оновити пароль"
 msgid "Updating..."
 msgstr "Оновлення..."
 
-#: lib/tymeslot_web/live/dashboard/profile_settings/password_settings_form_component.ex
+#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
 #, elixir-autogen, elixir-format
-msgid "Your password has been changed. Please sign in again with your new password."
-msgstr "Ваш пароль змінено. Увійдіть знову з новим паролем."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "just now"
-msgstr "щойно"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "This username is already taken"
-msgstr "Це ім'я користувача вже зайняте"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "This username is reserved"
-msgstr "Це ім'я користувача зарезервоване"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings_component.ex
-#, elixir-autogen, elixir-format
-msgid "Manage your account, contact details, and scheduling preferences."
-msgstr "Керуйте своїм обліковим записом, контактними даними та налаштуваннями планування."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "A nightly job permanently deletes your own cancelled meetings once they've been cancelled for longer than this delay. This cannot be undone."
-msgstr "Нічне завдання остаточно видаляє ваші власні скасовані зустрічі, щойно вони були скасовані довше за цю затримку. Цю дію не можна скасувати."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Automatically delete cancelled meetings?"
-msgstr "Автоматично видаляти скасовані зустрічі?"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Cancelled Meetings"
-msgstr "Скасовані зустрічі"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Cancelled meetings will no longer be deleted automatically"
-msgstr "Скасовані зустрічі більше не видалятимуться автоматично"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Cancelled meetings will now be deleted automatically after the configured delay"
-msgstr "Скасовані зустрічі тепер видалятимуться автоматично після налаштованої затримки"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Cleanup delay must be between %{min} and %{max} days"
-msgstr "Затримка очищення має бути від %{min} до %{max} днів"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Cleanup delay updated"
-msgstr "Затримку очищення оновлено"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Delete after (days since cancellation)"
-msgstr "Видалити через (днів після скасування)"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Failed to update cancelled meeting cleanup setting"
-msgstr "Не вдалося оновити налаштування очищення скасованих зустрічей"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Failed to update cleanup delay"
-msgstr "Не вдалося оновити затримку очищення"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/cancelled_meetings_retention_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Set automatic cancelled meeting cleanup"
-msgstr "Налаштувати автоматичне очищення скасованих зустрічей"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Collect contacts?"
-msgstr "Збирати контакти?"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Contact Collection"
-msgstr "Збір контактів"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Failed to update contact collection setting"
-msgstr "Не вдалося оновити налаштування збору контактів"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "New bookings will no longer be added to your contacts"
-msgstr "Нові бронювання більше не додаватимуться до ваших контактів"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "New bookings will now be added to your contacts"
-msgstr "Нові бронювання тепер додаватимуться до ваших контактів"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Set contact collection"
-msgstr "Налаштувати збір контактів"
+msgid "Used to pre-fill the booking form when you book a meeting with someone else. Changes are saved automatically."
+msgstr "Використовується для автозаповнення форми бронювання, коли ви записуєтеся на зустріч до когось іншого. Зміни зберігаються автоматично."
 
 #: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "When enabled, each new public booking adds or updates a contact with the booker's name, email, phone, and company."
 msgstr "Якщо ввімкнено, кожне нове публічне бронювання додає або оновлює контакт з ім'ям, електронною поштою, телефоном і компанією того, хто бронює."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/avatar_upload_component.ex
-#, elixir-autogen, elixir-format
-msgid "JPG, PNG, GIF or WebP. Max 300KB."
-msgstr "JPG, PNG, GIF або WebP. Максимум 300 КБ."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
-#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Only available on the Pro plan and above."
-msgstr "Доступно лише в тарифі Pro і вище."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contacts_settings_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Contact collection is available on the Pro plan and above."
-msgstr "Збір контактів доступний у тарифі Pro і вище."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/username_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Custom URL is available on the Pro plan and above."
-msgstr "Власна URL-адреса доступна лише в тарифі Pro і вище."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "\"System\" follows your device's light/dark setting."
-msgstr "«Системний» слідує налаштуванню світлого/темного режиму вашого пристрою."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Appearance"
-msgstr "Вигляд"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Appearance updated"
-msgstr "Вигляд оновлено"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Choose how the dashboard looks"
-msgstr "Виберіть, як має виглядати панель керування"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Dark"
-msgstr "Темний"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Failed to update appearance"
-msgstr "Не вдалося оновити вигляд"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Light"
-msgstr "Світлий"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Set appearance"
-msgstr "Встановити вигляд"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/appearance_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "System"
-msgstr "Системний"
-
-#: lib/tymeslot_web/controllers/auth/account_deletion_controller.ex
-#, elixir-autogen, elixir-format
-msgid "Could not delete your account. Please try again."
-msgstr "Не вдалося видалити ваш обліковий запис. Спробуйте ще раз."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
-#, elixir-autogen, elixir-format
-msgid "Current password is incorrect"
-msgstr "Поточний пароль неправильний"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
-#, elixir-autogen, elixir-format
-msgid "Danger zone"
-msgstr "Небезпечна зона"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
-#, elixir-autogen, elixir-format
-msgid "Delete account"
-msgstr "Видалити обліковий запис"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
-#, elixir-autogen, elixir-format
-msgid "Deleting..."
-msgstr "Видалення..."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
-#, elixir-autogen, elixir-format
-msgid "Permanently delete my account"
-msgstr "Назавжди видалити мій обліковий запис"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
-#, elixir-autogen, elixir-format
-msgid "Permanently delete your account and all your data, including your meeting history. This cannot be undone."
-msgstr "Назавжди видаляє ваш обліковий запис і всі ваші дані, включно з історією зустрічей. Цю дію неможливо скасувати."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
-#, elixir-autogen, elixir-format
-msgid "This does not match your account email address"
-msgstr "Не збігається з адресою електронної пошти вашого облікового запису"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
-#, elixir-autogen, elixir-format
-msgid "This permanently deletes your account, your profile, meeting types, integrations and your whole meeting history. This cannot be undone."
-msgstr "Це назавжди видалить ваш обліковий запис, профіль, типи зустрічей, інтеграції та всю історію зустрічей. Цю дію неможливо скасувати."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
-#, elixir-autogen, elixir-format
-msgid "Type %{email} to confirm"
-msgstr "Введіть %{email} для підтвердження"
 
 #: lib/tymeslot_web/controllers/auth/account_deletion_controller.ex
 #: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
@@ -692,87 +756,17 @@ msgstr "Видалення вашого облікового запису зап
 msgid "Your account was not deleted: the confirmation did not match."
 msgstr "Ваш обліковий запис не видалено: підтвердження не збіглося."
 
-#: lib/tymeslot_web/live/dashboard/profile_settings/delete_account_component.ex
+#: lib/tymeslot_web/live/dashboard/profile_settings/password_settings_form_component.ex
 #, elixir-autogen, elixir-format
-msgid "Microsoft does not let us withdraw your consent for Tymeslot. To remove it, open myapps.microsoft.com and remove Tymeslot from your apps."
-msgstr "Microsoft не дозволяє нам відкликати вашу згоду для LockMyCal. Щоб її зняти, відкрийте myapps.microsoft.com і видаліть LockMyCal зі своїх застосунків."
+msgid "Your password has been changed. Please sign in again with your new password."
+msgstr "Ваш пароль змінено. Увійдіть знову з новим паролем."
 
-#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#: lib/tymeslot_web/live/dashboard/profile_settings/email_settings_form_component.ex
 #, elixir-autogen, elixir-format
-msgid "+420 123 456 789"
-msgstr "+420 123 456 789"
+msgid "just now"
+msgstr "щойно"
 
-#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
+#: lib/tymeslot_web/components/dashboard/profile/delete_avatar_modal.ex
 #, elixir-autogen, elixir-format
-msgid "Acme Inc."
-msgstr "Acme Inc."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Contact Details"
-msgstr "Контактні дані"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Contact details updated"
-msgstr "Контактні дані оновлено"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Failed to update contact details"
-msgstr "Не вдалося оновити контактні дані"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Used to pre-fill the booking form when you book a meeting with someone else. Changes are saved automatically."
-msgstr "Використовується для автозаповнення форми бронювання, коли ви записуєтеся на зустріч до когось іншого. Зміни зберігаються автоматично."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Company"
-msgstr "Компанія"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/contact_details_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Phone"
-msgstr "Телефон"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Failed to update meeting titles"
-msgstr "Не вдалося оновити назви зустрічей"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Meeting Information"
-msgstr "Інформація про зустріч"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Meeting Titles"
-msgstr "Назви зустрічей"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Meeting titles updated"
-msgstr "Назви зустрічей оновлено"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Meeting type"
-msgstr "Тип зустрічі"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Set meeting titles"
-msgstr "Налаштувати назви зустрічей"
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Controls how bookings are titled on your dashboard overview and calendar and in your connected calendar: by the meeting information your guest entered when booking, or by the meeting type. Bookings without meeting information always show the meeting type. The event description in your connected calendar always carries all the details. Events already in your calendar change the next time they are updated."
-msgstr "Визначає, як називаються бронювання в огляді та календарі панелі, а також у підключеному календарі: за інформацією про зустріч, яку гість указав під час бронювання, або за типом зустрічі. Бронювання без інформації про зустріч завжди показують тип зустрічі. Опис події в підключеному календарі завжди містить усі подробиці. Події, які вже є в календарі, зміняться під час наступного оновлення."
-
-#: lib/tymeslot_web/live/dashboard/profile_settings/booking_title_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Name bookings by"
-msgstr "Називати бронювання за"
+msgid "Delete avatar"
+msgstr "Видалити аватар"

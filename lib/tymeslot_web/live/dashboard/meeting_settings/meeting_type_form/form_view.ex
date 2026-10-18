@@ -8,13 +8,15 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
   unchanged (its `render/1` delegates straight to it), so LiveView change
   tracking is preserved.
 
-  The sections are grouped into five panels. In edit mode a tab bar shows one
-  panel at a time; in create mode the same panels render stacked, so the
-  markup below is the single source of the section grouping and order for
-  both modes. Inactive panels are hidden with CSS rather than conditionally
-  rendered, keeping every input in the DOM (create mode submits the whole
-  form) and preserving the custom-questions component's state across tab
+  The sections are grouped into five panels behind a tab bar, one panel shown
+  at a time. Inactive panels are hidden with CSS rather than conditionally
+  rendered, preserving the custom-questions component's state across tab
   switches.
+
+  A new meeting type uses the same form. Auto-save needs a record to save
+  into, so until it exists only the Details panel renders, the other tabs are
+  shown but disabled, and the footer offers a single "Create meeting type"
+  action in place of the auto-save indicator and "Done".
   """
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
@@ -22,6 +24,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
   alias Tymeslot.Locales
   alias Tymeslot.Meetings.Guests
   alias Tymeslot.Validation.Constraints
+  alias TymeslotWeb.Components.CoreComponents.Navigation
   alias TymeslotWeb.Components.Dashboard.LocaleTabSwitcher
   alias TymeslotWeb.Dashboard.MeetingSettings.Helpers
 
@@ -32,15 +35,16 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
     AvailabilitySection,
     ContactSharingSection,
     CustomQuestionsSection,
+    GroupBookingsSection,
+    GroupRules,
     GuestsSection,
-    HiddenFields,
     LimitsSection,
     LocationEditorComponent,
     LocationsSection,
     PaymentsSection,
     QuestionEditorComponent,
     ShowAsFreeSection,
-    SlotInterval,
+    SlotIntervalField,
     VisibilitySection
   }
 
@@ -49,448 +53,483 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
   import ApprovalSection, only: [approval_section: 1]
   import AvailabilitySection, only: [availability_section: 1]
   import ContactSharingSection, only: [contact_sharing_section: 1]
+  import GroupBookingsSection, only: [group_bookings_section: 1]
   import GuestsSection, only: [guests_section: 1]
   import AttachmentsSection, only: [attachments_section: 1]
   import LimitsSection, only: [limits_section: 1]
   import ShowAsFreeSection, only: [show_as_free_section: 1]
-  import HiddenFields, only: [hidden_fields: 1]
   import PaymentsSection, only: [payments_section: 1]
   import VisibilitySection, only: [visibility_section: 1]
   import TymeslotWeb.Dashboard.MeetingSettings.Components.BookingComponents
-  import TymeslotWeb.Dashboard.MeetingSettings.Components.Reminders
+  import TymeslotWeb.Components.Shared.ReminderPicker, only: [reminder_picker: 1]
 
   # Which form-error fields surface an indicator on which tab. Errors on
   # fields absent here (e.g. :base) render below the panels and need no dot.
   @tab_error_fields %{
     "details" => [:name, :duration, :slot_interval, :description, :icon, :translations],
     "location" => [:locations, :video_integration, :calendar_integration, :target_calendar],
-    "booking" => [:payment_required, :price_cents, :approval_window_hours],
+    "booking" => [
+      :payment_required,
+      :price_cents,
+      :max_participants,
+      :invited_emails,
+      :last_spots_threshold,
+      :approval_window_hours
+    ],
     "reminders" => [:reminder_config]
   }
 
+  @tabs_id "meeting-type-form-tabs"
+
+  @doc """
+  The element id of the tab button for `tab` in the form's tab strip, so a
+  caller can move focus onto it.
+  """
+  @spec tab_element_id(String.t()) :: String.t()
+  def tab_element_id(tab), do: Navigation.tab_id(@tabs_id, tab)
+
   @spec form(map()) :: Phoenix.LiveView.Rendered.t()
   def form(assigns) do
+    assigns =
+      assign(assigns,
+        tabs_id: @tabs_id,
+        create_hint_id: "meeting-type-form-#{assigns.id}-create-hint"
+      )
+
     ~H"""
     <div id={"meeting-type-form-wrapper-#{@id}"}>
-      <.subsection_header
-        :if={!@is_edit}
-        icon="hero-identification"
-        title={dgettext("dashboard_meeting_form", "Meeting details")}
-        class="mb-2"
-      />
-
-      <div class={if @is_edit, do: nil, else: "card-glass"}>
-        <form
-          id={"meeting-type-form-#{@id}"}
-          phx-submit={if @is_edit, do: "flush_autosave", else: "save_meeting_type"}
-          phx-target={if @is_edit, do: @myself, else: @parent_myself}
-          class={if @is_edit, do: "space-y-6", else: "space-y-8"}
-          novalidate
-        >
+      <form
+        id={"meeting-type-form-#{@id}"}
+        phx-submit={if @is_edit, do: "flush_autosave", else: "create_meeting_type"}
+        phx-target={@myself}
+        class="space-y-6"
+        novalidate
+      >
+        <div class="space-y-2">
           <.tab_bar
-            :if={@is_edit}
+            id={@tabs_id}
+            aria_label={dgettext("dashboard_meeting_form", "Meeting type settings")}
             active_tab={@active_tab}
             target={@myself}
-            tabs={form_tabs(@form_errors, @custom_questions_allowed)}
+            tabs={form_tabs(@form_errors, @custom_questions_allowed, @is_edit, @create_hint_id)}
+          />
+          <p
+            :if={!@is_edit}
+            id={@create_hint_id}
+            class="flex items-center gap-1.5 px-2 text-token-sm text-neutral-500 dark:text-twilight-indigo-300"
+          >
+            <.icon
+              name="hero-information-circle-mini"
+              class="w-4 h-4 shrink-0 text-neutral-400 dark:text-twilight-indigo-300"
+            />
+            {dgettext("dashboard_meeting_form", "Create the meeting type to set up the rest.")}
+          </p>
+        </div>
+
+        <%!-- Details --%>
+        <.card
+          id={Navigation.panel_id(@tabs_id, "details")}
+          role="tabpanel"
+          aria-labelledby={Navigation.tab_id(@tabs_id, "details")}
+          hidden={@active_tab != "details"}
+          class={panel_class(@active_tab, "details")}
+        >
+          <.subsection_header
+            icon="hero-identification"
+            title={dgettext("dashboard_meeting_form", "Meeting details")}
+            class="mb-2"
           />
 
-          <%!-- Details --%>
-          <div
-            id="panel-details"
-            role={@is_edit && "tabpanel"}
-            aria-labelledby={@is_edit && "tab-details"}
-            hidden={@is_edit && @active_tab != "details"}
-            class={panel_class(@is_edit, @active_tab, "details")}
-          >
-            <.subsection_header
-              :if={@is_edit}
-              icon="hero-identification"
-              title={dgettext("dashboard_meeting_form", "Meeting details")}
-              class="mb-2"
-            />
+          <LocaleTabSwitcher.locale_tab_switcher
+            active_value={@active_translation_locale}
+            click_event="switch_translation_locale"
+            target={@myself}
+          />
 
-            <LocaleTabSwitcher.locale_tab_switcher
-              active_value={@active_translation_locale}
-              click_event="switch_translation_locale"
-              target={@myself}
-            />
+          <div :if={@active_translation_locale == Locales.default_locale()} class="space-y-4">
+            <div class="card-glass space-y-4">
+              <.input
+                name="meeting_type[name]"
+                label={dgettext("dashboard_meeting_form", "Name")}
+                value={Map.get(@form_data, "name", if(@type, do: @type.name, else: ""))}
+                required
+                maxlength={Constraints.name_length_opts()[:max]}
+                placeholder={dgettext("dashboard_meeting_form", "e.g., Quick Chat")}
+                phx-change="validate_meeting_type"
+                phx-debounce="500"
+                phx-target={@myself}
+                errors={
+                  FormValidationHelpers.field_errors(@form_errors, :name)
+                  |> Enum.map(&Helpers.format_errors/1)
+                }
+                icon="hero-tag"
+              />
 
-            <div :if={@active_translation_locale == Locales.default_locale()} class="space-y-4">
-              <div class="card-glass space-y-4">
-                <.input
-                  name="meeting_type[name]"
-                  label={dgettext("dashboard_meeting_form", "Name")}
-                  value={Map.get(@form_data, "name", if(@type, do: @type.name, else: ""))}
-                  required
-                  maxlength={Constraints.name_length_opts()[:max]}
-                  placeholder={dgettext("dashboard_meeting_form", "e.g., Quick Chat")}
-                  phx-change="validate_meeting_type"
-                  phx-debounce="500"
-                  phx-target={@myself}
-                  errors={
-                    FormValidationHelpers.field_errors(@form_errors, :name)
-                    |> Enum.map(&Helpers.format_errors/1)
-                  }
-                  icon="hero-tag"
-                />
+              <.input
+                name="meeting_type[description]"
+                label={dgettext("dashboard_meeting_form", "Description (optional)")}
+                value={Map.get(@form_data, "description", if(@type, do: @type.description, else: ""))}
+                maxlength={Constraints.description_max_length()}
+                placeholder={
+                  dgettext("dashboard_meeting_form", "Brief description of this meeting type")
+                }
+                phx-change="validate_meeting_type"
+                phx-debounce="500"
+                phx-target={@myself}
+                errors={
+                  FormValidationHelpers.field_errors(@form_errors, :description)
+                  |> Enum.map(&Helpers.format_errors/1)
+                }
+                icon="hero-document-text"
+              />
 
-                <.input
-                  name="meeting_type[description]"
-                  label={dgettext("dashboard_meeting_form", "Description (optional)")}
-                  value={
-                    Map.get(@form_data, "description", if(@type, do: @type.description, else: ""))
-                  }
-                  maxlength={Constraints.description_max_length()}
-                  placeholder={
-                    dgettext("dashboard_meeting_form", "Brief description of this meeting type")
-                  }
-                  phx-change="validate_meeting_type"
-                  phx-debounce="500"
-                  phx-target={@myself}
-                  errors={
-                    FormValidationHelpers.field_errors(@form_errors, :description)
-                    |> Enum.map(&Helpers.format_errors/1)
-                  }
-                  icon="hero-document-text"
-                />
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <.input
+                    type="number"
+                    name="meeting_type[duration]"
+                    label={dgettext("dashboard_meeting_form", "Duration (minutes)")}
+                    value={
+                      Map.get(
+                        @form_data,
+                        "duration",
+                        if(@type, do: @type.duration_minutes, else: "30")
+                      )
+                    }
+                    min={Constraints.duration_minutes_opts()[:greater_than_or_equal_to]}
+                    max={Constraints.duration_minutes_opts()[:less_than_or_equal_to]}
+                    step="5"
+                    required
+                    placeholder="30"
+                    phx-change="validate_meeting_type"
+                    phx-debounce="500"
+                    phx-target={@myself}
+                    errors={
+                      FormValidationHelpers.field_errors(@form_errors, :duration)
+                      |> Enum.map(&Helpers.format_errors/1)
+                    }
+                    icon="hero-clock"
+                  />
+                  <p class="mt-1 text-token-sm text-neutral-600 dark:text-neutral-400">
+                    {dgettext(
+                      "dashboard_meeting_form",
+                      "Enter a duration between %{min} and %{max} minutes",
+                      min: Constraints.duration_minutes_opts()[:greater_than_or_equal_to],
+                      max: Constraints.duration_minutes_opts()[:less_than_or_equal_to]
+                    )}
+                  </p>
+                </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                <% slot_interval_value =
+                  Map.get(
+                    @form_data,
+                    "slot_interval",
+                    if(@type, do: @type.slot_interval_minutes, else: "")
+                  ) %>
+                <% slot_interval_custom? = SlotIntervalField.custom?(assigns, slot_interval_value) %>
+                <div>
+                  <.input
+                    type="select"
+                    name="meeting_type[slot_interval]"
+                    label={dgettext("dashboard_meeting_form", "Booking slot interval")}
+                    value={
+                      if(slot_interval_custom?,
+                        do: SlotIntervalField.custom_interval_option(),
+                        else: slot_interval_value
+                      )
+                    }
+                    options={SlotIntervalField.options(slot_interval_value, slot_interval_custom?)}
+                    phx-change="validate_meeting_type"
+                    phx-target={@myself}
+                    errors={
+                      if(slot_interval_custom?,
+                        do: [],
+                        else:
+                          FormValidationHelpers.field_errors(@form_errors, :slot_interval)
+                          |> Enum.map(&Helpers.format_errors/1)
+                      )
+                    }
+                    icon="hero-adjustments-horizontal"
+                  />
+                  <%!-- The number input carries the same param name as the select, so
+                        whichever control is on screen is the one that posts the value
+                        and the two can never disagree about what is stored. --%>
+                  <div :if={slot_interval_custom?} class="mt-2">
                     <.input
                       type="number"
-                      name="meeting_type[duration]"
-                      label={dgettext("dashboard_meeting_form", "Duration (minutes)")}
-                      value={
-                        Map.get(
-                          @form_data,
-                          "duration",
-                          if(@type, do: @type.duration_minutes, else: "30")
-                        )
-                      }
-                      min={Constraints.duration_minutes_opts()[:greater_than_or_equal_to]}
-                      max={Constraints.duration_minutes_opts()[:less_than_or_equal_to]}
-                      step="5"
-                      required
-                      placeholder="30"
+                      name="meeting_type[slot_interval]"
+                      label={dgettext("dashboard_meeting_form", "Custom interval (minutes)")}
+                      value={slot_interval_value}
+                      min={Constraints.slot_interval_minutes_range().first}
+                      max={Constraints.slot_interval_minutes_range().last}
+                      step="1"
                       phx-change="validate_meeting_type"
                       phx-debounce="500"
                       phx-target={@myself}
                       errors={
-                        FormValidationHelpers.field_errors(@form_errors, :duration)
+                        FormValidationHelpers.field_errors(@form_errors, :slot_interval)
                         |> Enum.map(&Helpers.format_errors/1)
-                      }
-                      icon="hero-clock"
-                    />
-                    <p class="mt-1 text-token-sm text-neutral-600 dark:text-neutral-400">
-                      {dgettext(
-                        "dashboard_meeting_form",
-                        "Enter a duration between %{min} and %{max} minutes",
-                        min: Constraints.duration_minutes_opts()[:greater_than_or_equal_to],
-                        max: Constraints.duration_minutes_opts()[:less_than_or_equal_to]
-                      )}
-                    </p>
-                  </div>
-
-                  <% slot_interval_value =
-                    Map.get(
-                      @form_data,
-                      "slot_interval",
-                      if(@type, do: @type.slot_interval_minutes, else: "")
-                    ) %>
-                  <% slot_interval_custom? = SlotInterval.custom?(assigns, slot_interval_value) %>
-                  <div>
-                    <.input
-                      type="select"
-                      name="meeting_type[slot_interval]"
-                      label={dgettext("dashboard_meeting_form", "Booking slot interval")}
-                      value={
-                        if(slot_interval_custom?,
-                          do: SlotInterval.custom_option(),
-                          else: slot_interval_value
-                        )
-                      }
-                      options={SlotInterval.options(slot_interval_value, slot_interval_custom?)}
-                      phx-change="validate_meeting_type"
-                      phx-target={@myself}
-                      errors={
-                        if(slot_interval_custom?,
-                          do: [],
-                          else:
-                            FormValidationHelpers.field_errors(@form_errors, :slot_interval)
-                            |> Enum.map(&Helpers.format_errors/1)
-                        )
                       }
                       icon="hero-adjustments-horizontal"
                     />
-                    <%!-- The number input carries the same param name as the select, so
-                        whichever control is on screen is the one that posts the value
-                        and the two can never disagree about what is stored. --%>
-                    <div :if={slot_interval_custom?} class="mt-2">
-                      <.input
-                        type="number"
-                        name="meeting_type[slot_interval]"
-                        label={dgettext("dashboard_meeting_form", "Custom interval (minutes)")}
-                        value={slot_interval_value}
-                        min={Constraints.slot_interval_minutes_range().first}
-                        max={Constraints.slot_interval_minutes_range().last}
-                        step="1"
-                        phx-change="validate_meeting_type"
-                        phx-debounce="500"
-                        phx-target={@myself}
-                        errors={
-                          FormValidationHelpers.field_errors(@form_errors, :slot_interval)
-                          |> Enum.map(&Helpers.format_errors/1)
-                        }
-                        icon="hero-adjustments-horizontal"
-                      />
-                    </div>
-                    <p class="mt-1 text-token-sm text-tymeslot-600">
-                      {SlotInterval.hint(slot_interval_value, Map.get(@form_data, "duration"))}
-                    </p>
                   </div>
+                  <p class="mt-1 text-token-sm text-neutral-600 dark:text-neutral-300">
+                    {SlotIntervalField.hint(slot_interval_value, Map.get(@form_data, "duration"))}
+                  </p>
                 </div>
               </div>
-
-              <.icon_picker
-                selected_icon={@selected_icon}
-                form_errors={@form_errors}
-                myself={@myself}
-              />
             </div>
 
-            <div
-              :if={@active_translation_locale != Locales.default_locale()}
-              class="card-glass space-y-4"
-            >
-              <% translation = current_translation(@translations, @active_translation_locale) %>
-              <.input
-                name="translation[name]"
-                label={dgettext("dashboard_meeting_form", "Name")}
-                value={(translation && translation.name) || ""}
-                maxlength={Constraints.name_length_opts()[:max]}
-                placeholder={Map.get(@form_data, "name", if(@type, do: @type.name, else: ""))}
-                phx-change="validate_meeting_type_translation"
-                phx-debounce="500"
-                phx-target={@myself}
-                icon="hero-tag"
-              />
-              <.input
-                name="translation[description]"
-                label={dgettext("dashboard_meeting_form", "Description (optional)")}
-                value={(translation && translation.description) || ""}
-                maxlength={Constraints.description_max_length()}
-                placeholder={
-                  Map.get(@form_data, "description", if(@type, do: @type.description, else: ""))
-                }
-                phx-change="validate_meeting_type_translation"
-                phx-debounce="500"
-                phx-target={@myself}
-                icon="hero-document-text"
-              />
-            </div>
-          </div>
-
-          <%!-- Location & Calendar --%>
-          <div
-            id="panel-location"
-            role={@is_edit && "tabpanel"}
-            aria-labelledby={@is_edit && "tab-location"}
-            hidden={@is_edit && @active_tab != "location"}
-            class={panel_class(@is_edit, @active_tab, "location")}
-          >
-            <.live_component
-              module={LocationsSection}
-              id={"locations-section-#{@id}"}
-              locations={@locations}
-              video_integrations={@video_integrations}
-              venues={@venues}
-              form_id={@id}
-            />
-
-            <.booking_destination_section
-              calendar_integrations={@calendar_integrations}
-              selected_calendar_integration_id={@selected_calendar_integration_id}
-              refreshing_calendars={@refreshing_calendars}
-              available_calendars={@available_calendars}
-              no_writable_calendars={@no_writable_calendars}
-              target_calendar_status={@target_calendar_status}
-              selected_target_calendar_id={@selected_target_calendar_id}
+            <.icon_picker
+              selected_icon={@selected_icon}
               form_errors={@form_errors}
               myself={@myself}
             />
-
-            <.show_as_free_section show_as_free={@show_as_free} myself={@myself} />
           </div>
 
-          <%!-- Booking Rules --%>
           <div
-            id="panel-booking"
-            role={@is_edit && "tabpanel"}
-            aria-labelledby={@is_edit && "tab-booking"}
-            hidden={@is_edit && @active_tab != "booking"}
-            class={panel_class(@is_edit, @active_tab, "booking")}
+            :if={@active_translation_locale != Locales.default_locale()}
+            class="card-glass space-y-4"
           >
-            <.payments_section
-              :if={@payments_feature_enabled}
-              charges_enabled={@payments_charges_enabled}
-              payment_required={@payment_required}
-              payment_price={@payment_price}
-              currency={@payment_currency}
-              currency_minimum_cents={@payment_currency_minimum_cents}
-              form_errors={@form_errors}
-              myself={@myself}
+            <% translation = current_translation(@translations, @active_translation_locale) %>
+            <.input
+              name="translation[name]"
+              label={dgettext("dashboard_meeting_form", "Name")}
+              value={(translation && translation.name) || ""}
+              maxlength={Constraints.name_length_opts()[:max]}
+              placeholder={Map.get(@form_data, "name", if(@type, do: @type.name, else: ""))}
+              phx-change="validate_meeting_type_translation"
+              phx-debounce="500"
+              phx-target={@myself}
+              icon="hero-tag"
             />
-
-            <.guests_section
-              allow_guests={@allow_guests}
-              max_guests={Guests.max_guests()}
-              myself={@myself}
-            />
-
-            <.attachments_section allow_attachments={@allow_attachments} myself={@myself} />
-
-            <.limits_section booking_limits={@booking_limits} myself={@myself} />
-
-            <.visibility_section :if={@is_edit && @type} type={@type} parent={@parent_myself} />
-
-            <.approval_section
-              requires_approval={@requires_approval}
-              approval_window_hours={@approval_window_hours}
-              errors={
-                @form_errors
-                |> FormValidationHelpers.field_errors(:approval_window_hours)
-                |> Enum.map(&Helpers.format_errors/1)
+            <.input
+              name="translation[description]"
+              label={dgettext("dashboard_meeting_form", "Description (optional)")}
+              value={(translation && translation.description) || ""}
+              maxlength={Constraints.description_max_length()}
+              placeholder={
+                Map.get(@form_data, "description", if(@type, do: @type.description, else: ""))
               }
-              myself={@myself}
-            />
-
-            <.contact_sharing_section
-              show_email_to_bookers={@show_email_to_bookers}
-              show_phone_to_bookers={@show_phone_to_bookers}
-              myself={@myself}
-            />
-
-            <.availability_section
-              schedules={@schedules}
-              default_schedule_name={@default_schedule_name}
-              selected_availability_schedule_id={@selected_availability_schedule_id}
-              myself={@myself}
+              phx-change="validate_meeting_type_translation"
+              phx-debounce="500"
+              phx-target={@myself}
+              icon="hero-document-text"
             />
           </div>
+        </.card>
 
-          <%!-- Questions --%>
-          <div
-            id="panel-questions"
-            role={@is_edit && "tabpanel"}
-            aria-labelledby={@is_edit && "tab-questions"}
-            hidden={@is_edit && @active_tab != "questions"}
-            class={panel_class(@is_edit, @active_tab, "questions")}
-          >
-            <.live_component
-              module={CustomQuestionsSection}
-              id={"custom-questions-section-#{@id}"}
-              custom_fields={@custom_fields}
-              form_id={@id}
-              allowed={@custom_questions_allowed}
-              current_user={@current_user}
-            />
-          </div>
-
-          <%!-- Reminders --%>
-          <div
-            id="panel-reminders"
-            role={@is_edit && "tabpanel"}
-            aria-labelledby={@is_edit && "tab-reminders"}
-            hidden={@is_edit && @active_tab != "reminders"}
-            class={panel_class(@is_edit, @active_tab, "reminders")}
-          >
-            <.reminders_section
-              reminders={@reminders}
-              max_reminders={@max_reminders}
-              new_reminder_value={@new_reminder_value}
-              new_reminder_unit={@new_reminder_unit}
-              reminder_error={@reminder_error}
-              show_custom_reminder={@show_custom_reminder}
-              reminder_confirmation={@reminder_confirmation}
-              form_errors={@form_errors}
-              myself={@myself}
-            />
-          </div>
-
-          <%!-- Create-mode form serialisation. Edits auto-save from socket assigns
-           (see Autosave/Submission) and never post the form, so these hidden
-           inputs are only needed when creating. --%>
-          <.hidden_fields
-            :if={!@is_edit}
-            type={@type}
-            selected_icon={@selected_icon}
+        <%!-- Location & Calendar --%>
+        <.card
+          :if={@is_edit}
+          id={Navigation.panel_id(@tabs_id, "location")}
+          role="tabpanel"
+          aria-labelledby={Navigation.tab_id(@tabs_id, "location")}
+          hidden={@active_tab != "location"}
+          class={panel_class(@active_tab, "location")}
+        >
+          <.live_component
+            module={LocationsSection}
+            id={"locations-section-#{@id}"}
             locations={@locations}
+            video_integrations={@video_integrations}
             venues={@venues}
-            selected_calendar_integration_id={@selected_calendar_integration_id}
-            selected_target_calendar_id={@selected_target_calendar_id}
-            selected_availability_schedule_id={@selected_availability_schedule_id}
-            reminders={@reminders}
-            custom_fields={@custom_fields}
-            custom_questions_allowed={@custom_questions_allowed}
-            translations={@translations}
-            payments_feature_enabled={@payments_feature_enabled}
-            payments_charges_enabled={@payments_charges_enabled}
-            payment_required={@payment_required}
-            payment_price={@payment_price}
-            allow_guests={@allow_guests}
-            allow_attachments={@allow_attachments}
-            requires_approval={@requires_approval}
-            approval_window_hours={@approval_window_hours}
-            show_as_free={@show_as_free}
-            show_email_to_bookers={@show_email_to_bookers}
-            show_phone_to_bookers={@show_phone_to_bookers}
+            form_id={@id}
+            group_bookings_enabled={@group_bookings_enabled}
+            errors={
+              @form_errors
+              |> FormValidationHelpers.field_errors(:locations)
+              |> Enum.map(&Helpers.format_errors/1)
+            }
           />
 
-          <%= for error <- FormValidationHelpers.field_errors(@form_errors, :base) do %>
-            <p class="form-error">{Helpers.format_errors(error)}</p>
-          <% end %>
+          <.booking_destination_section
+            calendar_integrations={@calendar_integrations}
+            selected_calendar_integration_id={@selected_calendar_integration_id}
+            refreshing_calendars={@refreshing_calendars}
+            available_calendars={@available_calendars}
+            no_writable_calendars={@no_writable_calendars}
+            target_calendar_status={@target_calendar_status}
+            selected_target_calendar_id={@selected_target_calendar_id}
+            form_errors={@form_errors}
+            myself={@myself}
+          />
 
-          <div class="flex items-center justify-between gap-4">
-            <%= if @is_edit do %>
-              <Autosave.indicator status={@save_status} />
-              <button
-                type="button"
-                phx-click="close_edit_overlay"
+          <.show_as_free_section show_as_free={@show_as_free} myself={@myself} />
+        </.card>
+
+        <%!-- Booking Rules --%>
+        <.card
+          :if={@is_edit}
+          id={Navigation.panel_id(@tabs_id, "booking")}
+          role="tabpanel"
+          aria-labelledby={Navigation.tab_id(@tabs_id, "booking")}
+          hidden={@active_tab != "booking"}
+          class={panel_class(@active_tab, "booking")}
+        >
+          <.payments_section
+            :if={@payments_feature_enabled}
+            charges_enabled={@payments_charges_enabled}
+            group_bookings_enabled={@group_bookings_enabled}
+            payment_required={@payment_required}
+            payment_price={@payment_price}
+            currency={@payment_currency}
+            currency_minimum_cents={@payment_currency_minimum_cents}
+            form_errors={@form_errors}
+            myself={@myself}
+          />
+
+          <.group_bookings_section
+            group_bookings_enabled={@group_bookings_enabled}
+            max_participants={@max_participants}
+            registration_mode={@registration_mode}
+            invited_emails_input={@invited_emails_input}
+            show_seat_availability={@show_seat_availability}
+            last_spots_threshold={@last_spots_threshold}
+            payment_required={@payment_required}
+            blocker={
+              GroupRules.enable_blocker(%{
+                group_bookings_allowed: @group_bookings_allowed,
+                payment_required: @payment_required,
+                payments_charges_enabled: @payments_charges_enabled,
+                requires_approval: @requires_approval,
+                locations: @locations
+              })
+            }
+            allowed={@group_bookings_allowed}
+            form_id={@id}
+            current_user={@current_user}
+            form_errors={@form_errors}
+            myself={@myself}
+          />
+
+          <.guests_section
+            allow_guests={@allow_guests}
+            max_guests={Guests.max_guests()}
+            myself={@myself}
+          />
+
+          <.attachments_section allow_attachments={@allow_attachments} myself={@myself} />
+
+          <.limits_section booking_limits={@booking_limits} myself={@myself} />
+
+          <.visibility_section :if={@type} type={@type} parent={@parent_myself} />
+
+          <.approval_section
+            requires_approval={@requires_approval}
+            group_bookings_enabled={@group_bookings_enabled}
+            approval_window_hours={@approval_window_hours}
+            errors={
+              @form_errors
+              |> FormValidationHelpers.field_errors(:approval_window_hours)
+              |> Enum.map(&Helpers.format_errors/1)
+            }
+            myself={@myself}
+          />
+
+          <.contact_sharing_section
+            show_email_to_bookers={@show_email_to_bookers}
+            show_phone_to_bookers={@show_phone_to_bookers}
+            myself={@myself}
+          />
+
+          <.availability_section
+            schedules={@schedules}
+            default_schedule_name={@default_schedule_name}
+            selected_availability_schedule_id={@selected_availability_schedule_id}
+            myself={@myself}
+          />
+        </.card>
+
+        <%!-- Questions --%>
+        <.card
+          :if={@is_edit}
+          id={Navigation.panel_id(@tabs_id, "questions")}
+          role="tabpanel"
+          aria-labelledby={Navigation.tab_id(@tabs_id, "questions")}
+          hidden={@active_tab != "questions"}
+          class={panel_class(@active_tab, "questions")}
+        >
+          <.live_component
+            module={CustomQuestionsSection}
+            id={"custom-questions-section-#{@id}"}
+            custom_fields={@custom_fields}
+            form_id={@id}
+            allowed={@custom_questions_allowed}
+            current_user={@current_user}
+          />
+        </.card>
+
+        <%!-- Reminders --%>
+        <.card
+          :if={@is_edit}
+          id={Navigation.panel_id(@tabs_id, "reminders")}
+          role="tabpanel"
+          aria-labelledby={Navigation.tab_id(@tabs_id, "reminders")}
+          hidden={@active_tab != "reminders"}
+          class={panel_class(@active_tab, "reminders")}
+        >
+          <.reminder_picker
+            reminders={@reminders}
+            max_reminders={@max_reminders}
+            new_reminder_value={@new_reminder_value}
+            new_reminder_unit={@new_reminder_unit}
+            reminder_error={@reminder_error}
+            show_custom_reminder={@show_custom_reminder}
+            reminder_confirmation={@reminder_confirmation}
+            description={
+              dngettext(
+                "dashboard_meeting_form",
+                "Add up to %{count} reminder email for this meeting type. We recommend using only one.",
+                "Add up to %{count} reminder emails for this meeting type. We recommend using only one.",
+                @max_reminders
+              )
+            }
+            extra_errors={
+              @form_errors
+              |> FormValidationHelpers.field_errors(:reminder_config)
+              |> Enum.map(&Helpers.format_errors/1)
+            }
+            myself={@myself}
+          />
+        </.card>
+
+        <%= for error <- FormValidationHelpers.field_errors(@form_errors, :base) do %>
+          <p class="form-error">{Helpers.format_errors(error)}</p>
+        <% end %>
+
+        <div class="flex items-center justify-between gap-4">
+          <%= if @is_edit do %>
+            <Autosave.indicator status={@save_status} />
+            <.action_button phx-click="close_edit_overlay" phx-target={@parent_myself}>
+              {dgettext("dashboard_meeting_form", "Done")}
+            </.action_button>
+          <% else %>
+            <span></span>
+            <div class="flex justify-end gap-3">
+              <.action_button
+                variant={:secondary}
+                phx-click="toggle_add_form"
                 phx-target={@parent_myself}
-                class="btn btn-primary"
               >
-                {dgettext("dashboard_meeting_form", "Done")}
-              </button>
-            <% else %>
-              <span></span>
-              <div class="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  phx-click="toggle_add_form"
-                  phx-target={@parent_myself}
-                  class="btn btn-secondary"
-                >
-                  {dgettext("dashboard_meeting_form", "Cancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={@saving || @refreshing_calendars}
-                  class="btn btn-primary"
-                >
-                  <%= if @saving do %>
-                    <span class="flex items-center">
-                      <.spinner class="h-4 w-4 mr-2" />
-                      {dgettext("dashboard_meeting_form", "Saving...")}
-                    </span>
-                  <% else %>
-                    {dgettext("dashboard_meeting_form", "Create Meeting Type")}
-                  <% end %>
-                </button>
-              </div>
-            <% end %>
-          </div>
-        </form>
-      </div>
+                {dgettext("dashboard_meeting_form", "Cancel")}
+              </.action_button>
+              <%!-- LiveView marks the form phx-submit-loading and disables
+                    this button for the round trip, which is what swaps the
+                    label for the spinner. --%>
+              <.action_button type="submit" data-testid="create-meeting-type">
+                <span class="hidden items-center gap-2 phx-submit-loading:inline-flex">
+                  <.spinner />
+                  {dgettext("dashboard_meeting_form", "Creating…")}
+                </span>
+                <span class="phx-submit-loading:hidden">
+                  {dgettext("dashboard_meeting_form", "Create meeting type")}
+                </span>
+              </.action_button>
+            </div>
+          <% end %>
+        </div>
+      </form>
 
       <%!-- Location editor modal — rendered outside <form> to avoid nested forms --%>
       <%= if @editing_location do %>
@@ -499,6 +538,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
           id={"location-editor-#{@id}"}
           location={@editing_location}
           existing_locations={@locations}
+          group_bookings_enabled={@group_bookings_enabled}
           video_integrations={@video_integrations}
           venues={@venues}
           current_user={@current_user}
@@ -523,7 +563,9 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
     """
   end
 
-  defp form_tabs(form_errors, custom_questions_allowed) do
+  # Until the meeting type exists only Details can be used; the others point
+  # at the hint saying why.
+  defp form_tabs(form_errors, custom_questions_allowed, is_edit, create_hint_id) do
     tabs = [
       %{
         id: "details",
@@ -553,7 +595,15 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
       }
     ]
 
-    Enum.map(tabs, &Map.put(&1, :error, tab_has_errors?(form_errors, &1.id)))
+    Enum.map(tabs, fn tab ->
+      disabled? = not is_edit and tab.id != "details"
+
+      Map.merge(tab, %{
+        error: tab_has_errors?(form_errors, tab.id),
+        disabled: disabled?,
+        describedby: if(disabled?, do: create_hint_id)
+      })
+    end)
   end
 
   defp tab_has_errors?(form_errors, tab_id) do
@@ -565,11 +615,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
   defp current_translation(translations, locale),
     do: Enum.find(translations, &(&1.locale == locale))
 
-  # In create mode the panels are invisible groupings in one stacked form;
-  # in edit mode each is a card and only the active one is shown.
-  defp panel_class(false = _is_edit, _active_tab, _panel_id), do: "space-y-4"
-
-  defp panel_class(true = _is_edit, active_tab, panel_id) do
-    ["card-glass space-y-6", active_tab != panel_id && "hidden"]
+  defp panel_class(active_tab, panel_id) do
+    ["space-y-6", active_tab != panel_id && "hidden"]
   end
 end

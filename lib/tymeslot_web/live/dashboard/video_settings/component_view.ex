@@ -37,66 +37,50 @@ defmodule TymeslotWeb.Dashboard.VideoSettings.ComponentView do
         }
       />
 
+      <%!-- With nothing connected, the empty state below carries the action. --%>
+      <div :if={@integrations != []} class="flex justify-end">
+        <.connect_button myself={@myself} />
+      </div>
+
       <div>
         <%!-- Connected Video Providers Section --%>
         <%= if @integrations == [] do %>
-          <div class="card-glass p-10 text-center">
-            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-token-2xl bg-primary-50 text-primary-500">
-              <.icon name="hero-video-camera" class="h-7 w-7" />
-            </div>
-            <h3 class="text-token-lg font-semibold text-neutral-800 dark:text-neutral-100">
-              {dgettext("dashboard_video", "No video providers connected yet")}
-            </h3>
-            <p class="mx-auto mt-1 max-w-md text-token-sm text-neutral-500 dark:text-twilight-indigo-200">
-              {dgettext(
+          <.empty_state
+            icon="hero-video-camera"
+            size={:lg}
+            data-testid="video-empty"
+            title={dgettext("dashboard_video", "No video providers connected yet")}
+            description={
+              dgettext(
                 "dashboard_video",
                 "Connect one so online meetings get a video link added automatically when they're booked."
-              )}
-            </p>
-            <button
-              phx-click="show_picker"
-              phx-target={@myself}
-              class="btn btn-primary"
-            >
-              <.icon name="hero-plus" class="w-4 h-4" />
-              {dgettext("dashboard_video", "Connect a video provider")}
-            </button>
-          </div>
+              )
+            }
+          >
+            <:action><.connect_button myself={@myself} /></:action>
+          </.empty_state>
         <% else %>
           <% {active_integrations, inactive_integrations} =
             Enum.split_with(@integrations, & &1.is_active) %>
+          <% show_section_headers = active_integrations != [] and inactive_integrations != [] %>
 
           <div class="space-y-6">
-            <%!-- Header row: always visible whenever at least one integration
-            exists, so "Connect a video provider" stays reachable even if
-            every integration is currently paused. --%>
-            <div class="flex items-center gap-4 flex-wrap">
-              <%= if active_integrations != [] do %>
-                <.subsection_header
-                  icon="hero-video-camera"
-                  title={dgettext("dashboard_video", "Active Video Integrations")}
-                  count={length(active_integrations)}
-                />
-              <% end %>
-              <button
-                phx-click="show_picker"
-                phx-target={@myself}
-                class="btn btn-primary inline-flex items-center gap-1.5 ml-auto shrink-0"
-              >
-                <.icon name="hero-plus" class="w-4 h-4" />
-                {dgettext("dashboard_video", "Connect a video provider")}
-              </button>
-            </div>
-
             <%!-- Active Video Integrations --%>
             <%= if active_integrations != [] do %>
               <div class="space-y-3">
+                <%= if show_section_headers do %>
+                  <h2 class="text-token-lg font-semibold text-neutral-900 dark:text-neutral-50">
+                    {dgettext("dashboard_video", "Active Video Integrations")}
+                  </h2>
+                <% end %>
+
                 <%= for integration <- active_integrations do %>
                   <Components.video_connection_row
                     integration={integration}
                     testing_connection={@testing_connection}
                     myself={@myself}
                     health_state={Map.get(@health_states, integration.id)}
+                    heading_level={if show_section_headers, do: 3, else: 2}
                   />
                 <% end %>
               </div>
@@ -105,12 +89,11 @@ defmodule TymeslotWeb.Dashboard.VideoSettings.ComponentView do
             <%!-- Inactive Video Integrations --%>
             <%= if inactive_integrations != [] do %>
               <div class="space-y-3">
-                <.subsection_header
-                  icon="hero-pause-circle"
-                  title={dgettext("dashboard_video", "Inactive Video Integrations")}
-                  count={length(inactive_integrations)}
-                  muted
-                />
+                <%= if show_section_headers do %>
+                  <h2 class="text-token-lg font-semibold text-neutral-500 dark:text-twilight-indigo-300">
+                    {dgettext("dashboard_video", "Inactive Video Integrations")}
+                  </h2>
+                <% end %>
 
                 <%= for integration <- inactive_integrations do %>
                   <Components.video_connection_row
@@ -118,6 +101,7 @@ defmodule TymeslotWeb.Dashboard.VideoSettings.ComponentView do
                     testing_connection={@testing_connection}
                     myself={@myself}
                     health_state={Map.get(@health_states, integration.id)}
+                    heading_level={if show_section_headers, do: 3, else: 2}
                   />
                 <% end %>
               </div>
@@ -209,6 +193,23 @@ defmodule TymeslotWeb.Dashboard.VideoSettings.ComponentView do
         current_user={@current_user}
       />
     </div>
+    """
+  end
+
+  # The header and the empty state offer the same action, so it is defined once.
+  attr :myself, :any, required: true
+
+  defp connect_button(assigns) do
+    ~H"""
+    <.action_button
+      size={:sm}
+      icon="hero-plus"
+      class="shrink-0"
+      phx-click="show_picker"
+      phx-target={@myself}
+    >
+      {dgettext("dashboard_video", "Connect a video provider")}
+    </.action_button>
     """
   end
 end

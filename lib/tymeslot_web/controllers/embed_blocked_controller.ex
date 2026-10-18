@@ -12,6 +12,11 @@ defmodule TymeslotWeb.EmbedBlockedController do
   such as the official WordPress plugin replace the frame with their own
   message immediately.
 
+  `?reason=meeting_type` shows a different notice instead: the widget names a
+  meeting type (`data-meeting`) that does not exist or takes no bookings. That
+  is not an origin problem, so no `tymeslot-embed-blocked` message is posted
+  and the embedder keeps the frame.
+
   Served through the `:embed_notice` pipeline, which runs
   `SecurityHeadersPlug` in `:any` mode so this page (and only this page) frames
   on any origin.
@@ -23,8 +28,14 @@ defmodule TymeslotWeb.EmbedBlockedController do
     conn
     |> put_root_layout(false)
     |> put_layout(false)
-    |> render(:index, parent_origin: sanitise_origin(params["parent-origin"]))
+    |> render(:index, notice_assigns(params))
   end
+
+  defp notice_assigns(%{"reason" => "meeting_type"}),
+    do: [reason: :meeting_type, parent_origin: nil]
+
+  defp notice_assigns(params),
+    do: [reason: :origin, parent_origin: sanitise_origin(params["parent-origin"])]
 
   # Re-validate the parent origin arriving via the query string (defence in
   # depth — the hook already verified it) and reduce it to a bare

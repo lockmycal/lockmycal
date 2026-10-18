@@ -10,6 +10,7 @@ defmodule Tymeslot.TelegramTest do
   alias Tymeslot.Telegram
   alias Tymeslot.Telegram.TelegramIntegrationSchema
   alias Tymeslot.Telegram.TelegramQueries
+  alias Tymeslot.Webhooks
 
   setup do
     setup_config(:tymeslot,
@@ -537,6 +538,13 @@ defmodule Tymeslot.TelegramTest do
   end
 
   defp an_hour_ago, do: DateTime.add(DateTime.utc_now(:second), -3600, :second)
+
+  describe "available_events/0" do
+    test "offers the same events as a webhook, the booking requests included" do
+      assert Telegram.available_events() == Webhooks.available_events()
+      assert "meeting.requested" in Enum.map(Telegram.available_events(), & &1.value)
+    end
+  end
 end
 
 defmodule Tymeslot.TelegramTest.InsufficientPlanChecker do

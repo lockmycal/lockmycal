@@ -37,6 +37,7 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
   alias Tymeslot.CustomFields
   alias Tymeslot.Demo
   alias Tymeslot.Infrastructure.Logging.LogFormat
+  alias Tymeslot.Meetings
   alias Tymeslot.Meetings.Approval
   alias Tymeslot.Meetings.BookerCalendar
   alias Tymeslot.Security.Honeypot
@@ -150,7 +151,7 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
     socket =
       socket
       |> assign(:submitting, false)
-      |> assign(:meeting_uid, meeting.uid)
+      |> assign_booked_identity(meeting)
       |> assign(:meeting_status, meeting.status)
       |> BookingLocation.assign_booked(meeting)
       |> assign(:name, validated_data["name"])
@@ -206,6 +207,23 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
     end
 
     :ok
+  end
+
+  # A seat on a group meeting is the booker's own booking: its calendar file
+  # is the seat's, under its management token. The meeting uid of a group
+  # meeting names the shared slot, which a booker must never be handed: it
+  # opens the slot's public cancel and reschedule pages.
+  defp assign_booked_identity(socket, meeting) do
+    {meeting_uid, seat_calendar_url} =
+      case Meetings.booker_calendar(meeting) do
+        {:meeting, uid} -> {uid, nil}
+        {:seat, url} -> {nil, url}
+        :none -> {nil, nil}
+      end
+
+    socket
+    |> assign(:meeting_uid, meeting_uid)
+    |> assign(:seat_calendar_url, seat_calendar_url)
   end
 
   # Handles booking submission errors: updates the socket with the
@@ -271,6 +289,7 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
     opts = [
       is_rescheduling: socket.assigns[:is_rescheduling] || false,
       reschedule_uid: socket.assigns[:reschedule_meeting_uid],
+      reschedule_seat_token: socket.assigns[:reschedule_seat_token],
       organizer_user_id: socket.assigns[:organizer_user_id]
     ]
 
@@ -427,7 +446,10 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
       location_phone: socket.assigns[:location_phone],
       location_video_integration_id: BookingLocation.submitted_video_id(socket.assigns),
       location_venue_id: BookingLocation.submitted_venue_id(socket.assigns),
-      booker_user_id: socket.assigns[:booker_user_id]
+      booker_user_id: socket.assigns[:booker_user_id],
+      # Set on the server from the path the page was opened on, never from
+      # the visitor: the meeting's links go under the widget's hidden address.
+      via_embed_alias: socket.assigns[:via_alias] == true
     }
   end
 

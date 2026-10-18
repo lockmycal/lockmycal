@@ -12,9 +12,10 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackFormComponent do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Phoenix.LiveView.JS
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Infrastructure.Tasks
   alias Tymeslot.Slack
-  alias TymeslotWeb.Components.CoreComponents
+  alias TymeslotWeb.Dashboard.Automation.EventSubscriptions
   alias TymeslotWeb.Live.Shared.DocsUrl
   alias TymeslotWeb.Live.Shared.FormValidationHelpers
 
@@ -140,22 +141,19 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackFormComponent do
     assigns = assign(assigns, :can_submit, can_submit?(assigns))
 
     ~H"""
-    <div class="space-y-8 pb-20">
+    <div class="space-y-8">
       <%!-- Toolbar --%>
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
-        <div>
-          <.section_header icon="hero-bolt" title={form_title(@mode)} class="mb-0" />
-        </div>
-
-        <button
-          phx-click="slack_close_form"
-          phx-target={@parent_component}
-          class="flex items-center gap-2 px-5 py-2.5 rounded-token-xl bg-neutral-50 dark:bg-twilight-indigo-900/60 text-neutral-600 dark:text-neutral-300 font-bold hover:bg-neutral-100 transition-all border-2 border-transparent hover:border-neutral-300"
-        >
-          <.icon name="hero-x-mark" class="w-5 h-5" />
-          {dgettext("dashboard_automation_chat", "Close")}
-        </button>
-      </div>
+      <.section_header icon="hero-bolt" title={form_title(@mode)} class="mb-10">
+        <:actions>
+          <.icon_button
+            icon="hero-x-mark"
+            variant={:neutral}
+            label={dgettext("dashboard_automation_chat", "Close")}
+            phx-click="slack_close_form"
+            phx-target={@parent_component}
+          />
+        </:actions>
+      </.section_header>
 
       <form
         id="slack-form"
@@ -166,16 +164,10 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackFormComponent do
         novalidate
       >
         <%!-- Details --%>
-        <div class="card-glass">
-          <div class="mb-6">
-            <h3 class="text-token-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">
-              {dgettext("dashboard_automation_chat", "Integration Details")}
-            </h3>
-            <p class="text-token-sm text-neutral-500 font-bold mt-1">
-              {details_subtitle(@mode)}
-            </p>
-          </div>
-
+        <.card
+          title={dgettext("dashboard_automation_chat", "Integration Details")}
+          description={details_subtitle(@mode)}
+        >
           <div class="space-y-6">
             <%= if @mode != :oauth_pending do %>
               <.input
@@ -230,12 +222,13 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackFormComponent do
                       {raw(
                         dgettext(
                           "dashboard_automation_chat",
-                          "Tymeslot posts notifications to this URL. The destination channel is fixed by Slack when the webhook is created - see the full setup guide on %{guide}.",
+                          "%{app_name} posts notifications to this URL. The destination channel is fixed by Slack when the webhook is created - see the full setup guide on %{guide}.",
                           guide:
                             DocsUrl.article_link(
                               "slack",
                               dgettext("dashboard_automation_chat", "our Slack docs")
-                            )
+                            ),
+                          app_name: Config.app_name()
                         )
                       )}
                     <% end %>
@@ -274,70 +267,42 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackFormComponent do
                 />
             <% end %>
           </div>
-        </div>
+        </.card>
 
         <%!-- Events --%>
-        <div class="card-glass">
-          <div class="mb-6">
-            <h3 class="text-token-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">
-              {dgettext("dashboard_automation_chat", "Event Subscriptions")}
-            </h3>
-            <p class="text-token-sm text-neutral-500 font-bold mt-1">
-              {dgettext(
-                "dashboard_automation_chat",
-                "Select which events should trigger Slack notifications."
-              )}
-            </p>
-          </div>
-
-          <div class="space-y-3">
-            <%= for event <- @available_events do %>
-              <label class="flex items-start gap-3 p-4 rounded-token-xl border-2 border-neutral-300 hover:border-primary-200 cursor-pointer transition-colors">
-                <.input
-                  type="checkbox"
-                  name="slack[events][]"
-                  value={event.value}
-                  checked={event.value in Map.get(@form_values, "events", [])}
-                  phx-click={
-                    JS.push("slack_toggle_event",
-                      value: %{"event" => event.value},
-                      target: @parent_component
-                    )
-                  }
-                />
-                <div class="flex-1">
-                  <div class="font-black text-neutral-900 dark:text-neutral-50">{event.label}</div>
-                  <div class="text-token-sm text-neutral-600 dark:text-neutral-300 font-medium">
-                    {event.description}
-                  </div>
-                </div>
-              </label>
-            <% end %>
-          </div>
-          <%= for error <- FormValidationHelpers.field_errors(@form_errors, :events) do %>
-            <p class="text-token-sm text-red-600 font-medium mt-3">{error}</p>
-          <% end %>
-        </div>
+        <EventSubscriptions.event_subscriptions
+          name="slack[events][]"
+          events={@available_events}
+          selected={Map.get(@form_values, "events", [])}
+          toggle_event="slack_toggle_event"
+          target={@parent_component}
+          errors={FormValidationHelpers.field_errors(@form_errors, :events)}
+          description={
+            dgettext(
+              "dashboard_automation_chat",
+              "Select which events should trigger Slack notifications."
+            )
+          }
+        />
 
         <%!-- Form Actions --%>
         <div class="flex justify-end gap-3 pt-4">
-          <CoreComponents.action_button
+          <.action_button
             variant={:secondary}
             phx-click="slack_close_form"
             phx-target={@parent_component}
           >
             {dgettext("dashboard_automation_chat", "Cancel")}
-          </CoreComponents.action_button>
-          <CoreComponents.loading_button
+          </.action_button>
+          <.loading_button
             type="submit"
             variant={:primary}
             loading={@saving}
             loading_text={dgettext("dashboard_automation_chat", "Saving...")}
             disabled={!@can_submit}
-            class={if !@can_submit, do: "opacity-50 cursor-not-allowed grayscale", else: ""}
           >
             {submit_label(@mode)}
-          </CoreComponents.loading_button>
+          </.loading_button>
         </div>
       </form>
     </div>
@@ -358,51 +323,53 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackFormComponent do
         <label class="block text-token-sm font-black text-neutral-900 dark:text-neutral-50">
           {dgettext("dashboard_automation_chat", "Channel")} <span class="text-red-500">*</span>
         </label>
-        <button
-          type="button"
+        <.action_button
+          variant={:secondary}
+          size={:sm}
           phx-click="slack_refresh_channels"
           phx-target={@target}
           disabled={@loading?}
-          class="flex items-center gap-1.5 px-3 py-1.5 text-token-xs font-bold text-neutral-600 dark:text-neutral-300 bg-neutral-50 dark:bg-twilight-indigo-900/60 rounded-token-lg border-2 border-neutral-300 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           title={dgettext("dashboard_automation_chat", "Refresh channel list from Slack")}
         >
           <.icon
             name="hero-arrow-path"
-            class={"w-3.5 h-3.5" <> if(@loading?, do: " animate-spin", else: "")}
+            class={"w-4 h-4 shrink-0" <> if(@loading?, do: " animate-spin", else: "")}
           />
           {dgettext("dashboard_automation_chat", "Refresh")}
-        </button>
+        </.action_button>
       </div>
 
-      <p class="text-token-xs text-neutral-500 font-medium mb-2 ml-1">
+      <p class="text-token-xs text-neutral-500 font-medium mb-2 ml-1 dark:text-twilight-indigo-300">
         {raw(
           dgettext(
             "dashboard_automation_chat",
-            "Tymeslot will post booking notifications to this channel. Public channels appear automatically; for a private channel, invite the Tymeslot bot in Slack (%{command}), then click Refresh.",
+            "%{app_name} will post booking notifications to this channel. Public channels appear automatically; for a private channel, invite the %{app_name} bot in Slack (%{command}), then click Refresh.",
             command:
-              ~s(<code class="px-1 py-0.5 rounded bg-neutral-100 dark:bg-twilight-indigo-800 text-neutral-700 dark:text-neutral-200">/invite @Tymeslot</code>)
+              ~s(<code class="px-1 py-0.5 rounded bg-neutral-100 text-neutral-700 dark:bg-twilight-indigo-800 dark:text-neutral-200">/invite @Tymeslot</code>),
+            app_name: Config.app_name()
           )
         )}
       </p>
 
       <%= cond do %>
         <% @loading? -> %>
-          <div class="flex items-center gap-3 p-4 rounded-token-xl border-2 border-neutral-300 bg-neutral-50">
+          <div class="flex items-center gap-3 p-4 rounded-token-xl border-2 border-neutral-100 bg-neutral-50 dark:border-twilight-indigo-800 dark:bg-twilight-indigo-900/60">
             <.spinner class="w-5 h-5 text-primary-500" />
-            <span class="text-token-sm text-neutral-600 dark:text-neutral-300 font-medium">{dgettext(
+            <span class="text-token-sm text-neutral-600 font-medium dark:text-neutral-300">{dgettext(
               "dashboard_automation_chat",
               "Loading channels from Slack..."
             )}</span>
           </div>
         <% is_binary(@error) -> %>
-          <div class="p-4 rounded-token-xl border-2 border-red-200 bg-red-50 text-token-sm text-red-700 font-medium">
+          <div class="p-4 rounded-token-xl border-2 border-red-200 bg-red-50 text-token-sm text-red-700 font-medium dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
             {@error}
           </div>
         <% @channels == [] -> %>
-          <div class="p-4 rounded-token-xl border-2 border-neutral-300 bg-neutral-50 dark:bg-twilight-indigo-900/60 text-token-sm text-neutral-600 dark:text-neutral-300 font-medium">
+          <div class="p-4 rounded-token-xl border-2 border-neutral-100 bg-neutral-50 text-token-sm text-neutral-600 font-medium dark:border-twilight-indigo-800 dark:bg-twilight-indigo-900/60 dark:text-neutral-300">
             {dgettext(
               "dashboard_automation_chat",
-              "No channels available. Invite the Tymeslot bot to at least one channel in Slack, then click Refresh."
+              "No channels available. Invite the %{app_name} bot to at least one channel in Slack, then click Refresh.",
+              app_name: Config.app_name()
             )}
           </div>
         <% true -> %>
@@ -462,7 +429,7 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackFormComponent do
       subtitle:
         dgettext_noop(
           "dashboard_automation_chat",
-          "Pick a channel for Tymeslot to post booking notifications to."
+          "Pick a channel for %{app_name} to post booking notifications to."
         ),
       submit_event: "slack_save_channel",
       submit_label: dgettext_noop("dashboard_automation_chat", "Save channel")
@@ -505,7 +472,10 @@ defmodule TymeslotWeb.Dashboard.Automation.SlackFormComponent do
   defp submit_label(mode), do: translate(@modes[mode].submit_label)
 
   defp translate(msgid),
-    do: Gettext.dgettext(TymeslotWeb.Gettext, "dashboard_automation_chat", msgid)
+    do:
+      Gettext.dgettext(TymeslotWeb.Gettext, "dashboard_automation_chat", msgid,
+        app_name: Config.app_name()
+      )
 
   # The one label that is not per-mode: only an existing webhook can be left
   # blank to keep the stored URL.

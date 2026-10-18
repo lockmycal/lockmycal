@@ -5,6 +5,7 @@ defmodule TymeslotWeb.Themes.Shared.Customization.Helpers do
   use Phoenix.Component
 
   alias Tymeslot.Demo
+  alias Tymeslot.Profiles.BrandLogo
   alias Tymeslot.ThemeCustomizations
   alias Tymeslot.ThemeCustomizations.Capability
   alias Tymeslot.ThemeCustomizations.Defaults
@@ -35,6 +36,7 @@ defmodule TymeslotWeb.Themes.Shared.Customization.Helpers do
     |> assign(:theme_customization, effective_customization)
     |> assign(:custom_css, custom_css)
     |> assign(:customization_options, Capability.get_customization_options(theme_id))
+    |> assign(:brand_logo_url, BrandLogo.display_url(profile))
   end
 
   @doc """

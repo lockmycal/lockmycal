@@ -65,8 +65,9 @@ defmodule Tymeslot.Emails.Templates.RescheduleRequestExpired do
           stage_subtitle: summary(meeting)
         )
 
-      MjmlEmail.base_email()
+      MjmlEmail.base_email(organizer_user_id: meeting.organizer_user_id)
       |> to({meeting.organizer_name, meeting.organizer_email})
+      |> MjmlEmail.put_reply_to(meeting.attendee_name, meeting.attendee_email)
       |> subject(
         Sanitise.sanitize_for_header(
           dgettext(

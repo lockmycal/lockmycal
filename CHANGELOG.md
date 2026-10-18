@@ -1,3 +1,54 @@
+[1.25.0.1]
+* Merge upstream v1.24.0 and v1.25.0: Quick add can set a meeting's reminder emails (the same picker as a meeting type), a flash closing by itself no longer closes the dialog that is open, a subscribed calendar can count every event as busy (for holiday feeds that mark everything free; a checkbox when subscribing and an "Every event busy" button on its card), invitee details are anonymised two years after a meeting ends, booking emails carry a Reply-To of the other party, group times on the booking page show how full they are ("Plenty left", "Filling up", "Almost full") with an optional count of the last spots, a paid booking is refused up front when the host's plan no longer includes payments, Outlook series on days some months lack are refused, dependency updates
+* Quick add on the calendar and on the Meetings page: a meeting's reminders are upstream's picker (two presets and a custom lead time, up to three) and become both the reminder emails and the calendar alarms; the alarm editor and "Repeat" stay for a plain event only
+* Calendar files (`.ics` invitations and downloads) end their description with a "Scheduled with <app name>" line linking to the instance (`https://PHX_HOST`). An organiser whose plan allows custom branding (as for their own logo) can switch it off on Appearance, under "Your Logo"; after a downgrade the line comes back
+
+[1.23.0.1]
+* Merge upstream v1.23.0: group meetings with seats (a meeting type takes several participants, each with their own seat, link, emails and calendar file; full slots disappear from the booking page, a seat can be moved), separate buffers before and after a meeting, availability hours that end the next day, the `.ics` import in the calendar, a booking form prefilled from a link's `#name=…&email=…`, and Brazilian Portuguese
+* The dashboard keeps the fork's own design. Upstream's restyle of it was not taken, so the dashboard side of the new features is still missing: `.ics` import, separate before/after buffer fields (the one buffer control sets both), and the overnight-hours editor. Upstream's tests of that markup are tagged `upstream_dashboard_ui` and excluded from the default run (`mix test --only upstream_dashboard_ui`)
+* Group meetings in the dashboard: Meeting type → Booking Rules → "Group bookings" turns a type into a group type with a participant limit (it needs one location fixed in advance and excludes payment and approval, the form says what to change). The meeting type card shows "Group · up to N", or "Paused" when the plan no longer includes group bookings. The Meetings page shows seats taken and the participants of a group meeting, and cancelling it or requesting a reschedule names them. In the calendar a group meeting is locked (no move, resize, delete, or change of time, repeat or attendees)
+* Group meeting types can be invitation only: in the "Group bookings" section, "Who can book" → "Invitation only" and a list of email addresses. Only those addresses can book a spot, each for themselves (no guests); the booking page marks the type "Invitation only" and tells anyone else to use the address they were invited with. Changes apply to new bookings only
+* Dashboard dark mode: the small on/off switch has its knob centred and no light border (the knob moves again when switched on), inactive tabs are readable, and info banners (e.g. "Active calendars: 5 of 6") are dark instead of light blue/green/amber/red
+* Calendars page: the default calendar's star is filled and inactive; on a default connection with several calendars, its "Default" badge opens the choice of which calendar is the default
+* Fix saving a group meeting type from the dashboard (any change, autosave included) silently turning it back into a one-to-one type
+* Public booking pages: seat counts and the "last seat" guest rule on both themes, seat emails and seat rescheduling from the email link, the fork's async slot loading keeps working with the live seat updates (a failed background refresh keeps the slot list and shows no banner)
+* `CoreComponents` is no longer a delegating module upstream; the fork's calls were moved to `Icons`, `Buttons`, `Modal`, `Forms`, … and the fork's `section_header`/`subsection_header` (look, `subtitle`, `muted`, `badge`) were kept with upstream's `description`, `actions`, heading levels and status region
+* Colour classes upstream still wrote as `tymeslot-*`/`turquoise-*`/`cyan-*` use the fork's `neutral`/`primary`/`secondary` palette
+* The public calendar's texts moved to their own `booking_calendar` gettext domain (the `booking` catalogue had passed the 300-message limit)
+* Fix the calendar crashing on any change to a group booking (moving it, changing its time, repeat or attendees, deleting it): it now says the change has to be made from the meeting
+* Brazilian Portuguese is a supported language, fully translated, including everything the fork adds (contacts, attachments, admin, profile, …). The paid overlay's own pages (`saas/`) stay in English for Portuguese, as they already do for Polish
+* The tooltip of the locked server address in the Apple iCloud and mailbox.org calendar forms is translated (it was always English)
+* The Payments page title is translated again (it showed in English in every language)
+* The account deletion dialog names the app by its configured name when telling Outlook/Teams users to remove it at myapps.microsoft.com (it said "Tymeslot")
+* All other texts that named the app "Tymeslot" use its configured name too: sign-up and account emails, Slack and calendar setup, calendar errors, the reconnect email, the domain-ending check and the source link on Google Calendar events (the translations had "LockMyCal" or "Tymeslot" written in)
+* The meeting type form's slot interval field uses upstream's `SlotIntervalField`; the fork's own copy (`SlotInterval`) is gone. Its hint now marks start times on the next day ("+1 day") and shows no preview for an out-of-range value
+* The default timezone is Europe/Prague instead of upstream's Europe/Tallinn: a new profile whose browser timezone is unknown, and any profile without a timezone, use it
+* The dashboard sidebar on a phone closes with Escape and gives focus back to the menu button, the menu button says whether the sidebar is open, the current page is marked for screen readers, and the scheduling link buttons stay focusable while unavailable so their tooltip can be read (#180, part 8, upstream 1.23's accessibility fixes; the sidebar keeps its look)
+* Other dashboard pages follow upstream 1.23 (#180, part 7): Locations, Polls, Embed & Share, Analytics, Theme and the profile forms use upstream's markup (cards, empty states, confirm dialogs, segmented controls, icon buttons, the analytics range switch, the theme cards and customisation). The fork keeps its page headings, the profile page layout with its own sections, translated meeting type names in polls, the per-language booking page text, the admin's upload size limits with previews of the current background, the `LockMyCal` embed names (and no Tymeslot WordPress plugin box), and the analytics tiles shared with the overview (the conversion shows a dash until there are visits). The language tabs scroll sideways on a phone instead of widening the page
+* Telegram and Slack integrations can subscribe to all six booking events, as webhooks can: a booking request, a declined request and a request that expired unanswered too. Telegram gets messages for the three (with the respond-by time and the decline reason); Slack already sent them but its form offered only three events. Both forms show the events with the webhook form's translated labels
+* Dashboard automation follows upstream 1.23 (#180, part 6): webhooks, Telegram and Slack show as upstream's integration cards (status pill, events, last delivery, Test and Logs, edit and delete), the channel tabs are upstream's tab strip, the forms share one event subscriptions card, and the delivery logs and confirmation dialogs are upstream's. The fork keeps its page heading, the configured app name in the texts and the `X-Lockmycal-*` header names in the webhook guide, with dark mode throughout. The webhook guide lists every event a webhook can subscribe to (it named only three of the six)
+* Dashboard calendar follows upstream 1.23 (#180, part 5): events can be imported from an .ics file (an Import button in the toolbar, or a file dropped anywhere on the calendar), the toolbar uses upstream's shared buttons and view switcher (keeping the fork's view icons and "Synced …" time), a booking's detail shows when, how long, where, with whom and, for a group meeting, its participants and seats, with "Manage booking" and "Join meeting", the agenda rows are upstream's, and the confirmation dialogs (notify attendees, delete, discard, move a series) use upstream's confirm dialog. The fork keeps its form-style event and new-event dialogs, its calendar and video pickers, requests awaiting approval in red, the attachments marker and the meeting type's description, the attendee's notes and files in a booking's detail
+* Dashboard meetings follow upstream 1.23 (#180, part 4): each booking card uses upstream's layout (detail tiles, sub-panels for participants, guests, notes and answers, pills for status, seats and video), the filter is a segmented control, the actions and the cancel dialog use upstream's buttons, a host joins with their own video link, and dates read with the weekday. The fork keeps its page heading and "Add meeting", the counts on each filter, a booking made on someone else's page shown from the booker's side, attachments, the calendar-sync banner for a failed event and the auto-delete date, and deleting a cancelled meeting. The feature-tour panel under an empty list is gone
+* Dashboard availability follows upstream 1.23 (#180, part 3): each schedule sets a buffer before and a buffer after its meetings separately, a day's hours can run past midnight ("Ends the next day"), and the schedule tabs (coloured per schedule) head a plain card like the page's other blocks, with time off, the confirmation dialogs and the empty states in upstream's markup. The fork keeps its page heading, the daily cap on booked meeting time and its own switches. On a phone the day's start and end times no longer overflow the card
+* Dashboard meeting types follow upstream 1.23 (#180, part 2): the meeting-type cards, the edit form's tab panels, its on/off settings (now a switch row with the reason it is locked), the account-wide booking limits, the delete dialog and the empty state use upstream's markup, and "Add Meeting Type" sits under the page heading. The fork keeps its page heading, translations of names, descriptions and questions, attachments, contact sharing, invitation-only group bookings, sending a meeting type's link by email and the Pro-only custom link
+* Dashboard integrations follow upstream 1.23 (#180, part 1): connected calendars, video providers and the Stripe account show as upstream's integration cards, the CalDAV-family providers (Nextcloud, Radicale, Baïkal, Apple iCloud, mailbox.org, Zimbra, generic CalDAV) share upstream's single set-up form, and the connect forms and dialogs use upstream's shared header, actions and confirm dialog. The fork keeps its own pages (Calendars, Video, Payments rather than upstream's tabbed Integrations page), its colours with dark mode, the default-calendar star and badge, the active-calendar limit, the public calendar settings and the integration deletion warning. A video card's footer matches the calendar card's: labelled Test connection, Reconnect and Edit on the left, only Delete on the right
+* Adding a meeting type uses the same tabbed form as editing (from upstream): it opens on Details, the other tabs are shown but disabled until the type exists, and "Create Meeting Type" switches the same form to editing the new type with auto-save, where the other tabs can be set up; "Done" returns to the list. Validation errors on create stay on Details
+* Your own logo (Appearance → "Your Logo"): it replaces the app logo in the top bar of your public pages (booking, public calendar, cancel/reschedule, polls, both themes) and at the head of the emails about your meetings and polls; any image is converted to PNG in the browser. Gated by the `custom_branding_allowed` feature (open to everyone in the open-source version; the paid overlay limits it to Pro and higher). "Powered by" in the footer always stays. The unused `should_show_branding?` subscription callback and the `show_branding` setting are removed
+* Emails in dark mode put every header logo on a light rounded plate (until now only an instance's custom logo), so an organizer's transparent logo with dark lettering stays readable
+* Pro-only hints share one amber strip with a lock (`ProNotice`): changing a meeting type's booking link, Custom URL, Contact Collection and Your Logo. In the meeting type editor the "Pro" badge sits next to the heading instead of between the buttons, and a note says that changing the link needs the Pro plan
+* Embed & Share in dark mode: the "How domain whitelisting works" box, the live preview frame and the four mock browser windows are dark; the selected embed style has its orange border again (the upstream merge had dropped it); the code snippets are light in light mode (they were always dark)
+* `mix precommit` skips the JavaScript test step in a project without `assets/js` (the paid overlay) and lists it as "not run" with the reason, instead of failing on the missing `mix test.js`
+* Calendars page: the free/busy feed's explanation sits inside its card, like the other cards, instead of under the heading
+* Calendar search finds your own bookings that have no copy in a connected calendar (the grid shows those as bookings, which the search did not look at): by title, meeting information, description, location and the booker's name or email. Picking one moves the grid to its day and opens the booking. A booking that does have a calendar copy is still found through that copy, once
+* Meetings page: a booking's card is more compact. The details (date, meeting type, reminders, attendee email and phone) run three to a row while the card has the room, the reminders are a tile after the meeting type instead of a box of their own, and the panels below (notes, attachments, guests, answers) sit closer together
+* Every enabled button, tab and switch shows the pointer cursor (Tailwind 4 leaves buttons on the arrow): the filter strip on Meetings, tab bars and segmented controls had none. A disabled one, such as the chosen option of a toggle, keeps the arrow
+* Meeting types can be listed in the embedded booking widget independently of the public booking page (#177, part 1): Meeting type → Visibility → "Show in embedded widget". A type hidden from the public page can be shown in the widget only, and a public type can be left out of the widget. New types are shown in the widget; types already hidden from the public page stay out of it, so existing widgets show what they did. The direct link works either way. A type in the widget has a "Shown in widget" badge in the list. A widget pointing at a meeting type that does not exist or is paused shows "This meeting type isn’t available" in the frame instead of the list of all types
+* The booking widget can show a single meeting type (#177, part 2): `data-meeting="slug"` on the inline widget, or `meeting: 'slug'` in the options of `open()`, `initFloating()` and `embed()`, opens that type's booking page directly. Embed & Share has a "Meeting type" picker that adds it to every snippet (the link snippet points at the type's page) and to the live preview. The style cards (Inline, Popup, Floating, Direct Link) have a border when not selected, so they stand apart from each other
+* Hidden widget address (#177, part 3): Embed & Share → Security → "Hidden widget address" creates a random address (`/_…`) that the embed code and the direct link use instead of your username, so the code on your website does not reveal your public booking page. Through it, visitors see the meeting types shown in the widget, and a direct link reaches the types shown in the widget or hidden from the public page; types only on the public page and the public calendar stay out of reach. It can be replaced (the old address stops working) or removed. Gated by the `embed_alias_allowed` feature (open to everyone in the open-source version; the paid overlay limits it to Pro and higher and removes the address when Pro ends). A booking made through the address keeps it in the emails too: the view, reschedule and cancel links and "Book another time" point at the hidden address, not the username (replacing or removing the address ends those links)
+* Embed & Share: the live preview stays after switching tabs (it was empty once another tab had been opened), the allowed domain badges are readable in dark mode, and each snippet's Copy button sits above its code block on the right (it had dropped under the code)
+* The booking widget's own look (#177, part 4): inside the widget the top bar shows only the logo, centred, with no language switcher (the widget follows the visitor's browser language and falls back to English), and the overview has no "Show full calendar" button. Embed & Share → Customise → "Background" keeps the theme's background, makes it transparent so your page shows through, or uses a colour you pick (`data-background`, `background` in the options); the standalone booking page keeps its own. The Customise choices and the picked style are saved to the profile and come back after a reload (until now they reset with every visit); "Style Selection" says that the style only picks what the Live Preview shows, and the Floating Button card's badge reads "Expert" instead of "Pro"
+* A browser test of the inline booking widget (#177): a widget pinned to one meeting type, the types listed in the widget, and the notice for an unknown meeting type
+
 [1.22.0.1]
 * Merge upstream v1.22.0: saved locations (a new Locations page; in-person meeting locations list saved venues the booker picks from, with the address kept on the meeting, in emails and on reschedule), the CSP narrowed to the origins the app uses, reCAPTCHA loaded only once a visitor starts filling in a form and no longer rejecting bookings and sign-ups while Google is unreachable, metadata (location, device) stripped from uploaded avatars and theme backgrounds, encrypted webhook URLs / custom meeting links / push secrets and hashed poll, RSVP, free/busy and Telegram link tokens, analytics without reversible visitor hashes or ad click identifiers, a shorter retention of IP addresses, unverified accounts and payment records, and calendar grid fixes
 * Cloudflare Turnstile keeps working next to the new reCAPTCHA behaviour: its origin is allowed by the narrowed CSP only while Turnstile is configured for booking or sign-up. Unlike reCAPTCHA, Turnstile still rejects a submission while Cloudflare is unreachable
@@ -17,6 +68,11 @@
 * Fix the meeting type's "Show these bookings as free on my calendar" switch never being saved (it was off again after a reload, and bookings were always written as busy)
 * Fix Czech and other non-ASCII text turning into garbage (e.g. "StandardnÃ­") in calendar events written to some CalDAV servers such as Radicale: long lines of the event were folded in the middle of a character, which made the whole document invalid UTF-8
 * Calendars page: the default calendar is marked "Default" and any other calendar that can take bookings can be made the default ("Set as default"); a connection with several calendars asks which of them is the default (shown on the badge, changed with "Change default calendar"), and that is where your bookings on other pages are saved; a new "Your bookings on other pages" setting changes the remembered choice (ask each time / always / never)
+* Fix the booker's own calendar copy of a meeting staying in their calendar when the host deleted the cancelled meeting for good before the copy was removed: the copy is removed first now (a copy that cannot be removed does not stop the deletion)
+* Fix the description of an event synced from Thunderbird to Radicale arriving as `text/html,Tady%20je%20popis":Tady je popis`: a colon inside a quoted property parameter (`DESCRIPTION;ALTREP="data:text/html,…":text`) is no longer taken for the start of the value
+* Fix reminders of events from CalDAV calendars (Radicale, Baikal, Nextcloud, …) and ICS feeds never showing in LockMyCal: `VALARM` is read now (lead times in minutes, hours, days or weeks; notification or email), and an alarm's own `DESCRIPTION` no longer becomes the event's description
+* Fix Outlook events with the reminder switched off showing a 15-minute reminder, and read the reminder of Exchange events (one per event, only when switched on)
+* Fix the reminder lead time chosen in the calendar's new-event dialog jumping back to the first option (5 minutes) when another field was edited
 
 [1.21.0.1]
 * Merge upstream v1.21.0: Polish translation, booking titles written in the host's language (and re-rendered in the guest's language in their emails), no fonts loaded from Google on booking pages and in emails (the CSP no longer allows `fonts.gstatic.com`), scrubbing of exceptions before they are stored by error tracking and daily re-masking of stored error reasons, queued calendar-grid edits that survive an app shutdown or a closed tab, screen readers announcing required form fields, month headings in each language's own form, a trailing slash in a URL redirecting to the slashless path, and the Cloudron SSO button naming its identity provider
@@ -296,6 +352,83 @@
 
 [1.9.0+2]
 * core: Match the calendar's up-next-meeting banner colours to the dashboard's brand gradient and move it below the Calendar heading
+
+[1.25.0]
+* payments: Refuse paid bookings when the host's plan lacks payments
+* calendar: Let quick add set the meeting's reminders (#146)
+
+
+[1.24.0]
+* calendar: Refuse Outlook series on days that some months lack
+* ui: Stop a flash's auto-dismiss closing the dialog that is open
+* privacy: Anonymise invitee details two years after a meeting ends
+* emails: Send attendee replies to the organiser, not the sender
+* group-bookings: Let organisers choose how full group times look
+* calendar: Let a subscribed calendar count every event as busy
+
+
+[1.23.0]
+* dashboard: Tighten the gap between tabs on a phone
+* meeting-types: Match Add Meeting Type to the other page header buttons
+* meeting-types: Name the meeting type in its card's Edit and Delete buttons
+* meeting-types: Translate default location names everywhere they show
+* calendar: Put Cancel before Create in the quick-add dialog
+* dashboard: Write confirmation dialog titles in sentence case
+* dashboard: Fit short tab strips on a phone without cutting labels off
+* calendar: Show the .ics import button on phones
+* emails: Draw the banner eyebrow and subtitle at full contrast
+* availability: Rebuild the end time options when a day's start moves past its end
+* calendar: Stop retrying calendar writes when no calendar is connected
+* emails: Make the event update change table labels readable
+* emails: Show calendar sync error causes as a list, not raw markup
+* onboarding: Show buffer example times on the organiser's clock
+* emails: Make text on the amber alert banner readable
+* calendar: Explain a quick-add failure instead of showing its error code
+* onboarding: Stop Continue past a refused scheduling preference
+* meeting-types: Mark next-day times in the slot interval preview
+* profile: Make the username field's browser check work in Chromium
+* booking: Keep a literal + in a prefilled booking link email
+* i18n: Format dates on meeting slots and payment tables per language
+* booking: Update the calendar's bookable days when the timezone changes
+* dashboard: Keep the Join meeting button inside its column in longer languages
+* calendar: Keep the spaces in long imported event titles and descriptions
+* profiles: Stop guest and seat being taken as usernames
+* bookings: Join from the meetings list with the host's own video link
+* meeting-types: Say when a meeting type's name is already taken
+* Write English dates in British order, day before month
+* dashboard: Stop the Integrations sidebar item looking selected
+* meeting-types: Show the minimum price error while editing a paid meeting type
+* dashboard: Show a disabled field's value darker than its placeholder
+* embed: Name each allowed domain's remove button for screen readers
+* dashboard: Make muted availability controls and disabled field text readable
+* dashboard: Keep sidebar icons white when the current page's link is hovered
+* dashboard: Draw each switch size at its own size with a keyboard focus ring
+* profile: Name each profile field once
+* dashboard: Show one add button on empty pages, inside the empty state
+* dashboard: Make empty states readable and let Time Off add from one
+* dashboard: Stop the sidebar covering the page at exactly 1024px
+* analytics: Say when there is no traffic instead of drawing an empty chart
+* dashboard: Show poll and analytics times on the organiser's clock
+* dashboard: Give every dashboard section its own page title
+* calendar: Reword the calendar summary's conflict-check count
+* availability: Colour the minimum notice chips like the others
+* dashboard: Keep switches and the reminder unit showing their real state
+* embed: Scroll embed snippets instead of breaking lines mid-word
+* calendar: Stop the calendar grid running to the screen edge on phones
+* dashboard: Keep the closed mobile sidebar out of keyboard focus
+* bookings: Keep booking actions and filters on screen on phones
+* bookings: List upcoming meetings soonest first
+* calendar: Keep the app running when a calendar's credentials cannot be decrypted
+* dashboard: Keep profile saves from crashing after a slow profile load
+* availability: Offer slots that cross midnight
+* meeting-types: Add meeting types with the same tabbed form as editing
+* meeting-types: Allow meeting types up to 24 hours long
+* availability: Set separate buffers before and after meetings
+* booking: Prefill the booking form from a link's #name and #email
+* calendar: Import events from an .ics file
+* emails: Add dark mode to every email
+* Support group bookings with per-slot participant limits
+
 
 [1.22.0]
 * security: Accept bookings and sign-ups when Google cannot be reached

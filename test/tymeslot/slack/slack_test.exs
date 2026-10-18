@@ -15,6 +15,7 @@ defmodule Tymeslot.SlackTest do
   alias Tymeslot.Security.Encryption
   alias Tymeslot.Slack
   alias Tymeslot.Slack.{SlackIntegrationSchema, SlackQueries}
+  alias Tymeslot.Webhooks
 
   setup :verify_on_exit!
 
@@ -470,6 +471,13 @@ defmodule Tymeslot.SlackTest do
 
       assert {:ok, reloaded} = SlackQueries.get_integration(integration.id)
       assert reloaded.last_triggered_at
+    end
+  end
+
+  describe "available_events/0" do
+    test "offers the same events as a webhook, the booking requests included" do
+      assert Slack.available_events() == Webhooks.available_events()
+      assert "meeting.request_expired" in Enum.map(Slack.available_events(), & &1.value)
     end
   end
 end

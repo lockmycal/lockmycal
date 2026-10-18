@@ -3,6 +3,7 @@ defmodule Tymeslot.Emails.Templates.IntegrationReauthRequiredTest do
   @moduletag :emails
 
   alias Tymeslot.Emails.Templates.IntegrationReauthRequired
+  alias Tymeslot.Infrastructure.Config
 
   @user %{name: "Alice", email: "alice@example.com"}
 
@@ -34,13 +35,13 @@ defmodule Tymeslot.Emails.Templates.IntegrationReauthRequiredTest do
     test "falls back to a true statement when no reason was recorded" do
       html = IntegrationReauthRequired.render(@user, integration(sync_error: nil), :video)
 
-      assert html =~ "Zoom needs reconnecting before Tymeslot can use it again."
+      assert html =~ "Zoom needs reconnecting before #{Config.app_name()} can use it again."
     end
 
     test "treats a blank reason as no reason rather than rendering an empty callout" do
       html = IntegrationReauthRequired.render(@user, integration(sync_error: "   "), :video)
 
-      assert html =~ "Zoom needs reconnecting before Tymeslot can use it again."
+      assert html =~ "Zoom needs reconnecting before #{Config.app_name()} can use it again."
     end
 
     test "renders a complete HTML document" do
@@ -83,7 +84,7 @@ defmodule Tymeslot.Emails.Templates.IntegrationReauthRequiredTest do
     test "asks the owner to remove the subscription and subscribe again, since its row has no Reconnect button" do
       html = IntegrationReauthRequired.render(@user, ics_integration(), :calendar)
 
-      assert html =~ "Select <strong>Remove connection</strong> on the Calendar subscription row"
+      assert html =~ "Select <strong>Delete</strong> on the Calendar subscription row"
 
       assert html =~ "paste the current feed link and select Subscribe"
 
@@ -141,7 +142,7 @@ defmodule Tymeslot.Emails.Templates.IntegrationReauthRequiredTest do
     test "falls back to a true statement when no reason was recorded" do
       text = IntegrationReauthRequired.render_text(@user, integration(sync_error: nil), :video)
 
-      assert text =~ "Zoom needs reconnecting before Tymeslot can use it again."
+      assert text =~ "Zoom needs reconnecting before #{Config.app_name()} can use it again."
     end
 
     test "gives the same steps as the HTML part" do

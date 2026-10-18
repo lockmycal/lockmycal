@@ -65,15 +65,9 @@ msgid "Configuration form not available for this provider."
 msgstr "Pro tohoto poskytovatele není konfigurační formulář k dispozici."
 
 #: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
-#: lib/tymeslot_web/live/dashboard/calendar_settings/components.ex
 #, elixir-autogen, elixir-format
 msgid "Connect a calendar"
 msgstr "Připojit kalendář"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Connect a calendar so Tymeslot can read your availability and stop meetings being booked when you're already busy."
-msgstr "Připojte kalendář, aby služba LockMyCal znala vaši dostupnost a nedocházelo k rezervaci schůzek v době, kdy už máte jiný program."
 
 #: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
@@ -186,11 +180,6 @@ msgstr "Obnovování…"
 msgid "Regenerate link"
 msgstr "Vygenerovat nový odkaz"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
-#, elixir-autogen, elixir-format
-msgid "Remove connection"
-msgstr "Odebrat připojení"
-
 #: lib/tymeslot_web/live/dashboard/calendar_settings/components.ex
 #, elixir-autogen, elixir-format
 msgid "Share a read-only link that publishes when you're busy (not the event details) as a standard iCalendar feed, so other calendar systems can overlay your availability."
@@ -235,16 +224,6 @@ msgstr "Tyto kalendáře budeme automaticky kontrolovat, aby nedocházelo k dvo
 #, elixir-autogen, elixir-format
 msgid "books into %{calendar}"
 msgstr "rezervuje do kalendáře %{calendar}"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
-#, elixir-autogen, elixir-format
-msgid "conflict-checks %{selected} of %{total} calendars"
-msgstr "kontroluje konflikty u %{selected} z %{total} kalendářů"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
-#, elixir-autogen, elixir-format
-msgid "synced %{time}"
-msgstr "synchronizováno %{time}"
 
 #: lib/tymeslot_web/live/dashboard/calendar_settings_component.ex
 #, elixir-autogen, elixir-format
@@ -311,160 +290,63 @@ msgstr "Servery Exchange"
 msgid "read-only, blocks time but takes no bookings"
 msgstr "jen pro čtení, blokuje čas, ale nepřijímá rezervace"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "Public calendar"
-msgstr "Veřejný kalendář"
+msgid "checks %{selected} of %{count} calendar for conflicts"
+msgid_plural "checks %{selected} of %{count} calendars for conflicts"
+msgstr[0] "kontroluje konflikty u %{selected} z %{count} kalendáře"
+msgstr[1] "kontroluje konflikty u %{selected} z %{count} kalendářů"
+msgstr[2] "kontroluje konflikty u %{selected} z %{count} kalendářů"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "Use colours in the public calendar"
-msgstr "Používat barvy ve veřejném kalendáři"
+msgid "Last synced %{time}"
+msgstr "Naposledy synchronizováno %{time}"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "Your public booking calendar shows busy times as plain grey blocks by default. Turn this on to use each calendar's colour instead, matching your internal calendar view."
-msgstr "Váš veřejný rezervační kalendář ve výchozím nastavení zobrazuje obsazené časy jako obyčejné šedé bloky. Zapnutím této volby se místo toho použije barva každého kalendáře, stejně jako ve vašem interním zobrazení kalendáře."
+msgid "Delete"
+msgstr "Smazat"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "Calendars"
-msgstr "Kalendáře"
+msgid "Delete %{name}"
+msgstr "Smazat %{name}"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "Connect your calendars to check availability and prevent double bookings."
-msgstr "Propojte své kalendáře pro kontrolu dostupnosti a zabránění dvojím rezervacím."
+msgid "Block the time of every event in this feed, also those it marks as free"
+msgstr "Blokovat čas každé události v tomto zdroji, i těch označených jako volné"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings_component.ex
 #, elixir-autogen, elixir-format
-msgid "Set public calendar colors"
-msgstr "Nastavit barvy veřejného kalendáře"
+msgid "Events this calendar marks as free no longer block time"
+msgstr "Události, které tento kalendář označuje jako volné, už neblokují čas"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/helpers.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "End time must be after the start time"
-msgstr "Čas konce musí být po čase začátku"
+msgid "Every event busy"
+msgstr "Každá událost obsazená"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/helpers.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings_component.ex
 #, elixir-autogen, elixir-format
-msgid "Failed to update visible hours"
-msgstr "Nepodařilo se aktualizovat viditelné hodiny"
+msgid "Every event in this calendar now blocks time"
+msgstr "Každá událost tohoto kalendáře teď blokuje čas"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "From"
-msgstr "Od"
+msgid "read-only, every event blocks time, also those marked free"
+msgstr "jen pro čtení, každá událost blokuje čas, i ty označené jako volné"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
 #, elixir-autogen, elixir-format
-msgid "Only show busy times within a daily window"
-msgstr "Zobrazovat obsazené časy pouze v denním okně"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
-#, elixir-autogen, elixir-format
-msgid "Set visible hours"
-msgstr "Nastavit viditelné hodiny"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
-#, elixir-autogen, elixir-format
-msgid "To"
-msgstr "Do"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
-#, elixir-autogen, elixir-format
-msgid "Visible hours"
-msgstr "Viditelné hodiny"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
-#, elixir-autogen, elixir-format
-msgid "Your public calendar and free/busy feed show busy blocks around the clock by default. Turn this on to hide anything outside a daily time range, e.g. 07:00–18:00."
-msgstr "Váš veřejný kalendář a feed volno/obsazeno ve výchozím nastavení zobrazují obsazené bloky nepřetržitě. Tuto možnost zapněte, pokud chcete skrýt vše mimo denní časové rozmezí, např. 07:00–18:00."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
-#, elixir-autogen, elixir-format
-msgid "Historical events"
-msgstr "Historické události"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
-#, elixir-autogen, elixir-format
-msgid "Off by default: your public calendar only shows today and later. Turn this on to also show past busy times when a visitor browses to an earlier month."
-msgstr "Ve výchozím nastavení vypnuto: váš veřejný kalendář zobrazuje pouze dnešek a pozdější dny. Tuto možnost zapněte, pokud chcete zobrazit i minulé obsazené časy, když se návštěvník podívá do dřívějšího měsíce."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
-#, elixir-autogen, elixir-format
-msgid "Set show historical events"
-msgstr "Nastavit zobrazování historických událostí"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
-#, elixir-autogen, elixir-format
-msgid "Show historical events"
-msgstr "Zobrazit historické události"
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
-#, elixir-autogen, elixir-format
-msgid "You have reached the maximum number of connected calendars for your plan. Remove one to connect another."
-msgstr "Dosáhli jste maximálního počtu připojených kalendářů pro váš tarif. Chcete-li připojit další, jeden odeberte."
+msgid "%{account} has several calendars. Your bookings on other pages are saved to the one you choose."
+msgstr "%{account} obsahuje více kalendářů. Vaše rezervace na cizích stránkách se uloží do toho, který vyberete."
 
 #: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
 #, elixir-autogen, elixir-format
 msgid "Active calendars: %{active} of %{limit}."
 msgstr "Aktivní kalendáře: %{active} z %{limit}."
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
-#, elixir-autogen, elixir-format
-msgid "To turn a paused calendar back on, pause an active one first."
-msgstr "Chcete-li znovu zapnout pozastavený kalendář, nejprve pozastavte některý aktivní."
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
-#, elixir-autogen, elixir-format
-msgid "Your plan allows only this many active calendars. Pause an active calendar before turning this one back on."
-msgstr "Váš tarif umožňuje jen tento počet aktivních kalendářů. Než tento kalendář znovu zapnete, pozastavte některý aktivní."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
-#, elixir-autogen, elixir-format
-msgid "Colour settings"
-msgstr "Nastavení barev"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
-#, elixir-autogen, elixir-format
-msgid "Set public calendar visibility"
-msgstr "Nastavit viditelnost veřejného kalendáře"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
-#, elixir-autogen, elixir-format
-msgid "Show my public calendar"
-msgstr "Zobrazovat můj veřejný kalendář"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
-#, elixir-autogen, elixir-format
-msgid "Visibility"
-msgstr "Viditelnost"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
-#, elixir-autogen, elixir-format
-msgid "When enabled, anyone with your link can see a month view of when you are busy or free — never event titles or attendees. Your booking page works either way."
-msgstr "Když je zapnuto, kdokoli s vaším odkazem uvidí měsíční přehled, kdy jste obsazeni a kdy volní — nikdy ne názvy událostí ani účastníky. Rezervační stránka funguje v obou případech."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
-#, elixir-autogen, elixir-format
-msgid "Set show weekends"
-msgstr "Nastavit zobrazování víkendů"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
-#, elixir-autogen, elixir-format
-msgid "Weekends"
-msgstr "Víkendy"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
-#, elixir-autogen, elixir-format
-msgid "Off by default: your public calendar shows Monday to Friday only, and your free/busy feed leaves out busy times at weekends. Saturday and Sunday still appear in a month where a weekend day can be booked. Turn this on to always show weekends, busy times included."
-msgstr "Ve výchozím stavu vypnuto: veřejný kalendář ukazuje jen pondělí až pátek a feed volno/obsazeno vynechává obsazené časy o víkendech. Sobota a neděle se přesto zobrazí v měsíci, kde lze nějaký víkendový den rezervovat. Zapněte, aby se víkendy zobrazovaly vždy, včetně obsazených časů."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
-#, elixir-autogen, elixir-format
-msgid "Show weekends"
-msgstr "Zobrazovat víkendy"
 
 #: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
 #, elixir-autogen, elixir-format
@@ -481,61 +363,10 @@ msgstr "Pokaždé se zeptat"
 msgid "Bookings without a calendar of their own, and your bookings on other pages, go here"
 msgstr "Sem se zapisují rezervace bez vlastního kalendáře a vaše rezervace na jiných stránkách"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
 #, elixir-autogen, elixir-format
-msgid "Default"
-msgstr "Výchozí"
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Default calendar updated"
-msgstr "Výchozí kalendář byl změněn."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
-#, elixir-autogen, elixir-format
-msgid "Failed to save setting"
-msgstr "Nastavení se nepodařilo uložit."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
-#, elixir-autogen, elixir-format
-msgid "Never"
-msgstr "Nikdy"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
-#, elixir-autogen, elixir-format
-msgid "Save to my calendar"
-msgstr "Ukládat do mého kalendáře"
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
-#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
-#, elixir-autogen, elixir-format
-msgid "Set as default"
-msgstr "Nastavit jako výchozí"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
-#, elixir-autogen, elixir-format
-msgid "Setting saved"
-msgstr "Nastavení bylo uloženo."
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
-#, elixir-autogen, elixir-format
-msgid "This calendar cannot take bookings"
-msgstr "Do tohoto kalendáře nelze zapisovat rezervace."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
-#, elixir-autogen, elixir-format
-msgid "When you book a meeting on someone else's booking page while signed in, it can also be saved to your default calendar."
-msgstr "Když si jako přihlášení zarezervujete schůzku na cizí rezervační stránce, může se uložit i do vašeho výchozího kalendáře."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
-#, elixir-autogen, elixir-format
-msgid "Your bookings on other pages"
-msgstr "Vaše rezervace na jiných stránkách"
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
-#, elixir-autogen, elixir-format
-msgid "%{account} has several calendars. Your bookings on other pages are saved to the one you choose."
-msgstr "%{account} obsahuje více kalendářů. Vaše rezervace na cizích stránkách se uloží do toho, který vyberete."
+msgid "Calendars"
+msgstr "Kalendáře"
 
 #: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
 #, elixir-autogen, elixir-format
@@ -552,12 +383,214 @@ msgstr "Změnit výchozí kalendář"
 msgid "Choose your default calendar"
 msgstr "Vyberte výchozí kalendář"
 
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Colour settings"
+msgstr "Nastavení barev"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Connect a calendar so %{app_name} can read your availability and stop meetings being booked when you're already busy."
+msgstr "Připojte kalendář, aby služba %{app_name} znala vaši dostupnost a nedocházelo k rezervaci schůzek v době, kdy už máte jiný program."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Connect your calendars to check availability and prevent double bookings."
+msgstr "Propojte své kalendáře pro kontrolu dostupnosti a zabránění dvojím rezervacím."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
+#, elixir-autogen, elixir-format
+msgid "Default"
+msgstr "Výchozí"
+
 #: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
 msgid "Default calendar"
 msgstr "Výchozí kalendář"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Default calendar updated"
+msgstr "Výchozí kalendář byl změněn."
 
 #: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
 msgid "Default: %{calendar}"
 msgstr "Výchozí: %{calendar}"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/helpers.ex
+#, elixir-autogen, elixir-format
+msgid "End time must be after the start time"
+msgstr "Čas konce musí být po čase začátku"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to save setting"
+msgstr "Nastavení se nepodařilo uložit."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update visible hours"
+msgstr "Nepodařilo se aktualizovat viditelné hodiny"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#, elixir-autogen, elixir-format
+msgid "From"
+msgstr "Od"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
+#, elixir-autogen, elixir-format
+msgid "Historical events"
+msgstr "Historické události"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Never"
+msgstr "Nikdy"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
+#, elixir-autogen, elixir-format
+msgid "Off by default: your public calendar only shows today and later. Turn this on to also show past busy times when a visitor browses to an earlier month."
+msgstr "Ve výchozím nastavení vypnuto: váš veřejný kalendář zobrazuje pouze dnešek a pozdější dny. Tuto možnost zapněte, pokud chcete zobrazit i minulé obsazené časy, když se návštěvník podívá do dřívějšího měsíce."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
+#, elixir-autogen, elixir-format
+msgid "Off by default: your public calendar shows Monday to Friday only, and your free/busy feed leaves out busy times at weekends. Saturday and Sunday still appear in a month where a weekend day can be booked. Turn this on to always show weekends, busy times included."
+msgstr "Ve výchozím stavu vypnuto: veřejný kalendář ukazuje jen pondělí až pátek a feed volno/obsazeno vynechává obsazené časy o víkendech. Sobota a neděle se přesto zobrazí v měsíci, kde lze nějaký víkendový den rezervovat. Zapněte, aby se víkendy zobrazovaly vždy, včetně obsazených časů."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#, elixir-autogen, elixir-format
+msgid "Only show busy times within a daily window"
+msgstr "Zobrazovat obsazené časy pouze v denním okně"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Public calendar"
+msgstr "Veřejný kalendář"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Save to my calendar"
+msgstr "Ukládat do mého kalendáře"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
+#, elixir-autogen, elixir-format
+msgid "Set as default"
+msgstr "Nastavit jako výchozí"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Set public calendar colors"
+msgstr "Nastavit barvy veřejného kalendáře"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Set public calendar visibility"
+msgstr "Nastavit viditelnost veřejného kalendáře"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
+#, elixir-autogen, elixir-format
+msgid "Set show historical events"
+msgstr "Nastavit zobrazování historických událostí"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
+#, elixir-autogen, elixir-format
+msgid "Set show weekends"
+msgstr "Nastavit zobrazování víkendů"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#, elixir-autogen, elixir-format
+msgid "Set visible hours"
+msgstr "Nastavit viditelné hodiny"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Setting saved"
+msgstr "Nastavení bylo uloženo."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
+#, elixir-autogen, elixir-format
+msgid "Show historical events"
+msgstr "Zobrazit historické události"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Show my public calendar"
+msgstr "Zobrazovat můj veřejný kalendář"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
+#, elixir-autogen, elixir-format
+msgid "Show weekends"
+msgstr "Zobrazovat víkendy"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "This calendar cannot take bookings"
+msgstr "Do tohoto kalendáře nelze zapisovat rezervace."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#, elixir-autogen, elixir-format
+msgid "To"
+msgstr "Do"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
+#, elixir-autogen, elixir-format
+msgid "To turn a paused calendar back on, pause an active one first."
+msgstr "Chcete-li znovu zapnout pozastavený kalendář, nejprve pozastavte některý aktivní."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Use colours in the public calendar"
+msgstr "Používat barvy ve veřejném kalendáři"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Visibility"
+msgstr "Viditelnost"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#, elixir-autogen, elixir-format
+msgid "Visible hours"
+msgstr "Viditelné hodiny"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
+#, elixir-autogen, elixir-format
+msgid "Weekends"
+msgstr "Víkendy"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "When enabled, anyone with your link can see a month view of when you are busy or free — never event titles or attendees. Your booking page works either way."
+msgstr "Když je zapnuto, kdokoli s vaším odkazem uvidí měsíční přehled, kdy jste obsazeni a kdy volní — nikdy ne názvy událostí ani účastníky. Rezervační stránka funguje v obou případech."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "When you book a meeting on someone else's booking page while signed in, it can also be saved to your default calendar."
+msgstr "Když si jako přihlášení zarezervujete schůzku na cizí rezervační stránce, může se uložit i do vašeho výchozího kalendáře."
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
+#, elixir-autogen, elixir-format
+msgid "You have reached the maximum number of connected calendars for your plan. Remove one to connect another."
+msgstr "Dosáhli jste maximálního počtu připojených kalendářů pro váš tarif. Chcete-li připojit další, jeden odeberte."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Your bookings on other pages"
+msgstr "Vaše rezervace na jiných stránkách"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
+#, elixir-autogen, elixir-format
+msgid "Your plan allows only this many active calendars. Pause an active calendar before turning this one back on."
+msgstr "Váš tarif umožňuje jen tento počet aktivních kalendářů. Než tento kalendář znovu zapnete, pozastavte některý aktivní."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Your public booking calendar shows busy times as plain grey blocks by default. Turn this on to use each calendar's colour instead, matching your internal calendar view."
+msgstr "Váš veřejný rezervační kalendář ve výchozím nastavení zobrazuje obsazené časy jako obyčejné šedé bloky. Zapnutím této volby se místo toho použije barva každého kalendáře, stejně jako ve vašem interním zobrazení kalendáře."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#, elixir-autogen, elixir-format
+msgid "Your public calendar and free/busy feed show busy blocks around the clock by default. Turn this on to hide anything outside a daily time range, e.g. 07:00–18:00."
+msgstr "Váš veřejný kalendář a feed volno/obsazeno ve výchozím nastavení zobrazují obsazené bloky nepřetržitě. Tuto možnost zapněte, pokud chcete skrýt vše mimo denní časové rozmezí, např. 07:00–18:00."

@@ -14,6 +14,7 @@ defmodule TymeslotWeb.Live.Scheduling.OrganizerHelpers do
   alias Phoenix.Component
   alias Tymeslot.Availability.Schedules
   alias Tymeslot.Demo
+  alias Tymeslot.MeetingTypes
   alias Tymeslot.Security.InputProcessor
   alias TymeslotWeb.Helpers.ClientIP
   alias TymeslotWeb.Live.Scheduling.BookingConfig
@@ -42,6 +43,7 @@ defmodule TymeslotWeb.Live.Scheduling.OrganizerHelpers do
         # During mount, we can't use put_flash/redirect - let the mount handle this
         socket
         |> assign(:username_context, nil)
+        |> assign(:via_alias, false)
         |> assign(:organizer_profile, nil)
         |> assign(:booking_window_days, booking_window_days(nil))
         |> assign(:organizer_user_id, nil)
@@ -54,8 +56,24 @@ defmodule TymeslotWeb.Live.Scheduling.OrganizerHelpers do
         |> assign(:organizer_profile, context.profile)
         |> assign(:booking_window_days, booking_window_days(context.profile))
         |> assign(:organizer_user_id, context.user_id)
-        |> assign(:meeting_types, context.meeting_types)
+        |> assign(:via_alias, Map.get(context, :via_alias, false))
+        |> assign(:meeting_types, listed_meeting_types(socket, context))
         |> assign(:page_title, context.page_title)
+    end
+  end
+
+  # The embedded widget lists its own selection (`show_in_embed`), which can
+  # include types hidden from the public page and leave out public ones. So
+  # does a page reached through the widget's alias, framed or not.
+  # `embedded` comes from `EmbedAuthHook`, which runs before this mount. A demo
+  # organiser keeps the overlay's synthesised types: no query could rebuild them.
+  defp listed_meeting_types(socket, context) do
+    widget? = socket.assigns[:embedded] == true or Map.get(context, :via_alias, false)
+
+    if widget? and not Demo.demo_profile?(context.profile) do
+      MeetingTypes.get_embed_meeting_types(context.user_id)
+    else
+      context.meeting_types
     end
   end
 

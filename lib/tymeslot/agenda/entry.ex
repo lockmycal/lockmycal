@@ -18,6 +18,10 @@ defmodule Tymeslot.Agenda.Entry do
   `attending?` marks a booking the user made on someone else's page: it is on
   their agenda as the attendee, so it names the organiser, and a pending one
   waits for the organiser's approval rather than theirs.
+
+  `title` is `nil` when the booking or event has none; the presentation layer
+  labels it. `who` names the other party (a booking's attendee, an event's organiser);
+  `who_email` is the attendee's address, known for bookings only.
   """
 
   alias Tymeslot.Utils.DateTimeUtils
@@ -34,15 +38,23 @@ defmodule Tymeslot.Agenda.Entry do
     :location,
     :join_url,
     :who,
+    :who_email,
     :calendar,
     :colour,
     :colour_class,
     :source_id,
+    :target,
     awaiting_approval?: false,
     attending?: false
   ]
 
   @type source :: :tymeslot | :external
+
+  @typedoc """
+  The stable override target for this entry: a booking (`{:meeting, uuid}`) or an
+  external event (`{:external, integration_id, uid}`). Used to set/clear a colour.
+  """
+  @type target :: {:meeting, Ecto.UUID.t()} | {:external, integer(), String.t()}
 
   @typedoc """
   The id of the record behind this entry: a booking's meeting id (for
@@ -54,7 +66,7 @@ defmodule Tymeslot.Agenda.Entry do
   @type t :: %__MODULE__{
           id: String.t(),
           source: source(),
-          title: String.t(),
+          title: String.t() | nil,
           day: Date.t(),
           start_at: DateTime.t(),
           end_at: DateTime.t(),
@@ -62,10 +74,12 @@ defmodule Tymeslot.Agenda.Entry do
           location: String.t() | nil,
           join_url: String.t() | nil,
           who: String.t() | nil,
+          who_email: String.t() | nil,
           calendar: String.t() | nil,
           colour: String.t() | nil,
           colour_class: String.t() | nil,
           source_id: source_id(),
+          target: target() | nil,
           awaiting_approval?: boolean(),
           attending?: boolean()
         }

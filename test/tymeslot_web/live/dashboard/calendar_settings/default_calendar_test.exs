@@ -45,6 +45,10 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.DefaultCalendarTest do
              "button[data-testid='set-default-calendar'][phx-value-id='#{ctx.second.id}']"
            )
 
+    # The default one shows a filled star that does nothing.
+    assert has_element?(view, "button[data-testid='default-calendar-star'][disabled]")
+    refute has_element?(view, "button[data-testid='default-calendar-badge']")
+
     assert has_element?(
              view,
              "button[data-testid='set-default-calendar'][phx-value-id='#{ctx.first.id}']"
@@ -86,11 +90,20 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.DefaultCalendarTest do
       assert {ctx.several.id, "/cal/work/"} == Calendar.default_calendar(ctx.user.id)
       assert view |> element("[data-testid='default-calendar-badge']") |> render() =~ "Work"
 
-      # The default connection keeps the action, to pick another of its calendars.
-      assert has_element?(
+      # The default connection's star is filled and inactive; its badge picks
+      # another of its calendars.
+      refute has_element?(
                view,
                "button[data-testid='set-default-calendar'][phx-value-id='#{ctx.several.id}']"
              )
+
+      assert has_element?(view, "button[data-testid='default-calendar-star'][disabled]")
+
+      view
+      |> element("button[data-testid='default-calendar-badge'][phx-value-id='#{ctx.several.id}']")
+      |> render_click()
+
+      assert has_element?(view, "#default-calendar-choice option[value='/cal/personal/']")
     end
   end
 

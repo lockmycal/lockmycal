@@ -32,6 +32,8 @@ defmodule Tymeslot.Profiles.ProfileSchema do
           max_bookings_per_week: pos_integer() | nil,
           max_bookings_per_month: pos_integer() | nil,
           avatar: String.t() | nil,
+          brand_logo_path: String.t() | nil,
+          ics_branding_enabled: boolean(),
           booking_theme: String.t() | nil,
           has_custom_theme: boolean(),
           allowed_embed_domains: [String.t()] | nil,
@@ -42,6 +44,8 @@ defmodule Tymeslot.Profiles.ProfileSchema do
           booking_instruction: String.t() | nil,
           booking_text_translations: [ProfileBookingTextTranslation.t()],
           freebusy_token: String.t() | nil,
+          embed_alias: String.t() | nil,
+          embed_settings: map(),
           public_calendar_enabled: boolean(),
           public_calendar_colors: boolean(),
           public_calendar_visible_from: Time.t() | nil,
@@ -77,6 +81,11 @@ defmodule Tymeslot.Profiles.ProfileSchema do
     field(:max_bookings_per_week, :integer)
     field(:max_bookings_per_month, :integer)
     field(:avatar, :string)
+    field(:brand_logo_path, :string)
+    # Whether calendar files about this organiser's meetings end with the
+    # app's "Scheduled with" line; only honoured when off while the plan
+    # allows custom branding (`Tymeslot.Profiles.IcsBranding`).
+    field(:ics_branding_enabled, :boolean, default: true)
     field(:booking_theme, :string, default: Catalog.default_id())
     field(:has_custom_theme, :boolean, default: false)
     field(:allowed_embed_domains, {:array, :string}, default: ["none"])
@@ -99,6 +108,15 @@ defmodule Tymeslot.Profiles.ProfileSchema do
       load_in_query: false,
       redact: true
     )
+
+    # Secret handle that stands in for `username` in the booking widget's URLs
+    # (`Tymeslot.Profiles.EmbedAlias`). Public in the embedding site's HTML,
+    # like the username, so it is stored plain.
+    field(:embed_alias, :string)
+
+    # The Embed & Share page's Customise choices, string keys
+    # (`TymeslotWeb.Live.Dashboard.EmbedSettings.Helpers.stored_settings/1`).
+    field(:embed_settings, :map, default: %{})
 
     field(:public_calendar_enabled, :boolean, default: true)
     field(:public_calendar_colors, :boolean, default: false)
@@ -165,6 +183,7 @@ defmodule Tymeslot.Profiles.ProfileSchema do
       :public_calendar_show_historical_events,
       :public_calendar_show_weekends,
       :contacts_enabled,
+      :ics_branding_enabled,
       :auto_delete_cancelled_meetings_enabled,
       :auto_delete_cancelled_meetings_after_days,
       :save_bookings_to_own_calendar
@@ -199,6 +218,62 @@ defmodule Tymeslot.Profiles.ProfileSchema do
     |> Token.put_hash(:freebusy_token, :freebusy_token_hash)
     |> LegacyPlainColumn.clear_on_change(freebusy_token: :legacy_freebusy_token)
     |> unique_constraint(:freebusy_token_hash)
+  end
+
+  @doc """
+  Focused changeset for setting or clearing the booking widget's alias
+  (`Tymeslot.Profiles.EmbedAlias`), without re-validating unrelated fields.
+  """
+  @spec embed_alias_changeset(t(), map()) :: Ecto.Changeset.t()
+  def embed_alias_changeset(profile, attrs) do
+    profile
+    |> cast(attrs, [:embed_alias])
+    |> unique_constraint(:embed_alias)
+  end
+
+  @doc """
+  Focused changeset for the Embed & Share page's saved Customise choices,
+  without re-validating unrelated fields.
+  """
+  @spec embed_settings_changeset(t(), map()) :: Ecto.Changeset.t()
+  def embed_settings_changeset(profile, attrs) do
+    cast(profile, attrs, [:embed_settings])
+  end
+
+  @doc """
+  Focused changeset for the organizer's logo (`Tymeslot.Profiles.BrandLogo`).
+
+  The path is written only by `BrandLogo`; rejecting anything outside the
+  profile's own `branding/profiles/<id>/` directory here is defence in depth,
+  so no value that could escape the upload directory reaches the row.
+  """
+  @spec brand_logo_changeset(t(), map()) :: Ecto.Changeset.t()
+  def brand_logo_changeset(profile, attrs) do
+    profile
+    |> cast(attrs, [:brand_logo_path])
+    |> validate_length(:brand_logo_path, max: 255)
+    |> validate_brand_logo_path(profile)
+  end
+
+  defp validate_brand_logo_path(changeset, profile) do
+    case fetch_change(changeset, :brand_logo_path) do
+      {:ok, path} when is_binary(path) ->
+        prefix = "branding/profiles/#{profile.id}/"
+
+        if Path.type(path) == :relative and ".." not in Path.split(path) and
+             String.starts_with?(path, prefix) do
+          changeset
+        else
+          add_error(
+            changeset,
+            :brand_logo_path,
+            "must be inside the profile's branding directory"
+          )
+        end
+
+      _nil_or_unchanged ->
+        changeset
+    end
   end
 
   @booking_text_fields [:booking_heading, :booking_greeting, :booking_instruction]

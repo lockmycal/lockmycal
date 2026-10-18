@@ -53,6 +53,22 @@ defmodule Tymeslot.Meetings.BookerCalendarSync do
     end
   end
 
+  @doc """
+  Removes the booker's copy of `meeting` whatever state the meeting is in, for
+  a meeting about to be deleted: once its row is gone `sync/1` finds nothing
+  to bring in step, and the copy would stay in the booker's calendar for good.
+
+  `:ok` when there was no copy; `{:error, reason}` when it could not be removed.
+  """
+  @spec remove(MeetingSchema.t()) :: :ok | {:error, term()}
+  def remove(meeting) do
+    if mapped?(meeting) do
+      meeting |> remove_copy() |> refresh_booker_calendar(meeting.booker_user_id)
+    else
+      :ok
+    end
+  end
+
   defp sync_meeting(meeting) do
     cond do
       wants_copy?(meeting) and mapped?(meeting) -> update_copy(meeting)

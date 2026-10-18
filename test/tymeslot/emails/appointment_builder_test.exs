@@ -398,6 +398,34 @@ defmodule Tymeslot.Emails.AppointmentBuilderTest do
       assert result.organizer_avatar_url == nil
     end
 
+    test "a booking made through the hidden widget address links back to that address" do
+      %{user: user} =
+        create_user_with_profile(%{username: "hidden-host", embed_alias: "_widgetaddr"})
+
+      meeting =
+        insert_meeting_for_user(user, %{
+          start_offset: 3600,
+          duration: 3600,
+          view_url: "http://localhost:4002/_widgetaddr/meeting/abc"
+        })
+
+      assert AppointmentBuilder.from_meeting(meeting).booking_url ==
+               "http://localhost:4002/_widgetaddr"
+    end
+
+    test "never falls back to the username the hidden address hides" do
+      %{user: user} = create_user_with_profile(%{username: "hidden-host"})
+
+      meeting =
+        insert_meeting_for_user(user, %{
+          start_offset: 3600,
+          duration: 3600,
+          view_url: "http://localhost:4002/_removedaddr/meeting/abc"
+        })
+
+      assert AppointmentBuilder.from_meeting(meeting).booking_url == "http://localhost:4002"
+    end
+
     test "falls back to the app root when the host has no username" do
       %{user: user} = create_user_with_profile()
       meeting = insert_meeting_for_user(user, %{start_offset: 3600, duration: 3600})

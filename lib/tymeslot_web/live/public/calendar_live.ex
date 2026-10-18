@@ -68,7 +68,9 @@ defmodule TymeslotWeb.Public.CalendarLive do
     # falls apart.
     socket = assign(socket, :theme_id, "1")
 
-    case Profiles.resolve_organizer_context(username) do
+    # The booking widget's alias must not lead to the organiser's calendar,
+    # which names the public booking page the alias exists to keep apart.
+    case resolve_by_username(username) do
       {:ok, context} ->
         if Profiles.public_calendar_enabled?(context.profile) do
           mount_calendar(socket, context)
@@ -76,15 +78,24 @@ defmodule TymeslotWeb.Public.CalendarLive do
           {:ok,
            socket
            |> assign(:not_found, true)
-           |> assign(:not_found_message, dgettext("booking", "This calendar is not public."))}
+           |> assign(
+             :not_found_message,
+             dgettext("booking_calendar", "This calendar is not public.")
+           )}
         end
 
       {:error, :profile_not_found} ->
         {:ok,
          socket
          |> assign(:not_found, true)
-         |> assign(:not_found_message, dgettext("booking", "No such organiser."))}
+         |> assign(:not_found_message, dgettext("booking_calendar", "No such organiser."))}
     end
+  end
+
+  defp resolve_by_username(username) do
+    if Profiles.embed_alias?(username),
+      do: {:error, :profile_not_found},
+      else: Profiles.resolve_organizer_context(username)
   end
 
   defp mount_calendar(socket, context) do
@@ -170,6 +181,7 @@ defmodule TymeslotWeb.Public.CalendarLive do
             theme="quill"
             current_user={@current_user}
             username={@username}
+            brand_logo_url={assigns[:brand_logo_url]}
           />
 
           <div class="public-calendar-container">
@@ -181,7 +193,7 @@ defmodule TymeslotWeb.Public.CalendarLive do
                       <.link
                         patch={~p"/#{@username}/calendar?month=#{prev_month_param(@month)}"}
                         class="calendar-nav-button rounded-lg"
-                        aria-label={dgettext("booking", "Previous month")}
+                        aria-label={dgettext("booking_calendar", "Previous month")}
                       >
                         ←
                       </.link>
@@ -196,7 +208,7 @@ defmodule TymeslotWeb.Public.CalendarLive do
                       <.link
                         patch={~p"/#{@username}/calendar?month=#{next_month_param(@month)}"}
                         class="calendar-nav-button rounded-lg"
-                        aria-label={dgettext("booking", "Next month")}
+                        aria-label={dgettext("booking_calendar", "Next month")}
                       >
                         →
                       </.link>
@@ -211,7 +223,7 @@ defmodule TymeslotWeb.Public.CalendarLive do
                       patch={~p"/#{@username}/calendar"}
                       class="action-button action-button--secondary public-calendar-today-button"
                     >
-                      {dgettext("booking", "Today")}
+                      {dgettext("booking_calendar", "Today")}
                     </.link>
 
                     <details class="public-calendar-month-picker">
@@ -235,7 +247,7 @@ defmodule TymeslotWeb.Public.CalendarLive do
                   </div>
 
                   <h1 class="calendar-month-title public-calendar-title">
-                    {dgettext("booking", "%{username}'s calendar", username: @username)}
+                    {dgettext("booking_calendar", "%{username}'s calendar", username: @username)}
                   </h1>
                 </div>
 
@@ -264,7 +276,9 @@ defmodule TymeslotWeb.Public.CalendarLive do
                         <.link
                           navigate={day_url(@username, day)}
                           class="public-calendar-day-link"
-                          aria-label={dgettext("booking", "Book %{date}", date: Date.to_iso8601(day))}
+                          aria-label={
+                            dgettext("booking_calendar", "Book %{date}", date: Date.to_iso8601(day))
+                          }
                         ></.link>
                       <% end %>
 
@@ -290,7 +304,7 @@ defmodule TymeslotWeb.Public.CalendarLive do
                           class="public-calendar-chip-more"
                           title={overflow_title(hidden_chips, day, @timezone, @time_format)}
                         >
-                          {dgettext("booking", "+%{count} more", count: length(hidden_chips))}
+                          {dgettext("booking_calendar", "+%{count} more", count: length(hidden_chips))}
                         </div>
                       </div>
                     </div>
@@ -320,14 +334,14 @@ defmodule TymeslotWeb.Public.CalendarLive do
                       style="background-color: var(--color-calendar-8)"
                     ></span>
                   </span>
-                  {dgettext("booking", "Busy")}
+                  {dgettext("booking_calendar", "Busy")}
                   <span :if={@has_pending_approvals} class="public-calendar-legend-pending">
                     <span class="public-calendar-legend-dot public-calendar-legend-dot--pending"></span>
-                    {dgettext("booking", "Pending approval")}
+                    {dgettext("booking_calendar", "Pending approval")}
                   </span>
                   <span :if={@has_non_blocking} class="public-calendar-legend-non-blocking">
                     <span class="public-calendar-legend-dot public-calendar-legend-dot--non-blocking"></span>
-                    {dgettext("booking", "Not blocking bookings")}
+                    {dgettext("booking_calendar", "Not blocking bookings")}
                   </span>
                   <span class="public-calendar-legend-hint">{dgettext(
                     "booking",
@@ -450,13 +464,13 @@ defmodule TymeslotWeb.Public.CalendarLive do
 
     cond do
       pending_approval_interval?(interval) ->
-        dgettext("booking", "Pending approval (%{time})", time: time)
+        dgettext("booking_calendar", "Pending approval (%{time})", time: time)
 
       non_blocking_interval?(interval) ->
-        dgettext("booking", "Not blocking (%{time})", time: time)
+        dgettext("booking_calendar", "Not blocking (%{time})", time: time)
 
       true ->
-        dgettext("booking", "Busy (%{time})", time: time)
+        dgettext("booking_calendar", "Busy (%{time})", time: time)
     end
   end
 
@@ -549,7 +563,7 @@ defmodule TymeslotWeb.Public.CalendarLive do
     clamped_end = if DateTime.compare(busy_end, day_end) == :gt, do: day_end, else: busy_end
 
     if clamped_start == day_start and clamped_end == day_end do
-      dgettext("booking", "All day")
+      dgettext("booking_calendar", "All day")
     else
       local_start = DateTime.shift_zone!(clamped_start, timezone)
       local_end = DateTime.shift_zone!(clamped_end, timezone)

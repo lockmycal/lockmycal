@@ -17,6 +17,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsDeleteAccountTest do
 
   alias Ecto.Changeset
   alias Phoenix.Flash
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Repo
   alias Tymeslot.Workers.AccountDeletionWorker
 
@@ -56,6 +57,10 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsDeleteAccountTest do
 
     assert has_element?(view, "[data-testid='delete-account-microsoft']")
     assert html =~ "myapps.microsoft.com"
+
+    assert view
+           |> element("[data-testid='delete-account-microsoft']")
+           |> render() =~ Config.app_name()
   end
 
   test "a wrong password is refused inline and nothing is scheduled", %{conn: conn, user: user} do

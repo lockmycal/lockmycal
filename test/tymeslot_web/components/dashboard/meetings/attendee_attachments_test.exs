@@ -9,7 +9,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachmentsTest do
 
   alias Ecto.UUID
   alias TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments
-  alias TymeslotWeb.Components.Dashboard.Meetings.MeetingCardComponents
+  alias TymeslotWeb.Components.Dashboard.Meetings.MeetingCard
 
   @attachment %{
     "id" => "a1",
@@ -20,7 +20,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachmentsTest do
 
   describe "booking card" do
     defp card(meeting, current_user_email) do
-      render_component(&MeetingCardComponents.meeting_card/1,
+      render_component(&MeetingCard.meeting_card/1,
         meeting: meeting,
         profile: nil,
         time_format: "24h",

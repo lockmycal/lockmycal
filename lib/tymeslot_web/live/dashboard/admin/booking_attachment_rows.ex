@@ -8,7 +8,7 @@ defmodule TymeslotWeb.Dashboard.Admin.BookingAttachmentRows do
   Its own section rather than the generic loop in
   `TymeslotWeb.Dashboard.Admin.SettingsView` because the file types are one
   list-valued setting shown as a pill per type, which the generic row has no
-  control for. The two numeric limits reuse `SettingsView.setting_row/1`, so
+  control for. The two numeric limits reuse `SettingsView.admin_setting_row/1`, so
   they look and save like every other number setting. The type pills fire
   `"toggle_booking_attachment_type"`, handled by
   `TymeslotWeb.Dashboard.Admin.HubComponent`.
@@ -77,12 +77,12 @@ defmodule TymeslotWeb.Dashboard.Admin.BookingAttachmentRows do
           </div>
         </div>
 
-        <SettingsView.setting_row
+        <SettingsView.admin_setting_row
           key={:max_booking_attachment_size_mb}
           effective_values={@effective_values}
           target={@target}
         />
-        <SettingsView.setting_row
+        <SettingsView.admin_setting_row
           key={:max_booking_attachments}
           effective_values={@effective_values}
           target={@target}

@@ -154,6 +154,44 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.QuickAddMeeting do
     to: CreateFormState,
     as: :handle_remove_create_reminder
 
+  # Meeting mode's reminder picker; `CreateFormState` takes the event name to
+  # tell its five events apart.
+  @spec meeting_add_quick_reminder(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def meeting_add_quick_reminder(params, socket),
+    do:
+      CreateFormState.handle_meeting_reminder_event("meeting_add_quick_reminder", params, socket)
+
+  @spec meeting_add_reminder(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def meeting_add_reminder(params, socket),
+    do: CreateFormState.handle_meeting_reminder_event("meeting_add_reminder", params, socket)
+
+  @spec meeting_remove_reminder(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def meeting_remove_reminder(params, socket),
+    do: CreateFormState.handle_meeting_reminder_event("meeting_remove_reminder", params, socket)
+
+  @spec meeting_toggle_custom_reminder(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def meeting_toggle_custom_reminder(params, socket),
+    do:
+      CreateFormState.handle_meeting_reminder_event(
+        "meeting_toggle_custom_reminder",
+        params,
+        socket
+      )
+
+  @spec meeting_update_reminder_input(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def meeting_update_reminder_input(params, socket),
+    do:
+      CreateFormState.handle_meeting_reminder_event(
+        "meeting_update_reminder_input",
+        params,
+        socket
+      )
+
   defdelegate add_create_attendee(params, socket),
     to: CreateFormState,
     as: :handle_add_create_attendee

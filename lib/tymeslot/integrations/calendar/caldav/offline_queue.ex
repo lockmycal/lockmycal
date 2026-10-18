@@ -59,6 +59,7 @@ defmodule Tymeslot.Integrations.Calendar.CalDAV.OfflineQueue do
 
   require Logger
 
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Integrations.Calendar.CalDAV.Base, as: CalDAVBase
   alias Tymeslot.Integrations.Calendar.CalDAV.Errors, as: CalDAVErrors
@@ -422,7 +423,8 @@ defmodule Tymeslot.Integrations.Calendar.CalDAV.OfflineQueue do
   defp unsendable_change_message do
     dgettext(
       "dashboard_calendar_providers",
-      "Tymeslot could not send this change to the calendar server."
+      "%{app_name} could not send this change to the calendar server.",
+      app_name: Config.app_name()
     )
   end
 

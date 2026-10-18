@@ -52,7 +52,7 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.ThemeCustomization.CurrentIndicato
         )
       ]}>
         <%= for swatch <- @swatches do %>
-          <div class="w-3 h-3 rounded-full" style={"background: #{swatch}"}></div>
+          <div class="w-3 h-3 rounded-token-full" style={"background: #{swatch}"}></div>
         <% end %>
       </div>
       <span class={[

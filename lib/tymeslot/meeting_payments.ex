@@ -30,6 +30,7 @@ defmodule Tymeslot.MeetingPayments do
 
   require Logger
 
+  alias Tymeslot.Features
   alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.MeetingPayments.BookingPaymentQueries
   alias Tymeslot.MeetingPayments.BookingPaymentSchema
@@ -224,6 +225,19 @@ defmodule Tymeslot.MeetingPayments do
   @spec normalize_country(term()) :: String.t()
   def normalize_country(country),
     do: ConnectAccounts.normalize_country(country, default_country())
+
+  @doc """
+  Returns `true` if the user can take a payment right now: their Connect
+  account has charges enabled and their plan grants `:meeting_payments`.
+
+  This is the same full grant checkout enforces, so a booking refused here
+  would also have been refused at checkout.
+  """
+  @spec accepting_payments?(integer()) :: boolean()
+  def accepting_payments?(user_id) do
+    charges_enabled_for_user?(user_id) and
+      Features.check_access(user_id, :meeting_payments) == :ok
+  end
 
   @doc """
   Enqueues a background job to re-sync the Connect account from Stripe.

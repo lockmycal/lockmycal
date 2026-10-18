@@ -97,13 +97,9 @@ defmodule Tymeslot.Emails.Templates.BookingApprovalRequest do
           stage_subtitle: request_sentence(meeting, kind)
         )
 
-      MjmlEmail.base_email()
-      |> to({meeting.organizer_name, meeting.organizer_email})
-      |> subject(
-        Sanitise.sanitize_for_header(
-          subject_line(variant, kind, meeting, Formatting.format_date_short(host_time, locale))
-        )
-      )
+      MjmlEmail.base_email(organizer_user_id: meeting.organizer_user_id)
+      |> addressed_to_host(meeting)
+      |> subject(email_subject(variant, kind, meeting, host_time, locale))
       |> html_body(html_body)
       |> text_body(
         text_body_for(
@@ -118,6 +114,19 @@ defmodule Tymeslot.Emails.Templates.BookingApprovalRequest do
       # to decide from, and the body says the files are attached.
       |> AttendeeAttachments.attach(meeting.attendee_attachments)
     end)
+  end
+
+  defp email_subject(variant, kind, meeting, host_time, locale) do
+    Sanitise.sanitize_for_header(
+      subject_line(variant, kind, meeting, Formatting.format_date_short(host_time, locale))
+    )
+  end
+
+  # To the host, with replies going to the person asking for the slot.
+  defp addressed_to_host(email, meeting) do
+    email
+    |> to({meeting.organizer_name, meeting.organizer_email})
+    |> MjmlEmail.put_reply_to(meeting.attendee_name, meeting.attendee_email)
   end
 
   defp eyebrow(:request), do: dgettext("emails_booking_requests", "Needs your answer")

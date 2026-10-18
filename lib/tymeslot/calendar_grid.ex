@@ -17,7 +17,10 @@ defmodule Tymeslot.CalendarGrid do
   alias Tymeslot.CalendarGrid.EventVideoRoomQueries
   alias Tymeslot.CalendarGrid.EventVideoRooms
   alias Tymeslot.CalendarGrid.EventVideoRoomSchema
+  alias Tymeslot.CalendarGrid.IcsImport
   alias Tymeslot.CalendarGrid.SeriesCarry
+  alias Tymeslot.CalendarGrid.SyncFreshness
+  alias Tymeslot.Infrastructure.AvailabilityCache
   alias Tymeslot.Integrations.Calendar
   alias Tymeslot.Integrations.Calendar.Appearance
   alias Tymeslot.Integrations.Calendar.CalendarAppearanceSchema
@@ -39,25 +42,6 @@ defmodule Tymeslot.CalendarGrid do
   alias Tymeslot.Workers.SyncIcsCalendarWorker
 
   @caldav_providers ProviderConfig.caldav_based_provider_strings()
-
-  # Staleness thresholds (minutes). Each threshold is the sync interval
-  # plus a buffer for queue wait, network latency, and retries.
-  @webhook_stale_minutes 30
-  @caldav_tier_stale_minutes %{
-    1 => 25,
-    2 => 45,
-    3 => 90
-  }
-  @caldav_default_stale_minutes 25
-  @debug_stale_minutes 15
-  # Subscriptions are swept every 30 minutes; the buffer is wider than the
-  # CalDAV ones because the publisher's own regeneration schedule sits on top
-  # of ours, so a feed being an hour old is normal rather than a symptom.
-  @subscription_stale_minutes 75
-  # Exchange is swept on the same 30-minute cadence as a subscription, and for
-  # the same reason: no delta mechanism, so every run re-reads the whole
-  # window twice over. The buffer is the sweep interval plus queue wait.
-  @exchange_stale_minutes 45
 
   @doc """
   Returns all cached calendar events for the given integration IDs within a time range.
@@ -147,13 +131,16 @@ defmodule Tymeslot.CalendarGrid do
     do: %{event | reminders: Enum.map(event.reminders, &Reminder.normalise/1)}
 
   @doc """
-  Searches the user's cached calendar events by a free-text term.
+  Searches the user's cached calendar events, and the bookings the grid shows
+  without a calendar copy, by a free-text term.
 
-  Matches case-insensitively against event title, description, and location,
-  scoped to the user's active integrations. Pass `:hidden_integration_ids` in
-  `opts` to exclude calendars the user has toggled off entirely; results are
-  ordered by start time and capped at a sensible limit. A blank term returns
-  `[]`.
+  Matches case-insensitively against event title, description, and location
+  (and, for a booking, the meeting information and the booker's name and
+  email), scoped to the user's active integrations. Pass
+  `:hidden_integration_ids` in `opts` to exclude calendars the user has
+  toggled off entirely, and `:title_source` (the `booking_title_source`
+  preference) to name the bookings as the grid names them; results are
+  ordered by start time and capped at `:limit`. A blank term returns `[]`.
 
   `integrations` (the full structs, not just their ids) is used to drop rows
   from a calendar the user has *selectively* deselected, a finer grain than
@@ -164,16 +151,34 @@ defmodule Tymeslot.CalendarGrid do
   `LIMIT` only ever counts rows the caller can actually see.
   """
   @spec search_events(integer(), String.t(), [map()], keyword()) ::
-          [ProviderCalendarEventSchema.t()]
+          [ProviderCalendarEventSchema.t() | BookingEvent.t()]
   def search_events(user_id, term, integrations, opts \\ []) do
     rules = Calendar.visibility_rules(integrations)
 
-    ProviderCalendarEventQueries.search(
-      user_id,
-      term,
-      Keyword.put(opts, :visibility_rules, rules)
-    )
+    provider_events =
+      ProviderCalendarEventQueries.search(
+        user_id,
+        term,
+        Keyword.put(opts, :visibility_rules, rules)
+      )
+
+    # The bookings the grid shows without a provider copy (see
+    # `BookingSearchQueries`), merged in by start time under the same cap.
+    limit = Keyword.get(opts, :limit, ProviderCalendarEventQueries.default_search_limit())
+
+    bookings =
+      BookingEvents.search(user_id, term, Keyword.get(opts, :title_source), limit)
+
+    provider_events
+    |> Kernel.++(bookings)
+    |> Enum.sort_by(&sort_key/1, DateTime)
+    |> Enum.take(limit)
   end
+
+  # Timed rows by `start_at`, all-day rows by the start of their day, as the
+  # provider query orders them.
+  defp sort_key(%{start_at: %DateTime{} = start_at}), do: start_at
+  defp sort_key(%{start_date: %Date{} = date}), do: DateTime.new!(date, ~T[00:00:00], "Etc/UTC")
 
   @doc """
   Enqueues sync workers for all active integrations belonging to the user.
@@ -272,57 +277,17 @@ defmodule Tymeslot.CalendarGrid do
   defp colour_class(_integration, index),
     do: EventColour.rotation_class(rem(index, EventColour.rotation_size()) + 1)
 
-  @doc """
-  Returns integrations whose cached data is stale.
-
-  An integration is stale when `last_external_sync_at` is nil or older than the
-  provider-appropriate threshold:
-  - Webhook providers (Google, Outlook): #{@webhook_stale_minutes} min
-  - CalDAV Tier 1 (sync-token, syncs every 15 min): #{@caldav_tier_stale_minutes[1]} min
-  - CalDAV Tier 2 (CTag, syncs every 30 min): #{@caldav_tier_stale_minutes[2]} min
-  - CalDAV Tier 3 (full fetch, syncs every 60 min): #{@caldav_tier_stale_minutes[3]} min
-  - Calendar subscriptions (full fetch, syncs every 30 min): #{@subscription_stale_minutes} min
-  """
+  @doc "Integrations whose cached data is stale. See `Tymeslot.CalendarGrid.SyncFreshness`."
   @spec stale_integrations([CalendarIntegrationSchema.t()]) :: [CalendarIntegrationSchema.t()]
-  def stale_integrations(integrations) do
-    now = DateTime.utc_now()
-    Enum.filter(integrations, &stale?(&1, now))
-  end
+  defdelegate stale_integrations(integrations), to: SyncFreshness
 
-  @doc """
-  Returns the oldest `last_external_sync_at` across the given integrations,
-  or nil when none have synced.
-  """
+  @doc "The oldest `last_external_sync_at` of `integrations`, or nil when none have synced."
   @spec oldest_sync_at([CalendarIntegrationSchema.t()]) :: DateTime.t() | nil
-  def oldest_sync_at([]), do: nil
+  defdelegate oldest_sync_at(integrations), to: SyncFreshness
 
-  def oldest_sync_at(integrations) do
-    timestamps =
-      integrations
-      |> Enum.map(& &1.last_external_sync_at)
-      |> Enum.reject(&is_nil/1)
-
-    if timestamps == [], do: nil, else: Enum.min(timestamps, DateTime)
-  end
-
-  @doc """
-  Returns the most recent `last_external_sync_at` across the given
-  integrations, or nil when none have synced yet. Used for the toolbar's
-  routine "last synced" indicator — unlike `oldest_sync_at/1`, which flags
-  the worst-case staleness, this reports how fresh the grid's data is
-  overall.
-  """
+  @doc "The most recent `last_external_sync_at` of `integrations`, or nil when none have synced."
   @spec most_recent_sync_at([CalendarIntegrationSchema.t()]) :: DateTime.t() | nil
-  def most_recent_sync_at([]), do: nil
-
-  def most_recent_sync_at(integrations) do
-    timestamps =
-      integrations
-      |> Enum.map(& &1.last_external_sync_at)
-      |> Enum.reject(&is_nil/1)
-
-    if timestamps == [], do: nil, else: Enum.max(timestamps, DateTime)
-  end
+  defdelegate most_recent_sync_at(integrations), to: SyncFreshness
 
   @doc """
   Inserts a newly created event into the local cache so it appears
@@ -358,6 +323,35 @@ defmodule Tymeslot.CalendarGrid do
   defp to_usec(%DateTime{microsecond: {_value, 6}} = dt), do: dt
   defp to_usec(%DateTime{} = dt), do: %{dt | microsecond: {elem(dt.microsecond, 0), 6}}
   defp to_usec(other), do: other
+
+  @doc "Parses an uploaded `.ics` file into an import plan. See `IcsImport.plan/2`."
+  defdelegate plan_ics_import(content, timezone), to: IcsImport, as: :plan
+
+  @doc "Whether an `.ics` import of the user's is under way. See `IcsImport.running?/1`."
+  defdelegate ics_import_running?(user_id), to: IcsImport, as: :running?
+
+  @doc """
+  Writes an import plan to one of the user's calendars (see `IcsImport.run/3`),
+  then drops the user's cached availability and syncs the calendar, so the
+  imported events block their time and appear on the grid. While another
+  import of the user's runs, it returns `{:error, :already_running}`.
+  """
+  @spec import_ics(pos_integer(), pos_integer(), String.t() | nil, IcsImport.plan(), keyword()) ::
+          {:ok, IcsImport.summary()} | {:error, :not_found | IcsImport.import_error()}
+  def import_ics(user_id, integration_id, calendar_id, plan, opts \\ []) do
+    with {:ok, target} <- IcsImport.target(user_id, integration_id, calendar_id) do
+      IcsImport.exclusively(user_id, fn ->
+        summary = IcsImport.run(target, plan, opts)
+
+        if summary.created > 0 do
+          AvailabilityCache.invalidate_for_user(user_id)
+          enqueue_sync_worker(target.integration)
+        end
+
+        {:ok, summary}
+      end)
+    end
+  end
 
   @doc """
   Applies `changes` to an existing event, writes the whole updated event to
@@ -571,33 +565,6 @@ defmodule Tymeslot.CalendarGrid do
   end
 
   # Private
-
-  # Outlook pending initial setup: subscription registration hasn't succeeded yet
-  # (e.g. WEBHOOK_BASE_URL not configured). This is "pending", not "stale" —
-  # showing a stale banner the user can't resolve is just noise.
-  defp stale?(%{provider: "outlook", graph_delta_link: nil, last_external_sync_at: nil}, _now),
-    do: false
-
-  defp stale?(%{last_external_sync_at: nil}, _now), do: true
-
-  defp stale?(integration, now) do
-    threshold = stale_threshold_minutes(integration)
-    cutoff = DateTime.add(now, -threshold, :minute)
-    DateTime.before?(integration.last_external_sync_at, cutoff)
-  end
-
-  defp stale_threshold_minutes(%{provider: "debug"}), do: @debug_stale_minutes
-
-  defp stale_threshold_minutes(%{provider: "ics_url"}), do: @subscription_stale_minutes
-
-  defp stale_threshold_minutes(%{provider: "exchange"}), do: @exchange_stale_minutes
-
-  defp stale_threshold_minutes(%{provider: provider, caldav_sync_tier: tier})
-       when provider in @caldav_providers do
-    Map.get(@caldav_tier_stale_minutes, tier, @caldav_default_stale_minutes)
-  end
-
-  defp stale_threshold_minutes(_integration), do: @webhook_stale_minutes
 
   defp enqueue_sync_worker(%{provider: "google"} = integration),
     do: SyncGoogleCalendarWorker.enqueue(integration.id)

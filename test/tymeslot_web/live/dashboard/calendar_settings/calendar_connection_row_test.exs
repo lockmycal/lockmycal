@@ -108,61 +108,6 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.CalendarConnectionRowTest do
     end
   end
 
-  describe "calendar_connection_row reconnect reason notice" do
-    test "says why the integration needs reconnecting" do
-      html = render_row_with(needs_reauth: true, sync_error: "No calendar is selected.")
-
-      assert html =~ "No calendar is selected."
-    end
-
-    # The stored sync_error is the reason's untranslated English msgid, so the
-    # row must translate it into the viewer's own locale rather than rendering
-    # the persisted English text verbatim.
-    test "translates a known reason into the viewer's locale" do
-      Gettext.put_locale(TymeslotWeb.Gettext, "de")
-      on_exit(fn -> Gettext.put_locale(TymeslotWeb.Gettext, "en") end)
-
-      html =
-        render_row_with(
-          needs_reauth: true,
-          sync_error:
-            "The booking calendar no longer exists on Google. Please reconnect the integration and choose a different calendar."
-        )
-
-      assert html =~
-               "Der Buchungskalender existiert bei Google nicht mehr. Bitte verbinden Sie die Integration erneut und wählen Sie einen anderen Kalender."
-    end
-
-    # sync_error also carries transient failures, which are not the owner's to fix.
-    test "keeps a stored sync error to itself while the integration is not flagged" do
-      html = render_row_with(needs_reauth: false, sync_error: "Timed out talking to the server.")
-
-      refute html =~ "Timed out talking to the server."
-    end
-
-    defp render_row_with(overrides) do
-      integration =
-        Enum.into(overrides, %{
-          id: 101,
-          name: "Flagged CalDAV",
-          provider: "caldav",
-          is_active: true,
-          calendar_list: [%CalendarEntry{id: "/a/", path: "/a/", name: "A", selected: true}],
-          calendar_paths: ["/a/"],
-          base_url: "https://caldav.example.com",
-          is_primary: false,
-          default_booking_calendar_id: nil,
-          provider_account_email: nil
-        })
-
-      render_component(&CalendarConnectionRow.calendar_connection_row/1,
-        integration: integration,
-        health_state: nil,
-        myself: "target"
-      )
-    end
-  end
-
   describe "calendar_connection_row reconnect button" do
     test "renders an OAuth Reconnect button for Google integrations" do
       integration = %{
@@ -254,11 +199,10 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.CalendarConnectionRowTest do
     end
   end
 
-  describe "calendar_connection_row desktop icon-only actions" do
-    # On desktop the Manage-calendars and Reconnect actions collapse to
-    # icon-only squares; their labels live in an `lg:hidden` span (shown on
-    # mobile) and each carries an aria-label so the icon-only form stays
-    # accessible.
+  describe "calendar_connection_row labelled actions" do
+    # The card's footer has room for every label, so Manage calendars and
+    # Reconnect keep theirs at every width; each also carries an aria-label
+    # naming the action in full.
     setup do
       integration = %{
         id: 12,
@@ -286,22 +230,30 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.CalendarConnectionRowTest do
       {:ok, html: html}
     end
 
-    test "Manage calendars is an aria-labelled button with an lg:hidden label", %{html: html} do
+    test "Manage calendars is an aria-labelled button with a visible label", %{html: html} do
       assert html =~ ~s(aria-label="Manage calendars")
-      # The visible text is kept for mobile but hidden from lg upwards.
-      assert html =~ ~r/<span class="lg:hidden">\s*Manage calendars\s*<\/span>/
+      assert html =~ ~r/<span>\s*Manage calendars\s*<\/span>/
     end
 
-    test "Reconnect is an aria-labelled button with an lg:hidden label", %{html: html} do
+    # A routine Reconnect keeps its label from sm up and shrinks to its icon
+    # on a phone, so the actions share one row there.
+    test "Reconnect is an aria-labelled button labelled from sm up", %{html: html} do
       assert html =~ ~s(aria-label="Reconnect integration")
-      assert html =~ ~r/<span class="lg:hidden">\s*Reconnect\s*<\/span>/
+      assert html =~ ~r/<span class="max-sm:sr-only">\s*Reconnect\s*<\/span>/
     end
 
-    test "the desktop icon-only sizing collapses the buttons to a square", %{html: html} do
-      # .row-action-button--pill (assets/css/components/buttons.css) carries the
-      # lg:h-9/lg:w-9 zeroed-padding rules that turn the padded mobile pill into
-      # a square icon button on desktop.
-      assert html =~ "row-action-button--pill"
+    test "a Reconnect the owner must act on keeps its label on a phone" do
+      html = render_row_with(needs_reauth: true)
+
+      assert html =~
+               ~r/aria-label="Reconnect integration">\s*<svg.*?<\/svg><span[^>]*>\s*Reconnect\s*<\/span>/s
+
+      refute html =~ "max-sm:sr-only"
+    end
+
+    test "neither label is hidden on wide screens", %{html: html} do
+      refute html =~ "lg:hidden"
+      refute html =~ "lg:w-9"
     end
   end
 
@@ -333,8 +285,39 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.CalendarConnectionRowTest do
         )
 
       assert html =~ "Reconnect"
-      # The promoted reconnect style is amber (.row-action-button--attention).
-      assert html =~ "row-action-button--attention"
+      # The promoted reconnect style is amber.
+      assert html =~ "icon-button--warning"
+    end
+
+    test "says why the integration needs reconnecting" do
+      html = render_row_with(needs_reauth: true, sync_error: "No calendar is selected.")
+
+      assert html =~ "No calendar is selected."
+    end
+
+    # The stored sync_error is the reason's untranslated English msgid, so the
+    # row must translate it into the viewer's own locale rather than rendering
+    # the persisted English text verbatim.
+    test "translates a known reason into the viewer's locale" do
+      Gettext.put_locale(TymeslotWeb.Gettext, "de")
+      on_exit(fn -> Gettext.put_locale(TymeslotWeb.Gettext, "en") end)
+
+      html =
+        render_row_with(
+          needs_reauth: true,
+          sync_error:
+            "The booking calendar no longer exists on Google. Please reconnect the integration and choose a different calendar."
+        )
+
+      assert html =~
+               "Der Buchungskalender existiert bei Google nicht mehr. Bitte verbinden Sie die Integration erneut und wählen Sie einen anderen Kalender."
+    end
+
+    # sync_error also carries transient failures, which are not the owner's to fix.
+    test "keeps a stored sync error to itself while the integration is not flagged" do
+      html = render_row_with(needs_reauth: false, sync_error: "Timed out talking to the server.")
+
+      refute html =~ "Timed out talking to the server."
     end
 
     test "shows a Healthy status when needs_reauth is false" do
@@ -364,7 +347,7 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.CalendarConnectionRowTest do
       assert html =~ "Healthy"
       # A healthy row still offers Reconnect, but in the subtle (non-amber)
       # style — the promoted attention styling is reserved for needs_reauth.
-      refute html =~ "row-action-button--attention"
+      refute html =~ "bg-amber-50 dark:bg-amber-950/40"
     end
   end
 
@@ -377,11 +360,32 @@ defmodule TymeslotWeb.Dashboard.CalendarSettings.CalendarConnectionRowTest do
         provider: "caldav",
         provider_account_email: nil,
         is_active: false,
-        last_sync_at: nil,
         default_booking_calendar_id: nil,
         calendar_list: []
       },
       Map.new(attrs)
+    )
+  end
+
+  defp render_row_with(overrides) do
+    integration =
+      Enum.into(overrides, %{
+        id: 101,
+        name: "Flagged CalDAV",
+        provider: "caldav",
+        is_active: true,
+        calendar_list: [%CalendarEntry{id: "/a/", path: "/a/", name: "A", selected: true}],
+        calendar_paths: ["/a/"],
+        base_url: "https://caldav.example.com",
+        is_primary: false,
+        default_booking_calendar_id: nil,
+        provider_account_email: nil
+      })
+
+    render_component(&CalendarConnectionRow.calendar_connection_row/1,
+      integration: integration,
+      health_state: nil,
+      myself: "target"
     )
   end
 end

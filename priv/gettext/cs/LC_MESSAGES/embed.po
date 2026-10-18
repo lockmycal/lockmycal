@@ -25,3 +25,13 @@ msgstr "Tento web nemá od organizátora povolení zobrazovat rezervační strá
 #, elixir-autogen, elixir-format
 msgid "This booking page can’t be embedded here"
 msgstr "Tuto rezervační stránku sem nelze vložit"
+
+#: lib/tymeslot_web/controllers/embed_blocked_html.ex
+#, elixir-autogen, elixir-format
+msgid "It may have been renamed, paused or removed. Please contact the organiser."
+msgstr "Mohl být přejmenován, pozastaven nebo odstraněn. Obraťte se prosím na organizátora."
+
+#: lib/tymeslot_web/controllers/embed_blocked_html.ex
+#, elixir-autogen, elixir-format
+msgid "This meeting type isn’t available"
+msgstr "Tento typ schůzky není dostupný"

@@ -37,7 +37,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.StatusBanners do
     <div id="calendar-status-banners">
       <div
         :if={@stale_integrations != [] and not @syncing}
-        class="flex items-center gap-2 px-3 py-1.5 md:px-4 bg-amber-50 border-b border-amber-200 text-token-sm text-amber-700"
+        class="flex items-center gap-2 px-3 py-1.5 md:px-4 bg-amber-50 border-b border-amber-200 text-token-sm text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200"
       >
         <.icon name="hero-exclamation-triangle" class="w-4 h-4 shrink-0" />
         <span>
@@ -48,15 +48,20 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.StatusBanners do
               ),
             else: dgettext("dashboard_calendar", "Some calendars have never been synced.")}
         </span>
-        <button
+        <.action_button
+          variant={:secondary}
+          size={:sm}
+          icon="hero-arrow-path"
+          class="ml-auto shrink-0"
           phx-click="refresh"
           phx-target={@myself}
-          class="underline hover:text-amber-900 font-medium"
-        >{dgettext("dashboard_calendar", "Refresh now")}</button>
+        >
+          {dgettext("dashboard_calendar", "Refresh now")}
+        </.action_button>
       </div>
       <div
         :if={@syncing}
-        class="flex items-center gap-2 px-3 py-1.5 md:px-4 bg-primary-50 border-b border-primary-200 text-token-sm text-primary-700"
+        class="flex items-center gap-2 px-3 py-1.5 md:px-4 bg-primary-50 border-b border-primary-200 text-token-sm text-primary-700 dark:bg-primary-950/40 dark:border-primary-800 dark:text-primary-300"
       >
         <.icon name="hero-arrow-path" class="w-4 h-4 animate-spin shrink-0" />
         <span>{dgettext("dashboard_calendar", "Syncing calendars%{progress}...",

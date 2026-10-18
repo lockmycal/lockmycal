@@ -1,4 +1,9 @@
 defmodule Tymeslot.Workers.CalendarEventWorkerOfflineQueueTest do
+  @moduledoc """
+  How `CalendarEventWorker` interacts with the offline write queue: failed
+  writes tag the provider cache row for replay, and successful ones clear it.
+  The remaining worker behaviour is covered by `CalendarEventWorkerTest`.
+  """
   use Tymeslot.DataCase, async: true
 
   @moduletag :workers

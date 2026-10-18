@@ -64,26 +64,20 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.TimeFormatFormComponent do
       <.subsection_header
         icon="hero-clock"
         title={dgettext("dashboard_profile", "Time Format")}
-        class="mb-3"
+        class="mb-4"
       />
-      <div class="input p-4">
-        <div class="flex items-center justify-between gap-4">
-          <span class="text-token-sm font-medium text-neutral-700 dark:text-neutral-200">
-            {dgettext("dashboard_profile", "Set your preferred time format")}
-          </span>
-          <.option_toggle
-            active_value={@time_format}
-            click_event="change_time_format"
-            target={@myself}
-            aria_label={dgettext("dashboard_profile", "Set time format")}
-            options={[
-              {"12h", dgettext("dashboard_profile", "12h (AM/PM)")},
-              {"24h", dgettext("dashboard_profile", "24h")}
-            ]}
-          />
-        </div>
-      </div>
-      <p class="mt-4 text-token-sm text-neutral-600 dark:text-twilight-indigo-200 font-medium leading-relaxed">
+      <.segmented_control
+        id="profile-time-format-toggle"
+        value={@time_format}
+        on_change="change_time_format"
+        param="option"
+        target={@myself}
+        aria_label={dgettext("dashboard_profile", "Time Format")}
+      >
+        <:option value="12h" label={dgettext("dashboard_profile", "12h (AM/PM)")} />
+        <:option value="24h" label={dgettext("dashboard_profile", "24h")} />
+      </.segmented_control>
+      <p class="mt-2 text-token-sm text-neutral-500 font-bold dark:text-twilight-indigo-300">
         {dgettext(
           "dashboard_profile",
           "Controls how times are shown on your dashboard and in the emails you receive. Your booking page follows each visitor's own language."

@@ -22,7 +22,8 @@ defmodule TymeslotWeb.Themes.Core.Context do
           customizations: map() | nil,
           metadata: map(),
           preview_mode: boolean(),
-          layout: layout()
+          layout: layout(),
+          embed_background: String.t() | nil
         }
 
   defstruct theme_id: nil,
@@ -31,7 +32,8 @@ defmodule TymeslotWeb.Themes.Core.Context do
             customizations: nil,
             metadata: %{},
             preview_mode: false,
-            layout: :default
+            layout: :default,
+            embed_background: nil
 
   @doc """
   Returns the list of allowed layout values for embed snippets and URL params.
@@ -89,6 +91,7 @@ defmodule TymeslotWeb.Themes.Core.Context do
       context
       |> apply_primary_color(params)
       |> apply_layout(params)
+      |> apply_embed_background(params)
     else
       nil
     end
@@ -122,6 +125,30 @@ defmodule TymeslotWeb.Themes.Core.Context do
   defp apply_layout(context, _params), do: context
 
   @doc """
+  Whether a value is one the embedded widget accepts for `?background=`:
+  `"transparent"` (no background, the embedding page shows through) or a
+  `#rrggbb` colour. The value is written into a stylesheet, so nothing else
+  may pass.
+  """
+  @spec valid_embed_background?(term()) :: boolean()
+  def valid_embed_background?("transparent"), do: true
+
+  def valid_embed_background?(value) when is_binary(value),
+    do: Regex.match?(~r/^#[0-9a-fA-F]{6}$/, value)
+
+  def valid_embed_background?(_value), do: false
+
+  # Only the embedded widget replaces the theme's background: the standalone
+  # booking page always shows the organiser's own.
+  defp apply_embed_background(context, %{"embed" => "1", "background" => background}) do
+    if valid_embed_background?(background),
+      do: %{context | embed_background: background},
+      else: context
+  end
+
+  defp apply_embed_background(context, _params), do: context
+
+  @doc """
   Gets the CSS file path for the theme.
   """
   @spec css_file(t()) :: String.t() | nil
@@ -149,7 +176,8 @@ defmodule TymeslotWeb.Themes.Core.Context do
       theme_module: context.module,
       theme_customization: context.customizations,
       theme_preview: context.preview_mode,
-      embed_layout: context.layout
+      embed_layout: context.layout,
+      embed_background: context.embed_background
     }
   end
 

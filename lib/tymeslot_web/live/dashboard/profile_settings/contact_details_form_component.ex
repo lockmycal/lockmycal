@@ -9,7 +9,6 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.ContactDetailsFormComponent do
   alias Tymeslot.Profiles
   alias Tymeslot.Security.InputProcessor
   alias TymeslotWeb.Live.Shared.FormValidationHelpers
-  import TymeslotWeb.Components.CoreComponents
 
   @impl Phoenix.LiveComponent
   def mount(socket) do

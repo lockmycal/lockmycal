@@ -33,6 +33,11 @@ msgstr "Змінити посилання"
 
 #: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
 #, elixir-autogen, elixir-format
+msgid "Changing the link is only available on the Pro plan and above."
+msgstr "Зміна посилання доступна лише в тарифі Pro і вище."
+
+#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
+#, elixir-autogen, elixir-format
 msgid "Copy"
 msgstr "Копіювати"
 
@@ -66,13 +71,11 @@ msgstr "Видимість оновлено"
 msgid "That link isn't valid. Use lowercase letters, numbers and hyphens."
 msgstr "Некоректне посилання. Використовуйте малі літери, цифри та дефіси."
 
-#: lib/tymeslot_web/components/dashboard/integrations/integration_form.ex
 #: lib/tymeslot_web/components/dashboard/integrations/shared/ui_components.ex
 #, elixir-autogen, elixir-format
 msgid "Add Integration"
 msgstr "Додати інтеграцію"
 
-#: lib/tymeslot_web/components/dashboard/integrations/integration_form.ex
 #: lib/tymeslot_web/components/dashboard/integrations/shared/ui_components.ex
 #, elixir-autogen, elixir-format
 msgid "Adding..."
@@ -108,8 +111,6 @@ msgstr "Назад до списку провайдерів"
 msgid "Calendar"
 msgstr "Календар"
 
-#: lib/tymeslot_web/components/dashboard/integrations/integration_form.ex
-#: lib/tymeslot_web/components/dashboard/integrations/shared/delete_integration_modal.ex
 #: lib/tymeslot_web/components/dashboard/integrations/shared/ui_components.ex
 #, elixir-autogen, elixir-format
 msgid "Cancel"
@@ -134,11 +135,6 @@ msgstr "Помилка перевірки підключення: %{reason}"
 #, elixir-autogen, elixir-format
 msgid "Could not identify your Zoom account. Please try again."
 msgstr "Не вдалося ідентифікувати ваш обліковий запис Zoom. Спробуйте ще раз."
-
-#: lib/tymeslot_web/components/dashboard/integrations/shared/delete_integration_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Delete %{type} Integration"
-msgstr "Видалити інтеграцію %{type}"
 
 #: lib/tymeslot_web/components/dashboard/integrations/shared/delete_integration_modal.ex
 #, elixir-autogen, elixir-format
@@ -215,11 +211,6 @@ msgstr "Відсутня необхідна інформація для Microsof
 msgid "No integration selected for deletion"
 msgstr "Не вибрано інтеграцію для видалення"
 
-#: lib/tymeslot_web/components/dashboard/integrations/integration_form.ex
-#, elixir-autogen, elixir-format
-msgid "Provider:"
-msgstr "Провайдер:"
-
 #: lib/tymeslot_web/components/dashboard/integrations/shared/delete_integration_modal.ex
 #, elixir-autogen, elixir-format
 msgid "This action cannot be undone and will remove all associated %{data}."
@@ -232,8 +223,8 @@ msgstr "Відео"
 
 #: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
 #, elixir-autogen, elixir-format
-msgid "Your Microsoft organisation requires admin approval before Tymeslot can be connected. Please ask your IT administrator to grant consent for the app."
-msgstr "Ваша організація Microsoft вимагає схвалення адміністратора перед підключенням LockMyCal. Будь ласка, попросіть свого ІТ-адміністратора надати дозвіл для цього застосунку."
+msgid "Your Microsoft organisation requires admin approval before %{app_name} can be connected. Please ask your IT administrator to grant consent for the app."
+msgstr "Ваша організація Microsoft вимагає схвалення адміністратора перед підключенням %{app_name}. Будь ласка, попросіть свого ІТ-адміністратора надати дозвіл для цього застосунку."
 
 #: lib/tymeslot_web/components/dashboard/integrations/shared/delete_integration_modal.ex
 #, elixir-autogen, elixir-format
@@ -262,8 +253,8 @@ msgstr "Зберегти"
 
 #: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
 #, elixir-autogen, elixir-format
-msgid "%{service} wasn't connected because Calendar permission was not granted. Please try again and tick the box for \"See, edit, share, and permanently delete all the calendars you can access using Google Calendar\" - Tymeslot needs this to create meetings and Google Meet links."
-msgstr "%{service} не підключено, оскільки не надано дозвіл на доступ до календаря. Будь ласка, спробуйте ще раз і поставте прапорець біля пункту «Переглядати, редагувати, ділитися та остаточно видаляти всі календарі, до яких ви маєте доступ за допомогою Google Calendar» - це потрібно LockMyCal для створення зустрічей і посилань Google Meet."
+msgid "%{service} wasn't connected because Calendar permission was not granted. Please try again and tick the box for \"See, edit, share, and permanently delete all the calendars you can access using Google Calendar\" - %{app_name} needs this to create meetings and Google Meet links."
+msgstr "%{service} не підключено, оскільки не надано дозвіл на доступ до календаря. Будь ласка, спробуйте ще раз і поставте прапорець біля пункту «Переглядати, редагувати, ділитися та остаточно видаляти всі календарі, до яких ви маєте доступ за допомогою Google Calendar» - це потрібно %{app_name} для створення зустрічей і посилань Google Meet."
 
 #: lib/tymeslot/integrations/shared/reauth_handling.ex
 #, elixir-autogen, elixir-format
@@ -361,27 +352,37 @@ msgstr[2] "%{count} розмов з цієї інтеграції досі зб�
 msgid "Also delete these conversations from your Nextcloud server. Attendees of upcoming meetings will find their join link no longer works."
 msgstr "Також видалити ці розмови з вашого сервера Nextcloud. Учасники майбутніх зустрічей побачать, що їхнє посилання на приєднання більше не працює."
 
+#: lib/tymeslot/integrations/shared/input_validators.ex
+#, elixir-autogen, elixir-format
+msgid "Enter the address on its own and put the username and password in their own fields."
+msgstr "Введіть лише адресу, а ім'я користувача та пароль вкажіть у відповідних полях."
+
+#: lib/tymeslot_web/components/dashboard/integrations/shared/ui_components.ex
+#, elixir-autogen, elixir-format
+msgid "Setup guide"
+msgstr "Посібник із налаштування"
+
 #: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
 #, elixir-autogen, elixir-format
 msgid "Create and manage the meeting types guests can book with you."
 msgstr "Створюйте та керуйте типами зустрічей, які гості можуть бронювати з вами."
-
-#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Meeting Types"
-msgstr "Типи зустрічей"
-
-#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "New Meeting Type"
-msgstr "Додати тип зустрічі"
 
 #: lib/tymeslot_web/live/dashboard/service_settings_component.ex
 #, elixir-autogen, elixir-format
 msgid "Custom links are available on the Pro plan and above."
 msgstr "Власні посилання доступні лише в тарифі Pro і вище."
 
-#: lib/tymeslot/integrations/shared/input_validators.ex
+#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
 #, elixir-autogen, elixir-format
-msgid "Enter the address on its own and put the username and password in their own fields."
-msgstr "Введіть лише адресу, а ім'я користувача та пароль вкажіть у відповідних полях."
+msgid "Meeting Types"
+msgstr "Типи зустрічей"
+
+#: lib/tymeslot_web/components/dashboard/integrations/shared/delete_integration_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Delete %{type} integration"
+msgstr "Видалити інтеграцію %{type}"
+
+#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Add Meeting Type"
+msgstr "Додати тип зустрічі"

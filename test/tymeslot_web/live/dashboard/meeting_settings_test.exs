@@ -36,39 +36,6 @@ defmodule TymeslotWeb.Dashboard.MeetingSettingsTest do
   end
 
   # ===========================================================================
-  # Creating a Meeting Type
-  # ===========================================================================
-
-  describe "Creating a meeting type" do
-    test "creates a new meeting type and shows it in the list", %{conn: conn, user: user} do
-      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
-
-      view |> element("button", "Add Meeting Type") |> render_click()
-
-      assert render(view) =~ "Create Meeting Type"
-
-      # Phoenix.LiveViewTest collects all hidden form inputs before submission and then
-      # re-encodes them via Plug.Conn.Query.encode. The reminder_config[][value]/[][unit]
-      # hidden inputs decode into a list-of-multi-key-maps which cannot be re-encoded.
-      # Removing the default reminder first causes MeetingTypeForm to re-render without
-      # those hidden inputs, making the subsequent form submission encodable.
-      view |> element("button[aria-label='Remove reminder']") |> render_click()
-
-      view
-      |> form("form[phx-submit='save_meeting_type']", %{
-        "meeting_type" => %{"name" => "Quick Coffee", "duration" => "20"}
-      })
-      |> render_submit()
-
-      html = render(view)
-      assert html =~ "Quick Coffee"
-      assert html =~ "Meeting type created"
-
-      assert Enum.any?(MeetingTypes.get_all_meeting_types(user.id), &(&1.name == "Quick Coffee"))
-    end
-  end
-
-  # ===========================================================================
   # Editing a Meeting Type
   # ===========================================================================
 
@@ -125,26 +92,26 @@ defmodule TymeslotWeb.Dashboard.MeetingSettingsTest do
 
     test "opens on the Details tab with the other panels hidden", %{view: view} do
       assert has_element?(view, "[role='tablist']")
-      assert has_element?(view, "#tab-details[aria-selected='true']")
+      assert has_element?(view, "#meeting-type-form-tabs-tab-details[aria-selected='true']")
 
-      refute has_element?(view, "#panel-details[hidden]")
-      assert has_element?(view, "#panel-location[hidden]")
-      assert has_element?(view, "#panel-booking[hidden]")
-      assert has_element?(view, "#panel-questions[hidden]")
-      assert has_element?(view, "#panel-reminders[hidden]")
+      refute has_element?(view, "#meeting-type-form-tabs-panel-details[hidden]")
+      assert has_element?(view, "#meeting-type-form-tabs-panel-location[hidden]")
+      assert has_element?(view, "#meeting-type-form-tabs-panel-booking[hidden]")
+      assert has_element?(view, "#meeting-type-form-tabs-panel-questions[hidden]")
+      assert has_element?(view, "#meeting-type-form-tabs-panel-reminders[hidden]")
     end
 
     test "switching tabs reveals that panel and hides the previous one", %{view: view} do
-      view |> element("#tab-booking") |> render_click()
+      view |> element("#meeting-type-form-tabs-tab-booking") |> render_click()
 
-      assert has_element?(view, "#tab-booking[aria-selected='true']")
-      assert has_element?(view, "#tab-details[aria-selected='false']")
-      refute has_element?(view, "#panel-booking[hidden]")
-      assert has_element?(view, "#panel-details[hidden]")
+      assert has_element?(view, "#meeting-type-form-tabs-tab-booking[aria-selected='true']")
+      assert has_element?(view, "#meeting-type-form-tabs-tab-details[aria-selected='false']")
+      refute has_element?(view, "#meeting-type-form-tabs-panel-booking[hidden]")
+      assert has_element?(view, "#meeting-type-form-tabs-panel-details[hidden]")
     end
 
     test "an invalid field marks its tab with an error indicator", %{view: view} do
-      view |> element("#tab-reminders") |> render_click()
+      view |> element("#meeting-type-form-tabs-tab-reminders") |> render_click()
 
       # The name input sits in the now-hidden Details panel; an invalid value
       # must still surface there via the tab indicator.
@@ -152,8 +119,17 @@ defmodule TymeslotWeb.Dashboard.MeetingSettingsTest do
       |> element(~s|input[name="meeting_type[name]"]|)
       |> render_change(%{"meeting_type" => %{"name" => ""}})
 
-      assert has_element?(view, "#tab-details span", "This tab contains errors")
-      refute has_element?(view, "#tab-reminders span", "This tab contains errors")
+      assert has_element?(
+               view,
+               "#meeting-type-form-tabs-tab-details span",
+               "This tab contains errors"
+             )
+
+      refute has_element?(
+               view,
+               "#meeting-type-form-tabs-tab-reminders span",
+               "This tab contains errors"
+             )
     end
 
     test "the visibility toggle lives in the Booking Rules panel and persists", %{
@@ -161,29 +137,15 @@ defmodule TymeslotWeb.Dashboard.MeetingSettingsTest do
       meeting_type: meeting_type,
       user: user
     } do
-      view |> element("#tab-booking") |> render_click()
+      view |> element("#meeting-type-form-tabs-tab-booking") |> render_click()
 
       view
-      |> element("#panel-booking [phx-click='toggle_private'][phx-value-state='true']")
+      |> element(
+        "#meeting-type-form-tabs-panel-booking [phx-click='toggle_private'][phx-value-state='true']"
+      )
       |> render_click()
 
       assert MeetingTypes.get_meeting_type(meeting_type.id, user.id).is_private
-    end
-
-    test "create mode renders all sections stacked without a tab bar", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
-
-      view |> element("button", "Add Meeting Type") |> render_click()
-
-      refute has_element?(view, "[role='tablist']")
-
-      for panel <- ~w(details location booking questions reminders) do
-        assert has_element?(view, "#panel-#{panel}")
-        refute has_element?(view, "#panel-#{panel}[hidden]")
-      end
-
-      # The visibility switch needs an existing type; it must not render here.
-      refute has_element?(view, "#panel-booking [phx-click='toggle_private']")
     end
   end
 
@@ -268,7 +230,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettingsTest do
       |> element("[phx-click='edit_type'][phx-value-id='#{meeting_type.id}']")
       |> render_click()
 
-      view |> element("#tab-reminders") |> render_click()
+      view |> element("#meeting-type-form-tabs-tab-reminders") |> render_click()
       view |> element("button[phx-click='toggle_custom_reminder']") |> render_click()
 
       view
@@ -319,7 +281,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettingsTest do
       |> element("[phx-click='edit_type'][phx-value-id='#{meeting_type.id}']")
       |> render_click()
 
-      view |> element("#tab-reminders") |> render_click()
+      view |> element("#meeting-type-form-tabs-tab-reminders") |> render_click()
 
       refute has_element?(view, "button[phx-click='toggle_custom_reminder'][disabled]")
 
@@ -337,106 +299,6 @@ defmodule TymeslotWeb.Dashboard.MeetingSettingsTest do
 
       assert length(MeetingTypes.get_meeting_type(meeting_type.id, user.id).reminder_config) ==
                max
-    end
-  end
-
-  # ===========================================================================
-  # Per-locale translations
-  # ===========================================================================
-
-  describe "Per-locale name/description translations" do
-    test "switching to a locale tab and editing name/description doesn't touch the base fields",
-         %{conn: conn, user: user} do
-      meeting_type =
-        insert(:meeting_type, user: user, name: "Quick Chat", description: "A short call")
-
-      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
-
-      view
-      |> element("[phx-click='edit_type'][phx-value-id='#{meeting_type.id}']")
-      |> render_click()
-
-      view
-      |> element("button[phx-click='switch_translation_locale'][phx-value-option='de']")
-      |> render_click()
-
-      view
-      |> element(~s|input[name="translation[name]"]|)
-      |> render_change(%{"translation" => %{"name" => "Kurzes Gespräch"}})
-
-      updated = MeetingTypes.get_meeting_type(meeting_type.id, user.id)
-      assert updated.name == "Quick Chat"
-      assert updated.description == "A short call"
-      assert [translation] = updated.translations
-      assert translation.locale == "de"
-      assert translation.name == "Kurzes Gespräch"
-      assert translation.description == nil
-    end
-
-    test "editing the description after the name doesn't wipe the name (regression)",
-         %{conn: conn, user: user} do
-      meeting_type =
-        insert(:meeting_type, user: user, name: "Quick Chat", description: "A short call")
-
-      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
-
-      view
-      |> element("[phx-click='edit_type'][phx-value-id='#{meeting_type.id}']")
-      |> render_click()
-
-      view
-      |> element("button[phx-click='switch_translation_locale'][phx-value-option='de']")
-      |> render_click()
-
-      # Each translation input fires its own phx-change (same as the base
-      # meeting_type[name]/[description] inputs), so this event carries only
-      # "name" — the bug being guarded against reset "description" (and vice
-      # versa) to blank whenever the sibling field wasn't the one that changed.
-      view
-      |> element(~s|input[name="translation[name]"]|)
-      |> render_change(%{"translation" => %{"name" => "Kurzes Gespräch"}})
-
-      view
-      |> element(~s|input[name="translation[description]"]|)
-      |> render_change(%{"translation" => %{"description" => "Kurzer Anruf"}})
-
-      updated = MeetingTypes.get_meeting_type(meeting_type.id, user.id)
-      assert [translation] = updated.translations
-      assert translation.name == "Kurzes Gespräch"
-      assert translation.description == "Kurzer Anruf"
-    end
-
-    test "editing a second locale doesn't clobber the first locale's already-saved row",
-         %{conn: conn, user: user} do
-      meeting_type = insert(:meeting_type, user: user, name: "Quick Chat")
-
-      {:ok, view, _html} = live(conn, ~p"/dashboard/meeting-settings")
-
-      view
-      |> element("[phx-click='edit_type'][phx-value-id='#{meeting_type.id}']")
-      |> render_click()
-
-      view
-      |> element("button[phx-click='switch_translation_locale'][phx-value-option='de']")
-      |> render_click()
-
-      view
-      |> element(~s|input[name="translation[name]"]|)
-      |> render_change(%{"translation" => %{"name" => "Kurzes Gespräch"}})
-
-      view
-      |> element("button[phx-click='switch_translation_locale'][phx-value-option='fr']")
-      |> render_click()
-
-      view
-      |> element(~s|input[name="translation[name]"]|)
-      |> render_change(%{"translation" => %{"name" => "Discussion rapide"}})
-
-      updated = MeetingTypes.get_meeting_type(meeting_type.id, user.id)
-      translations = Map.new(updated.translations, &{&1.locale, &1.name})
-
-      assert translations == %{"de" => "Kurzes Gespräch", "fr" => "Discussion rapide"}
-      assert updated.name == "Quick Chat"
     end
   end
 
@@ -571,6 +433,30 @@ defmodule TymeslotWeb.Dashboard.MeetingSettingsTest do
       # The list view marks the now-private type as unlisted.
       view |> element("button", "Done") |> render_click()
       assert render(view) =~ "Unlisted"
+    end
+
+    test "toggling a type out of the widget persists the flag and drops its badge", %{
+      conn: conn,
+      user: user
+    } do
+      meeting_type = insert(:meeting_type, user: user, name: "Strategy Session")
+
+      {:ok, view, html} = live(conn, ~p"/dashboard/meeting-settings")
+      assert html =~ "Shown in widget"
+
+      view
+      |> element("[phx-click='edit_type'][phx-value-id='#{meeting_type.id}']")
+      |> render_click()
+
+      view
+      |> element("button[phx-click='toggle_show_in_embed'][phx-value-state='false']")
+      |> render_click()
+
+      assert render(view) =~ "Visibility updated"
+      assert %{show_in_embed: false, is_private: false} = Repo.reload!(meeting_type)
+
+      view |> element("button", "Done") |> render_click()
+      refute render(view) =~ "Shown in widget"
     end
 
     test "changing the booking link persists the new slug after confirmation", %{

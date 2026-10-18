@@ -12,7 +12,8 @@ defmodule TymeslotWeb.Plugs.LocalePlug do
   3. The `?locale=` query parameter: an explicit choice
   4. An explicit choice remembered in the session from an earlier request
   5. The `Accept-Language` header, highest weight first
-  6. The surface's fallback (`:surface` below)
+  6. The surface's fallback (`:surface` below), or English for the embedded
+     booking widget (a request `EmbedTokenPlug` gave an embed token)
 
   ## What the session remembers
 
@@ -91,7 +92,7 @@ defmodule TymeslotWeb.Plugs.LocalePlug do
 
     path_locale = normalize_locale(conn.assigns[:path_locale])
     detected = [choice, remembered_choice(conn, session?) | header_locales(conn)]
-    fallback = surface_default(opts)
+    fallback = fallback_locale(conn, opts)
 
     locale = Locales.resolve([path_locale, user_locale(conn, opts) | detected], fallback)
     ambient_locale = Locales.resolve([path_locale | detected], fallback)
@@ -132,6 +133,13 @@ defmodule TymeslotWeb.Plugs.LocalePlug do
   # The end of the chain: the admin-editable fallback for the surface this
   # pipeline serves. Reached only when no source above yielded a supported
   # locale, so setting it never overrides a visitor's actual preference.
+  # The embedded booking widget sits on someone else's website, whose
+  # visitors the booking page's configured language says nothing about, and it
+  # offers no language switcher: past the browser's own languages it falls back
+  # to English. `EmbedTokenPlug` runs first and marks the request.
+  defp fallback_locale(%{assigns: %{embed_token: token}}, _opts) when is_binary(token), do: "en"
+  defp fallback_locale(_conn, opts), do: surface_default(opts)
+
   defp surface_default(opts) do
     case Keyword.get(opts, :surface, :booking) do
       :admin -> Locales.admin_default_locale()

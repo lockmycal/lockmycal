@@ -18,12 +18,12 @@
 
 /* Dark text for inline code in footer (general rule first) */
 .embed-option-card code {
-  @apply text-neutral-700 dark:text-neutral-200 bg-neutral-100 px-1 rounded;
+  @apply text-neutral-700 dark:text-neutral-200 bg-neutral-100 dark:bg-twilight-indigo-800 px-1 rounded;
 }
 
 /* Light text for code inside dark pre blocks (more specific rule last) */
 .embed-option-card pre code {
-  @apply text-neutral-200 bg-transparent px-0 rounded-none;
+  @apply text-neutral-800 dark:text-neutral-200 bg-transparent px-0 rounded-none;
 }
 
 /* Animation for copy button. Scoped keyframe name (not the global `fadeIn`)
@@ -50,5 +50,5 @@
 }
 
 .embed-option-card:hover .bg-neutral-50 {
-  @apply bg-neutral-100;
+  @apply bg-neutral-100 dark:bg-twilight-indigo-900;
 }

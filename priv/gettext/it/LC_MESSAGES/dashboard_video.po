@@ -127,12 +127,7 @@ msgstr "L'URL di base è obbligatorio"
 msgid "Base URL must be text"
 msgstr "L'URL di base deve essere testo"
 
-#: lib/tymeslot_web/components/dashboard/integrations/video/custom_config.ex
 #: lib/tymeslot_web/components/dashboard/integrations/video/edit_video_integration_modal.ex
-#: lib/tymeslot_web/components/dashboard/integrations/video/jitsi_config.ex
-#: lib/tymeslot_web/components/dashboard/integrations/video/kmeet_config.ex
-#: lib/tymeslot_web/components/dashboard/integrations/video/mirotalk_config.ex
-#: lib/tymeslot_web/components/dashboard/integrations/video/nextcloud_talk_config.ex
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr "Annulla"
@@ -232,11 +227,6 @@ msgstr "Link video personalizzato"
 msgid "Custom meeting URL is required"
 msgstr "L'URL personalizzato della riunione è obbligatorio"
 
-#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
-#, elixir-autogen, elixir-format
-msgid "Delete integration"
-msgstr "Elimina integrazione"
-
 #: lib/tymeslot_web/components/dashboard/integrations/video/jitsi_config.ex
 #, elixir-autogen, elixir-format
 msgid "Deletes the stored App ID and App secret. Links then open the room without a token, which only works on a server that lets anyone in."
@@ -249,8 +239,8 @@ msgstr "Dominio non trovato: controlla l'URL"
 
 #: lib/tymeslot_web/components/dashboard/integrations/video/nextcloud_talk_config.ex
 #, elixir-autogen, elixir-format
-msgid "Each booking gets its own public Talk conversation, and guests join from its link without a Nextcloud account. To skip the lobby and moderate, sign in to Nextcloud in your browser as this login name first, with your usual password and any second factor; the app password works only for Tymeslot. Anyone else, other Nextcloud users included, waits in the lobby until the meeting starts. A conversation is deleted when its booking is cancelled, and about a week after the meeting ends."
-msgstr "Ogni prenotazione ha la sua conversazione Talk pubblica, e gli ospiti entrano dal suo link senza un account Nextcloud. Per saltare la sala d'attesa e moderare, accedi prima a Nextcloud nel browser con questo nome di accesso, usando la tua password abituale ed eventuali secondi fattori; la password per app funziona solo per LockMyCal. Chiunque altro, compresi gli altri utenti Nextcloud, aspetta nella sala d'attesa finché la riunione non inizia. Una conversazione viene eliminata quando la sua prenotazione viene annullata, e circa una settimana dopo la fine della riunione."
+msgid "Each booking gets its own public Talk conversation, and guests join from its link without a Nextcloud account. To skip the lobby and moderate, sign in to Nextcloud in your browser as this login name first, with your usual password and any second factor; the app password works only for %{app_name}. Anyone else, other Nextcloud users included, waits in the lobby until the meeting starts. A conversation is deleted when its booking is cancelled, and about a week after the meeting ends."
+msgstr "Ogni prenotazione ha la sua conversazione Talk pubblica, e gli ospiti entrano dal suo link senza un account Nextcloud. Per saltare la sala d'attesa e moderare, accedi prima a Nextcloud nel browser con questo nome di accesso, usando la tua password abituale ed eventuali secondi fattori; la password per app funziona solo per %{app_name}. Chiunque altro, compresi gli altri utenti Nextcloud, aspetta nella sala d'attesa finché la riunione non inizia. Una conversazione viene eliminata quando la sua prenotazione viene annullata, e circa una settimana dopo la fine della riunione."
 
 #: lib/tymeslot_web/components/dashboard/integrations/video/edit_video_integration_modal.ex
 #, elixir-autogen, elixir-format
@@ -829,11 +819,6 @@ msgstr "Prova connessione"
 msgid "Testing connection…"
 msgstr "Prova della connessione in corso…"
 
-#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
-#, elixir-autogen, elixir-format
-msgid "Testing…"
-msgstr "Prova in corso…"
-
 #: lib/tymeslot_web/live/dashboard/video_settings_component.ex
 #, elixir-autogen, elixir-format
 msgid "That calendar connection is no longer available."
@@ -1159,3 +1144,18 @@ msgstr "Questa versione di Nextcloud Talk è troppo vecchia. %{app_name} richied
 #, elixir-autogen, elixir-format
 msgid "Video"
 msgstr "Video"
+
+#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
+#, elixir-autogen, elixir-format
+msgid "Delete"
+msgstr "Elimina"
+
+#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
+#, elixir-autogen, elixir-format
+msgid "Delete %{name}"
+msgstr "Elimina %{name}"
+
+#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
+#, elixir-autogen, elixir-format
+msgid "Edit"
+msgstr "Modifica"

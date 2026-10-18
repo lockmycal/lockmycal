@@ -161,8 +161,8 @@ msgstr "Sprytniejsze osadzenia, które same dopasowują wysokość, z opcjonalny
 
 #: lib/tymeslot/announcements/catalog.ex
 #, elixir-autogen, elixir-format
-msgid "Tymeslot now speaks your language"
-msgstr "LockMyCal mówi teraz w twoim języku"
+msgid "%{app_name} now speaks your language"
+msgstr "%{app_name} mówi teraz w twoim języku"
 
 #: lib/tymeslot/announcements/catalog.ex
 #, elixir-autogen, elixir-format
@@ -181,8 +181,8 @@ msgstr "Kalendarze, wideo i płatności są teraz razem w jednym miejscu – w s
 
 #: lib/tymeslot/announcements/catalog.ex
 #, elixir-autogen, elixir-format
-msgid "Connect your Zoom account and Tymeslot creates a Zoom meeting for every booking - the link is added to the calendar invite and confirmation automatically."
-msgstr "Podłącz konto Zoom, a LockMyCal utworzy spotkanie Zoom dla każdej rezerwacji – link trafi do zaproszenia w kalendarzu i do potwierdzenia automatycznie."
+msgid "Connect your Zoom account and %{app_name} creates a Zoom meeting for every booking - the link is added to the calendar invite and confirmation automatically."
+msgstr "Podłącz konto Zoom, a %{app_name} utworzy spotkanie Zoom dla każdej rezerwacji – link trafi do zaproszenia w kalendarzu i do potwierdzenia automatycznie."
 
 #: lib/tymeslot/announcements/catalog.ex
 #, elixir-autogen, elixir-format
@@ -191,8 +191,8 @@ msgstr "Każdy typ spotkania ma teraz własny bezpośredni link, który prowadzi
 
 #: lib/tymeslot/announcements/catalog.ex
 #, elixir-autogen, elixir-format
-msgid "Give any event its own colour, right from your dashboard agenda. Colours you set in Tymeslot write back to your connected calendar, and colours already on your Google or CalDAV events show up here too - so your day is colour-coded exactly the way you like it, everywhere you look."
-msgstr "Nadaj każdemu wydarzeniu własny kolor, prosto z agendy w panelu. Kolory ustawione w LockMyCal zapisują się w podłączonym kalendarzu, a kolory, które masz już na wydarzeniach Google czy CalDAV, widać także tutaj – dzięki temu twój dzień jest pokolorowany dokładnie tak, jak lubisz, gdziekolwiek spojrzysz."
+msgid "Give any event its own colour, right from your dashboard agenda. Colours you set in %{app_name} write back to your connected calendar, and colours already on your Google or CalDAV events show up here too - so your day is colour-coded exactly the way you like it, everywhere you look."
+msgstr "Nadaj każdemu wydarzeniu własny kolor, prosto z agendy w panelu. Kolory ustawione w %{app_name} zapisują się w podłączonym kalendarzu, a kolory, które masz już na wydarzeniach Google czy CalDAV, widać także tutaj – dzięki temu twój dzień jest pokolorowany dokładnie tak, jak lubisz, gdziekolwiek spojrzysz."
 
 #: lib/tymeslot/onboarding/dashboard_tour.ex
 #, elixir-autogen, elixir-format
@@ -211,8 +211,8 @@ msgstr "Ustaw maksymalną liczbę rezerwacji na dzień, tydzień lub miesiąc �
 
 #: lib/tymeslot/announcements/catalog.ex
 #, elixir-autogen, elixir-format
-msgid "The whole app - your dashboard, booking pages and every email - is now available in German, French, Italian, Ukrainian and Czech. Tymeslot follows your browser's language automatically, or pick one yourself in Account settings. Your invitees get booking pages and confirmations in their own language, too."
-msgstr "Cała aplikacja – panel, strony rezerwacji i każdy e-mail – jest już dostępna po niemiecku, francusku, włosku, ukraińsku i czesku. LockMyCal automatycznie dopasowuje się do języka przeglądarki, możesz też wybrać język samodzielnie w ustawieniach konta. Zaproszeni również dostają strony rezerwacji i potwierdzenia w swoim języku."
+msgid "The whole app - your dashboard, booking pages and every email - is now available in German, French, Italian, Ukrainian and Czech. %{app_name} follows your browser's language automatically, or pick one yourself in Account settings. Your invitees get booking pages and confirmations in their own language, too."
+msgstr "Cała aplikacja – panel, strony rezerwacji i każdy e-mail – jest już dostępna po niemiecku, francusku, włosku, ukraińsku i czesku. %{app_name} automatycznie dopasowuje się do języka przeglądarki, możesz też wybrać język samodzielnie w ustawieniach konta. Zaproszeni również dostają strony rezerwacji i potwierdzenia w swoim języku."
 
 #: lib/tymeslot/onboarding/dashboard_tour.ex
 #, elixir-autogen, elixir-format
@@ -251,8 +251,8 @@ msgstr "Zatwierdzaj rezerwacje przed potwierdzeniem"
 
 #: lib/tymeslot/announcements/catalog.ex
 #, elixir-autogen
-msgid "The heading, greeting and instruction at the top of your booking page are now yours to write. Say what you actually do, in your own words, and watch it in the live preview as you type - every change saves itself. Switch it off any time to go back to the built-in wording, translated into every language Tymeslot supports."
-msgstr "Nagłówek, powitanie i instrukcja na górze strony rezerwacji są teraz do napisania po twojemu. Powiedz własnymi słowami, czym się naprawdę zajmujesz, i obserwuj efekt w podglądzie na żywo w trakcie pisania – każda zmiana zapisuje się sama. Wyłącz to, kiedy chcesz, żeby wrócić do wbudowanych tekstów, przetłumaczonych na każdy język, który obsługuje LockMyCal."
+msgid "The heading, greeting and instruction at the top of your booking page are now yours to write. Say what you actually do, in your own words, and watch it in the live preview as you type - every change saves itself. Switch it off any time to go back to the built-in wording, translated into every language %{app_name} supports."
+msgstr "Nagłówek, powitanie i instrukcja na górze strony rezerwacji są teraz do napisania po twojemu. Powiedz własnymi słowami, czym się naprawdę zajmujesz, i obserwuj efekt w podglądzie na żywo w trakcie pisania – każda zmiana zapisuje się sama. Wyłącz to, kiedy chcesz, żeby wrócić do wbudowanych tekstów, przetłumaczonych na każdy język, który obsługuje %{app_name}."
 
 #: lib/tymeslot/announcements/catalog.ex
 #, elixir-autogen, elixir-format
@@ -303,3 +303,13 @@ msgstr "Typ spotkania może teraz oferować kilka opcji: spotkanie osobiste pod 
 #, elixir-autogen, elixir-format
 msgid "Let people choose where you meet"
 msgstr "Pozwól wybrać miejsce spotkania"
+
+#: lib/tymeslot/announcements/catalog.ex
+#, elixir-autogen, elixir-format
+msgid "Host webinars, workshops and classes"
+msgstr "Prowadź webinary, warsztaty i zajęcia"
+
+#: lib/tymeslot/announcements/catalog.ex
+#, elixir-autogen, elixir-format
+msgid "Turn any meeting type into a group session. Set how many people can join and each slot stays open until it's full, so one booking page can run your webinar, workshop, class or office hours. Everyone books themselves in, gets their own confirmation and calendar invite, and can cancel or reschedule without asking you."
+msgstr "Zamień dowolny typ spotkania w sesję grupową. Ustal, ile osób może dołączyć, a każdy termin pozostanie otwarty, dopóki się nie zapełni, więc jedna strona rezerwacji obsłuży twój webinar, warsztaty, zajęcia albo godziny konsultacji. Każdy zapisuje się sam, dostaje własne potwierdzenie i zaproszenie do kalendarza, a odwołać lub przełożyć rezerwację może bez pytania ciebie o zgodę."

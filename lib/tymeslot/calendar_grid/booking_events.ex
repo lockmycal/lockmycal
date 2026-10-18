@@ -10,9 +10,11 @@ defmodule Tymeslot.CalendarGrid.BookingEvents do
   """
 
   alias Tymeslot.CalendarGrid.BookingEvent
+  alias Tymeslot.CalendarGrid.BookingSearchQueries
   alias Tymeslot.Meetings
   alias Tymeslot.Meetings.DisplayTitle
   alias Tymeslot.Meetings.MeetingState
+  alias Tymeslot.Meetings.Seats
 
   @doc """
   Returns the user's live bookings overlapping `[start_dt, end_dt)` as
@@ -78,7 +80,11 @@ defmodule Tymeslot.CalendarGrid.BookingEvents do
         ) :: {[BookingEvent.t()], [map()]}
   def load_for_range(user_id, {start_dt, end_dt}, cached_events, title_source) do
     synced_identifiers = Meetings.calendar_identifier_set(cached_events)
-    meetings = Meetings.list_meetings_in_range_for_organizer(user_id, start_dt, end_dt)
+
+    meetings =
+      user_id
+      |> Meetings.list_meetings_in_range_for_organizer(start_dt, end_dt)
+      |> Meetings.with_live_participants()
 
     booking_events =
       Enum.flat_map(meetings, fn meeting ->
@@ -95,6 +101,22 @@ defmodule Tymeslot.CalendarGrid.BookingEvents do
       end)
 
     {booking_events, annotate_synced(cached_events, meetings, title_source)}
+  end
+
+  @doc """
+  The user's bookings matching `term`, as `BookingEvent` structs, for the grid's
+  event search (see `Tymeslot.CalendarGrid.BookingSearchQueries`: bookings that
+  have a synced provider copy are found through that copy instead).
+
+  `title_source` names each result like the grid names it (see
+  `Tymeslot.Meetings.DisplayTitle`).
+  """
+  @spec search(pos_integer(), String.t(), String.t() | nil, pos_integer()) :: [BookingEvent.t()]
+  def search(user_id, term, title_source, limit) do
+    user_id
+    |> BookingSearchQueries.search(term, limit)
+    |> Meetings.with_live_participants()
+    |> Enum.map(&to_event(&1, title_source))
   end
 
   # Keyed by every identifier a booking carries, so each cached event is
@@ -176,10 +198,25 @@ defmodule Tymeslot.CalendarGrid.BookingEvents do
       end_at: meeting.end_time,
       attendee_name: presence(meeting.attendee_name),
       attendee_email: presence(meeting.attendee_email),
-      join_url: presence(meeting.organizer_video_url) || presence(meeting.meeting_url),
+      join_url: Meetings.organizer_join_url(meeting),
       provider_event_id: meeting.provider_event_id,
+      participants: participants(meeting),
+      capacity: meeting.capacity,
+      seats_taken: seats_taken(meeting),
       status: meeting.status
     }
+  end
+
+  # Counted like the meetings list and the booking page count them: a
+  # booker's guests hold seats too.
+  defp seats_taken(meeting) do
+    if Meetings.group?(meeting), do: Seats.seats_taken(meeting.id), else: 0
+  end
+
+  defp participants(meeting) do
+    if Meetings.group?(meeting),
+      do: Enum.map(meeting.participants, &%{name: presence(&1.name), email: &1.email}),
+      else: []
   end
 
   defp presence(value) when is_binary(value) do

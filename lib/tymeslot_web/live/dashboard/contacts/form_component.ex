@@ -12,7 +12,7 @@ defmodule TymeslotWeb.Dashboard.Contacts.FormComponent do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Phoenix.LiveView.JS
-  alias TymeslotWeb.Components.CoreComponents
+  alias TymeslotWeb.Components.CoreComponents.Buttons
   alias TymeslotWeb.Live.Shared.FormValidationHelpers
 
   @impl Phoenix.LiveComponent
@@ -150,14 +150,14 @@ defmodule TymeslotWeb.Dashboard.Contacts.FormComponent do
         </div>
 
         <div class="flex justify-end gap-3 pt-4">
-          <CoreComponents.action_button
+          <Buttons.action_button
             variant={:secondary}
             phx-click="close_form"
             phx-target={@parent_component}
           >
             {dgettext("dashboard_contacts", "Cancel")}
-          </CoreComponents.action_button>
-          <CoreComponents.loading_button
+          </Buttons.action_button>
+          <Buttons.loading_button
             type="submit"
             variant={:primary}
             loading={@saving}
@@ -168,7 +168,7 @@ defmodule TymeslotWeb.Dashboard.Contacts.FormComponent do
             {if @mode == :create,
               do: dgettext("dashboard_contacts", "Add Contact"),
               else: dgettext("dashboard_contacts", "Update Contact")}
-          </CoreComponents.loading_button>
+          </Buttons.loading_button>
         </div>
       </form>
     </div>

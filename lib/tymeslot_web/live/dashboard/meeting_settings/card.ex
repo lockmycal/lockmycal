@@ -10,8 +10,12 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
   alias Tymeslot.Integrations.Calendar.DisplayHelpers
   alias Tymeslot.Meetings.Approval
   alias Tymeslot.MeetingTypes
+  alias Tymeslot.MeetingTypes.Localized
   alias Tymeslot.MeetingTypes.LocationOption
   alias Tymeslot.ShareLinks
+  alias TymeslotWeb.Components.CoreComponents.Buttons
+  alias TymeslotWeb.Components.CoreComponents.Containers
+  alias TymeslotWeb.Components.CoreComponents.Feedback
   alias TymeslotWeb.Components.CoreComponents.Icons
   alias TymeslotWeb.Components.Dashboard.Availability.ScheduleAccents
   alias TymeslotWeb.Components.Icons.ProviderIcon
@@ -31,6 +35,10 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
   attr :icon_size, :string, default: "mini", values: ["compact", "medium", "large", "mini"]
   attr :venues, :list, default: [], doc: "the organiser's saved venues, to name them"
 
+  attr :group_bookings_allowed, :boolean,
+    default: true,
+    doc: "whether the host may take group bookings; a group type without it is paused"
+
   attr :can_share, :boolean,
     default: false,
     doc: "whether the dashboard's share modal (`ShareLinksModalComponent`) is available"
@@ -43,25 +51,18 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
 
     assigns =
       assigns
-      |> assign(:name, MeetingTypes.localized_name(assigns.type, locale))
-      |> assign(:description, MeetingTypes.localized_description(assigns.type, locale))
+      |> assign(:name, Localized.name(assigns.type, locale))
+      |> assign(:description, Localized.description(assigns.type, locale))
 
     ~H"""
-    <div class={[
-      "card-glass py-3 px-4",
-      if(@type.is_active, do: "card-glass-available", else: "card-glass-unavailable")
-    ]}>
+    <Containers.card
+      padding={:xs}
+      class={if(@type.is_active, do: "card-glass-available", else: "card-glass-unavailable")}
+    >
       <div class="flex items-center gap-3">
         <%!-- Drag Handle --%>
-        <div class="cursor-grab active:cursor-grabbing text-neutral-400 dark:text-twilight-indigo-400 shrink-0">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 8h16M4 16h16"
-            />
-          </svg>
+        <div class="cursor-grab active:cursor-grabbing text-neutral-400 shrink-0 dark:text-twilight-indigo-300">
+          <Icons.icon name="hero-bars-2" class="w-5 h-5" />
         </div>
 
         <%= if @type.icon && @type.icon != "none" do %>
@@ -74,12 +75,12 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
         <%!-- Name + details --%>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 min-w-0">
-            <h3 class="text-token-base font-medium text-neutral-800 dark:text-neutral-100 truncate">
+            <h2 class="text-token-lg font-semibold text-neutral-900 truncate dark:text-neutral-50">
               {@name}
-            </h3>
-            <span
+            </h2>
+            <Feedback.pill
               :if={@type.is_private}
-              class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-token-full bg-neutral-100 dark:bg-twilight-indigo-800 text-neutral-600 dark:text-twilight-indigo-200 text-token-xs font-medium"
+              icon="hero-eye-slash-mini"
               title={
                 dgettext(
                   "dashboard_meeting_types",
@@ -87,11 +88,28 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
                 )
               }
             >
-              <Icons.icon name="hero-eye-slash-mini" class="w-3 h-3" />{dgettext(
-                "dashboard_meeting_types",
-                "Unlisted"
-              )}
-            </span>
+              {dgettext("dashboard_meeting_types", "Unlisted")}
+            </Feedback.pill>
+            <Feedback.pill
+              :if={Map.get(@type, :show_in_embed, false) == true}
+              icon="hero-code-bracket-mini"
+              title={
+                dgettext(
+                  "dashboard_meeting_types",
+                  "Listed in the booking widget embedded on your website"
+                )
+              }
+            >
+              {dgettext("dashboard_meeting_types", "Shown in widget")}
+            </Feedback.pill>
+            <Feedback.pill
+              :if={group_paused?(@type, @group_bookings_allowed)}
+              tone={:warning}
+              icon="hero-pause-circle-mini"
+              data-testid="group-type-paused"
+            >
+              {dgettext("dashboard_meeting_types", "Paused")}
+            </Feedback.pill>
           </div>
           <p
             :if={described?(@description)}
@@ -101,22 +119,28 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
           </p>
           <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-token-xs text-neutral-600 dark:text-twilight-indigo-300">
             <span class="flex items-center shrink-0">
-              <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+              <Icons.icon name="hero-clock" class="w-3.5 h-3.5 mr-1" />
               {dgettext("dashboard_meeting_types", "%{minutes} min", minutes: @type.duration_minutes)}
             </span>
             <%= if paid?(@type) do %>
-              <span class="flex items-center shrink-0 font-medium text-emerald-600">
+              <span class="flex items-center shrink-0 font-medium text-green-600">
                 <Icons.icon name="hero-banknotes-mini" class="w-3.5 h-3.5 mr-1" />
                 {format_amount(@type.price_cents, @currency)}
               </span>
             <% end %>
+            <span
+              :if={MeetingTypes.group_type?(@type)}
+              class="flex items-center shrink-0"
+              data-testid="group-type-marker"
+            >
+              <Icons.icon
+                name="hero-users-mini"
+                class="w-3.5 h-3.5 mr-1 text-neutral-500 dark:text-twilight-indigo-300"
+              />
+              {dgettext("dashboard_meeting_types", "Group · up to %{count}",
+                count: @type.max_participants
+              )}
+            </span>
             <.location_summary type={@type} icon_size={@icon_size} venues={@venues} />
             <%= if @type.calendar_integration do %>
               <span class="flex items-center min-w-0">
@@ -159,74 +183,69 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
               </span>
             <% end %>
           </div>
+          <p
+            :if={group_paused?(@type, @group_bookings_allowed)}
+            class="mt-1 text-token-xs text-amber-700 leading-relaxed dark:text-amber-200"
+            data-testid="group-type-paused-notice"
+          >
+            {dgettext(
+              "dashboard_meeting_types",
+              "Group bookings are not included in your current plan, so this meeting type is taking no new bookings. Existing bookings are unaffected. Upgrade, or set the participant limit to 1, to take bookings again."
+            )}
+          </p>
         </div>
 
-        <%!-- Actions --%>
-        <div class="flex items-center gap-1.5 shrink-0">
+        <%!-- Actions. Each names its meeting type, as the switch does, so a
+              screen reader's list of buttons tells the cards apart. --%>
+        <div class="flex items-center gap-2 shrink-0">
+          <Buttons.icon_button
+            :if={@can_share && @type.is_active}
+            id={"email-meeting-type-link-#{@type.id}"}
+            icon="hero-envelope"
+            size={:sm}
+            label={dgettext("dashboard_meeting_types", "Send link by email")}
+            phx-click="open"
+            phx-value-preselect={ShareLinks.meeting_type_key(@type)}
+            phx-target="#share-links-modal"
+          />
+
+          <Buttons.icon_button
+            icon="hero-pencil-square"
+            size={:sm}
+            label={dgettext("dashboard_meeting_types", "Edit %{name}", name: @name)}
+            tooltip={dgettext("dashboard_meeting_types", "Edit")}
+            phx-click="edit_type"
+            phx-value-id={@type.id}
+            phx-target={@myself}
+          />
+
+          <Buttons.icon_button
+            icon="hero-trash"
+            variant={:danger}
+            size={:sm}
+            label={dgettext("dashboard_meeting_types", "Delete %{name}", name: @name)}
+            tooltip={dgettext("dashboard_meeting_types", "Delete")}
+            phx-click="show_delete_modal"
+            phx-value-id={@type.id}
+            phx-target={@myself}
+          />
+
           <StatusSwitch.status_switch
             id={"meeting-type-toggle-#{@type.id}"}
             checked={@type.is_active}
             size={:small}
             on_change="toggle_type"
             target={@myself}
-            phx_value_id={to_string(@type.id)}
+            phx-value-id={@type.id}
             aria_label={
               dgettext("dashboard_meeting_types", "Toggle %{name} availability", name: @name)
             }
             show_icon={false}
             class="shrink-0"
           />
-
-          <button
-            :if={@can_share && @type.is_active}
-            id={"email-meeting-type-link-#{@type.id}"}
-            type="button"
-            phx-click="open"
-            phx-value-preselect={ShareLinks.meeting_type_key(@type)}
-            phx-target="#share-links-modal"
-            class="row-action-button row-action-button--icon-only row-action-button--neutral"
-            title={dgettext("dashboard_meeting_types", "Send link by email")}
-            aria-label={dgettext("dashboard_meeting_types", "Send link by email")}
-          >
-            <Icons.icon name="hero-envelope" class="w-5 h-5" />
-          </button>
-
-          <button
-            phx-click="edit_type"
-            phx-value-id={@type.id}
-            phx-target={@myself}
-            class="row-action-button row-action-button--icon-only row-action-button--neutral"
-            title={dgettext("dashboard_meeting_types", "Edit")}
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              />
-            </svg>
-          </button>
-
-          <button
-            phx-click="show_delete_modal"
-            phx-value-id={@type.id}
-            phx-target={@myself}
-            class="row-action-button row-action-button--danger"
-            title={dgettext("dashboard_meeting_types", "Delete")}
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </button>
         </div>
       </div>
-    </div>
+    </Containers.card>
     """
   end
 
@@ -241,13 +260,15 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
       assign(assigns, :warning, target_calendar_warning_text(assigns.type))
 
     ~H"""
-    <span
+    <Feedback.pill
       :if={@warning}
-      class="ml-1 shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-token-full bg-amber-50 text-amber-700 text-token-2xs font-semibold"
+      tone={:warning}
+      icon="hero-exclamation-triangle-micro"
+      class="ml-1"
       title={@warning.title}
     >
-      <Icons.icon name="hero-exclamation-triangle-micro" class="w-3 h-3" />{@warning.label}
-    </span>
+      {@warning.label}
+    </Feedback.pill>
     """
   end
 
@@ -277,6 +298,12 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
         }
     end
   end
+
+  # A group type saved while the host had group bookings, kept after they lost
+  # access: it keeps its bookings but takes no new ones (see
+  # `Tymeslot.MeetingTypes.GroupAccess`).
+  defp group_paused?(type, group_bookings_allowed),
+    do: not group_bookings_allowed and MeetingTypes.group_type?(type)
 
   defp paid?(%{payment_required: true, price_cents: cents}) when is_integer(cents), do: true
   defp paid?(_type), do: false
@@ -392,7 +419,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
 
     {name, dot} =
       case found do
-        {schedule, index} -> {schedule.name, ScheduleAccents.at(index)}
+        {schedule, index} -> {schedule.name, ScheduleAccents.at(index).dot}
         nil -> {Schedules.default_schedule_name(), nil}
       end
 

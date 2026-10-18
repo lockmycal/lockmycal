@@ -15,8 +15,8 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments do
   use Phoenix.Component
   use Gettext, backend: TymeslotWeb.Gettext
   use TymeslotWeb, :verified_routes
-
-  alias TymeslotWeb.Components.CoreComponents
+  alias TymeslotWeb.Components.CoreComponents.Feedback
+  alias TymeslotWeb.Components.CoreComponents.Icons
 
   @doc "Pill with a paperclip and the number of files, for a booking card's header."
   attr :attachments, :list, required: true
@@ -24,15 +24,15 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments do
   @spec badge(map()) :: Phoenix.LiveView.Rendered.t()
   def badge(assigns) do
     ~H"""
-    <span
+    <Feedback.pill
       :if={@attachments != []}
-      class="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-50 dark:bg-twilight-indigo-900 text-neutral-700 dark:text-neutral-300 text-token-xs font-black uppercase tracking-wider rounded-full border border-neutral-200 dark:border-twilight-indigo-700 shadow-sm"
+      size={:sm}
+      icon="hero-paper-clip"
       title={dgettext("dashboard_bookings", "Has attachments")}
       data-testid="attachments-badge"
     >
-      <CoreComponents.icon name="hero-paper-clip" class="w-3.5 h-3.5" />
       {dgettext("dashboard_bookings", "Attachments (%{count})", count: length(@attachments))}
-    </span>
+    </Feedback.pill>
     """
   end
 
@@ -52,7 +52,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments do
       aria-label={dgettext("dashboard_bookings", "Has attachments")}
       data-testid="attachments-marker"
       phx-no-format
-    ><CoreComponents.icon name="hero-paper-clip-micro" class={@class} /></span>
+    ><Icons.icon name="hero-paper-clip-micro" class={@class} /></span>
     """
   end
 
@@ -71,7 +71,7 @@ defmodule TymeslotWeb.Components.Dashboard.Meetings.AttendeeAttachments do
           class="flex items-center gap-2 min-w-0 text-token-sm font-bold text-primary-700 dark:text-primary-300 hover:underline"
           download
         >
-          <CoreComponents.icon name="hero-arrow-down-tray" class="w-4 h-4 shrink-0" />
+          <Icons.icon name="hero-arrow-down-tray" class="w-4 h-4 shrink-0" />
           <span class="truncate">{attachment["filename"]}</span>
         </a>
         <span class="shrink-0 text-token-xs font-medium text-neutral-500 dark:text-neutral-400">

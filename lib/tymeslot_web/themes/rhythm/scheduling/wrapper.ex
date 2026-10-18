@@ -14,6 +14,7 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Wrapper do
   import TymeslotWeb.Components.PublicTopBar
   import TymeslotWeb.Components.PublicFooter
   import TymeslotWeb.Themes.Shared.Components.PreviewNotice, only: [banner: 1]
+  import TymeslotWeb.Themes.Shared.Components.EmbedBackground, only: [embed_background: 1]
 
   attr :theme_customization, :map, default: nil
   attr :custom_css, :string, default: nil
@@ -21,12 +22,13 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Wrapper do
   attr :current_state, :atom, default: nil
   attr :language_dropdown_open, :boolean, default: nil
   attr :organizer_user_id, :integer, default: nil
-  attr :should_show_branding, :boolean, default: false
   attr :show_language_switcher, :boolean, default: nil
   attr :owner_preview, :boolean, default: false
   attr :current_user, :map, default: nil
   attr :embedded, :boolean, default: false
   attr :username_context, :string, default: nil
+  attr :brand_logo_url, :string, default: nil
+  attr :embed_background, :string, default: nil
   slot :inner_block, required: true
 
   @doc """
@@ -38,6 +40,7 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Wrapper do
 
     ~H"""
     <div class="rhythm-theme-wrapper" data-locale={assigns[:locale]}>
+      <.embed_background :if={@embedded} value={@embed_background} />
       <%= if assigns[:custom_css] && assigns[:custom_css] != "" do %>
         <style type="text/css">
           :root {
@@ -96,6 +99,7 @@ defmodule TymeslotWeb.Themes.Rhythm.Scheduling.Wrapper do
               current_user={@current_user}
               embedded={@embedded}
               username={@username_context}
+              brand_logo_url={@brand_logo_url}
             />
           <% end %>
 

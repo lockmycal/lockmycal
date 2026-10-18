@@ -68,11 +68,6 @@ msgstr "%{field} musí být platné číslo"
 msgid "%{field} must be between %{min} and %{max}"
 msgstr "%{field} musí být mezi %{min} a %{max}"
 
-#: lib/tymeslot_web/live/onboarding_live/live_preview.ex
-#, elixir-autogen, elixir-format
-msgid "%{minutes} min buffer between meetings"
-msgstr "Časová rezerva mezi schůzkami: %{minutes} min"
-
 #: lib/tymeslot_web/live/onboarding_live/connect_calendar_step.ex
 #, elixir-autogen, elixir-format
 msgid "%{provider} · Connected"
@@ -102,11 +97,6 @@ msgstr "3 měsíce"
 #, elixir-autogen, elixir-format
 msgid "6 months"
 msgstr "6 měsíců"
-
-#: lib/tymeslot_web/live/onboarding_live/live_preview.ex
-#, elixir-autogen, elixir-format
-msgid "A breather between meetings (%{minutes} min)"
-msgstr "Chvilka na nadechnutí mezi schůzkami (%{minutes} min)"
 
 #: lib/tymeslot_web/live/onboarding_live/profile_step.ex
 #, elixir-autogen, elixir-format
@@ -177,11 +167,6 @@ msgstr "Náhled rezervační stránky"
 #, elixir-autogen, elixir-format
 msgid "Booking window"
 msgstr "Období pro rezervace"
-
-#: lib/tymeslot_web/live/onboarding_live/step_config.ex
-#, elixir-autogen, elixir-format
-msgid "Breathing room between appointments so you never feel rushed."
-msgstr "Prostor k nadechnutí mezi schůzkami, abyste nikdy nemuseli spěchat."
 
 #: lib/tymeslot_web/live/onboarding_live/step_config.ex
 #, elixir-autogen, elixir-format
@@ -388,11 +373,6 @@ msgstr "Jak daleko dopředu si u vás mohou klienti naplánovat schůzku."
 #, elixir-autogen, elixir-format
 msgid "I'll connect a calendar later"
 msgstr "Kalendář připojím později"
-
-#: lib/tymeslot_web/live/onboarding_live/preferences_step.ex
-#, elixir-autogen, elixir-format
-msgid "If someone books a meeting that ends at %{end_time} and your buffer is %{minutes} min, the next available slot starts at %{next_start}."
-msgstr "Když si někdo zarezervuje schůzku, která končí v %{end_time}, a vaše časová rezerva je %{minutes} min, další volný termín začíná v %{next_start}."
 
 #: lib/tymeslot_web/live/onboarding_live/timezone_handlers.ex
 #, elixir-autogen, elixir-format
@@ -673,11 +653,6 @@ msgstr "Minimální předstih %{notice}: nikdo nemůže rezervovat termín, do j
 
 #: lib/tymeslot_web/live/onboarding_live/preferences_step.ex
 #, elixir-autogen, elixir-format
-msgid "With no buffer, the next available slot starts as soon as a meeting ends."
-msgstr "Bez časové rezervy začíná další volný termín hned, jakmile schůzka skončí."
-
-#: lib/tymeslot_web/live/onboarding_live/preferences_step.ex
-#, elixir-autogen, elixir-format
 msgid "With no minimum notice, someone can book a slot that starts any time from now."
 msgstr "Bez minimálního předstihu si může kdokoli rezervovat termín začínající kdykoli od této chvíle."
 
@@ -759,11 +734,6 @@ msgstr "Počet dní pro rezervace dopředu"
 
 #: lib/tymeslot_web/live/onboarding_live/scheduling_handlers.ex
 #, elixir-autogen, elixir-format
-msgid "Buffer minutes"
-msgstr "Délka časové rezervy v minutách"
-
-#: lib/tymeslot_web/live/onboarding_live/scheduling_handlers.ex
-#, elixir-autogen, elixir-format
 msgid "Minimum advance hours"
 msgstr "Minimální předstih v hodinách"
 
@@ -822,25 +792,92 @@ msgstr "2 měsíce"
 msgid "1 year"
 msgstr "1 rok"
 
+#: lib/tymeslot_web/live/onboarding_live/live_preview.ex
+#, elixir-autogen, elixir-format
+msgid "%{before_minutes} min before, %{after_minutes} min after"
+msgstr "%{before_minutes} min před, %{after_minutes} min po"
+
+#: lib/tymeslot_web/live/onboarding_live/live_preview.ex
+#, elixir-autogen, elixir-format
+msgid "%{before_minutes} min before, no buffer after"
+msgstr "%{before_minutes} min před, bez časové rezervy po"
+
+#: lib/tymeslot_web/live/onboarding_live/live_preview.ex
+#, elixir-autogen, elixir-format
+msgid "A breather around each meeting"
+msgstr "Chvilka na nadechnutí kolem každé schůzky"
+
+#: lib/tymeslot_web/live/onboarding_live/scheduling_handlers.ex
+#, elixir-autogen, elixir-format
+msgid "Buffer after"
+msgstr "Časová rezerva po schůzce"
+
+#: lib/tymeslot_web/live/onboarding_live/scheduling_handlers.ex
+#, elixir-autogen, elixir-format
+msgid "Buffer after must be between %{min} and %{max} minutes."
+msgstr "Časová rezerva po schůzce musí být mezi %{min} a %{max} minutami."
+
+#: lib/tymeslot_web/live/onboarding_live/scheduling_handlers.ex
+#, elixir-autogen, elixir-format
+msgid "Buffer before"
+msgstr "Časová rezerva před schůzkou"
+
+#: lib/tymeslot_web/live/onboarding_live/scheduling_handlers.ex
+#, elixir-autogen, elixir-format
+msgid "Buffer before must be between %{min} and %{max} minutes."
+msgstr "Časová rezerva před schůzkou musí být mezi %{min} a %{max} minutami."
+
+#: lib/tymeslot_web/live/onboarding_live/preferences_step.ex
+#, elixir-autogen, elixir-format
+msgid "Custom buffer after, in minutes"
+msgstr "Vlastní časová rezerva po schůzce v minutách"
+
+#: lib/tymeslot_web/live/onboarding_live/preferences_step.ex
+#, elixir-autogen, elixir-format
+msgid "Custom buffer before, in minutes"
+msgstr "Vlastní časová rezerva před schůzkou v minutách"
+
+#: lib/tymeslot_web/live/onboarding_live/preferences_step.ex
+#, elixir-autogen, elixir-format
+msgid "If you have a meeting from %{start_time} to %{end_time}, a new booking after it can start at %{next_start} at the earliest, and one before it must end by %{latest_end}."
+msgstr "Pokud máte schůzku od %{start_time} do %{end_time}, nová rezervace po ní může začít nejdříve v %{next_start} a rezervace před ní musí skončit nejpozději v %{latest_end}."
+
+#: lib/tymeslot_web/live/onboarding_live/live_preview.ex
+#, elixir-autogen, elixir-format
+msgid "No buffer around meetings"
+msgstr "Bez časové rezervy kolem schůzek"
+
+#: lib/tymeslot_web/live/onboarding_live/live_preview.ex
+#, elixir-autogen, elixir-format
+msgid "No buffer before, %{after_minutes} min after"
+msgstr "Bez časové rezervy před, %{after_minutes} min po"
+
+#: lib/tymeslot_web/live/onboarding_live/preferences_step.ex
+#, elixir-autogen, elixir-format
+msgid "With no buffers, a new booking can sit right next to an existing meeting."
+msgstr "Bez časové rezervy může nová rezervace navazovat přímo na existující schůzku."
+
+#: lib/tymeslot_web/live/onboarding_live/preferences_step.ex
+#, elixir-autogen, elixir-format
+msgctxt "buffer"
+msgid "After"
+msgstr "Po schůzce"
+
+#: lib/tymeslot_web/live/onboarding_live/preferences_step.ex
+#, elixir-autogen, elixir-format
+msgctxt "buffer"
+msgid "Before"
+msgstr "Před schůzkou"
+
+#: lib/tymeslot_web/live/onboarding_live/step_config.ex
+#, elixir-autogen, elixir-format
+msgid "How much free time a new booking needs before and after it."
+msgstr "Kolik volného času potřebuje nová rezervace před sebou a po sobě."
+
 #: lib/tymeslot_web/live/onboarding_live/skip_calendar_modal.ex
 #, elixir-autogen, elixir-format
 msgid "%{app_name} is built around your calendar. Once it's connected, we read your real availability so you're never double-booked and write every new booking back automatically - that's what makes %{app_name} worthwhile."
 msgstr "%{app_name} je postaven kolem vašeho kalendáře. Jakmile ho propojíte, čteme vaši skutečnou dostupnost, abyste nikdy neměli dvě rezervace najednou, a každou novou rezervaci automaticky zapisujeme zpět – právě to dělá %{app_name} užitečným."
-
-#: lib/tymeslot_web/live/onboarding_live/step_config.ex
-#, elixir-autogen, elixir-format
-msgid "Welcome to %{app_name}"
-msgstr "Vítejte v %{app_name}"
-
-#: lib/tymeslot_web/live/onboarding_live/navigation_handlers.ex
-#, elixir-autogen, elixir-format
-msgid "Welcome to %{app_name}! Your account is now set up."
-msgstr "Vítejte v %{app_name}! Váš účet je teď nastaven."
-
-#: lib/tymeslot_web/live/onboarding_live/profile_step.ex
-#, elixir-autogen, elixir-format
-msgid "This is your booking link. Customizing it is available on the Pro plan and above."
-msgstr "Toto je váš rezervační odkaz. Jeho úprava je dostupná pouze ve variantě Pro a vyšší."
 
 #: lib/tymeslot_web/live/onboarding_live/profile_step.ex
 #, elixir-autogen, elixir-format
@@ -864,5 +901,20 @@ msgstr "Telefon (nepovinné)"
 
 #: lib/tymeslot_web/live/onboarding_live/profile_step.ex
 #, elixir-autogen, elixir-format
+msgid "This is your booking link. Customizing it is available on the Pro plan and above."
+msgstr "Toto je váš rezervační odkaz. Jeho úprava je dostupná pouze ve variantě Pro a vyšší."
+
+#: lib/tymeslot_web/live/onboarding_live/profile_step.ex
+#, elixir-autogen, elixir-format
 msgid "Used to pre-fill the booking form when you book a meeting with someone else."
 msgstr "Použije se k předvyplnění rezervačního formuláře, když si rezervujete schůzku u někoho jiného."
+
+#: lib/tymeslot_web/live/onboarding_live/step_config.ex
+#, elixir-autogen, elixir-format
+msgid "Welcome to %{app_name}"
+msgstr "Vítejte v %{app_name}"
+
+#: lib/tymeslot_web/live/onboarding_live/navigation_handlers.ex
+#, elixir-autogen, elixir-format
+msgid "Welcome to %{app_name}! Your account is now set up."
+msgstr "Vítejte v %{app_name}! Váš účet je teď nastaven."

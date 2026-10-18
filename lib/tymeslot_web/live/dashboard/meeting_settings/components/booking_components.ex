@@ -11,10 +11,12 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Components.BookingComponents do
   alias Phoenix.LiveView.JS
   alias Tymeslot.Integrations.Calendar.DisplayHelpers
   alias Tymeslot.MeetingTypes.MeetingTypeSchema
-  alias TymeslotWeb.Components.CoreComponents.Icons
   alias TymeslotWeb.Dashboard.MeetingSettings.Helpers
   alias TymeslotWeb.Live.Shared.FormValidationHelpers
-  import TymeslotWeb.Components.CoreComponents, only: [spinner: 1]
+
+  use TymeslotWeb.Components.CoreComponents,
+    only: [icon: 1, pill: 1, spinner: 1, subsection_header: 1]
+
   import TymeslotWeb.Components.Icons.ProviderIcon
 
   @doc """
@@ -28,12 +30,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Components.BookingComponents do
   def icon_picker(assigns) do
     ~H"""
     <section class="space-y-2">
-      <div class="flex items-center gap-2">
-        <Icons.icon name="hero-face-smile" class="w-5 h-5 text-primary-500" />
-        <h3 class="text-token-base font-semibold text-neutral-800 dark:text-neutral-100">
-          {dgettext("dashboard_meeting_form", "Icon")}
-        </h3>
-      </div>
+      <.subsection_header icon="hero-face-smile" title={dgettext("dashboard_meeting_form", "Icon")} />
       <div class="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-14 lg:grid-cols-16 gap-1">
         <%= for {icon_value, icon_name} <- MeetingTypeSchema.valid_icons_with_names() do %>
           <button
@@ -52,21 +49,12 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Components.BookingComponents do
             title={icon_name}
           >
             <%= if icon_value == "none" do %>
-              <svg
-                class="w-6 h-6 text-neutral-400 dark:text-twilight-indigo-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <.icon
+                name="hero-x-mark"
+                class="w-6 h-6 text-neutral-400 dark:text-twilight-indigo-300"
+              />
             <% else %>
-              <Icons.icon
+              <.icon
                 name={icon_value}
                 class={
                   "w-8 h-8 block " <>
@@ -110,19 +98,18 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Components.BookingComponents do
   @spec booking_destination_section(map()) :: Phoenix.LiveView.Rendered.t()
   def booking_destination_section(assigns) do
     ~H"""
-    <section class="pt-4 border-t border-neutral-300 dark:border-twilight-indigo-800">
-      <div class="flex items-center gap-2">
-        <Icons.icon name="hero-calendar-days" class="w-5 h-5 text-primary-500" />
-        <h3 class="text-token-base font-semibold text-neutral-800 dark:text-neutral-100">
-          {dgettext("dashboard_meeting_form", "Booking Destination")}
-        </h3>
-      </div>
-      <p class="mt-2 text-token-sm text-neutral-600 dark:text-neutral-400 mb-4">
-        {dgettext(
-          "dashboard_meeting_form",
-          "Choose where new bookings for this meeting type should be created."
-        )}
-      </p>
+    <section class="pt-4 border-t border-neutral-100 dark:border-twilight-indigo-800">
+      <.subsection_header
+        icon="hero-calendar-days"
+        title={dgettext("dashboard_meeting_form", "Booking Destination")}
+        description={
+          dgettext(
+            "dashboard_meeting_form",
+            "Choose where new bookings for this meeting type should be created."
+          )
+        }
+        class="mb-4"
+      />
 
       <div class="space-y-4">
         <div>
@@ -168,11 +155,9 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Components.BookingComponents do
                     <span class="text-token-sm font-medium truncate max-w-full">
                       {integration.name}
                     </span>
-                    <%= if not integration.is_active do %>
-                      <span class="text-token-2xs font-semibold text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full leading-tight">
-                        {dgettext("dashboard_meeting_form", "Reconnect")}
-                      </span>
-                    <% end %>
+                    <.pill :if={not integration.is_active} tone={:warning}>
+                      {dgettext("dashboard_meeting_form", "Reconnect")}
+                    </.pill>
                   </div>
                 </button>
               <% end %>
@@ -261,16 +246,14 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Components.BookingComponents do
                       ]}
                     >
                       <div class={[
-                        "w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center",
+                        "w-4 h-4 rounded-token-full border-2 mr-3 flex items-center justify-center",
                         if(@selected_target_calendar_id == cal.id,
                           do: "border-primary-50 bg-primary-500",
                           else: "border-neutral-300 dark:border-twilight-indigo-600"
                         )
                       ]}>
                         <%= if @selected_target_calendar_id == (cal.id) do %>
-                          <svg class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
-                          </svg>
+                          <.icon name="hero-check-mini" class="w-2.5 h-2.5 text-white" />
                         <% end %>
                       </div>
                       <span class={[

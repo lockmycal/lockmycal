@@ -81,7 +81,7 @@ defmodule TymeslotWeb.DashboardRoutesTest do
       {"/dashboard/locations", "Locations"},
       {"/dashboard/calendar", "calendar-grid"},
       {"/dashboard/calendar-integration", "Calendars"},
-      {"/dashboard/video-integration", "Video Integration"},
+      {"/dashboard/video-integration", "Connect a video provider"},
       {"/dashboard/theme", "Choose Your Style"},
       {"/dashboard/meetings", "Meetings"},
       {"/dashboard/automation", "Automation"},
@@ -124,7 +124,7 @@ defmodule TymeslotWeb.DashboardRoutesTest do
       |> render_click()
 
       assert has_element?(view, "button[aria-label='Close']")
-      assert has_element?(view, "form[phx-submit='save_meeting_type']")
+      assert has_element?(view, "form[phx-submit='create_meeting_type']")
     end
 
     test "theme customization can be opened and browsed", %{conn: conn} do

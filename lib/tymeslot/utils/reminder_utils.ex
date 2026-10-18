@@ -3,34 +3,7 @@ defmodule Tymeslot.Utils.ReminderUtils do
   Utility functions for meeting reminders.
   """
 
-  alias Tymeslot.Integrations.Calendar.Reminder, as: CalendarReminder
-
   @valid_reminder_units ["minutes", "hours", "days"]
-
-  @doc """
-  Converts calendar-picker reminders (`Tymeslot.Integrations.Calendar.Reminder`'s
-  `%{method:, minutes_before:}` shape, used by the create-event dialog's
-  `RemindersEditor`) into this module's `%{value:, unit:}` shape, used by
-  `Tymeslot.Meetings.MeetingSchema.reminders` — always in "minutes" so the
-  conversion is exact. The provider `method` doesn't carry over: a meeting's
-  reminders always drive both the synced calendar's popup alarm
-  (`Tymeslot.Integrations.Calendar.CalendarEventBuilder`) and Tymeslot's own
-  reminder email, regardless of which method was picked when adding it.
-
-  Routed through `normalize_reminders/1` before returning: `MeetingSchema`'s
-  `reminders` field is a plain `{:array, :map}` column with no changeset-level
-  validation of its own, so a `minutes_before` that's missing, zero, negative,
-  or otherwise malformed (`CalendarReminder.minutes_before/1` doesn't validate
-  its input either) would otherwise be written straight to the database.
-  """
-  @spec from_calendar_reminders([map()]) :: [%{value: pos_integer(), unit: String.t()}]
-  def from_calendar_reminders(reminders) when is_list(reminders) do
-    reminders
-    |> Enum.map(fn reminder ->
-      %{value: CalendarReminder.minutes_before(reminder), unit: "minutes"}
-    end)
-    |> normalize_reminders()
-  end
 
   @doc """
   Formats a reminder interval into a human-readable label.

@@ -15,9 +15,13 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DeleteAccountComponent do
 
   alias Phoenix.LiveView.JS
   alias Tymeslot.Auth
+  alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Meetings
   alias Tymeslot.Security.RateLimiter
-  alias TymeslotWeb.Components.CoreComponents
+  alias TymeslotWeb.Components.CoreComponents.Buttons
+  alias TymeslotWeb.Components.CoreComponents.Containers
+  alias TymeslotWeb.Components.CoreComponents.Forms, as: CoreForms
+  alias TymeslotWeb.Components.CoreComponents.Modal
   alias TymeslotWeb.Dashboard.ProfileSettings.AccountSecurityForms, as: Forms
   alias TymeslotWeb.Helpers.ClientIP
 
@@ -106,7 +110,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DeleteAccountComponent do
 
     ~H"""
     <div id={@id} class="card-glass">
-      <CoreComponents.subsection_header
+      <Containers.subsection_header
         icon="hero-exclamation-triangle"
         title={dgettext("dashboard_profile", "Danger zone")}
         class="mb-3"
@@ -132,7 +136,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DeleteAccountComponent do
           </p>
         </div>
 
-        <CoreComponents.action_button
+        <Buttons.action_button
           id="delete-account-button"
           variant={:danger}
           disabled={@last_admin}
@@ -140,10 +144,10 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DeleteAccountComponent do
           class="whitespace-nowrap"
         >
           {dgettext("dashboard_profile", "Delete account")}
-        </CoreComponents.action_button>
+        </Buttons.action_button>
       </div>
 
-      <CoreComponents.modal
+      <Modal.modal
         id={"#{@id}-modal"}
         show={@show}
         on_cancel={JS.push("hide", target: @myself)}
@@ -186,7 +190,8 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DeleteAccountComponent do
           >
             {dgettext(
               "dashboard_profile",
-              "Microsoft does not let us withdraw your consent for Tymeslot. To remove it, open myapps.microsoft.com and remove Tymeslot from your apps."
+              "Microsoft does not let us withdraw your consent for %{app_name}. To remove it, open myapps.microsoft.com and remove %{app_name} from your apps.",
+              app_name: Config.app_name()
             )}
           </p>
 
@@ -200,7 +205,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DeleteAccountComponent do
             phx-target={@myself}
             class="space-y-4"
           >
-            <CoreComponents.input
+            <CoreForms.input
               :if={@with_password}
               name="delete_account[current_password]"
               autocomplete="current-password"
@@ -212,7 +217,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DeleteAccountComponent do
               icon="hero-lock-closed"
             />
 
-            <CoreComponents.input
+            <CoreForms.input
               :if={!@with_password}
               name="delete_account[email_confirmation]"
               type="text"
@@ -230,14 +235,14 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DeleteAccountComponent do
 
         <:footer>
           <div class="flex justify-end gap-3">
-            <CoreComponents.action_button
+            <Buttons.action_button
               variant={:secondary}
               disabled={@deleting}
               phx-click={JS.push("hide", target: @myself)}
             >
               {dgettext("dashboard_profile", "Cancel")}
-            </CoreComponents.action_button>
-            <CoreComponents.loading_button
+            </Buttons.action_button>
+            <Buttons.loading_button
               id="delete-account-confirm-button"
               type="submit"
               form="delete-account-form"
@@ -246,10 +251,10 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DeleteAccountComponent do
               loading_text={dgettext("dashboard_profile", "Deleting...")}
             >
               {dgettext("dashboard_profile", "Permanently delete my account")}
-            </CoreComponents.loading_button>
+            </Buttons.loading_button>
           </div>
         </:footer>
-      </CoreComponents.modal>
+      </Modal.modal>
     </div>
     """
   end

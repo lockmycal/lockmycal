@@ -7,7 +7,7 @@ defmodule Tymeslot.Availability.WeeklyAvailabilitySchema do
 
   alias Tymeslot.Availability.AvailabilityBreakSchema
   alias Tymeslot.Availability.AvailabilityScheduleSchema
-  alias Tymeslot.ChangesetValidators.TimeOrder
+  alias Tymeslot.ChangesetValidators.AvailabilityWindow
   alias Tymeslot.Validation.Constraints
 
   @type t :: %__MODULE__{
@@ -18,6 +18,7 @@ defmodule Tymeslot.Availability.WeeklyAvailabilitySchema do
           start_time: Time.t() | nil,
           end_time: Time.t() | nil,
           max_booked_minutes: pos_integer() | nil,
+          ends_next_day: boolean(),
           schedule: AvailabilityScheduleSchema.t() | Ecto.Association.NotLoaded.t(),
           breaks: [AvailabilityBreakSchema.t()] | Ecto.Association.NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
@@ -30,6 +31,7 @@ defmodule Tymeslot.Availability.WeeklyAvailabilitySchema do
     field(:start_time, :time)
     field(:end_time, :time)
     field(:max_booked_minutes, :integer)
+    field(:ends_next_day, :boolean, default: false)
 
     belongs_to(:schedule, AvailabilityScheduleSchema)
     has_many(:breaks, AvailabilityBreakSchema, foreign_key: :weekly_availability_id)
@@ -47,12 +49,14 @@ defmodule Tymeslot.Availability.WeeklyAvailabilitySchema do
       :is_available,
       :start_time,
       :end_time,
+      :ends_next_day,
       :max_booked_minutes
     ])
     |> validate_required([:schedule_id, :day_of_week])
     |> validate_inclusion(:day_of_week, 1..7,
       message: "must be between 1 (Monday) and 7 (Sunday)"
     )
+    |> AvailabilityWindow.normalise_next_day(:weekly_availability_next_day_end_check)
     |> validate_times()
     |> validate_inclusion(:max_booked_minutes, Constraints.daily_booked_minutes_values())
     |> check_constraint(:max_booked_minutes,
@@ -63,14 +67,12 @@ defmodule Tymeslot.Availability.WeeklyAvailabilitySchema do
   end
 
   defp validate_times(changeset) do
-    is_available = get_field(changeset, :is_available)
-
-    if is_available do
+    if get_field(changeset, :is_available) do
       changeset
       |> validate_required([:start_time, :end_time],
         message: "are required when day is available"
       )
-      |> TimeOrder.validate_time_order(:start_time, :end_time)
+      |> AvailabilityWindow.validate_window()
     else
       changeset
     end

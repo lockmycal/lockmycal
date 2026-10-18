@@ -64,15 +64,9 @@ msgid "Configuration form not available for this provider."
 msgstr "Formulaire de configuration non disponible pour ce fournisseur."
 
 #: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
-#: lib/tymeslot_web/live/dashboard/calendar_settings/components.ex
 #, elixir-autogen, elixir-format
 msgid "Connect a calendar"
 msgstr "Connecter un calendrier"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Connect a calendar so Tymeslot can read your availability and stop meetings being booked when you're already busy."
-msgstr "Connectez un calendrier pour que LockMyCal puisse lire vos disponibilités et empêcher que des réunions soient réservées lorsque vous êtes déjà occupé."
 
 #: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
@@ -185,11 +179,6 @@ msgstr "Actualisation..."
 msgid "Regenerate link"
 msgstr "Régénérer le lien"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
-#, elixir-autogen, elixir-format
-msgid "Remove connection"
-msgstr "Supprimer la connexion"
-
 #: lib/tymeslot_web/live/dashboard/calendar_settings/components.ex
 #, elixir-autogen, elixir-format
 msgid "Share a read-only link that publishes when you're busy (not the event details) as a standard iCalendar feed, so other calendar systems can overlay your availability."
@@ -234,16 +223,6 @@ msgstr "Nous vérifierons ces calendriers pour éviter automatiquement les doubl
 #, elixir-autogen, elixir-format
 msgid "books into %{calendar}"
 msgstr "réserve dans %{calendar}"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
-#, elixir-autogen, elixir-format
-msgid "conflict-checks %{selected} of %{total} calendars"
-msgstr "vérifie les conflits sur %{selected} des %{total} calendriers"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
-#, elixir-autogen, elixir-format
-msgid "synced %{time}"
-msgstr "synchronisé %{time}"
 
 #: lib/tymeslot_web/live/dashboard/calendar_settings_component.ex
 #, elixir-autogen, elixir-format
@@ -310,160 +289,62 @@ msgstr "Serveurs Exchange"
 msgid "read-only, blocks time but takes no bookings"
 msgstr "en lecture seule, bloque les périodes occupées mais n’accepte aucune réservation"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "Public calendar"
-msgstr "Calendrier public"
+msgid "checks %{selected} of %{count} calendar for conflicts"
+msgid_plural "checks %{selected} of %{count} calendars for conflicts"
+msgstr[0] "vérifie les conflits sur %{selected} calendrier sur %{count}"
+msgstr[1] "vérifie les conflits sur %{selected} des %{count} calendriers"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "Use colours in the public calendar"
-msgstr "Utiliser des couleurs dans le calendrier public"
+msgid "Last synced %{time}"
+msgstr "Dernière synchronisation %{time}"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "Your public booking calendar shows busy times as plain grey blocks by default. Turn this on to use each calendar's colour instead, matching your internal calendar view."
-msgstr "Par défaut, votre calendrier de réservation public affiche les créneaux occupés sous forme de blocs gris unis. Activez cette option pour utiliser à la place la couleur de chaque calendrier, comme dans votre vue de calendrier interne."
+msgid "Delete"
+msgstr "Supprimer"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "Calendars"
-msgstr "Calendriers"
+msgid "Delete %{name}"
+msgstr "Supprimer %{name}"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "Connect your calendars to check availability and prevent double bookings."
-msgstr "Connectez vos calendriers pour vérifier les disponibilités et éviter les doubles réservations."
+msgid "Block the time of every event in this feed, also those it marks as free"
+msgstr "Bloquer la période de chaque événement de ce flux, y compris ceux marqués comme disponibles"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings_component.ex
 #, elixir-autogen, elixir-format
-msgid "Set public calendar colors"
-msgstr "Définir les couleurs du calendrier public"
+msgid "Events this calendar marks as free no longer block time"
+msgstr "Les événements que ce calendrier marque comme disponibles ne bloquent plus de période"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/helpers.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "End time must be after the start time"
-msgstr "L'heure de fin doit être postérieure à l'heure de début"
+msgid "Every event busy"
+msgstr "Chaque événement occupé"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/helpers.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings_component.ex
 #, elixir-autogen, elixir-format
-msgid "Failed to update visible hours"
-msgstr "Échec de la mise à jour des heures visibles"
+msgid "Every event in this calendar now blocks time"
+msgstr "Chaque événement de ce calendrier bloque désormais la période"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
-msgid "From"
-msgstr "De"
+msgid "read-only, every event blocks time, also those marked free"
+msgstr "en lecture seule, chaque événement bloque la période, y compris ceux marqués comme disponibles"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
 #, elixir-autogen, elixir-format
-msgid "Only show busy times within a daily window"
-msgstr "N'afficher les créneaux occupés que dans une plage horaire quotidienne"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
-#, elixir-autogen, elixir-format
-msgid "Set visible hours"
-msgstr "Définir les heures visibles"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
-#, elixir-autogen, elixir-format
-msgid "To"
-msgstr "À"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
-#, elixir-autogen, elixir-format
-msgid "Visible hours"
-msgstr "Heures visibles"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
-#, elixir-autogen, elixir-format
-msgid "Your public calendar and free/busy feed show busy blocks around the clock by default. Turn this on to hide anything outside a daily time range, e.g. 07:00–18:00."
-msgstr "Votre calendrier public et votre flux libre/occupé affichent les créneaux occupés en continu par défaut. Activez cette option pour masquer tout ce qui se trouve en dehors d'une plage horaire quotidienne, par exemple 07:00–18:00."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
-#, elixir-autogen, elixir-format
-msgid "Historical events"
-msgstr "Événements passés"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
-#, elixir-autogen, elixir-format
-msgid "Off by default: your public calendar only shows today and later. Turn this on to also show past busy times when a visitor browses to an earlier month."
-msgstr "Désactivé par défaut : votre calendrier public n'affiche qu'aujourd'hui et les jours suivants. Activez cette option pour afficher aussi les créneaux occupés passés lorsqu'un visiteur consulte un mois antérieur."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
-#, elixir-autogen, elixir-format
-msgid "Set show historical events"
-msgstr "Définir l'affichage des événements passés"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
-#, elixir-autogen, elixir-format
-msgid "Show historical events"
-msgstr "Afficher les événements passés"
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
-#, elixir-autogen, elixir-format
-msgid "You have reached the maximum number of connected calendars for your plan. Remove one to connect another."
-msgstr "Vous avez atteint le nombre maximal de calendriers connectés pour votre forfait. Supprimez-en un pour en connecter un autre."
+msgid "%{account} has several calendars. Your bookings on other pages are saved to the one you choose."
+msgstr "%{account} contient plusieurs calendriers. Vos réservations sur d'autres pages sont enregistrées dans celui que vous choisissez."
 
 #: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
 #, elixir-autogen, elixir-format
 msgid "Active calendars: %{active} of %{limit}."
 msgstr "Calendriers actifs : %{active} sur %{limit}."
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
-#, elixir-autogen, elixir-format
-msgid "To turn a paused calendar back on, pause an active one first."
-msgstr "Pour réactiver un calendrier en pause, mettez d’abord en pause un calendrier actif."
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
-#, elixir-autogen, elixir-format
-msgid "Your plan allows only this many active calendars. Pause an active calendar before turning this one back on."
-msgstr "Votre forfait n’autorise pas davantage de calendriers actifs. Mettez un calendrier actif en pause avant de réactiver celui-ci."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
-#, elixir-autogen, elixir-format
-msgid "Colour settings"
-msgstr "Réglages des couleurs"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
-#, elixir-autogen, elixir-format
-msgid "Set public calendar visibility"
-msgstr "Définir la visibilité du calendrier public"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
-#, elixir-autogen, elixir-format
-msgid "Show my public calendar"
-msgstr "Afficher mon calendrier public"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
-#, elixir-autogen, elixir-format
-msgid "Visibility"
-msgstr "Visibilité"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
-#, elixir-autogen, elixir-format
-msgid "When enabled, anyone with your link can see a month view of when you are busy or free — never event titles or attendees. Your booking page works either way."
-msgstr "Lorsque cette option est activée, toute personne disposant de votre lien voit une vue mensuelle de vos périodes occupées ou libres — jamais les titres des événements ni les participants. Votre page de réservation fonctionne dans les deux cas."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
-#, elixir-autogen, elixir-format
-msgid "Set show weekends"
-msgstr "Définir l'affichage des week-ends"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
-#, elixir-autogen, elixir-format
-msgid "Weekends"
-msgstr "Week-ends"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
-#, elixir-autogen, elixir-format
-msgid "Off by default: your public calendar shows Monday to Friday only, and your free/busy feed leaves out busy times at weekends. Saturday and Sunday still appear in a month where a weekend day can be booked. Turn this on to always show weekends, busy times included."
-msgstr "Désactivé par défaut : votre calendrier public n’affiche que du lundi au vendredi, et votre flux libre/occupé omet les créneaux occupés du week-end. Le samedi et le dimanche apparaissent tout de même dans un mois où un jour de week-end peut être réservé. Activez cette option pour toujours afficher les week-ends, créneaux occupés compris."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
-#, elixir-autogen, elixir-format
-msgid "Show weekends"
-msgstr "Afficher les week-ends"
 
 #: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
 #, elixir-autogen, elixir-format
@@ -480,61 +361,10 @@ msgstr "Demander à chaque fois"
 msgid "Bookings without a calendar of their own, and your bookings on other pages, go here"
 msgstr "Les réservations sans calendrier propre et vos réservations sur d'autres pages sont enregistrées ici"
 
-#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
 #, elixir-autogen, elixir-format
-msgid "Default"
-msgstr "Par défaut"
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
-#, elixir-autogen, elixir-format
-msgid "Default calendar updated"
-msgstr "Calendrier par défaut mis à jour"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
-#, elixir-autogen, elixir-format
-msgid "Failed to save setting"
-msgstr "Impossible d'enregistrer le paramètre"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
-#, elixir-autogen, elixir-format
-msgid "Never"
-msgstr "Jamais"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
-#, elixir-autogen, elixir-format
-msgid "Save to my calendar"
-msgstr "Enregistrer dans mon calendrier"
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
-#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
-#, elixir-autogen, elixir-format
-msgid "Set as default"
-msgstr "Définir par défaut"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
-#, elixir-autogen, elixir-format
-msgid "Setting saved"
-msgstr "Paramètre enregistré"
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
-#, elixir-autogen, elixir-format
-msgid "This calendar cannot take bookings"
-msgstr "Ce calendrier ne peut pas recevoir de réservations"
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
-#, elixir-autogen, elixir-format
-msgid "When you book a meeting on someone else's booking page while signed in, it can also be saved to your default calendar."
-msgstr "Lorsque vous réservez un rendez-vous sur la page de réservation de quelqu'un d'autre en étant connecté, il peut aussi être enregistré dans votre calendrier par défaut."
-
-#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
-#, elixir-autogen, elixir-format
-msgid "Your bookings on other pages"
-msgstr "Vos réservations sur d'autres pages"
-
-#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
-#, elixir-autogen, elixir-format
-msgid "%{account} has several calendars. Your bookings on other pages are saved to the one you choose."
-msgstr "%{account} contient plusieurs calendriers. Vos réservations sur d'autres pages sont enregistrées dans celui que vous choisissez."
+msgid "Calendars"
+msgstr "Calendriers"
 
 #: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
 #, elixir-autogen, elixir-format
@@ -551,12 +381,214 @@ msgstr "Changer le calendrier par défaut"
 msgid "Choose your default calendar"
 msgstr "Choisissez votre calendrier par défaut"
 
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Colour settings"
+msgstr "Réglages des couleurs"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Connect a calendar so %{app_name} can read your availability and stop meetings being booked when you're already busy."
+msgstr "Connectez un calendrier pour que %{app_name} puisse lire vos disponibilités et empêcher que des réunions soient réservées lorsque vous êtes déjà occupé."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Connect your calendars to check availability and prevent double bookings."
+msgstr "Connectez vos calendriers pour vérifier les disponibilités et éviter les doubles réservations."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
+#, elixir-autogen, elixir-format
+msgid "Default"
+msgstr "Par défaut"
+
 #: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
 msgid "Default calendar"
 msgstr "Calendrier par défaut"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Default calendar updated"
+msgstr "Calendrier par défaut mis à jour"
 
 #: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
 #, elixir-autogen, elixir-format
 msgid "Default: %{calendar}"
 msgstr "Par défaut : %{calendar}"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/helpers.ex
+#, elixir-autogen, elixir-format
+msgid "End time must be after the start time"
+msgstr "L'heure de fin doit être postérieure à l'heure de début"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to save setting"
+msgstr "Impossible d'enregistrer le paramètre"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/helpers.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to update visible hours"
+msgstr "Échec de la mise à jour des heures visibles"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#, elixir-autogen, elixir-format
+msgid "From"
+msgstr "De"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
+#, elixir-autogen, elixir-format
+msgid "Historical events"
+msgstr "Événements passés"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Never"
+msgstr "Jamais"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
+#, elixir-autogen, elixir-format
+msgid "Off by default: your public calendar only shows today and later. Turn this on to also show past busy times when a visitor browses to an earlier month."
+msgstr "Désactivé par défaut : votre calendrier public n'affiche qu'aujourd'hui et les jours suivants. Activez cette option pour afficher aussi les créneaux occupés passés lorsqu'un visiteur consulte un mois antérieur."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
+#, elixir-autogen, elixir-format
+msgid "Off by default: your public calendar shows Monday to Friday only, and your free/busy feed leaves out busy times at weekends. Saturday and Sunday still appear in a month where a weekend day can be booked. Turn this on to always show weekends, busy times included."
+msgstr "Désactivé par défaut : votre calendrier public n’affiche que du lundi au vendredi, et votre flux libre/occupé omet les créneaux occupés du week-end. Le samedi et le dimanche apparaissent tout de même dans un mois où un jour de week-end peut être réservé. Activez cette option pour toujours afficher les week-ends, créneaux occupés compris."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#, elixir-autogen, elixir-format
+msgid "Only show busy times within a daily window"
+msgstr "N'afficher les créneaux occupés que dans une plage horaire quotidienne"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Public calendar"
+msgstr "Calendrier public"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Save to my calendar"
+msgstr "Enregistrer dans mon calendrier"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#: lib/tymeslot_web/live/dashboard/calendar_settings/calendar_connection_row.ex
+#, elixir-autogen, elixir-format
+msgid "Set as default"
+msgstr "Définir par défaut"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Set public calendar colors"
+msgstr "Définir les couleurs du calendrier public"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Set public calendar visibility"
+msgstr "Définir la visibilité du calendrier public"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
+#, elixir-autogen, elixir-format
+msgid "Set show historical events"
+msgstr "Définir l'affichage des événements passés"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
+#, elixir-autogen, elixir-format
+msgid "Set show weekends"
+msgstr "Définir l'affichage des week-ends"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#, elixir-autogen, elixir-format
+msgid "Set visible hours"
+msgstr "Définir les heures visibles"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Setting saved"
+msgstr "Paramètre enregistré"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/historical_events_section.ex
+#, elixir-autogen, elixir-format
+msgid "Show historical events"
+msgstr "Afficher les événements passés"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Show my public calendar"
+msgstr "Afficher mon calendrier public"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
+#, elixir-autogen, elixir-format
+msgid "Show weekends"
+msgstr "Afficher les week-ends"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/default_calendar_modal.ex
+#, elixir-autogen, elixir-format
+msgid "This calendar cannot take bookings"
+msgstr "Ce calendrier ne peut pas recevoir de réservations"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#, elixir-autogen, elixir-format
+msgid "To"
+msgstr "À"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
+#, elixir-autogen, elixir-format
+msgid "To turn a paused calendar back on, pause an active one first."
+msgstr "Pour réactiver un calendrier en pause, mettez d’abord en pause un calendrier actif."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Use colours in the public calendar"
+msgstr "Utiliser des couleurs dans le calendrier public"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Visibility"
+msgstr "Visibilité"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#, elixir-autogen, elixir-format
+msgid "Visible hours"
+msgstr "Heures visibles"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/weekends_section.ex
+#, elixir-autogen, elixir-format
+msgid "Weekends"
+msgstr "Week-ends"
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "When enabled, anyone with your link can see a month view of when you are busy or free — never event titles or attendees. Your booking page works either way."
+msgstr "Lorsque cette option est activée, toute personne disposant de votre lien voit une vue mensuelle de vos périodes occupées ou libres — jamais les titres des événements ni les participants. Votre page de réservation fonctionne dans les deux cas."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "When you book a meeting on someone else's booking page while signed in, it can also be saved to your default calendar."
+msgstr "Lorsque vous réservez un rendez-vous sur la page de réservation de quelqu'un d'autre en étant connecté, il peut aussi être enregistré dans votre calendrier par défaut."
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
+#, elixir-autogen, elixir-format
+msgid "You have reached the maximum number of connected calendars for your plan. Remove one to connect another."
+msgstr "Vous avez atteint le nombre maximal de calendriers connectés pour votre forfait. Supprimez-en un pour en connecter un autre."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/own_bookings_section.ex
+#, elixir-autogen, elixir-format
+msgid "Your bookings on other pages"
+msgstr "Vos réservations sur d'autres pages"
+
+#: lib/tymeslot_web/components/dashboard/integrations/calendar/connection_limit.ex
+#, elixir-autogen, elixir-format
+msgid "Your plan allows only this many active calendars. Pause an active calendar before turning this one back on."
+msgstr "Votre forfait n’autorise pas davantage de calendriers actifs. Mettez un calendrier actif en pause avant de réactiver celui-ci."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/public_calendar_section.ex
+#, elixir-autogen, elixir-format
+msgid "Your public booking calendar shows busy times as plain grey blocks by default. Turn this on to use each calendar's colour instead, matching your internal calendar view."
+msgstr "Par défaut, votre calendrier de réservation public affiche les créneaux occupés sous forme de blocs gris unis. Activez cette option pour utiliser à la place la couleur de chaque calendrier, comme dans votre vue de calendrier interne."
+
+#: lib/tymeslot_web/live/dashboard/calendar_settings/visible_hours_section.ex
+#, elixir-autogen, elixir-format
+msgid "Your public calendar and free/busy feed show busy blocks around the clock by default. Turn this on to hide anything outside a daily time range, e.g. 07:00–18:00."
+msgstr "Votre calendrier public et votre flux libre/occupé affichent les créneaux occupés en continu par défaut. Activez cette option pour masquer tout ce qui se trouve en dehors d'une plage horaire quotidienne, par exemple 07:00–18:00."

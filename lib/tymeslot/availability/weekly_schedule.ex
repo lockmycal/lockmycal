@@ -82,7 +82,8 @@ defmodule Tymeslot.Availability.WeeklySchedule do
       is_available: source.is_available,
       start_time: source.start_time,
       end_time: source.end_time,
-      max_booked_minutes: source.max_booked_minutes
+      max_booked_minutes: source.max_booked_minutes,
+      ends_next_day: source.ends_next_day
     }
 
     case upsert_day_availability(schedule_id, to_day, attrs) do
@@ -116,7 +117,8 @@ defmodule Tymeslot.Availability.WeeklySchedule do
           is_available: false,
           start_time: nil,
           end_time: nil,
-          max_booked_minutes: nil
+          max_booked_minutes: nil,
+          ends_next_day: false
         }
 
         with {:ok, updated_availability} <- update_day_availability(existing, attrs) do

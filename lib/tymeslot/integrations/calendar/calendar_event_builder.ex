@@ -44,16 +44,22 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
   their own calendar as on their dashboard. Whatever the title leaves out is
   still in the description.
 
+  Accepts an `:attendees` option (a list of `%{name:, email:}`-shaped
+  entries, defaulting to `[]`) used to list group-meeting participants in
+  the description. The builder is pure: it never loads the list itself, so
+  callers looping over many meetings (calendar sync) must fetch it once per
+  meeting and pass it in.
+
   The event's `:uid` is the meeting's `calendar_uid`, never its `uid`: the
   `uid` is the bearer capability behind the cancel and reschedule links, and
   anyone able to read the organiser's calendar would otherwise hold it.
   """
-  @spec build_event_data(map()) :: map()
-  def build_event_data(meeting) do
+  @spec build_event_data(map(), keyword()) :: map()
+  def build_event_data(meeting, opts \\ []) do
     %{
       uid: meeting.calendar_uid,
       summary: DisplayTitle.title(meeting, title_source(meeting)),
-      description: build_event_description(meeting),
+      description: build_event_description(meeting, opts),
       start_time: meeting.start_time,
       end_time: meeting.end_time,
       timezone: meeting.attendee_timezone,
@@ -142,9 +148,11 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
   type, the attendee's contact details, their whole message, answers, files
   and the video link — because the event title may be just the first line of
   the attendee's message (see `build_event_data/1`).
+
+  Takes the same `:attendees` option as `build_event_data/2`.
   """
-  @spec build_event_description(map()) :: String.t()
-  def build_event_description(meeting) do
+  @spec build_event_description(map(), keyword()) :: String.t()
+  def build_event_description(meeting, opts \\ []) do
     # Rendered in the organiser's language: this entry goes into their own
     # calendar. The attendee's copy is a separate document, built by
     # `ICSGenerator` in the attendee's language. Nothing sets a Gettext locale
@@ -153,7 +161,7 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
     # is how a German host ends up with an "Attendee:" line.
     RecipientLocale.with_user_id_locale(Map.get(meeting, :organizer_user_id), fn ->
       parts = [
-        header_section(meeting),
+        header_section(meeting, Keyword.get(opts, :attendees, [])),
         meeting.description,
         organizer_note_section(meeting),
         attendee_message_section(meeting),
@@ -249,11 +257,11 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
 
   # Who the booking is with and what kind of meeting it is, one fact per line,
   # as a single block ahead of the free-text sections.
-  defp header_section(meeting) do
+  defp header_section(meeting, attendees) do
     lines =
       Enum.reject(
         [
-          attendee_identity_line(meeting),
+          attendee_identity_line(meeting, attendees),
           labelled(meeting, :attendee_phone, &dgettext("emails", "Phone: %{phone}", phone: &1)),
           labelled(
             meeting,
@@ -268,7 +276,20 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
     if lines == [], do: nil, else: Enum.join(lines, "\n") <> "\n\n"
   end
 
-  defp attendee_identity_line(%{attendee_email: email} = meeting)
+  # A group meeting's people are its participants, passed in through the
+  # `:attendees` option so the organiser can see who is booked from inside
+  # their calendar app; its own `attendee_*` fields are always empty. A solo
+  # meeting passes no list and is described by its `attendee_*` fields. The
+  # description is rebuilt on every "update" sync, so as long as the caller
+  # re-fetches the list, seat changes keep it current; this module never
+  # loads it itself.
+  defp attendee_identity_line(_meeting, attendees) when attendees != [] do
+    dgettext("emails", "Attendees (%{count}):", count: length(attendees)) <>
+      "\n" <>
+      Enum.map_join(attendees, "\n", &participant_line/1) <> "\n\n"
+  end
+
+  defp attendee_identity_line(%{attendee_email: email} = meeting, _attendees)
        when is_binary(email) and email != "" do
     identity =
       case Map.get(meeting, :attendee_name) do
@@ -279,7 +300,12 @@ defmodule Tymeslot.Integrations.Calendar.CalendarEventBuilder do
     dgettext("emails", "Attendee: %{attendee}", attendee: identity)
   end
 
-  defp attendee_identity_line(_meeting), do: nil
+  defp attendee_identity_line(_meeting, _attendees), do: nil
+
+  defp participant_line(%{name: name, email: email}) when is_binary(name) and name != "",
+    do: "#{name} <#{email}>"
+
+  defp participant_line(%{email: email}), do: email
 
   defp labelled(meeting, key, line) do
     value = Map.get(meeting, key)

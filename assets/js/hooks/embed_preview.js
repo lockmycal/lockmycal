@@ -9,7 +9,7 @@ export const EmbedPreview = {
     this.initEmbed();
   },
   updated() {
-    const { username, baseUrl, embedType, isReady, layout, locale, initialHeight, maxWidth } = this.el.dataset;
+    const { username, baseUrl, embedType, isReady, layout, locale, meeting, background, initialHeight, maxWidth } = this.el.dataset;
     const prev = this._cachedDataset;
 
     if (
@@ -19,8 +19,11 @@ export const EmbedPreview = {
       isReady === prev.isReady &&
       layout === prev.layout &&
       locale === prev.locale &&
+      meeting === prev.meeting &&
+      background === prev.background &&
       initialHeight === prev.initialHeight &&
-      maxWidth === prev.maxWidth
+      maxWidth === prev.maxWidth &&
+      this.el.childElementCount > 0
     ) {
       return;
     }
@@ -51,12 +54,12 @@ export const EmbedPreview = {
     }
   },
   initEmbed() {
-    const { username, baseUrl, previewToken, embedType, isReady, layout, locale, initialHeight, maxWidth } = this.el.dataset;
-    this._cachedDataset = { username, baseUrl, embedType, isReady, layout, locale, initialHeight, maxWidth };
+    const { username, baseUrl, previewToken, embedType, isReady, layout, locale, meeting, background, initialHeight, maxWidth } = this.el.dataset;
+    this._cachedDataset = { username, baseUrl, embedType, isReady, layout, locale, meeting, background, initialHeight, maxWidth };
     const effectiveBaseUrl = baseUrl || window.location.origin;
     const ready = isReady === 'true';
 
-    const options = { layout, locale, initialHeight, maxWidth, previewToken };
+    const options = { layout, locale, meeting, background, initialHeight, maxWidth, previewToken };
 
     // Clear container
     this.el.innerHTML = '';
@@ -188,7 +191,7 @@ export const EmbedPreview = {
     button.textContent = this.el.dataset.linkLabel || '';
     button.className = 'text-primary-600 underline font-medium hover:text-primary-700 transition-colors cursor-pointer bg-transparent border-0 p-0';
     button.onclick = () => {
-      const linkUrl = new URL(`/${encodeURIComponent(username)}`, baseUrl);
+      const linkUrl = new URL(this.bookingPath(username, options.meeting), baseUrl);
       linkUrl.searchParams.set('preview', 'true');
       if (options.previewToken) {
         linkUrl.searchParams.set('preview_token', options.previewToken);
@@ -253,7 +256,7 @@ export const EmbedPreview = {
 
   createIframe(username, baseUrl, options = {}) {
     const iframe = document.createElement('iframe');
-    const url = new URL(`/${encodeURIComponent(username)}`, baseUrl);
+    const url = new URL(this.bookingPath(username, options.meeting), baseUrl);
     url.searchParams.set('preview', 'true');
     // `?preview=true` is only the display claim; on its own it fails a
     // submission closed as "Preview session expired". The signed, owner-bound
@@ -279,6 +282,9 @@ export const EmbedPreview = {
     if (options.locale) {
       url.searchParams.set('locale', options.locale);
     }
+    if (options.background) {
+      url.searchParams.set('background', options.background);
+    }
 
     iframe.src = url.toString();
     iframe.setAttribute('title', this.el.dataset.iframeTitle || '');
@@ -291,6 +297,13 @@ export const EmbedPreview = {
     iframe.style.border = 'none';
     iframe.style.borderRadius = '8px';
     return iframe;
+  },
+
+  // The booking page the preview opens: one meeting type's when the widget is
+  // pinned to it (the dashboard only offers valid slugs), else the overview.
+  bookingPath(username, meeting) {
+    const base = `/${encodeURIComponent(username)}`;
+    return meeting ? `${base}/${encodeURIComponent(meeting)}` : base;
   },
 
   // Maps the dataset values (strings) into the shape TymeslotBooking expects.
@@ -309,6 +322,12 @@ export const EmbedPreview = {
     }
     if (options.locale) {
       out.locale = options.locale;
+    }
+    if (options.meeting) {
+      out.meeting = options.meeting;
+    }
+    if (options.background) {
+      out.background = options.background;
     }
     if (options.maxWidth) {
       const n = parseInt(options.maxWidth, 10);

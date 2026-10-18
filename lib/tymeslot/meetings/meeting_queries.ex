@@ -4,7 +4,8 @@ defmodule Tymeslot.Meetings.MeetingQueries do
 
   This module provides a clean interface for single-record access, writes,
   and aggregate counts on meetings. Listing, filtering, and pagination
-  queries live in `Tymeslot.Meetings.MeetingListQueries`. Business logic
+  queries live in `Tymeslot.Meetings.MeetingListQueries`, and the analytics
+  aggregates in `Tymeslot.Meetings.MeetingAnalyticsQueries`. Business logic
   should be handled in the `Tymeslot.Meetings` context module.
   """
 
@@ -231,6 +232,22 @@ defmodule Tymeslot.Meetings.MeetingQueries do
   def update_meeting(%Meeting{} = meeting, attrs) when is_map(attrs) do
     meeting
     |> Meeting.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Updates a meeting's status transition fields only (`status`,
+  `cancelled_at`, `cancellation_reason`).
+
+  Used by cancellation flows instead of `update_meeting/2`: those touch
+  only these fields, and group meetings legitimately carry no
+  `attendee_name`/`attendee_email` — fields `Meeting.changeset/2` would
+  otherwise demand.
+  """
+  @spec update_meeting_status(Meeting.t(), map()) :: {:ok, Meeting.t()} | {:error, Changeset.t()}
+  def update_meeting_status(%Meeting{} = meeting, attrs) when is_map(attrs) do
+    meeting
+    |> Meeting.status_changeset(attrs)
     |> Repo.update()
   end
 

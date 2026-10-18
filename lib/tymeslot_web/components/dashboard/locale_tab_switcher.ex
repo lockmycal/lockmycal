@@ -25,13 +25,17 @@ defmodule TymeslotWeb.Components.Dashboard.LocaleTabSwitcher do
     assigns = assign(assigns, :options, options)
 
     ~H"""
-    <.option_toggle
-      options={@options}
-      active_value={@active_value}
-      click_event={@click_event}
-      target={@target}
-      aria_label={dgettext("dashboard_common", "Language")}
-    />
+    <%!-- Eight locales are wider than a phone: the row scrolls sideways
+         rather than pushing the page wider than the screen. --%>
+    <div class="max-w-full overflow-x-auto">
+      <.option_toggle
+        options={@options}
+        active_value={@active_value}
+        click_event={@click_event}
+        target={@target}
+        aria_label={dgettext("dashboard_common", "Language")}
+      />
+    </div>
     """
   end
 end

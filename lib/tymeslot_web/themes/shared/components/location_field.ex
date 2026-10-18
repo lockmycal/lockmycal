@@ -56,7 +56,7 @@ defmodule TymeslotWeb.Themes.Shared.Components.LocationField do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.MeetingTypes.LocationOption
-  alias TymeslotWeb.Components.CoreComponents
+  alias TymeslotWeb.Components.CoreComponents.Icons
   alias TymeslotWeb.Helpers.LocationIcons
 
   attr :location_options, :list, required: true
@@ -122,7 +122,7 @@ defmodule TymeslotWeb.Themes.Shared.Components.LocationField do
               phx-target={@target}
             />
             <span class="location-option__icon-tile">
-              <CoreComponents.icon
+              <Icons.icon
                 name={LocationIcons.icon(option.kind)}
                 class="location-option__icon"
               />
@@ -134,7 +134,7 @@ defmodule TymeslotWeb.Themes.Shared.Components.LocationField do
               </span>
             </span>
             <span class="location-option__check" aria-hidden="true">
-              <CoreComponents.icon name="hero-check-mini" class="location-option__check-icon" />
+              <Icons.icon name="hero-check-mini" class="location-option__check-icon" />
             </span>
           </label>
         </div>
@@ -171,13 +171,13 @@ defmodule TymeslotWeb.Themes.Shared.Components.LocationField do
               phx-target={@target}
             />
             <span class="location-option__icon-tile">
-              <CoreComponents.icon name={LocationIcons.icon("video")} class="location-option__icon" />
+              <Icons.icon name={LocationIcons.icon("video")} class="location-option__icon" />
             </span>
             <span class="location-option__text">
               <span class="location-option__title">{choice.name}</span>
             </span>
             <span class="location-option__check" aria-hidden="true">
-              <CoreComponents.icon name="hero-check-mini" class="location-option__check-icon" />
+              <Icons.icon name="hero-check-mini" class="location-option__check-icon" />
             </span>
           </label>
         </div>
@@ -289,7 +289,7 @@ defmodule TymeslotWeb.Themes.Shared.Components.LocationField do
     ~H"""
     <div class="location-field location-stated" data-testid="location-stated">
       <p class="location-stated__title">
-        <CoreComponents.icon name={LocationIcons.icon(@option.kind)} class="location-option__icon" />
+        <Icons.icon name={LocationIcons.icon(@option.kind)} class="location-option__icon" />
         <span>{@option.label}</span>
       </p>
       <.venue_detail :if={match?([_], @venue_choices)} venue={hd(@venue_choices)} />

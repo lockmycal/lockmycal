@@ -10,7 +10,9 @@ defmodule TymeslotWeb.Helpers.PageTitles do
   """
   @spec dashboard_title(atom()) :: String.t()
   def dashboard_title(:overview), do: section_title(dgettext("dashboard_common", "Overview"))
-  def dashboard_title(:settings), do: section_title(dgettext("dashboard_common", "Settings"))
+  # Section titles reuse the sidebar's labels, so the tab names the page the
+  # way the navigation does.
+  def dashboard_title(:settings), do: section_title(dgettext("dashboard_common", "Profile"))
 
   def dashboard_title(:availability),
     do: section_title(dgettext("dashboard_common", "Availability"))
@@ -32,7 +34,16 @@ defmodule TymeslotWeb.Helpers.PageTitles do
     do: section_title(dgettext("dashboard_common", "Video"))
 
   def dashboard_title(:automation), do: section_title(dgettext("dashboard_common", "Automation"))
-  def dashboard_title(:theme), do: section_title(dgettext("dashboard_common", "Theme Selection"))
+
+  def dashboard_title(action) when action in [:theme, :theme_customization],
+    do: section_title(dgettext("dashboard_common", "Theme"))
+
+  def dashboard_title(:polls), do: section_title(dgettext("dashboard_common", "Polls"))
+  def dashboard_title(:analytics), do: section_title(dgettext("dashboard_common", "Analytics"))
+
+  def dashboard_title(:integrations),
+    do: section_title(dgettext("dashboard_common", "Integrations"))
+
   def dashboard_title(:meetings), do: section_title(dgettext("dashboard_common", "Meetings"))
   def dashboard_title(:embed), do: section_title(dgettext("dashboard_common", "Embed & Share"))
   def dashboard_title(:payments), do: section_title(dgettext("dashboard_common", "Payments"))

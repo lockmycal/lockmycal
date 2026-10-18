@@ -142,6 +142,46 @@ describe('EmbedPreview', () => {
     );
   });
 
+  test('a widget pinned to one meeting type previews that type in every mode', () => {
+    const inline = mountHook('inline', { meeting: 'intro-call' });
+    expect(new URL(inline.el.querySelector('iframe').src).pathname).toBe('/alice/intro-call');
+
+    const popup = mountHook('popup', { meeting: 'intro-call' });
+    popup.el.querySelector('button').click();
+    expect(open.mock.calls[0][1].meeting).toBe('intro-call');
+
+    const link = mountHook('link', { meeting: 'intro-call' });
+    link.el.querySelector('button').click();
+    expect(new URL(windowOpen.mock.calls[0][0]).pathname).toBe('/alice/intro-call');
+  });
+
+  test('without a meeting type the preview opens the overview', () => {
+    const inline = mountHook('inline', { meeting: '' });
+    expect(new URL(inline.el.querySelector('iframe').src).pathname).toBe('/alice');
+
+    const popup = mountHook('popup', { meeting: '' });
+    popup.el.querySelector('button').click();
+    expect(open.mock.calls[0][1]).not.toHaveProperty('meeting');
+  });
+
+  test('an update with the same settings keeps the loaded frame', () => {
+    const hook = mountHook('inline');
+    const frame = hook.el.querySelector('iframe');
+
+    hook.updated();
+
+    expect(hook.el.querySelector('iframe')).toBe(frame);
+  });
+
+  test('an update that finds the container emptied builds the preview again', () => {
+    const hook = mountHook('inline');
+    hook.el.innerHTML = '';
+
+    hook.updated();
+
+    expect(hook.el.querySelector('iframe')).not.toBeNull();
+  });
+
   test('a deactivated link previews nothing at all', () => {
     const hook = mountHook('popup', { isReady: 'false' });
 

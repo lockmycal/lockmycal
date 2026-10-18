@@ -14,6 +14,8 @@ defmodule Tymeslot.Slack do
   require Logger
 
   alias Tymeslot.Features
+  alias Tymeslot.Infrastructure.Config
+  alias Tymeslot.Meetings.SeatView
   alias Tymeslot.Repo
   alias Tymeslot.Slack.{API, MessageBuilder, OAuth, SlackIntegrationSchema, SlackQueries}
   alias Tymeslot.Workers.SlackWorker
@@ -312,7 +314,12 @@ defmodule Tymeslot.Slack do
   def trigger_integration(integration, event_type, meeting) do
     if SlackIntegrationSchema.status(integration) == :active and
          SlackIntegrationSchema.subscribed_to?(integration, event_type) do
-      SlackWorker.schedule_delivery(integration.id, event_type, meeting.id)
+      SlackWorker.schedule_delivery(
+        integration.id,
+        event_type,
+        meeting.id,
+        SeatView.participant_id(meeting)
+      )
     else
       {:error, :integration_not_active}
     end
@@ -394,6 +401,11 @@ defmodule Tymeslot.Slack do
   # Events & feature checks
   # ============================================================================
 
+  @doc """
+  The events an integration can subscribe to, with the labels and descriptions
+  the webhook form shows: the same list, so no channel offers fewer events or
+  untranslated ones.
+  """
   @spec available_events() :: [
           %{
             required(:value) => String.t(),
@@ -401,25 +413,7 @@ defmodule Tymeslot.Slack do
             required(:description) => String.t()
           }
         ]
-  def available_events do
-    [
-      %{
-        value: "meeting.created",
-        label: "Meeting Created",
-        description: "Triggered when a new booking is created"
-      },
-      %{
-        value: "meeting.cancelled",
-        label: "Meeting Cancelled",
-        description: "Triggered when a booking is cancelled"
-      },
-      %{
-        value: "meeting.rescheduled",
-        label: "Meeting Rescheduled",
-        description: "Triggered when a booking time is changed"
-      }
-    ]
-  end
+  defdelegate available_events, to: Tymeslot.Webhooks
 
   @doc """
   Default event subscriptions used when a brand-new integration is created
@@ -544,7 +538,8 @@ defmodule Tymeslot.Slack do
     do:
       dgettext(
         "dashboard_automation_chat",
-        "Channel not accessible. If it's a private channel, invite the Tymeslot bot first."
+        "Channel not accessible. If it's a private channel, invite the %{app_name} bot first.",
+        app_name: Config.app_name()
       )
 
   defp translate_error_code(code) when code in ["token_revoked", "account_inactive"],

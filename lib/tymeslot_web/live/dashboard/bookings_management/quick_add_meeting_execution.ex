@@ -38,7 +38,6 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.QuickAddMeetingExecution do
   alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Infrastructure.Tasks
   alias Tymeslot.Meetings.Guests
-  alias Tymeslot.Utils.ReminderUtils
   alias TymeslotWeb.Components.Dashboard.Meetings.Helpers, as: MeetingsHelpers
   alias TymeslotWeb.Dashboard.BookingsManagementComponent
   alias TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow
@@ -125,7 +124,7 @@ defmodule TymeslotWeb.Dashboard.BookingsManagement.QuickAddMeetingExecution do
       calendar_integration_id: creating[:integration_id],
       calendar_path: creating[:calendar_id],
       video_integration_id: creating[:video_integration_id],
-      reminders: ReminderUtils.from_calendar_reminders(creating[:reminders] || []),
+      reminders: CreateExecution.meeting_reminders(creating),
       organizer_note: creating[:organizer_note],
       attendee_locale: creating[:locale],
       # `CreateAdHoc` expects a pre-validated list; the main guest can still be

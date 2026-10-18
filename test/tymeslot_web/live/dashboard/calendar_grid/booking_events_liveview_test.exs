@@ -179,18 +179,64 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.BookingEventsLiveviewTest do
       refute html =~ "Description"
       assert html =~ ">We should cover everything</div>"
       assert html =~ ">Looking forward to it</div>"
-      assert html =~ "Booked through your #{Config.app_name()} booking page"
-      assert html =~ "Manage in Meetings"
-      # A primary button, which keeps its colours on hover in both modes.
+      assert html =~ "Booked through your #{Config.app_name()} page"
+
       assert has_element?(
                lv,
-               "a.btn.btn-primary[href='/dashboard/meetings']",
-               "Manage in Meetings"
+               "#booking-detail-modal a[href='/dashboard/meetings']",
+               "Manage booking"
              )
 
-      refute lv
-             |> element("#booking-detail-modal button", "Cancel")
-             |> render_click() =~ "booking-detail-modal"
+      # A one-to-one booking carries no seat count or group lock note.
+      refute html =~ "booking-seats"
+      refute html =~ "booking-lock-note"
+
+      html =
+        lv
+        |> element("#calendar-grid")
+        |> render_hook("close_booking_detail", %{})
+
+      refute html =~ "booking-detail-modal"
+    end
+
+    test "lists a group meeting's live participants", %{conn: conn, user: user} do
+      start_time = DateTime.new!(Date.utc_today(), ~T[11:00:00], "Etc/UTC")
+
+      meeting =
+        insert(:group_meeting,
+          organizer_user: user,
+          title: "Group workshop",
+          capacity: 3,
+          start_time: start_time,
+          end_time: DateTime.add(start_time, 3600, :second)
+        )
+
+      insert(:participant, meeting: meeting, name: "Grace Hopper", email: "grace@example.com")
+      insert(:participant, meeting: meeting, name: "Alan Turing", email: "alan@example.com")
+
+      insert(:participant,
+        meeting: meeting,
+        name: "Gone Booker",
+        email: "gone@example.com",
+        cancelled_at: DateTime.utc_now(:second)
+      )
+
+      {:ok, lv, _html} = live(conn, ~p"/dashboard")
+
+      lv |> element(~s{[data-event-id="booking-#{meeting.id}"]}) |> render_click()
+
+      people = lv |> element(~s{[data-testid="booking-participants"]}) |> render()
+
+      assert people =~ "Grace Hopper"
+      assert people =~ "grace@example.com"
+      assert people =~ "Alan Turing"
+      assert people =~ "alan@example.com"
+      refute people =~ "Gone Booker"
+
+      assert lv |> element(~s{[data-testid="booking-seats"]}) |> render() =~ "2/3 seats taken"
+
+      assert lv |> element(~s{[data-testid="booking-lock-note"]}) |> render() =~
+               "This is a group booking."
     end
 
     test "ignores an unknown meeting id", %{conn: conn} do

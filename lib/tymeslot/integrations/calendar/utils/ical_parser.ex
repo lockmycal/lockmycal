@@ -7,6 +7,7 @@ defmodule Tymeslot.Integrations.Calendar.ICalParser do
   require Logger
   alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Infrastructure.Metrics
+  alias Tymeslot.Integrations.Calendar.ICalBuilder.ContentLines
   alias Tymeslot.Integrations.Calendar.VTimezone
   alias Tymeslot.Timezones
   alias Tymeslot.Utils.DateTimeUtils.Duration
@@ -97,7 +98,7 @@ defmodule Tymeslot.Integrations.Calendar.ICalParser do
   end
 
   defp parse_event_block(event_block, vtimezones) do
-    lines = unfold_lines(event_block)
+    {lines, alarms} = event_lines_and_alarms(event_block)
 
     # Extract properties
     uid = extract_property(lines, "UID")
@@ -128,9 +129,15 @@ defmodule Tymeslot.Integrations.Calendar.ICalParser do
         location: location,
         organizer: organizer,
         attendees: attendees,
+        valarm: alarms,
         recurrence_rule: recurrence_rule,
         recurrence_id: recurrence_id,
         recurrence_id_range: extract_recurrence_id_range(lines),
+        # A RECURRENCE-ID carrying its own TZID, resolved to UTC as DTSTART is
+        # (through the file's VTIMEZONE for a zone the database lacks). `nil`
+        # for the UTC, floating and DATE forms, which `recurrence_id` above
+        # already says all there is to say about.
+        recurrence_id_at: zoned_recurrence_id(lines, vtimezones),
         exdates: exdates,
         start_time: start_time,
         end_time: end_time,
@@ -141,41 +148,79 @@ defmodule Tymeslot.Integrations.Calendar.ICalParser do
         # `Tymeslot.Integrations.Calendar.ICalNormaliser.expand_event/3`). `nil` for UTC, floating, and
         # DATE-valued events, none of which have a zone to restore.
         timezone: dtstart_timezone(dtstart),
+        # A DTSTART with neither a TZID nor a `Z` is a floating wall-clock time,
+        # which `start_time`/`end_time` above read as UTC. Kept so a caller that
+        # knows whose wall clock it is can place it there.
+        floating: floating?(dtstart),
         transparency: normalize_transp(extract_property(lines, "TRANSP")),
         status: extract_property(lines, "STATUS"),
         class: extract_property(lines, "CLASS"),
-        colour:
-          extract_property(lines, "COLOR") || extract_property(lines, "X-APPLE-CALENDAR-COLOR")
+        colour: extract_colour(lines)
       }
     else
-      Logger.debug("Skipping event with missing required fields",
-        uid: uid,
-        summary: summary,
-        has_start: !is_nil(start_time)
-      )
-
-      nil
+      log_skipped_event(uid, summary, start_time)
     end
   end
 
+  defp log_skipped_event(uid, summary, start_time) do
+    Logger.debug("Skipping event with missing required fields",
+      uid: uid,
+      summary: summary,
+      has_start: !is_nil(start_time)
+    )
+
+    nil
+  end
+
+  defp extract_colour(lines),
+    do: extract_property(lines, "COLOR") || extract_property(lines, "X-APPLE-CALENDAR-COLOR")
+
   defp dtstart_timezone(%{timezone: timezone}) when is_binary(timezone), do: timezone
   defp dtstart_timezone(_dtstart), do: nil
+
+  defp floating?(%{value: value, timezone: nil}),
+    do: Regex.match?(~r/T\d{6}$/, String.trim(value))
+
+  defp floating?(_dtstart), do: false
 
   defp unfold_lines(content) do
     content
     |> String.split("\n")
     |> Enum.reduce([], fn line, acc ->
       # Continuation line (starts with space or tab)
-      if String.match?(line, ~r/^[\s\t]/) && acc != [] do
+      if acc != [] and match?(<<c, _::binary>> when c in [?\s, ?\t], line) do
         [last | rest] = acc
-        # RFC 5545 §3.1: unfold by removing the leading whitespace, no extra space
-        [last <> String.trim_leading(line) | rest]
+        # RFC 5545 §3.1: unfold by removing the line break and exactly ONE
+        # whitespace character; any further whitespace belongs to the value
+        <<_fold, continuation::binary>> = line
+        [last <> continuation | rest]
       else
         # New line
         [line | acc]
       end
     end)
     |> Enum.reverse()
+  end
+
+  # A VALARM carries its own DESCRIPTION and SUMMARY, which must never be read as
+  # the event's. The blocks are lifted out first and read as reminders.
+  defp event_lines_and_alarms(event_block), do: event_block |> unfold_lines() |> split_alarms()
+
+  defp split_alarms(lines), do: split_alarms(lines, [], [])
+
+  defp split_alarms([], event_lines, alarms),
+    do: {Enum.reverse(event_lines), Enum.reverse(alarms)}
+
+  defp split_alarms(["BEGIN:VALARM" | rest], event_lines, alarms) do
+    {body, remaining} = Enum.split_while(rest, &(&1 != "END:VALARM"))
+    split_alarms(Enum.drop(remaining, 1), event_lines, [parse_alarm(body) | alarms])
+  end
+
+  defp split_alarms([line | rest], event_lines, alarms),
+    do: split_alarms(rest, [line | event_lines], alarms)
+
+  defp parse_alarm(body) do
+    %{trigger: extract_property(body, "TRIGGER"), action: extract_property(body, "ACTION")}
   end
 
   defp extract_attendees(lines) do
@@ -238,7 +283,14 @@ defmodule Tymeslot.Integrations.Calendar.ICalParser do
 
     case line do
       nil -> nil
-      line -> line |> String.split(":", parts: 2) |> List.last() |> String.trim()
+      line -> line |> value_of() |> String.trim()
+    end
+  end
+
+  defp zoned_recurrence_id(lines, vtimezones) do
+    case extract_datetime_property(lines, "RECURRENCE-ID") do
+      %{timezone: zone} = rid when is_binary(zone) -> parse_datetime_property(rid, vtimezones)
+      _no_zone -> nil
     end
   end
 
@@ -251,7 +303,7 @@ defmodule Tymeslot.Integrations.Calendar.ICalParser do
     line = Enum.find(lines, &String.starts_with?(&1, "RECURRENCE-ID;"))
 
     with line when is_binary(line) <- line,
-         params = line |> String.split(":", parts: 2) |> List.first(),
+         {params, _value} = ContentLines.split_value(line),
          true <- Regex.match?(~r/(?:^|;)RANGE=THISANDFUTURE/i, params) do
       :this_and_future
     else
@@ -276,8 +328,7 @@ defmodule Tymeslot.Integrations.Calendar.ICalParser do
 
       line ->
         line
-        |> String.split(":", parts: 2)
-        |> List.last()
+        |> value_of()
         |> decode_value()
     end
   end
@@ -300,8 +351,7 @@ defmodule Tymeslot.Integrations.Calendar.ICalParser do
         # Extract the datetime value
         value =
           line
-          |> String.split(":", parts: 2)
-          |> List.last()
+          |> value_of()
           |> String.trim()
 
         %{value: value, timezone: timezone}
@@ -318,6 +368,13 @@ defmodule Tymeslot.Integrations.Calendar.ICalParser do
       [_match, timezone] -> Timezones.sanitize(timezone)
       nil -> nil
     end
+  end
+
+  # A quoted parameter value may hold a colon (`DESCRIPTION;ALTREP="data:text/html,…":text`),
+  # so the value starts after the first colon outside quotes, not the first colon.
+  defp value_of(line) do
+    {_name_and_params, value} = ContentLines.split_value(line)
+    value
   end
 
   defp decode_value(value) do
@@ -423,7 +480,7 @@ defmodule Tymeslot.Integrations.Calendar.ICalParser do
     end)
     |> Enum.flat_map(fn line ->
       timezone = extract_timezone_param(line)
-      value = line |> String.split(":", parts: 2) |> List.last() |> String.trim()
+      value = line |> value_of() |> String.trim()
 
       value
       |> String.split(",")

@@ -42,7 +42,6 @@ defmodule Tymeslot.Integrations.Calendar.CalendarPreferencesSchema do
   @valid_views ~w(week day month agenda)
   @valid_week_starts ~w(monday sunday)
   @valid_time_formats TimeFormat.formats()
-  @valid_booking_title_sources DisplayTitle.sources()
 
   @castable_fields [
     :user_id,
@@ -64,7 +63,9 @@ defmodule Tymeslot.Integrations.Calendar.CalendarPreferencesSchema do
     |> validate_inclusion(:default_view, @valid_views)
     |> validate_inclusion(:week_start_day, @valid_week_starts)
     |> validate_inclusion(:time_format, @valid_time_formats)
-    |> validate_inclusion(:booking_title_source, @valid_booking_title_sources)
+    # Read at run time: a module attribute would make this schema a
+    # compile-time dependant of DisplayTitle.
+    |> validate_inclusion(:booking_title_source, DisplayTitle.sources())
     |> unique_constraint(:user_id)
     |> foreign_key_constraint(:user_id)
   end

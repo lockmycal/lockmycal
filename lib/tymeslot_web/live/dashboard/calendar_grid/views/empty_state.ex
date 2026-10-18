@@ -35,13 +35,15 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Views.EmptyState do
           )}
         </p>
       </div>
-      <.link
+      <.action_link
         patch={~p"/dashboard/calendar-integration"}
-        class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-token-sm font-semibold rounded-token-lg transition-colors shrink-0"
+        variant={:primary}
+        size={:sm}
+        icon="hero-plus"
+        class="shrink-0"
       >
-        <.icon name="hero-plus" class="w-4 h-4" />
         {dgettext("dashboard_calendar", "Connect a calendar")}
-      </.link>
+      </.action_link>
     </div>
     """
   end

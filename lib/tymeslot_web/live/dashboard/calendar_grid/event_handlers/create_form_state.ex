@@ -11,7 +11,9 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.CreateFormState do
   alias Tymeslot.Meetings.Guests
   alias Tymeslot.Meetings.MeetingSchema
   alias Tymeslot.Security.UniversalSanitizer
+  alias TymeslotWeb.Components.Shared.ReminderPickerState
   alias TymeslotWeb.Dashboard.CalendarGrid.EditWorkflow
+  alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.RecurrenceRule
   alias TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.Shared
   alias TymeslotWeb.Dashboard.CalendarGrid.Modals.CalendarPicker
   alias TymeslotWeb.Dashboard.Shared.ContactPickerHandlers
@@ -377,6 +379,45 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.CreateFormState do
   defp toggle_all_day(%{date: date} = creating),
     do: %{creating | all_day: true, end_date: date}
 
+  @doc """
+  Handles every event the meeting-mode reminder picker sends, named by the
+  `meeting_` prefix it renders them with.
+
+  One clause for all five keeps the component's own dispatch to a single
+  entry: the picker's state is a map inside `creating_event`, so nothing here
+  needs to know which field an event touches.
+  """
+  @spec handle_meeting_reminder_event(String.t(), map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_meeting_reminder_event(event, params, socket) do
+    case socket.assigns.creating_event do
+      nil ->
+        {:noreply, socket}
+
+      creating ->
+        state = Map.get(creating, :meeting_reminders) || ReminderPickerState.new()
+        {_changed, updated} = apply_meeting_reminder_event(event, state, params)
+
+        {:noreply,
+         assign(socket, :creating_event, Map.put(creating, :meeting_reminders, updated))}
+    end
+  end
+
+  defp apply_meeting_reminder_event("meeting_add_quick_reminder", state, params),
+    do: ReminderPickerState.add_quick(state, params)
+
+  defp apply_meeting_reminder_event("meeting_add_reminder", state, params),
+    do: ReminderPickerState.add_custom(state, params)
+
+  defp apply_meeting_reminder_event("meeting_remove_reminder", state, params),
+    do: ReminderPickerState.remove(state, params)
+
+  defp apply_meeting_reminder_event("meeting_toggle_custom_reminder", state, _params),
+    do: ReminderPickerState.toggle_custom(state)
+
+  defp apply_meeting_reminder_event("meeting_update_reminder_input", state, params),
+    do: ReminderPickerState.update_input(state, params)
+
   @spec handle_add_create_reminder(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_add_create_reminder(params, socket) do
@@ -430,7 +471,7 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.EventHandlers.CreateFormState do
         # `CreateExecution` refits the rest to the event that is saved. The
         # date as it stands only anchors a default end date.
         rule =
-          Shared.compose_recurrence_rule(params, %{
+          RecurrenceRule.compose_recurrence_rule(params, %{
             timezone: socket.assigns.user_timezone,
             reference_date: reference_date(creating.date)
           })

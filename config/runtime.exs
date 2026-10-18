@@ -63,6 +63,19 @@ end
 # wherever the application environment is inspected.
 config :tymeslot, :http_proxy, Tymeslot.Infrastructure.ProxyConfig.from_env(System.get_env())
 
+# The "Scheduled with <app>" line in calendar files links to the instance
+# (`Tymeslot.Profiles.IcsBranding`). Left unset under test and wherever no host
+# is configured, which leaves the line off.
+if config_env() != :test do
+  case System.get_env("PHX_HOST") || System.get_env("CLOUDRON_APP_DOMAIN") do
+    host when is_binary(host) and host != "" ->
+      config :tymeslot, :ics_branding_url, "https://#{host}"
+
+    _no_host ->
+      :ok
+  end
+end
+
 # ## Using releases
 #
 # If you use `mix release`, you need to explicitly enable the server

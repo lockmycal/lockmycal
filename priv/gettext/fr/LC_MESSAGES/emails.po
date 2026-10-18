@@ -437,66 +437,6 @@ msgstr "%{name} via %{brand}"
 msgid "Important notification from %{brand}"
 msgstr "Notification importante de %{brand}"
 
-#: lib/tymeslot/emails/email_service/account_emails.ex
-#, elixir-autogen, elixir-format
-msgid "Email Address Changed - %{app_name} Account"
-msgstr "Adresse e-mail modifiée - Compte %{app_name}"
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "Both you and the attendee already have your confirmation emails, so the booking itself is unaffected — this is purely a video setup issue. Consider sending the attendee a video link manually, switching your video provider, or reconnecting it from your dashboard's Video settings."
-msgstr "Vous et le participant avez déjà reçu vos e-mails de confirmation, la réservation elle-même n'est donc pas affectée — il s'agit uniquement d'un problème de configuration vidéo. Envisagez d'envoyer manuellement un lien vidéo au participant, de changer de fournisseur vidéo, ou de le reconnecter depuis les paramètres Vidéo de votre tableau de bord."
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "I wasn't able to set up video conferencing for this meeting. The appointment itself has been successfully confirmed and both you and the attendee have received confirmation emails — you'll just need to arrange another way to meet, or set up video conferencing manually."
-msgstr "Je n'ai pas pu configurer la visioconférence pour ce rendez-vous. Le rendez-vous lui-même a bien été confirmé, et vous ainsi que le participant avez reçu les e-mails de confirmation — il vous suffit d'organiser une autre façon de vous rencontrer ou de configurer la visioconférence manuellement."
-
-#: lib/tymeslot/emails/email_service/calendar_emails.ex
-#, elixir-autogen, elixir-format
-msgid "Meeting Organizer"
-msgstr "Organisateur de la réunion"
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "The booking is safe - but video conferencing needs your attention."
-msgstr "La réservation est sécurisée - mais la visioconférence nécessite votre attention."
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "This is an automated system notification. Please check your video integration settings if this issue persists."
-msgstr "Ceci est une notification automatique du système. Veuillez vérifier vos paramètres d'intégration vidéo si ce problème persiste."
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "Video Setup Failed"
-msgstr "Échec de la configuration vidéo"
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "Video conferencing could not be set up for your meeting."
-msgstr "La visioconférence n'a pas pu être configurée pour votre rendez-vous."
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "Video didn't set up"
-msgstr "La vidéo n'a pas été configurée"
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "WHAT YOU CAN DO:"
-msgstr "CE QUE VOUS POUVEZ FAIRE :"
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "What you can do"
-msgstr "Ce que vous pouvez faire"
-
-#: lib/tymeslot/emails/email_service/calendar_emails.ex
-#, elixir-autogen, elixir-format
-msgid "⚠️ Video Setup Failed - Action Required"
-msgstr "⚠️ Échec de la configuration vidéo - Action requise"
-
 #: lib/tymeslot/emails/shared/formatting.ex
 #, elixir-autogen, elixir-format
 msgid "%{count} day"
@@ -539,16 +479,6 @@ msgstr "Participant : %{attendee}"
 msgid "Message from attendee:"
 msgstr "Message du participant :"
 
-#: lib/tymeslot/emails/email_service/auth_emails.ex
-#, elixir-autogen, elixir-format
-msgid "You already have a Tymeslot account"
-msgstr "Vous avez déjà un compte LockMyCal"
-
-#: lib/tymeslot/emails/email_service/auth_emails.ex
-#, elixir-autogen, elixir-format
-msgid "Your Tymeslot account has no password"
-msgstr "Votre compte LockMyCal n’a pas de mot de passe"
-
 #: lib/tymeslot/emails/shared/sign_in_provider.ex
 #, elixir-autogen, elixir-format
 msgid "single sign-on"
@@ -558,67 +488,6 @@ msgstr "l’authentification unique"
 #, elixir-autogen, elixir-format
 msgid "Confirm your email to finish signing up"
 msgstr "Confirmez votre e-mail pour finaliser votre inscription"
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "Action required"
-msgstr "Action requise"
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "Duration:"
-msgstr "Durée :"
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "Meeting Details"
-msgstr "Détails de la réunion"
-
-#: lib/tymeslot/emails/templates/video_room_failed.ex
-#, elixir-autogen, elixir-format
-msgid "Not specified"
-msgstr "Non spécifié"
-
-#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
-#, elixir-autogen, elixir-format
-msgid "ATTACHMENTS:"
-msgstr "PIÈCES JOINTES :"
-
-#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
-#, elixir-autogen, elixir-format
-msgid "Attachments"
-msgstr "Pièces jointes"
-
-#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
-#, elixir-autogen, elixir-format
-msgid "The files are attached to this email."
-msgstr "Les fichiers sont joints à cet e-mail."
-
-#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
-#, elixir-autogen, elixir-format
-msgid "The files are too large to attach to this email. Download them from the booking on your dashboard: %{url}"
-msgstr "Les fichiers sont trop volumineux pour être joints à cet e-mail. Téléchargez-les depuis la réservation dans votre tableau de bord : %{url}"
-
-#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
-#, elixir-autogen, elixir-format
-msgid "Files from the attendee (sign in to download):"
-msgstr "Fichiers du participant (connectez-vous pour les télécharger) :"
-
-#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
-#, elixir-autogen, elixir-format
-msgid "Company: %{company}"
-msgstr "Entreprise : %{company}"
-
-#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
-#, elixir-autogen, elixir-format
-msgid "Meeting type: %{type}"
-msgstr "Type de réunion : %{type}"
-
-#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
-#: lib/tymeslot/meetings/booker_calendar_sync.ex
-#, elixir-autogen, elixir-format
-msgid "Phone: %{phone}"
-msgstr "Téléphone : %{phone}"
 
 #: lib/tymeslot/emails/templates/calendar_invitation.ex
 #, elixir-autogen, elixir-format
@@ -685,7 +554,172 @@ msgstr "L'adresse sera convenue après la réservation."
 msgid "The address will be arranged with you after booking."
 msgstr "L'adresse sera convenue avec vous après la réservation."
 
+#: lib/tymeslot/emails/appointment_builder.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} participant"
+msgid_plural "%{count} participants"
+msgstr[0] "%{count} participant"
+msgstr[1] "%{count} participants"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Attendees (%{count}):"
+msgstr "Participants (%{count}) :"
+
+#: lib/tymeslot/emails/shared/text_body_helper.ex
+#, elixir-autogen, elixir-format
+msgid "Open in dashboard:"
+msgstr "Ouvrir dans le tableau de bord :"
+
+#: lib/tymeslot/emails/shared/group_session.ex
+#, elixir-autogen, elixir-format
+msgid "Group session: you have one of %{count} spot."
+msgid_plural "Group session: you have one of %{count} spots."
+msgstr[0] "Session de groupe : vous avez l'une des %{count} places."
+msgstr[1] "Session de groupe : vous avez l'une des %{count} places."
+
+#: lib/tymeslot/emails/shared/formatting.ex
+#, elixir-autogen, elixir-format
+msgid "ends %{time} on %{date}"
+msgstr "se termine à %{time} le %{date}"
+
+#: lib/tymeslot/integrations/calendar/utils/ics_generator.ex
+#, elixir-autogen, elixir-format
+msgid "Scheduled with %{brand}: %{url}"
+msgstr "Planifié avec %{brand} : %{url}"
+
+#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
+#, elixir-autogen, elixir-format
+msgid "ATTACHMENTS:"
+msgstr "PIÈCES JOINTES :"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Action required"
+msgstr "Action requise"
+
+#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
+#, elixir-autogen, elixir-format
+msgid "Attachments"
+msgstr "Pièces jointes"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Both you and the attendee already have your confirmation emails, so the booking itself is unaffected — this is purely a video setup issue. Consider sending the attendee a video link manually, switching your video provider, or reconnecting it from your dashboard's Video settings."
+msgstr "Vous et le participant avez déjà reçu vos e-mails de confirmation, la réservation elle-même n'est donc pas affectée — il s'agit uniquement d'un problème de configuration vidéo. Envisagez d'envoyer manuellement un lien vidéo au participant, de changer de fournisseur vidéo, ou de le reconnecter depuis les paramètres Vidéo de votre tableau de bord."
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Company: %{company}"
+msgstr "Entreprise : %{company}"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Duration:"
+msgstr "Durée :"
+
+#: lib/tymeslot/emails/email_service/account_emails.ex
+#, elixir-autogen, elixir-format
+msgid "Email Address Changed - %{app_name} Account"
+msgstr "Adresse e-mail modifiée - Compte %{app_name}"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Files from the attendee (sign in to download):"
+msgstr "Fichiers du participant (connectez-vous pour les télécharger) :"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "I wasn't able to set up video conferencing for this meeting. The appointment itself has been successfully confirmed and both you and the attendee have received confirmation emails — you'll just need to arrange another way to meet, or set up video conferencing manually."
+msgstr "Je n'ai pas pu configurer la visioconférence pour ce rendez-vous. Le rendez-vous lui-même a bien été confirmé, et vous ainsi que le participant avez reçu les e-mails de confirmation — il vous suffit d'organiser une autre façon de vous rencontrer ou de configurer la visioconférence manuellement."
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Details"
+msgstr "Détails de la réunion"
+
+#: lib/tymeslot/emails/email_service/calendar_emails.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Organizer"
+msgstr "Organisateur de la réunion"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting type: %{type}"
+msgstr "Type de réunion : %{type}"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Not specified"
+msgstr "Non spécifié"
+
 #: lib/tymeslot/meetings/booker_calendar_sync.ex
 #, elixir-autogen, elixir-format
 msgid "Organizer: %{organizer}"
 msgstr "Organisateur : %{organizer}"
+
+#: lib/tymeslot/integrations/calendar/calendar_event_builder.ex
+#: lib/tymeslot/meetings/booker_calendar_sync.ex
+#, elixir-autogen, elixir-format
+msgid "Phone: %{phone}"
+msgstr "Téléphone : %{phone}"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "The booking is safe - but video conferencing needs your attention."
+msgstr "La réservation est sécurisée - mais la visioconférence nécessite votre attention."
+
+#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
+#, elixir-autogen, elixir-format
+msgid "The files are attached to this email."
+msgstr "Les fichiers sont joints à cet e-mail."
+
+#: lib/tymeslot/emails/shared/meeting/attendee_attachments.ex
+#, elixir-autogen, elixir-format
+msgid "The files are too large to attach to this email. Download them from the booking on your dashboard: %{url}"
+msgstr "Les fichiers sont trop volumineux pour être joints à cet e-mail. Téléchargez-les depuis la réservation dans votre tableau de bord : %{url}"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "This is an automated system notification. Please check your video integration settings if this issue persists."
+msgstr "Ceci est une notification automatique du système. Veuillez vérifier vos paramètres d'intégration vidéo si ce problème persiste."
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Video Setup Failed"
+msgstr "Échec de la configuration vidéo"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Video conferencing could not be set up for your meeting."
+msgstr "La visioconférence n'a pas pu être configurée pour votre rendez-vous."
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "Video didn't set up"
+msgstr "La vidéo n'a pas été configurée"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "WHAT YOU CAN DO:"
+msgstr "CE QUE VOUS POUVEZ FAIRE :"
+
+#: lib/tymeslot/emails/templates/video_room_failed.ex
+#, elixir-autogen, elixir-format
+msgid "What you can do"
+msgstr "Ce que vous pouvez faire"
+
+#: lib/tymeslot/emails/email_service/auth_emails.ex
+#, elixir-autogen, elixir-format
+msgid "You already have a %{app_name} account"
+msgstr "Vous avez déjà un compte %{app_name}"
+
+#: lib/tymeslot/emails/email_service/auth_emails.ex
+#, elixir-autogen, elixir-format
+msgid "Your %{app_name} account has no password"
+msgstr "Votre compte %{app_name} n’a pas de mot de passe"
+
+#: lib/tymeslot/emails/email_service/calendar_emails.ex
+#, elixir-autogen, elixir-format
+msgid "⚠️ Video Setup Failed - Action Required"
+msgstr "⚠️ Échec de la configuration vidéo - Action requise"

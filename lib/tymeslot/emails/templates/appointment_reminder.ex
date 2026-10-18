@@ -76,8 +76,12 @@ defmodule Tymeslot.Emails.Templates.AppointmentReminder do
 
       html_body = TemplateHelper.compile_template(mjml_content, organizer_details)
 
-      MjmlEmail.base_email()
+      MjmlEmail.base_email(organizer_user_id: appointment_details[:organizer_user_id])
       |> to({appointment_details.attendee_name, attendee_email})
+      |> MjmlEmail.put_reply_to(
+        appointment_details.organizer_name,
+        appointment_details.organizer_email
+      )
       |> subject(
         Sanitise.sanitize_for_header(
           dgettext("emails_booking", "Reminder: Our meeting is in %{time_until}",
@@ -155,8 +159,12 @@ defmodule Tymeslot.Emails.Templates.AppointmentReminder do
 
       html_body = TemplateHelper.compile_template(mjml_content, organizer_details)
 
-      MjmlEmail.base_email()
+      MjmlEmail.base_email(organizer_user_id: appointment_details[:organizer_user_id])
       |> to({guest_name, guest_email})
+      |> MjmlEmail.put_reply_to(
+        appointment_details.organizer_name,
+        appointment_details.organizer_email
+      )
       |> subject(
         Sanitise.sanitize_for_header(
           dgettext("emails_booking", "Reminder: the meeting with %{name} is in %{time_until}",
@@ -191,7 +199,7 @@ defmodule Tymeslot.Emails.Templates.AppointmentReminder do
 
       #{Text.section_title(dgettext("emails_booking", "Quick actions"))}
 
-      #{MeetingComponents.meeting_actions_bar(@intent, [%{text: dgettext("emails_booking", "Reschedule"), url: Map.get(appointment_details, :reschedule_url, "#"), style: :secondary}, %{text: dgettext("emails_booking", "Cancel"), url: Map.get(appointment_details, :cancel_url, "#"), style: :danger}])}
+      #{MeetingComponents.meeting_actions_bar(@intent, organizer_actions(appointment_details))}
       """
 
       organizer_details =
@@ -210,8 +218,12 @@ defmodule Tymeslot.Emails.Templates.AppointmentReminder do
 
       html_body = TemplateHelper.compile_template(mjml_content, organizer_details)
 
-      MjmlEmail.base_email()
+      MjmlEmail.base_email(organizer_user_id: appointment_details[:organizer_user_id])
       |> to({appointment_details.organizer_name, organizer_email})
+      |> MjmlEmail.put_reply_to(
+        appointment_details.attendee_name,
+        appointment_details.attendee_email
+      )
       |> subject(
         Sanitise.sanitize_for_header(
           dgettext("emails_booking", "⏰ Meeting with %{name} in %{time_until}",
@@ -223,6 +235,27 @@ defmodule Tymeslot.Emails.Templates.AppointmentReminder do
       |> html_body(html_body)
       |> text_body(build_organizer_text_body(appointment_details))
     end)
+  end
+
+  # A group meeting's reminder (`AppointmentBuilder.for_organizer_of_group/3`)
+  # points the organiser at their dashboard: the public links to reschedule
+  # or cancel a booking are refused for a group meeting.
+  defp organizer_actions(%{dashboard_url: url}) when is_binary(url),
+    do: [%{text: dgettext("emails_booking", "Open in dashboard"), url: url, style: :primary}]
+
+  defp organizer_actions(appointment_details) do
+    [
+      %{
+        text: dgettext("emails_booking", "Reschedule"),
+        url: Map.get(appointment_details, :reschedule_url, "#"),
+        style: :secondary
+      },
+      %{
+        text: dgettext("emails_booking", "Cancel"),
+        url: Map.get(appointment_details, :cancel_url, "#"),
+        style: :danger
+      }
+    ]
   end
 
   defp build_attendee_text_body(appointment_details, locale) do

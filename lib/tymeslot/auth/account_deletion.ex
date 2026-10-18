@@ -44,6 +44,7 @@ defmodule Tymeslot.Auth.AccountDeletion do
   alias Tymeslot.Meetings
   alias Tymeslot.Meetings.{MeetingListQueries, MeetingState}
   alias Tymeslot.Profiles
+  alias Tymeslot.Profiles.BrandLogo
   alias Tymeslot.Repo
   alias Tymeslot.Security.{Password, SecurityLogger}
   alias Tymeslot.ThemeCustomizations
@@ -395,6 +396,7 @@ defmodule Tymeslot.Auth.AccountDeletion do
   defp delete_uploaded_files({:ok, deleted} = result, %{id: profile_id}) do
     for {kind, outcome} <- [
           avatars: Profiles.delete_avatar_files(profile_id),
+          brand_logo: BrandLogo.delete_all_files(profile_id),
           theme_backgrounds: ThemeCustomizations.delete_profile_files(profile_id),
           booking_attachments: AttendeeAttachments.delete_user_files(deleted.id)
         ],

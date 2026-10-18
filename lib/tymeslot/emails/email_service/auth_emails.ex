@@ -10,6 +10,7 @@ defmodule Tymeslot.Emails.EmailService.AuthEmails do
   alias Tymeslot.Emails.Delivery
   alias Tymeslot.Emails.RecipientLocale
   alias Tymeslot.Emails.Shared.MjmlEmail
+  alias Tymeslot.Infrastructure.Config
 
   alias Tymeslot.Emails.Templates.{
     EmailVerification,
@@ -73,8 +74,9 @@ defmodule Tymeslot.Emails.EmailService.AuthEmails do
     Logger.info("Sending no-password-to-reset notice", user_id: user.id)
 
     deliver_to(user, fn ->
-      {dgettext("emails", "Your Tymeslot account has no password"),
-       NoPasswordToReset.render(user, sign_in_url),
+      {dgettext("emails", "Your %{app_name} account has no password",
+         app_name: Config.app_name()
+       ), NoPasswordToReset.render(user, sign_in_url),
        NoPasswordToReset.render_text(user, sign_in_url)}
     end)
   end
@@ -92,7 +94,7 @@ defmodule Tymeslot.Emails.EmailService.AuthEmails do
     Logger.info("Sending sign-up attempt notice", user_id: user.id)
 
     deliver_to(user, fn ->
-      {dgettext("emails", "You already have a Tymeslot account"),
+      {dgettext("emails", "You already have a %{app_name} account", app_name: Config.app_name()),
        SignupAttemptNotice.render(user, sign_in_url, reset_url),
        SignupAttemptNotice.render_text(user, sign_in_url, reset_url)}
     end)

@@ -31,11 +31,6 @@ msgstr "Сталася помилка. Оновіть сторінку та сп
 msgid "Background Design"
 msgstr "Дизайн фону"
 
-#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
-#, elixir-autogen, elixir-format
-msgid "Choose Your Style"
-msgstr "Оберіть свій стиль"
-
 #: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
 #, elixir-autogen, elixir-format
 msgid "Choose a visual style that matches your professional identity."
@@ -71,11 +66,6 @@ msgstr "Підключіть календар для попереднього п
 #, elixir-autogen, elixir-format
 msgid "Current"
 msgstr "Поточний"
-
-#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
-#, elixir-autogen, elixir-format
-msgid "Current Style"
-msgstr "Поточний стиль"
 
 #: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
 #: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/color_picker.ex
@@ -126,21 +116,11 @@ msgstr "Некоректний вибір теми"
 msgid "Live Preview"
 msgstr "Перегляд наживо"
 
-#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
-#, elixir-autogen, elixir-format
-msgid "More Styles Coming Soon"
-msgstr "Нові стилі вже скоро"
-
 #: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/image_picker.ex
 #: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/video_picker.ex
 #, elixir-autogen, elixir-format
 msgid "Or upload your own"
 msgstr "Або завантажте свій файл"
-
-#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
-#, elixir-autogen, elixir-format
-msgid "Our design team is busy crafting new themes to help you express your unique professional style."
-msgstr "Наша команда дизайнерів активно працює над новими темами, щоб допомогти вам виразити свій унікальний професійний стиль."
 
 #: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/theme_preview_inline.ex
 #, elixir-autogen, elixir-format
@@ -332,8 +312,8 @@ msgstr "Забагато змін - збереження за мить…"
 
 #: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
 #, elixir-autogen, elixir-format
-msgid "Turn this off to go back to the built-in text, which is translated into every language Tymeslot supports. Your own wording is discarded."
-msgstr "Вимкніть це, щоб повернутися до вбудованого тексту, перекладеного всіма мовами, які підтримує LockMyCal. Ваш власний текст буде видалено."
+msgid "Turn this off to go back to the built-in text, which is translated into every language %{app_name} supports. Your own wording is discarded."
+msgstr "Вимкніть це, щоб повернутися до вбудованого тексту, перекладеного всіма мовами, які підтримує %{app_name}. Ваш власний текст буде видалено."
 
 #: lib/tymeslot_web/live/dashboard/theme_settings/booking_text_form.ex
 #, elixir-autogen, elixir-format
@@ -345,15 +325,10 @@ msgstr "Незбережені зміни"
 msgid "Complete the form to save"
 msgstr "Заповніть форму, щоб зберегти"
 
-#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
 #, elixir-autogen, elixir-format
-msgid "Fine-tune the colors and background of your booking page."
-msgstr "Точно налаштуйте кольори та фон своєї сторінки бронювання."
-
-#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/gradient_picker.ex
-#, elixir-autogen, elixir-format
-msgid "Select a gradient background"
-msgstr "Обрати градієнтний фон"
+msgid "Choose Your Style"
+msgstr "Оберіть свій стиль"
 
 #: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/pickers/image_picker.ex
 #, elixir-autogen, elixir-format
@@ -369,3 +344,128 @@ msgstr "MP4, WebM або MOV. Максимум %{mb} МБ."
 #, elixir-autogen, elixir-format
 msgid "Your current custom background image"
 msgstr "Ваше поточне власне фонове зображення"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/theme_customization/components.ex
+#, elixir-autogen, elixir-format
+msgid "Background type"
+msgstr "Тип фону"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Current style"
+msgstr "Поточний стиль"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Could not remove the logo."
+msgstr "Не вдалося видалити логотип."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Could not save the logo."
+msgstr "Не вдалося зберегти логотип."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Current logo"
+msgstr "Поточний логотип"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Logo removed."
+msgstr "Логотип видалено."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Logo updated."
+msgstr "Логотип оновлено."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "No logo uploaded. The default logo is shown."
+msgstr "Логотип не завантажено. Показується логотип за замовчуванням."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Remove"
+msgstr "Видалити"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Replace"
+msgstr "Замінити"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Show your own logo instead of ours at the top of your booking page and in the emails about your meetings. Applies to every theme."
+msgstr "Показуйте власний логотип замість нашого вгорі сторінки бронювання та в листах про ваші зустрічі. Діє для всіх тем."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "That file is not a valid image and was not saved."
+msgstr "Файл не є дійсним зображенням і не був збережений."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "That file type is not supported."
+msgstr "Цей тип файлу не підтримується."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "That image could not be read. Try a PNG or JPEG file."
+msgstr "Не вдалося прочитати зображення. Спробуйте файл PNG або JPEG."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "The logo could not be uploaded."
+msgstr "Не вдалося завантажити логотип."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "The logo is too large. The maximum size is 2 MB."
+msgstr "Логотип завеликий. Максимальний розмір — 2 МБ."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Too many logo changes. Please wait a while and try again."
+msgstr "Забагато змін логотипа. Зачекайте трохи й спробуйте знову."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Upload logo"
+msgstr "Завантажити логотип"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Upload one logo at a time."
+msgstr "Завантажуйте лише один логотип за раз."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Your Logo"
+msgstr "Ваш логотип"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Your own logo is available on the Pro plan and higher."
+msgstr "Власний логотип доступний у тарифі Pro і вище."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/brand_logo_component.ex
+#, elixir-autogen, elixir-format
+msgid "Your own logo is available on the Pro plan and higher. Until then the default logo is shown."
+msgstr "Власний логотип доступний у тарифі Pro і вище. Доти показується логотип за замовчуванням."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/ics_branding_component.ex
+#, elixir-autogen, elixir-format
+msgid "\"Scheduled with %{app}\" in calendar files"
+msgstr "«Заплановано через %{app}» у файлах календаря"
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/ics_branding_component.ex
+#, elixir-autogen, elixir-format
+msgid "Could not save the setting."
+msgstr "Не вдалося зберегти налаштування."
+
+#: lib/tymeslot_web/live/dashboard/theme_settings/ics_branding_component.ex
+#, elixir-autogen, elixir-format
+msgid "The calendar invitations and downloads for your meetings end their description with this line and a link. Turn it off to leave it out."
+msgstr "Запрошення та файли календаря для ваших зустрічей закінчують опис цим рядком і посиланням. Вимкніть, щоб його не додавати."

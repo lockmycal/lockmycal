@@ -92,13 +92,23 @@ defmodule TymeslotWeb.Dashboard.CalendarGrid.Helpers.DataLoading do
 
     events = merge_booking_events(Selection.visible_events(cached, integrations), booking_events)
 
+    # The group meetings with live seats in the same range, shown locked:
+    # their time belongs to the bookers rather than the calendar. Loaded with
+    # the events so the set always covers what is on screen; the handlers
+    # re-check the lock against the database before acting.
+    group_booking_uids =
+      Meetings.group_booking_uids_for_user(socket.assigns.current_user.id, start_dt, end_dt)
+
     socket
     |> assign(:events, events)
+    |> assign(:group_booking_uids, group_booking_uids)
     |> precompute_derived()
   end
 
-  defp booking_title_source(%{preferences: %{booking_title_source: source}}), do: source
-  defp booking_title_source(_assigns), do: nil
+  @doc "The organiser's booking title preference, which names a booking on the grid."
+  @spec booking_title_source(map()) :: String.t() | nil
+  def booking_title_source(%{preferences: %{booking_title_source: source}}), do: source
+  def booking_title_source(_assigns), do: nil
 
   # A booking awaiting approval replaces its synced tentative hold, so the grid
   # shows it as pending rather than as an ordinary event in the hold's calendar

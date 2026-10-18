@@ -59,7 +59,7 @@ defmodule Tymeslot.Integrations.Calendar.Outlook.EventNormaliser do
         status: map_status(raw),
         organiser: map_organiser(raw["organizer"]),
         attendees: map_attendees(raw["attendees"]),
-        reminders: map_reminders(raw["reminderMinutesBeforeStart"]),
+        reminders: map_reminders(raw),
         recurrence_rule: map_recurrence_rule(raw["recurrence"]),
         provider_metadata: Map.put(raw, "seriesMasterId", raw["seriesMasterId"]),
         created_by_tymeslot: tymeslot_origin?(raw)
@@ -125,7 +125,11 @@ defmodule Tymeslot.Integrations.Calendar.Outlook.EventNormaliser do
   defp map_response_status("none"), do: :needs_action
   defp map_response_status(_other), do: :needs_action
 
-  defp map_reminders(minutes) when is_integer(minutes) do
+  # Graph returns `reminderMinutesBeforeStart` (default 15) even when the
+  # reminder is switched off, so `isReminderOn` decides whether there is one.
+  defp map_reminders(%{"isReminderOn" => false}), do: []
+
+  defp map_reminders(%{"reminderMinutesBeforeStart" => minutes}) when is_integer(minutes) do
     [%{method: :popup, minutes_before: minutes}]
   end
 
