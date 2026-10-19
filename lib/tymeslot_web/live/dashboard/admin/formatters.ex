@@ -166,7 +166,7 @@ defmodule TymeslotWeb.Dashboard.Admin.Formatters do
   def describe(:admin_alert_email) do
     dgettext(
       "dashboard_admin",
-      "Email address that receives admin alerts when the toggle above is enabled. Leave blank to fall back to the ADMIN_ALERT_EMAIL environment variable."
+      "Email address that receives admin alerts when the toggle above is enabled. Leave blank to send no alert emails."
     )
   end
 
@@ -518,6 +518,28 @@ defmodule TymeslotWeb.Dashboard.Admin.Formatters do
   end
 
   def lock_reason(_key, _state), do: nil
+
+  @doc """
+  Why a setting fixed by the environment variable `env_var` cannot be changed
+  from the admin page.
+  """
+  @spec pinned_reason(String.t()) :: String.t()
+  def pinned_reason(env_var) do
+    dgettext(
+      "dashboard_admin",
+      "Set by the %{variable} environment variable. To change it here, remove the variable and restart %{app_name}.",
+      variable: env_var,
+      app_name: Config.app_name()
+    )
+  end
+
+  @doc """
+  The reason a setting tag is locked: a pinned setting's reason outranks the
+  lockout one, because removing the variable is the only way to change it at all.
+  """
+  @spec tag_lock_reason(atom(), term(), map()) :: String.t() | nil
+  def tag_lock_reason(_key, _state, %{env_var: var}) when is_binary(var), do: pinned_reason(var)
+  def tag_lock_reason(key, state, _effective), do: lock_reason(key, state)
 
   defp sso_lock_reason do
     dgettext(

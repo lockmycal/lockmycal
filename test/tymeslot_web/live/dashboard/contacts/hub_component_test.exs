@@ -154,6 +154,25 @@ defmodule TymeslotWeb.Dashboard.Contacts.HubComponentTest do
       assert contact.email == "jane@example.com"
       assert contact.note == "Met at a conference"
     end
+
+    # Name and email are `required`; without `novalidate` the browser would
+    # stop an empty submit with its own bubble before these inline errors.
+    test "an empty form is refused inline, not by the browser", %{conn: conn, user: user} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/contacts")
+
+      view
+      |> element("button", "Add contact")
+      |> render_click()
+
+      assert has_element?(view, "#contact-form[novalidate]")
+
+      view
+      |> form("#contact-form", %{"contact" => %{"name" => "", "email" => ""}})
+      |> render_submit()
+
+      assert has_element?(view, "#contact-form [role='alert']")
+      assert Contacts.list_contacts(user.id) == []
+    end
   end
 
   describe "edit" do

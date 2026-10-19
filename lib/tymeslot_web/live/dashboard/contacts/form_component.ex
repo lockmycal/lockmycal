@@ -62,6 +62,7 @@ defmodule TymeslotWeb.Dashboard.Contacts.FormComponent do
         phx-submit={JS.push("save_contact", target: @parent_component)}
         phx-target={@parent_component}
         class="space-y-8"
+        novalidate
       >
         <div>
           <.subsection_header

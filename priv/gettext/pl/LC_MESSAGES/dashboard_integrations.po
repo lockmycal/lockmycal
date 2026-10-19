@@ -29,11 +29,6 @@ msgstr "Zmień link"
 
 #: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
 #, elixir-autogen, elixir-format
-msgid "Changing the link is only available on the Pro plan and above."
-msgstr "Zmiana linku jest dostępna tylko w planie Pro i wyższych."
-
-#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
-#, elixir-autogen, elixir-format
 msgid "Copy"
 msgstr "Kopiuj"
 
@@ -72,6 +67,11 @@ msgstr "Ten link jest nieprawidłowy. Użyj małych liter, cyfr i myślników."
 msgid "Add Integration"
 msgstr "Dodaj integrację"
 
+#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Add Meeting Type"
+msgstr "Dodaj typ spotkania"
+
 #: lib/tymeslot_web/components/dashboard/integrations/shared/ui_components.ex
 #, elixir-autogen, elixir-format
 msgid "Adding..."
@@ -91,11 +91,6 @@ msgstr "Uwierzytelnianie nie powiodło się. Spróbuj ponownie."
 #, elixir-autogen, elixir-format
 msgid "Authentication session mismatch. Please sign in and try again."
 msgstr "Niezgodność sesji uwierzytelniania. Zaloguj się i spróbuj ponownie."
-
-#: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
-#, elixir-autogen, elixir-format
-msgid "Authorization was denied. Please try again."
-msgstr "Autoryzacja została odrzucona. Spróbuj ponownie."
 
 #: lib/tymeslot_web/components/dashboard/integrations/shared/provider_picker_modal.ex
 #, elixir-autogen, elixir-format
@@ -217,11 +212,6 @@ msgstr "Tej operacji nie można cofnąć. Usunie ona również wszystko, co jest
 msgid "Video"
 msgstr "Wideo"
 
-#: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
-#, elixir-autogen, elixir-format
-msgid "Your Microsoft organisation requires admin approval before %{app_name} can be connected. Please ask your IT administrator to grant consent for the app."
-msgstr "Twoja organizacja Microsoft wymaga zgody administratora, zanim będzie można podłączyć %{app_name}. Poproś administratora IT o udzielenie zgody dla aplikacji."
-
 #: lib/tymeslot_web/components/dashboard/integrations/shared/delete_integration_modal.ex
 #, elixir-autogen, elixir-format
 msgid "calendar data"
@@ -246,11 +236,6 @@ msgstr "Nie udało się podłączyć usługi %{service}. Spróbuj ponownie."
 #, elixir-autogen, elixir-format
 msgid "Save"
 msgstr "Zapisz"
-
-#: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
-#, elixir-autogen, elixir-format
-msgid "%{service} wasn't connected because Calendar permission was not granted. Please try again and tick the box for \"See, edit, share, and permanently delete all the calendars you can access using Google Calendar\" - %{app_name} needs this to create meetings and Google Meet links."
-msgstr "Nie podłączono usługi %{service}, ponieważ nie przyznano uprawnień do kalendarza. Spróbuj ponownie i zaznacz pole „Wyświetlanie, edytowanie, udostępnianie i trwałe usuwanie wszystkich kalendarzy, do których masz dostęp w Kalendarzu Google” – %{app_name} potrzebuje tego uprawnienia, aby tworzyć spotkania i linki Google Meet."
 
 #: lib/tymeslot/integrations/shared/reauth_handling.ex
 #, elixir-autogen, elixir-format
@@ -358,6 +343,26 @@ msgstr "Wpisz sam adres, a nazwę użytkownika i hasło podaj w osobnych polach.
 msgid "Setup guide"
 msgstr "Przewodnik konfiguracji"
 
+#: lib/tymeslot_web/components/dashboard/integrations/shared/delete_integration_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Delete %{type} integration"
+msgstr "Usuń integrację typu %{type}"
+
+#: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
+#, elixir-autogen, elixir-format
+msgid "Authorisation was denied. Please try again."
+msgstr "Autoryzacja została odrzucona. Spróbuj ponownie."
+
+#: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
+#, elixir-autogen, elixir-format
+msgid "%{service} wasn't connected because Calendar permission was not granted. Please try again and tick the box for \"See, edit, share, and permanently delete all the calendars you can access using Google Calendar\" - %{app_name} needs this to create meetings and Google Meet links."
+msgstr "Nie podłączono usługi %{service}, ponieważ nie przyznano uprawnień do kalendarza. Spróbuj ponownie i zaznacz pole „Wyświetlanie, edytowanie, udostępnianie i trwałe usuwanie wszystkich kalendarzy, do których masz dostęp w Kalendarzu Google” – %{app_name} potrzebuje tego uprawnienia, aby tworzyć spotkania i linki Google Meet."
+
+#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Changing the link is only available on the Pro plan and above."
+msgstr "Zmiana linku jest dostępna tylko w planie Pro i wyższych."
+
 #: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
 #, elixir-autogen, elixir-format
 msgid "Create and manage the meeting types guests can book with you."
@@ -373,12 +378,7 @@ msgstr "Własne linki są dostępne w planie Pro i wyższych."
 msgid "Meeting Types"
 msgstr "Typy spotkań"
 
-#: lib/tymeslot_web/components/dashboard/integrations/shared/delete_integration_modal.ex
+#: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
 #, elixir-autogen, elixir-format
-msgid "Delete %{type} integration"
-msgstr "Usuń integrację typu %{type}"
-
-#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Add Meeting Type"
-msgstr "Dodaj typ spotkania"
+msgid "Your Microsoft organisation requires admin approval before %{app_name} can be connected. Please ask your IT administrator to grant consent for the app."
+msgstr "Twoja organizacja Microsoft wymaga zgody administratora, zanim będzie można podłączyć %{app_name}. Poproś administratora IT o udzielenie zgody dla aplikacji."

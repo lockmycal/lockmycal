@@ -63,7 +63,9 @@
 /* Short windows (landscape phones): the booking content needs the height more
    than the footer does, so the footer steps aside. */
 @media (max-height: 480px) {
-  .public-footer {
-    display: none;
+  :where(html:not([data-embedded])) {
+    .public-footer {
+      display: none;
+    }
   }
 }

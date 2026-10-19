@@ -1,0 +1,75 @@
+## This file is a PO Template file.
+##
+## "msgid"s here are often extracted from source code.
+## Add new messages manually only if they're dynamic
+## messages that can't be statically extracted.
+##
+## Run "mix gettext.extract" to bring this file up to
+## date. Leave "msgstr"s empty as changing them here has no
+## effect: edit them in PO (.po) files instead.
+#
+msgid ""
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/booking_form.ex
+#, elixir-autogen, elixir-format
+msgid "+420 123 456 789"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/booking_form.ex
+#, elixir-autogen, elixir-format
+msgid "Acme Inc."
+msgstr ""
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#: lib/tymeslot_web/themes/shared/components/booking_form.ex
+#, elixir-autogen, elixir-format
+msgid "Company Name"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#, elixir-autogen, elixir-format
+msgid "Create an account"
+msgstr ""
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Enter your company name"
+msgstr ""
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Enter your phone number"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#, elixir-autogen, elixir-format
+msgid "Have an account? Sign in before booking and the meeting is saved straight to your calendar too."
+msgstr ""
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#: lib/tymeslot_web/themes/shared/components/booking_form.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Information"
+msgstr ""
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#: lib/tymeslot_web/themes/shared/components/booking_form.ex
+#, elixir-autogen, elixir-format
+msgid "Phone Number"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#, elixir-autogen, elixir-format
+msgid "Remember for next time"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#, elixir-autogen, elixir-format
+msgid "Save to my default calendar (%{calendar})"
+msgstr ""
+
+#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#, elixir-autogen, elixir-format
+msgid "Sign in"
+msgstr ""

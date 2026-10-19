@@ -1,3 +1,11 @@
+[1.26.0.1]
+* Merge upstream v1.26.0: booking themes rebuilt on a shared shell and booking "journeys" (new booking blocks, a week grid of free times, the next free slots, a summary bar), theme options for logo, cover, accent colour, light/dark/automatic mode, font, corners and spacing (used by upstream's test themes; Quill and Rhythm still offer palette and background), self-hosted booking-page fonts, the organiser's headline and bio, payment return pages in the theme's look, a booking calendar that starts on the visitor's first weekday, required fields announced to screen readers, many theme and booking fixes
+* **Breaking:** an environment variable that is set now outranks the value saved on the admin settings page, which shows that setting greyed out with the variable's name (e.g. `REGISTRATION_ENABLED`, `ENABLE_GOOGLE_AUTH`, `ENABLE_MICROSOFT_AUTH`, `MEETING_PAYMENTS_ENABLED`, `RECAPTCHA_SIGNUP_PROVIDER`). Empty the `.env` lines of settings you want to manage from the admin page
+* The booking form keeps LockMyCal's phone, company, required "Meeting Information", attachments and the own-calendar choice on both themes, the public top bar and footer, the "View full calendar" link, translated meeting types and booking texts, the asynchronous loading of times and the "Create new booking"/"Close" buttons after a payment
+* Fix the meeting type names disappearing on a phone: the card's buttons now move below the name instead of squeezing it to nothing
+* The contact form, the account deletion dialog, "Send link by email" and the onboarding profile step answer an empty required field with their own message instead of the browser's bubble
+* The email link confirmation page and the documentation links in the dashboard use LockMyCal's colours (they showed unstyled)
+
 [1.25.0.1]
 * Merge upstream v1.24.0 and v1.25.0: Quick add can set a meeting's reminder emails (the same picker as a meeting type), a flash closing by itself no longer closes the dialog that is open, a subscribed calendar can count every event as busy (for holiday feeds that mark everything free; a checkbox when subscribing and an "Every event busy" button on its card), invitee details are anonymised two years after a meeting ends, booking emails carry a Reply-To of the other party, group times on the booking page show how full they are ("Plenty left", "Filling up", "Almost full") with an optional count of the last spots, a paid booking is refused up front when the host's plan no longer includes payments, Outlook series on days some months lack are refused, dependency updates
 * Quick add on the calendar and on the Meetings page: a meeting's reminders are upstream's picker (two presets and a custom lead time, up to three) and become both the reminder emails and the calendar alarms; the alarm editor and "Repeat" stay for a plain event only
@@ -352,6 +360,95 @@
 
 [1.9.0+2]
 * core: Match the calendar's up-next-meeting banner colours to the dashboard's brand gradient and move it below the Calendar heading
+
+[1.26.0]
+* [BREAKING] admin: Let environment variables outrank settings saved on the admin page: an environment variable such as REGISTRATION_ENABLED or ENABLE_GOOGLE_AUTH, when set, now takes precedence over a value saved on the admin settings page; before, the saved value won. Before upgrading, check your .env for the lines older versions of .env.example shipped uncommented: ENABLE_GOOGLE_AUTH=false, ENABLE_GITHUB_AUTH=false and ENABLE_OAUTH_AUTH=false. Left in place, they now switch those sign-in methods off; if you turned SSO on from the admin page, comment them out or no one can sign in. Unset any variable for a setting you want to manage from the admin page. Values already saved there are kept, and apply again once the variable is removed.
+* admin: Warn at boot when an environment variable overrides a saved setting
+* themes: Keep an uploaded background saved without a background value
+* payments: Accept the return from checkout for an organiser on an unknown theme
+* booking: Start again on the overview after a direct visit to the thank-you page
+* calendar: Open all-day events when their chip is clicked in week view
+* themes: Warn when customising a style your booking page does not use
+* themes: Explain refused background uploads and state the pixel limit
+* themes: Accept JPEG photos with large metadata as background images
+* themes: Stop background uploads disconnecting the customise page
+* calendar: Stop mailbox.org listing a custom-domain organiser twice
+* auth: Stop the unverified-account purge deleting accounts in use
+* themes: Make selected options in Quill stand out on any background
+* themes: Show uploaded images whose file names contain brackets
+* booking: Ignore a payment expiry once the wait has ended
+* group-bookings: Give a declined guest's seat back to the slot
+* themes: Only offer a step in Quill's step indicator when it can be reached
+* booking-limits: Count weekly caps from the organiser's first day of the week
+* booking: Keep a repeated payment notice from reopening an old booking
+* booking: Start Schedule another with blank questions
+* booking: Show optional questions on a direct link to the booking step
+* themes: A URL change does not end the payment wait
+* themes: Schedule another from a private link stays on that meeting type
+* themes: Keep the booker on the payment wait while checkout is open
+* themes: The paged navigator honours revisitable moments when jumping back
+* profiles: Refuse a username reserved for the demo pages
+* dashboard: Keep theme names readable on light preview images
+* booking: Show a time answer on the visitor's clock
+* themes: Make booking-page toasts opaque
+* booking: Join a week's two months with an en dash
+* themes: Ship the Cyrillic subsets of the booking page fonts
+* dashboard: Show palette schemes in the theme's order, on their ground
+* profiles: Keep fallback avatar initials legible on pale gradients
+* payments: Show the organiser's customisation on payment pages
+* themes: Keep booking-page toasts at the top
+* dashboard: Use British spelling throughout the dashboard
+* emails: Spell apologise the British way in the reschedule request
+* auth: Spell authorisation the British way in the sign-in error
+* booking: Spell organiser the British way on the booking page
+* booking: Pair the Czech email placeholder with its name
+* booking: Write custom date answers out in the reader's language
+* themes: Keep booking-page toasts clear of the page header
+* themes: Leave empty answers out of the confirmation and email
+* themes: Draw a chevron on the custom question dropdown
+* themes: Keep the field error icon full size beside a long message
+* themes: Line up the poll tallies from row to row
+* themes: Style the flash toast from the booking theme's tokens
+* themes: Drop the success toast over the booking confirmation
+* themes: Show minutes, not the duration slug, on Rhythm's confirmation badge
+* themes: Make Rhythm's Add to calendar and Keep Meeting buttons readable
+* themes: Wrap Rhythm's embedded confirmation details at phone width
+* appearance: Show the real upload limits for background images and videos
+* themes: Show the check on Quill's organiser avatar badge
+* embed: Keep the popup's close button off the booking page
+* themes: Stop the language switcher covering the page heading
+* themes: Show Quill and Rhythm booking pages in Inter
+* account: Wrap long email addresses on narrow screens
+* availability: Link the add-break labels to their fields
+* accessibility: Announce required form fields to screen readers
+* embed: Stop top-level embed URLs reloading on plain HTTP and older browsers
+* themes: Refuse background videos that are not MP4, MOV or WebM files
+* embed: Stop the embed URL reloading for ever when opened in its own tab
+* booking: Show the booking page's error card in the visitor's language
+* booking: Pick a bookable day again after changing the timezone
+* themes: Delete an uploaded background file when saving it fails
+* booking: Keep an embedded booking page embedded when the visitor changes language
+* themes: Clear every upload a preset background replaces
+* themes: Apply an embed's data-primary-color to the booking page
+* themes: Keep an uploaded background video when its processing cannot be queued
+* themes: Accept three-digit hex colours for a solid background
+* themes: Make the duration badge readable on Quill's cancel and reschedule pages
+* themes: Round the poll form's input and button corners in Rhythm
+* themes: Stop Rhythm overriding standard layout utilities on booking pages
+* themes: Follow custom colour palettes in focus rings, highlights and shadows
+* booking: Keep the answer to a single-choice question with many options
+* booking: Open the calendar on the month of a linked date
+* booking: Open the booking calendar on today in the visitor's timezone
+* booking: Keep the chosen meeting type selected and require name and email on Rhythm booking pages
+* booking: Customise meeting pages for the theme they show
+* booking: Load the Rhythm stylesheet on Rhythm's payment return pages
+* themes: Ignore an unknown theme in the booking page address
+* booking: Show cancel and reschedule refusals in the visitor's language
+* booking: Translate the guest name and meeting durations on booking pages
+* admin: Add a way back in for an install with no accounts left
+* booking: Start the booking calendar on the visitor's first day of the week
+* onboarding: Ask which booking theme's story sounds like you
+
 
 [1.25.0]
 * payments: Refuse paid bookings when the host's plan lacks payments

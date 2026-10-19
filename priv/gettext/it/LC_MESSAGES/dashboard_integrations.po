@@ -33,11 +33,6 @@ msgstr "Cambia link"
 
 #: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
 #, elixir-autogen, elixir-format
-msgid "Changing the link is only available on the Pro plan and above."
-msgstr "La modifica del link è disponibile solo nel piano Pro e superiori."
-
-#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
-#, elixir-autogen, elixir-format
 msgid "Copy"
 msgstr "Copia"
 
@@ -76,6 +71,11 @@ msgstr "Questo link non è valido. Usa lettere minuscole, numeri e trattini."
 msgid "Add Integration"
 msgstr "Aggiungi integrazione"
 
+#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Add Meeting Type"
+msgstr "Aggiungi tipo di riunione"
+
 #: lib/tymeslot_web/components/dashboard/integrations/shared/ui_components.ex
 #, elixir-autogen, elixir-format
 msgid "Adding..."
@@ -95,11 +95,6 @@ msgstr "Autenticazione non riuscita. Riprova."
 #, elixir-autogen, elixir-format
 msgid "Authentication session mismatch. Please sign in and try again."
 msgstr "Sessione di autenticazione non corrispondente. Accedi e riprova."
-
-#: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
-#, elixir-autogen, elixir-format
-msgid "Authorization was denied. Please try again."
-msgstr "Autorizzazione negata. Riprova."
 
 #: lib/tymeslot_web/components/dashboard/integrations/shared/provider_picker_modal.ex
 #, elixir-autogen, elixir-format
@@ -221,11 +216,6 @@ msgstr "Questa azione non può essere annullata e rimuoverà tutti i dati associ
 msgid "Video"
 msgstr "Video"
 
-#: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
-#, elixir-autogen, elixir-format
-msgid "Your Microsoft organisation requires admin approval before %{app_name} can be connected. Please ask your IT administrator to grant consent for the app."
-msgstr "La tua organizzazione Microsoft richiede l'approvazione di un amministratore prima che %{app_name} possa essere collegato. Chiedi al tuo amministratore IT di concedere il consenso per l'app."
-
 #: lib/tymeslot_web/components/dashboard/integrations/shared/delete_integration_modal.ex
 #, elixir-autogen, elixir-format
 msgid "calendar data"
@@ -250,11 +240,6 @@ msgstr "Connessione a %{service} non riuscita. Riprova."
 #, elixir-autogen, elixir-format
 msgid "Save"
 msgstr "Salva"
-
-#: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
-#, elixir-autogen, elixir-format
-msgid "%{service} wasn't connected because Calendar permission was not granted. Please try again and tick the box for \"See, edit, share, and permanently delete all the calendars you can access using Google Calendar\" - %{app_name} needs this to create meetings and Google Meet links."
-msgstr "%{service} non è stato collegato perché l'autorizzazione al Calendario non è stata concessa. Riprova e seleziona la casella \"Visualizza, modifica, condividi ed elimina definitivamente tutti i calendari a cui puoi accedere tramite Google Calendar\" - %{app_name} ne ha bisogno per creare riunioni e link di Google Meet."
 
 #: lib/tymeslot/integrations/shared/reauth_handling.ex
 #, elixir-autogen, elixir-format
@@ -360,6 +345,26 @@ msgstr "Inserisci solo l'indirizzo e metti nome utente e password nei rispettivi
 msgid "Setup guide"
 msgstr "Guida alla configurazione"
 
+#: lib/tymeslot_web/components/dashboard/integrations/shared/delete_integration_modal.ex
+#, elixir-autogen, elixir-format
+msgid "Delete %{type} integration"
+msgstr "Elimina integrazione %{type}"
+
+#: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
+#, elixir-autogen, elixir-format
+msgid "Authorisation was denied. Please try again."
+msgstr "Autorizzazione negata. Riprova."
+
+#: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
+#, elixir-autogen, elixir-format
+msgid "%{service} wasn't connected because Calendar permission was not granted. Please try again and tick the box for \"See, edit, share, and permanently delete all the calendars you can access using Google Calendar\" - %{app_name} needs this to create meetings and Google Meet links."
+msgstr "%{service} non è stato collegato perché l'autorizzazione al Calendario non è stata concessa. Riprova e seleziona la casella \"Visualizza, modifica, condividi ed elimina definitivamente tutti i calendari a cui puoi accedere tramite Google Calendar\" - %{app_name} ne ha bisogno per creare riunioni e link di Google Meet."
+
+#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
+#, elixir-autogen, elixir-format
+msgid "Changing the link is only available on the Pro plan and above."
+msgstr "La modifica del link è disponibile solo nel piano Pro e superiori."
+
 #: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
 #, elixir-autogen, elixir-format
 msgid "Create and manage the meeting types guests can book with you."
@@ -375,12 +380,7 @@ msgstr "I link personalizzati sono disponibili solo nel piano Pro e superiori."
 msgid "Meeting Types"
 msgstr "Tipi di riunione"
 
-#: lib/tymeslot_web/components/dashboard/integrations/shared/delete_integration_modal.ex
+#: lib/tymeslot_web/controllers/integrations/oauth_callback_handler.ex
 #, elixir-autogen, elixir-format
-msgid "Delete %{type} integration"
-msgstr "Elimina integrazione %{type}"
-
-#: lib/tymeslot_web/live/dashboard/service_settings/component_view.ex
-#, elixir-autogen, elixir-format
-msgid "Add Meeting Type"
-msgstr "Aggiungi tipo di riunione"
+msgid "Your Microsoft organisation requires admin approval before %{app_name} can be connected. Please ask your IT administrator to grant consent for the app."
+msgstr "La tua organizzazione Microsoft richiede l'approvazione di un amministratore prima che %{app_name} possa essere collegato. Chiedi al tuo amministratore IT di concedere il consenso per l'app."

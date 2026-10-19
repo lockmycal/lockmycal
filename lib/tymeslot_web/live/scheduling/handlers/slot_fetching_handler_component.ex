@@ -118,7 +118,7 @@ defmodule TymeslotWeb.Live.Scheduling.Handlers.SlotFetchingHandlerComponent do
   # booker's previous hour selection. An explicit date pick — the one case that
   # must reset it, since the open hour would describe a grid that no longer
   # applies — resets it at the point the booker makes that choice, in
-  # `handle_schedule_date_selection/2`.
+  # `Journey.Facts.Slot`'s `select_date/2`.
   defp apply_slots_result(socket, duration_to_fetch, {:ok, slots}) do
     socket
     |> assign(:available_slots, MeetingUtils.normalize_slot_list(slots))

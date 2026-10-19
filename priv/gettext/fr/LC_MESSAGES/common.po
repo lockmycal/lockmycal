@@ -21,11 +21,6 @@ msgstr "Non"
 msgid "Yes"
 msgstr "Oui"
 
-#: lib/tymeslot/custom_fields/answer_renderer.ex
-#, elixir-autogen, elixir-format
-msgid "✓ Acknowledged (%{at})"
-msgstr "✓ Confirmé (%{at})"
-
 #: lib/tymeslot_web/components/core_components/flash.ex
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
@@ -363,6 +358,11 @@ msgstr[1] "Vous pouvez configurer jusqu’à %{count} rappels"
 msgid "Loading"
 msgstr "Chargement"
 
+#: lib/tymeslot/custom_fields/answer_renderer.ex
+#, elixir-autogen, elixir-format
+msgid "✓ Acknowledged"
+msgstr "✓ Confirmé"
+
 #: lib/tymeslot_web/components/core_components/brand.ex
 #, elixir-autogen, elixir-format
 msgid "%{app_name} logo"
@@ -387,6 +387,11 @@ msgstr "Masquer l'annonce"
 #, elixir-autogen, elixir-format
 msgid "Documentation"
 msgstr "Documentation"
+
+#: lib/tymeslot_web/components/public_top_bar.ex
+#, elixir-autogen, elixir-format
+msgid "Organizer logo"
+msgstr "Logo de l'organisateur"
 
 #: lib/tymeslot_web/components/public_footer.ex
 #, elixir-autogen, elixir-format
@@ -413,8 +418,3 @@ msgstr "Site web"
 #, elixir-autogen, elixir-format
 msgid "© %{year} %{app_name}. All rights reserved."
 msgstr "© %{year} %{app_name}. Tous droits réservés."
-
-#: lib/tymeslot_web/components/public_top_bar.ex
-#, elixir-autogen, elixir-format
-msgid "Organizer logo"
-msgstr "Logo de l'organisateur"

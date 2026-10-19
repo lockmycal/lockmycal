@@ -1152,6 +1152,16 @@ msgstr[2] "Кількість з'являється, коли залишаєть
 msgid "Times are marked green, amber or red, labelled \"Plenty left\", \"Filling up\" or \"Almost full\"."
 msgstr "Слоти позначаються зеленим, жовтим або червоним кольором із підписами «Багато місць», «Заповнюється» або «Майже повно»."
 
+#: lib/tymeslot_web/live/dashboard/meeting_settings/components/booking_limit_fields.ex
+#, elixir-autogen, elixir-format
+msgid "Weeks start on Monday, as set in Calendar Settings."
+msgstr "Тижні починаються з понеділка, як указано в «Налаштуваннях календаря»."
+
+#: lib/tymeslot_web/live/dashboard/meeting_settings/components/booking_limit_fields.ex
+#, elixir-autogen, elixir-format
+msgid "Weeks start on Sunday, as set in Calendar Settings."
+msgstr "Тижні починаються з неділі, як указано в «Налаштуваннях календаря»."
+
 #: lib/tymeslot_web/live/dashboard/meeting_settings/meeting_type_form/contact_sharing_section.ex
 #, elixir-autogen, elixir-format
 msgid "A booker signed in to their account gets this meeting in their own calendar and dashboard, under your name. Choose what else they see."

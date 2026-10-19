@@ -59,7 +59,10 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
       padding={:xs}
       class={if(@type.is_active, do: "card-glass-available", else: "card-glass-unavailable")}
     >
-      <div class="flex items-center gap-3">
+      <%!-- Wraps so that on a phone the actions drop below the name instead of
+            squeezing the name column, and the truncated title with it, to
+            nothing. --%>
+      <div class="flex flex-wrap items-center gap-3">
         <%!-- Drag Handle --%>
         <div class="cursor-grab active:cursor-grabbing text-neutral-400 shrink-0 dark:text-twilight-indigo-300">
           <Icons.icon name="hero-bars-2" class="w-5 h-5" />
@@ -73,7 +76,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
         <% end %>
 
         <%!-- Name + details --%>
-        <div class="flex-1 min-w-0">
+        <div class="grow basis-40 min-w-0">
           <div class="flex items-center gap-2 min-w-0">
             <h2 class="text-token-lg font-semibold text-neutral-900 truncate dark:text-neutral-50">
               {@name}
@@ -197,7 +200,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
 
         <%!-- Actions. Each names its meeting type, as the switch does, so a
               screen reader's list of buttons tells the cards apart. --%>
-        <div class="flex items-center gap-2 shrink-0">
+        <div class="flex items-center gap-2 shrink-0 ml-auto">
           <Buttons.icon_button
             :if={@can_share && @type.is_active}
             id={"email-meeting-type-link-#{@type.id}"}
@@ -323,7 +326,10 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
 
     ~H"""
     <span :if={length(@locations) > 1} class="flex items-center shrink-0">
-      <Icons.icon name="hero-map-pin-mini" class="w-3.5 h-3.5 mr-1 text-tymeslot-500" />
+      <Icons.icon
+        name="hero-map-pin-mini"
+        class="w-3.5 h-3.5 mr-1 text-neutral-500 dark:text-twilight-indigo-300"
+      />
       <span>
         {dngettext(
           "dashboard_meeting_types",
@@ -346,7 +352,7 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.Card do
         <Icons.icon
           :if={is_nil(video_provider(hd(@locations), @type))}
           name={kind_icon(hd(@locations).kind)}
-          class="w-3.5 h-3.5 text-tymeslot-500"
+          class="w-3.5 h-3.5 text-neutral-500 dark:text-twilight-indigo-300"
         />
       </span>
       <span class="truncate max-w-[10rem]">{single_label(hd(@locations), @venues)}</span>

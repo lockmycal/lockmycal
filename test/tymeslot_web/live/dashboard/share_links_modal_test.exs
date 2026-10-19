@@ -105,6 +105,23 @@ defmodule TymeslotWeb.Dashboard.ShareLinksModalTest do
       assert has_element?(view, "#share-links-form")
       assert all_enqueued(worker: EmailWorker) == []
     end
+
+    # The recipients field is `required`; without `novalidate` the browser
+    # would stop an empty send with its own bubble before this message.
+    test "an empty send is answered inline, not by the browser", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/dashboard/overview")
+
+      view |> element("#overview-email-booking-link") |> render_click()
+
+      assert has_element?(view, "#share-links-form[novalidate]")
+
+      view
+      |> form("#share-links-form", share: %{recipients: ""})
+      |> render_submit()
+
+      assert has_element?(view, "#share-links-form [role='alert']")
+      assert all_enqueued(worker: EmailWorker) == []
+    end
   end
 
   test "nothing is offered before a calendar is connected", %{conn: conn, profile: profile} do

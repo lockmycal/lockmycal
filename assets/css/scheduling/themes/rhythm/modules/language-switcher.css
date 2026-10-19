@@ -4,49 +4,33 @@
    of the shared `.public-top-bar` (see TymeslotWeb.Components.PublicTopBar),
    not its own absolutely-positioned container. */
 
-.language-switcher-button-rhythm {
-  background: rgba(0, 0, 0, 0.6);
+/* The shared structure and the --lang-switcher-* colours are in
+   shared/components/language-switcher.css. */
+
+.lang-switcher__button {
   border: var(--border-width-thin) solid var(--border-light);
   transition: background var(--transition-normal), border-color var(--transition-normal), transform var(--transition-normal);
 }
 
-.language-switcher-button-rhythm:hover {
-  background: rgba(0, 0, 0, 0.7);
+.lang-switcher__button:hover {
   border-color: var(--border-medium);
-  transform: translateY(-1px);
 }
 
-.language-switcher-button-rhythm:active {
-  transform: translateY(0);
-}
-
-.language-dropdown-rhythm {
-  background: rgba(0, 0, 0, 0.9);
-  border: var(--border-width-thin) solid var(--border-light);
+.lang-switcher__panel {
   box-shadow: var(--shadow-md);
   animation: slideDown var(--transition-normal);
-  max-height: var(--dropdown-max-height);
-  overflow-y: auto;
 }
 
-.language-dropdown-item-rhythm {
+.lang-switcher__item {
   color: var(--theme-text);
-  border-bottom: var(--border-width-thin) solid var(--border-subtle);
 }
 
-.language-dropdown-item-rhythm:last-child {
-  border-bottom: none;
+.lang-switcher__item:hover {
+  color: var(--lang-switcher-item-ink-active);
 }
 
-.language-dropdown-item-rhythm:hover {
-  background: var(--surface-light);
-  color: #ffffff;
-}
-
-.language-dropdown-item-rhythm.active {
-  background: var(--surface-medium);
-  color: #ffffff;
-  font-weight: var(--font-weight-semibold);
+.lang-switcher__item.lang-switcher__item--active {
+  color: var(--lang-switcher-item-ink-active);
 }
 
 @keyframes slideDown {
@@ -62,19 +46,19 @@
 
 /* Mobile responsive */
 @media (max-width: 479px) {
-  .language-switcher-button-rhythm {
+  .lang-switcher__button {
     padding: var(--space-xs) var(--space-sm);
     min-height: var(--min-touch-target);
   }
 
-  .language-dropdown-rhythm {
+  .lang-switcher__panel {
     width: var(--container-xs);
     max-height: var(--dropdown-max-height);
     right: 0;
     left: auto;
   }
 
-  .language-dropdown-item-rhythm {
+  .lang-switcher__item {
     padding: var(--space-sm) var(--space-sm);
     min-height: var(--min-touch-target);
     display: flex;
@@ -84,17 +68,17 @@
 
 /* Tablet */
 @media (min-width: 480px) and (max-width: 767px) {
-  .language-switcher-button-rhythm {
+  .lang-switcher__button {
     padding: var(--space-sm) var(--space-md);
     min-height: var(--min-touch-target);
   }
 
-  .language-dropdown-rhythm {
+  .lang-switcher__panel {
     width: var(--container-sm);
     max-height: var(--dropdown-max-height);
   }
 
-  .language-dropdown-item-rhythm {
+  .lang-switcher__item {
     padding: var(--space-sm) var(--space-md);
     min-height: var(--min-touch-target);
   }
@@ -102,7 +86,7 @@
 
 /* Desktop */
 @media (min-width: 768px) and (max-width: 1024px) {
-  .language-dropdown-rhythm {
+  .lang-switcher__panel {
     width: var(--container-sm);
   }
 }

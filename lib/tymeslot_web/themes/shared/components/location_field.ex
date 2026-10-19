@@ -41,9 +41,11 @@ defmodule TymeslotWeb.Themes.Shared.Components.LocationField do
   options out as cards instead; a theme keeping the compact row hides those
   parts.
 
-  The markup is theme-agnostic and ships no styling of its own. Each theme
-  styles the `location-*` classes in its own `booking-form.css`, scoped to
-  its wrapper, exactly as it does for `guest-*`.
+  The markup is theme-agnostic and ships no styling of its own. The
+  `location-*` classes are styled like `guest-*`: shared structure in
+  `assets/css/scheduling/shared/components/booking-fields.css`, each theme's
+  look through tokens, and theme-specific rules (such as the selected option
+  and the venue list) in the theme's own `booking-form.css`.
 
   Each toggle wraps a visually hidden native radio rather than being a
   button, because this is a single choice from a short list and the browser

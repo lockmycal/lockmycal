@@ -5,8 +5,8 @@
    Quill theme's modules/public-top-bar.css (both come from the one shared
    component), but skinned with Rhythm's own dark-surface tokens — a solid
    rgba(0, 0, 0, …) surface, no backdrop blur — to match the rest of this
-   theme's chrome (see .language-switcher-button-rhythm /
-   .language-dropdown-rhythm in language-switcher.css) rather than Quill's
+   theme's chrome (see .lang-switcher__button /
+   .lang-switcher__panel in language-switcher.css) rather than Quill's
    glass-blur gradient, which Rhythm doesn't use elsewhere. */
 
 .public-top-bar-wrapper {
@@ -36,7 +36,7 @@
   justify-content: space-between;
   gap: var(--space-md);
   padding: var(--space-sm) var(--space-lg);
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--public-bar-surface);
   border-bottom: var(--border-width-thin) solid var(--theme-primary);
   box-shadow: var(--shadow-sm);
 }
@@ -69,7 +69,7 @@
 /* Links and the language switcher trigger share one height so the row
    lines up; the switcher is a touch taller than its standalone default. */
 .public-top-bar-link,
-.public-top-bar [class*="language-switcher-button-"] {
+.public-top-bar .lang-switcher__button {
   min-height: 2.75rem;
   box-sizing: border-box;
 }
@@ -80,7 +80,7 @@
   padding: 0 var(--space-md);
   border: var(--border-width-thin) solid transparent;
   border-radius: var(--radius-md);
-  color: #fff;
+  color: var(--public-bar-ink-strong);
   font-weight: 600;
   font-size: 0.875rem;
   text-decoration: none;
@@ -89,7 +89,7 @@
 }
 
 .public-top-bar-link:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--public-top-bar-link-hover);
 }
 
 /* Reverse (outlined) style: transparent fill, visible border. */
@@ -124,20 +124,22 @@
 /* Short windows (landscape phones): a slimmer bar leaves the booking content
    its height. */
 @media (max-height: 480px) {
-  .public-top-bar {
-    padding-block: var(--space-xs);
-  }
+  :where(html:not([data-embedded])) {
+    .public-top-bar {
+      padding-block: var(--space-xs);
+    }
 
-  .public-top-bar-brand img {
-    height: 1.75rem;
-  }
+    .public-top-bar-brand img {
+      height: 1.75rem;
+    }
 
-  .public-top-bar-link,
-  .public-top-bar [class*="language-switcher-button-"] {
-    min-height: 2rem;
-  }
+    .public-top-bar-link,
+    .public-top-bar .lang-switcher__button {
+      min-height: 2rem;
+    }
 
-  .public-top-bar-link.public-top-bar-icon-link {
-    width: 2rem;
+    .public-top-bar-link.public-top-bar-icon-link {
+      width: 2rem;
+    }
   }
 }

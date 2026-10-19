@@ -112,7 +112,7 @@ defmodule TymeslotWeb.Live.Scheduling.AvailabilityAsyncFetchTest do
 
     view |> element("button[data-testid='next-step']") |> render_click()
 
-    wait_until(fn -> has_element?(view, "button.time-slot-button") end)
+    wait_until(fn -> has_element?(view, "button[data-testid='time-slot']") end)
 
     assert_received {:fetched_in, fetch_pid}
 
@@ -236,13 +236,13 @@ defmodule TymeslotWeb.Live.Scheduling.AvailabilityAsyncFetchTest do
     # The LiveView answers while the calendar read is parked. It would time
     # out here if the slot fetch ran inside it, as it used to.
     assert %{loading_slots: _loading} = :sys.get_state(view.pid, 1_000).socket.assigns
-    refute has_element?(view, "button.time-slot-button")
+    refute has_element?(view, "button[data-testid='time-slot']")
 
     Agent.update(gate, fn _closed -> :open end)
     send(first_parked, :release)
     release_parked()
 
-    wait_until(fn -> has_element?(view, "button.time-slot-button") end)
+    wait_until(fn -> has_element?(view, "button[data-testid='time-slot']") end)
   end
 
   defp release_parked do

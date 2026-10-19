@@ -10,6 +10,7 @@ defmodule Tymeslot.Meetings.BookingLimits.Checker do
 
   alias Tymeslot.Availability.Schedules
   alias Tymeslot.Availability.WeeklyAvailabilityQueries
+  alias Tymeslot.Integrations.CalendarManagement
   alias Tymeslot.Meetings.BookingLimits
   alias Tymeslot.Meetings.MeetingQueries
   alias Tymeslot.Profiles
@@ -125,10 +126,11 @@ defmodule Tymeslot.Meetings.BookingLimits.Checker do
       if before_count = opts[:before_count], do: before_count.()
 
       host_timezone = host_timezone(profile_settings)
+      week_start = CalendarManagement.get_week_start(organizer_user_id)
       {first_date, last_date} = host_date_range(start_date, end_date, host_timezone, opts)
 
       {from_utc, to_utc} =
-        BookingLimits.expanded_query_window(first_date, last_date, host_timezone)
+        BookingLimits.expanded_query_window(first_date, last_date, host_timezone, week_start)
 
       rows =
         MeetingQueries.list_live_booking_starts(
@@ -138,7 +140,7 @@ defmodule Tymeslot.Meetings.BookingLimits.Checker do
           Keyword.take(opts, [:exclude_uid])
         )
 
-      fun.(BookingLimits.build_context(limits, host_timezone, rows))
+      fun.(BookingLimits.build_context(limits, host_timezone, week_start, rows))
     end
   end
 

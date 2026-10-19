@@ -3,10 +3,7 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlow do
   Shared booking orchestration for all scheduling themes.
   """
 
-  use Gettext, backend: TymeslotWeb.Gettext
-
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [put_flash: 3]
 
   alias Phoenix.Component
   alias Tymeslot.Bookings.AttendeeAttachments
@@ -15,6 +12,7 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlow do
   alias TymeslotWeb.Live.Scheduling.Handlers.BookingSubmissionHandlerComponent
   alias TymeslotWeb.Live.Scheduling.OrganizerHelpers
   alias TymeslotWeb.Themes.Shared.BookingLocation
+  alias TymeslotWeb.Themes.Shared.Journey.Progress
 
   @type transition_fun :: (Phoenix.LiveView.Socket.t(), atom(), map() ->
                              Phoenix.LiveView.Socket.t())
@@ -33,7 +31,9 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlow do
   render in an iframe), the handler instead instructs the browser to open
   Checkout in a new tab and we transition to the local `:awaiting_payment`
   view; the LiveView subscribes to `meeting_payment:<id>` and flips back
-  to `:confirmation` on `:paid` or `:booking` on `:expired`.
+  to `:confirmation` on `:paid`, or on `:expired` to the moment collecting
+  the attendee (`Progress.moment_for(journey, :attendee)`, the classic
+  booking step).
   """
   @spec submit_booking(Phoenix.LiveView.Socket.t(), map(), transition_fun()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
@@ -88,17 +88,10 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlow do
         {:noreply,
          socket |> discard_attachments() |> return_to_schedule_for_new_slot(transition_fun)}
 
+      # A bot must not be able to tell the honeypot from a real booking, so
+      # it lands on the same confirmation step, with no flash, as a real one.
       {:honeypot, socket} ->
-        {:noreply,
-         socket
-         |> discard_attachments()
-         |> put_flash(
-           :info,
-           dgettext(
-             "booking",
-             "Booking submitted successfully! You'll receive a confirmation email shortly."
-           )
-         )}
+        {:noreply, socket |> discard_attachments() |> transition_fun.(:confirmation, %{})}
 
       {:error, socket} ->
         {:noreply, socket |> discard_attachments() |> assign(:submitting, false)}
@@ -121,10 +114,12 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlow do
   end
 
   @doc """
-  Recovers from a lost slot race: drops the stale time, returns to the
-  schedule step (which refreshes month availability), and reloads that day's
-  slots so the just-taken time disappears and the booker can immediately pick
-  another. The error flash is expected to already be set by the caller.
+  Recovers from a lost slot race: drops the stale time, returns to the moment
+  collecting the slot (the classic schedule step), which refreshes month
+  availability, and reloads that day's slots so the just-taken time
+  disappears and the booker can immediately pick another. The error flash is
+  expected to already be set by the caller (the submission handler, or a live
+  seat update that found the chosen time full).
   """
   @spec return_to_schedule_for_new_slot(Phoenix.LiveView.Socket.t(), transition_fun()) ::
           Phoenix.LiveView.Socket.t()
@@ -134,7 +129,7 @@ defmodule TymeslotWeb.Themes.Shared.BookingFlow do
       |> assign(:submitting, false)
       |> assign(:selected_time, nil)
       |> assign(:available_slots, [])
-      |> transition_fun.(:schedule, %{})
+      |> then(&transition_fun.(&1, Progress.moment_for(&1.assigns.journey, :slot), %{}))
 
     case socket.assigns[:selected_date] do
       nil ->

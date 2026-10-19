@@ -180,7 +180,7 @@ defmodule TymeslotWeb.EmbedWidgetListingTest do
     } do
       {:ok, view, html} = live(conn, "/#{profile.username}")
 
-      assert has_element?(view, ".language-switcher")
+      assert has_element?(view, ".lang-switcher")
       refute has_element?(view, ".public-top-bar--embedded")
       assert html =~ "/#{profile.username}/calendar"
     end

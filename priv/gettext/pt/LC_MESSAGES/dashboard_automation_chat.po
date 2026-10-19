@@ -249,11 +249,6 @@ msgstr "Não foi possível desconectar o Slack"
 msgid "Failed to generate link. Please try again."
 msgstr "Não foi possível gerar o link. Tente novamente."
 
-#: lib/tymeslot_web/live/dashboard/automation/telegram/form_handlers.ex
-#, elixir-autogen, elixir-format
-msgid "Failed to initialize integration. Please try again."
-msgstr "Não foi possível iniciar a integração. Tente novamente."
-
 #: lib/tymeslot_web/live/dashboard/automation/slack/state_handlers.ex
 #: lib/tymeslot_web/live/dashboard/automation/telegram/state_handlers.ex
 #, elixir-autogen, elixir-format
@@ -343,6 +338,12 @@ msgstr "Status da integração atualizado"
 msgid "Integration updated successfully"
 msgstr "Integração atualizada"
 
+#: lib/tymeslot_web/live/dashboard/automation/slack_card.ex
+#: lib/tymeslot_web/live/dashboard/automation/telegram_card.ex
+#, elixir-autogen, elixir-format
+msgid "Last triggered: %{time}"
+msgstr "Último disparo: %{time}"
+
 #: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Leave blank to keep current URL"
@@ -366,6 +367,12 @@ msgstr "Carregando os canais do Slack…"
 #: lib/tymeslot_web/live/dashboard/automation/slack_card.ex
 #: lib/tymeslot_web/live/dashboard/automation/telegram_card.ex
 #, elixir-autogen, elixir-format
+msgid "Logs"
+msgstr "Registros"
+
+#: lib/tymeslot_web/live/dashboard/automation/slack_card.ex
+#: lib/tymeslot_web/live/dashboard/automation/telegram_card.ex
+#, elixir-autogen, elixir-format
 msgid "Never triggered"
 msgstr "Nunca disparou"
 
@@ -378,11 +385,6 @@ msgstr "Nenhuma integração com o Slack"
 #, elixir-autogen, elixir-format
 msgid "No Telegram Integrations"
 msgstr "Nenhuma integração com o Telegram"
-
-#: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "No channels available. Invite the %{app_name} bot to at least one channel in Slack, then click Refresh."
-msgstr "Nenhum canal disponível. Convide o bot do %{app_name} para pelo menos um canal no Slack e clique em Recarregar."
 
 #: lib/tymeslot_web/live/dashboard/automation/telegram_form_component.ex
 #, elixir-autogen, elixir-format
@@ -404,11 +406,6 @@ msgstr "Pausado"
 #, elixir-autogen, elixir-format
 msgid "Pick a channel"
 msgstr "Escolha um canal"
-
-#: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "Pick a channel for %{app_name} to post booking notifications to."
-msgstr "Escolha um canal para o %{app_name} publicar as notificações de agendamento."
 
 #: lib/tymeslot_web/live/dashboard/automation/slack_card.ex
 #, elixir-autogen, elixir-format
@@ -547,6 +544,12 @@ msgstr "Integração com o Telegram criada"
 msgid "Telegram integration saved"
 msgstr "Integração com o Telegram salva"
 
+#: lib/tymeslot_web/live/dashboard/automation/slack_card.ex
+#: lib/tymeslot_web/live/dashboard/automation/telegram_card.ex
+#, elixir-autogen, elixir-format
+msgid "Test"
+msgstr "Testar"
+
 #: lib/tymeslot_web/live/dashboard/automation/telegram_form_component.ex
 #, elixir-autogen, elixir-format
 msgid "Test & Save"
@@ -566,6 +569,12 @@ msgstr "Mensagem de teste enviada! Confira o Slack."
 #, elixir-autogen, elixir-format
 msgid "Test message sent! Check Telegram."
 msgstr "Mensagem de teste enviada! Confira o Telegram."
+
+#: lib/tymeslot_web/live/dashboard/automation/slack_card.ex
+#: lib/tymeslot_web/live/dashboard/automation/telegram_card.ex
+#, elixir-autogen, elixir-format
+msgid "Testing"
+msgstr "Testando"
 
 #: lib/tymeslot_web/live/dashboard/automation/telegram_form_component.ex
 #, elixir-autogen, elixir-format
@@ -651,11 +660,6 @@ msgstr "Para descobrir seu ID do chat, envie uma mensagem para %{bot} ou adicion
 
 #: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
 #, elixir-autogen, elixir-format
-msgid "%{app_name} will post booking notifications to this channel. Public channels appear automatically; for a private channel, invite the %{app_name} bot in Slack (%{command}), then click Refresh."
-msgstr "O %{app_name} vai publicar as notificações de agendamento neste canal. Canais públicos aparecem automaticamente; para um canal privado, convide o bot do %{app_name} no Slack (%{command}) e clique em Recarregar."
-
-#: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
-#, elixir-autogen, elixir-format
 msgid "Display-only label shown in your dashboard. It does not change where messages are delivered - that is set by the webhook URL itself."
 msgstr "Rótulo apenas de exibição, mostrado no seu painel. Ele não muda o destino das mensagens, que é definido pela própria URL de webhook."
 
@@ -663,11 +667,6 @@ msgstr "Rótulo apenas de exibição, mostrado no seu painel. Ele não muda o de
 #, elixir-autogen, elixir-format
 msgid "Slack connected - pick a channel to finish setup."
 msgstr "Slack conectado. Escolha um canal para concluir a configuração."
-
-#: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
-#, elixir-autogen, elixir-format
-msgid "%{app_name} posts notifications to this URL. The destination channel is fixed by Slack when the webhook is created - see the full setup guide on %{guide}."
-msgstr "O %{app_name} publica notificações nesta URL. O canal de destino é definido pelo Slack quando o webhook é criado. Veja o guia completo na %{guide}."
 
 #: lib/tymeslot_web/live/dashboard/automation/slack_tab.ex
 #, elixir-autogen, elixir-format
@@ -781,11 +780,6 @@ msgstr "Não foi possível salvar a integração com o Slack."
 
 #: lib/tymeslot/slack/slack.ex
 #, elixir-autogen, elixir-format
-msgid "Channel not accessible. If it's a private channel, invite the %{app_name} bot first."
-msgstr "Canal inacessível. Se for um canal privado, convide primeiro o bot do %{app_name}."
-
-#: lib/tymeslot/slack/slack.ex
-#, elixir-autogen, elixir-format
 msgid "Slack authorisation was revoked. Reconnect to continue."
 msgstr "A autorização do Slack foi revogada. Reconecte para continuar."
 
@@ -815,26 +809,32 @@ msgstr "Erro do Slack: %{error}"
 msgid "Delete %{name}"
 msgstr "Excluir %{name}"
 
-#: lib/tymeslot_web/live/dashboard/automation/slack_card.ex
-#: lib/tymeslot_web/live/dashboard/automation/telegram_card.ex
+#: lib/tymeslot_web/live/dashboard/automation/telegram/form_handlers.ex
 #, elixir-autogen, elixir-format
-msgid "Last triggered: %{time}"
-msgstr "Último disparo: %{time}"
+msgid "Failed to initialise integration. Please try again."
+msgstr "Não foi possível iniciar a integração. Tente novamente."
 
-#: lib/tymeslot_web/live/dashboard/automation/slack_card.ex
-#: lib/tymeslot_web/live/dashboard/automation/telegram_card.ex
+#: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
 #, elixir-autogen, elixir-format
-msgid "Logs"
-msgstr "Registros"
+msgid "%{app_name} posts notifications to this URL. The destination channel is fixed by Slack when the webhook is created - see the full setup guide on %{guide}."
+msgstr "O %{app_name} publica notificações nesta URL. O canal de destino é definido pelo Slack quando o webhook é criado. Veja o guia completo na %{guide}."
 
-#: lib/tymeslot_web/live/dashboard/automation/slack_card.ex
-#: lib/tymeslot_web/live/dashboard/automation/telegram_card.ex
+#: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
 #, elixir-autogen, elixir-format
-msgid "Test"
-msgstr "Testar"
+msgid "%{app_name} will post booking notifications to this channel. Public channels appear automatically; for a private channel, invite the %{app_name} bot in Slack (%{command}), then click Refresh."
+msgstr "O %{app_name} vai publicar as notificações de agendamento neste canal. Canais públicos aparecem automaticamente; para um canal privado, convide o bot do %{app_name} no Slack (%{command}) e clique em Recarregar."
 
-#: lib/tymeslot_web/live/dashboard/automation/slack_card.ex
-#: lib/tymeslot_web/live/dashboard/automation/telegram_card.ex
+#: lib/tymeslot/slack/slack.ex
 #, elixir-autogen, elixir-format
-msgid "Testing"
-msgstr "Testando"
+msgid "Channel not accessible. If it's a private channel, invite the %{app_name} bot first."
+msgstr "Canal inacessível. Se for um canal privado, convide primeiro o bot do %{app_name}."
+
+#: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "No channels available. Invite the %{app_name} bot to at least one channel in Slack, then click Refresh."
+msgstr "Nenhum canal disponível. Convide o bot do %{app_name} para pelo menos um canal no Slack e clique em Recarregar."
+
+#: lib/tymeslot_web/live/dashboard/automation/slack_form_component.ex
+#, elixir-autogen, elixir-format
+msgid "Pick a channel for %{app_name} to post booking notifications to."
+msgstr "Escolha um canal para o %{app_name} publicar as notificações de agendamento."

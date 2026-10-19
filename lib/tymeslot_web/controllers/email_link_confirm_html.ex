@@ -20,14 +20,14 @@ defmodule TymeslotWeb.EmailLinkConfirmHTML do
   @spec confirm(map()) :: Phoenix.LiveView.Rendered.t()
   def confirm(assigns) do
     ~H"""
-    <main class="flex min-h-screen items-center justify-center bg-linear-to-br from-turquoise-50 via-white to-cyan-50 p-4">
+    <main class="flex min-h-screen items-center justify-center bg-linear-to-br from-primary-50 via-white to-secondary-50 p-4">
       <div class="w-full max-w-md rounded-token-2xl bg-white p-8 text-center shadow-glass-lg">
-        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-token-full bg-turquoise-100 text-turquoise-600">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-token-full bg-primary-100 text-primary-600">
           <.icon name={@icon} class="h-9 w-9" />
         </div>
 
-        <h1 class="mt-6 text-token-2xl font-bold text-tymeslot-800">{@title}</h1>
-        <p class="mt-2 text-token-base text-tymeslot-600">{@body}</p>
+        <h1 class="mt-6 text-token-2xl font-bold text-neutral-800">{@title}</h1>
+        <p class="mt-2 text-token-base text-neutral-600">{@body}</p>
 
         <form method="post" action={@action} class="mt-6">
           <input type="hidden" name="_csrf_token" value={get_csrf_token()} />

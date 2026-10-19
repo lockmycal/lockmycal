@@ -4,8 +4,8 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.ThemeCustomization.Pickers.ColorPi
 
   Renders the curated 12-swatch grid plus a collapsible "Custom" disclosure panel
   containing the reusable `ColourPickerWidget`. Both swatch clicks and committed
-  picker values flow through the parent LiveComponent's event handlers — swatches
-  via `theme:select_background`, the picker via `theme:set_custom_background`.
+  picker values reach the parent LiveComponent as `theme:set_option` with the
+  field `"color"`.
   """
   use TymeslotWeb, :html
   use Gettext, backend: TymeslotWeb.Gettext
@@ -24,7 +24,8 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.ThemeCustomization.Pickers.ColorPi
   Renders the color picker.
 
   Expects assigns:
-    * `:customization` — current customization map (reads `:background_value`)
+    * `:option`        : the background option group's key
+    * `:customization` — current customization map (reads its `"background_value"` setting)
     * `:myself`        — CID of the parent LiveComponent
     * `:custom_picker_open` — boolean controlling the disclosure panel
   """
@@ -38,21 +39,22 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.ThemeCustomization.Pickers.ColorPi
     ~H"""
     <div class="space-y-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <p class="text-token-sm font-black text-neutral-600 dark:text-neutral-300 uppercase tracking-widest mb-6">
-          {dgettext("dashboard_appearance", "Select a solid color")}
+        <p class="text-token-sm font-black text-neutral-400 dark:text-twilight-indigo-300 uppercase tracking-widest">
+          {dgettext("dashboard_appearance", "Select a solid colour")}
         </p>
         <div class="flex flex-wrap items-center gap-3">
-          <%= if @customization.background_type == "color" and @customization.background_value do %>
+          <%= if @customization.settings["background_type"] == "color" and @customization.settings["background_value"] do %>
             <.current_indicator
-              swatches={[@customization.background_value]}
-              label={dgettext("dashboard_appearance", "Solid Color")}
-              code={String.upcase(@customization.background_value)}
-              highlighted={not preset_swatch?(@customization.background_value)}
+              swatches={[@customization.settings["background_value"]]}
+              label={dgettext("dashboard_appearance", "Solid Colour")}
+              code={String.upcase(@customization.settings["background_value"])}
+              highlighted={not preset_swatch?(@customization.settings["background_value"])}
             />
           <% end %>
           <button
             type="button"
             phx-click="theme:toggle_custom_picker"
+            phx-value-option={@option}
             phx-target={@myself}
             aria-expanded={to_string(@custom_picker_open)}
             aria-controls="custom-background-picker"
@@ -80,20 +82,21 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.ThemeCustomization.Pickers.ColorPi
           <button
             type="button"
             class={[
-              "w-14 h-14 rounded-token-2xl border-4 transition-all duration-300 transform hover:scale-110",
-              if(@customization.background_value == color,
-                do: "border-primary-400 scale-110",
-                else: "border-neutral-300 dark:border-twilight-indigo-700 hover:border-primary-200"
+              "w-14 h-14 rounded-token-2xl border-4 transition-all duration-300 shadow-sm transform hover:scale-110",
+              if(@customization.settings["background_value"] == color,
+                do: "border-primary-400 shadow-xl shadow-primary-500/20 scale-110",
+                else: "border-neutral-50 dark:border-twilight-indigo-800 hover:border-primary-200"
               )
             ]}
             style={"background-color: #{color}"}
-            phx-click="theme:select_background"
-            phx-value-type="color"
-            phx-value-id={color}
+            phx-click="theme:set_option"
+            phx-value-option={@option}
+            phx-value-field="color"
+            phx-value-choice={color}
             phx-target={@myself}
           >
-            <%= if @customization.background_value == color do %>
-              <div class="bg-white rounded-token-full p-1 w-6 h-6 mx-auto flex items-center justify-center shadow-lg ring-1 ring-neutral-100 dark:bg-twilight-indigo-950">
+            <%= if @customization.settings["background_value"] == color do %>
+              <div class="bg-white dark:bg-twilight-indigo-950 rounded-token-full p-1 w-6 h-6 mx-auto flex items-center justify-center shadow-lg ring-1 ring-neutral-100">
                 <.icon name="hero-check-mini" class="w-4 h-4 text-primary-600" />
               </div>
             <% end %>
@@ -107,7 +110,8 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.ThemeCustomization.Pickers.ColorPi
             id="custom-background-picker"
             target={@myself}
             initial_hex={@custom_hex}
-            commit_event="theme:set_custom_background"
+            commit_event="theme:set_option"
+            commit_params={%{option: @option, field: "color"}}
           />
         </div>
       <% end %>
@@ -115,7 +119,7 @@ defmodule TymeslotWeb.Dashboard.ThemeSettings.ThemeCustomization.Pickers.ColorPi
     """
   end
 
-  defp current_custom_hex(%{background_value: "#" <> _rest = hex})
+  defp current_custom_hex(%{settings: %{"background_value" => "#" <> _rest = hex}})
        when byte_size(hex) in [4, 7],
        do: hex
 

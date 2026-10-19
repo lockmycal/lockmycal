@@ -237,11 +237,6 @@ msgstr "Видаляє збережені App ID та App secret. Після ц�
 msgid "Domain not found - Please check the URL"
 msgstr "Домен не знайдено - перевірте URL-адресу"
 
-#: lib/tymeslot_web/components/dashboard/integrations/video/nextcloud_talk_config.ex
-#, elixir-autogen, elixir-format
-msgid "Each booking gets its own public Talk conversation, and guests join from its link without a Nextcloud account. To skip the lobby and moderate, sign in to Nextcloud in your browser as this login name first, with your usual password and any second factor; the app password works only for %{app_name}. Anyone else, other Nextcloud users included, waits in the lobby until the meeting starts. A conversation is deleted when its booking is cancelled, and about a week after the meeting ends."
-msgstr "Кожне бронювання отримує власну публічну розмову Talk, і гості приєднуються за її посиланням без облікового запису Nextcloud. Щоб пропустити зал очікування й модерувати, спершу увійдіть у Nextcloud у браузері під цим ім'ям для входу, зі своїм звичайним паролем і другим фактором, якщо він є; пароль застосунку працює лише для %{app_name}. Усі інші, зокрема інші користувачі Nextcloud, чекають у залі очікування до початку зустрічі. Розмову видаляють, коли її бронювання скасовано, а також приблизно через тиждень після завершення зустрічі."
-
 #: lib/tymeslot_web/components/dashboard/integrations/video/edit_video_integration_modal.ex
 #, elixir-autogen, elixir-format
 msgid "Edit Integration"
@@ -293,11 +288,6 @@ msgstr "Введіть пароль застосунку ще раз, щоб п�
 #, elixir-autogen, elixir-format
 msgid "Enter your video meeting URL. Use {{meeting_id}} for unique rooms per meeting"
 msgstr "Введіть URL-адресу відеозустрічі. Використовуйте {{meeting_id}} для створення унікальних кімнат для кожної зустрічі"
-
-#: lib/tymeslot/integrations/video/provider_config.ex
-#, elixir-autogen, elixir-format
-msgid "Enterprise OAuth integration with organizational accounts"
-msgstr "Корпоративна інтеграція OAuth з обліковими записами організації"
 
 #: lib/tymeslot_web/components/dashboard/integrations/video/kmeet_config.ex
 #, elixir-autogen, elixir-format
@@ -1125,10 +1115,35 @@ msgstr "⚠ Некоректний синтаксис"
 msgid "✓ Valid Template"
 msgstr "✓ Правильний шаблон"
 
+#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
+#, elixir-autogen, elixir-format
+msgid "Delete"
+msgstr "Видалити"
+
+#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
+#, elixir-autogen, elixir-format
+msgid "Delete %{name}"
+msgstr "Видалити %{name}"
+
+#: lib/tymeslot/integrations/video/provider_config.ex
+#, elixir-autogen, elixir-format
+msgid "Enterprise OAuth integration with organisational accounts"
+msgstr "Корпоративна інтеграція OAuth з обліковими записами організації"
+
 #: lib/tymeslot/integrations/video/providers/nextcloud_talk/booking_conversation.ex
 #, elixir-autogen, elixir-format
 msgid "Booked through %{app_name}."
 msgstr "Заброньовано через %{app_name}."
+
+#: lib/tymeslot_web/components/dashboard/integrations/video/nextcloud_talk_config.ex
+#, elixir-autogen, elixir-format
+msgid "Each booking gets its own public Talk conversation, and guests join from its link without a Nextcloud account. To skip the lobby and moderate, sign in to Nextcloud in your browser as this login name first, with your usual password and any second factor; the app password works only for %{app_name}. Anyone else, other Nextcloud users included, waits in the lobby until the meeting starts. A conversation is deleted when its booking is cancelled, and about a week after the meeting ends."
+msgstr "Кожне бронювання отримує власну публічну розмову Talk, і гості приєднуються за її посиланням без облікового запису Nextcloud. Щоб пропустити зал очікування й модерувати, спершу увійдіть у Nextcloud у браузері під цим ім'ям для входу, зі своїм звичайним паролем і другим фактором, якщо він є; пароль застосунку працює лише для %{app_name}. Усі інші, зокрема інші користувачі Nextcloud, чекають у залі очікування до початку зустрічі. Розмову видаляють, коли її бронювання скасовано, а також приблизно через тиждень після завершення зустрічі."
+
+#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
+#, elixir-autogen, elixir-format
+msgid "Edit"
+msgstr "Редагувати"
 
 #: lib/tymeslot/integrations/video/providers/nextcloud_talk_provider.ex
 #, elixir-autogen, elixir-format
@@ -1144,18 +1159,3 @@ msgstr "Ця версія Nextcloud Talk застаріла. %{app_name} пот�
 #, elixir-autogen, elixir-format
 msgid "Video"
 msgstr "Відео"
-
-#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
-#, elixir-autogen, elixir-format
-msgid "Delete"
-msgstr "Видалити"
-
-#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
-#, elixir-autogen, elixir-format
-msgid "Delete %{name}"
-msgstr "Видалити %{name}"
-
-#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
-#, elixir-autogen, elixir-format
-msgid "Edit"
-msgstr "Редагувати"

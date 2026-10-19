@@ -226,6 +226,7 @@ defmodule TymeslotWeb.Dashboard.Shared.ShareLinksModalComponent do
             phx-submit="submit"
             phx-target={@myself}
             class="space-y-5"
+            novalidate
           >
             <.input
               id="share-links-recipients"

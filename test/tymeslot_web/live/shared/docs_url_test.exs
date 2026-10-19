@@ -31,6 +31,6 @@ defmodule TymeslotWeb.Live.Shared.DocsUrlTest do
     Application.put_env(:tymeslot, :docs_article_base_url, "https://docs.example.com")
 
     assert DocsUrl.article_link("slack", "our Slack docs") ==
-             ~s(<a href="https://docs.example.com/slack" target="_blank" rel="noopener noreferrer" class="font-black text-turquoise-700 hover:text-turquoise-900 underline">our Slack docs</a>)
+             ~s(<a href="https://docs.example.com/slack" target="_blank" rel="noopener noreferrer" class="font-black text-primary-700 hover:text-primary-900 underline dark:text-primary-300 dark:hover:text-primary-200">our Slack docs</a>)
   end
 end

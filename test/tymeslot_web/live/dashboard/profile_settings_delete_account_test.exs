@@ -74,6 +74,21 @@ defmodule TymeslotWeb.Dashboard.ProfileSettingsDeleteAccountTest do
     refute_enqueued(worker: AccountDeletionWorker)
   end
 
+  # The password field is `required`; without `novalidate` the browser would
+  # stop an empty submit with its own bubble before this inline message.
+  test "an empty password is refused inline, not by the browser", %{conn: conn, user: user} do
+    {:ok, view, _html} = live(conn, ~p"/dashboard/settings")
+    open_dialog(view)
+
+    assert has_element?(view, "#delete-account-form[novalidate]")
+
+    html = submit(view, %{current_password: ""})
+
+    assert html =~ "Current password is incorrect"
+    refute Repo.reload!(user).deletion_requested_at
+    refute_enqueued(worker: AccountDeletionWorker)
+  end
+
   test "the right password hands over to the controller, which schedules the deletion", %{
     conn: conn,
     user: user

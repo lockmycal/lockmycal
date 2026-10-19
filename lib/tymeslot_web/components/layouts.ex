@@ -16,11 +16,13 @@ defmodule TymeslotWeb.Layouts do
   import TymeslotWeb.Components.SiteBanner,
     only: [site_banner: 1, site_banner_dismissal_script: 1]
 
+  alias Phoenix.VerifiedRoutes
   alias Tymeslot.Infrastructure.Config
   alias Tymeslot.Infrastructure.Logging.LogFormat
   alias Tymeslot.Profiles
   alias Tymeslot.Profiles.ProfileSchema
   alias Tymeslot.SiteBanner
+  alias Tymeslot.Themes.Catalog
   alias Tymeslot.Utils.UriUtils
   alias TymeslotWeb.AuthLive
   alias TymeslotWeb.Dashboard.AnalyticsLive
@@ -29,6 +31,7 @@ defmodule TymeslotWeb.Layouts do
   alias TymeslotWeb.MeetingRequestLive
   alias TymeslotWeb.OnboardingLive
   alias TymeslotWeb.Themes.Core.Dispatcher
+  alias TymeslotWeb.Themes.Core.Registry
 
   embed_templates "layouts/*"
 
@@ -112,16 +115,31 @@ defmodule TymeslotWeb.Layouts do
     end
   end
 
-  @spec render_theme_css(String.t()) :: Phoenix.LiveView.Rendered.t()
-  defp render_theme_css(theme_id) do
-    theme_css_path =
-      case theme_id do
-        "1" -> ~p"/assets/scheduling-theme-quill.css"
-        "2" -> ~p"/assets/scheduling-theme-rhythm.css"
-        _other -> ~p"/assets/scheduling-theme-quill.css"
-      end
+  # The booking layout's only knowledge of themes: an id resolves to a key
+  # through the registry, and the key names both the stylesheet and the
+  # root class. An unknown or missing id falls back to the default theme, so
+  # the layout never names a theme that does not exist.
+  @spec resolve_theme(String.t() | nil) :: {String.t(), atom()}
+  defp resolve_theme(theme_id) do
+    with id when is_binary(id) <- theme_id,
+         {:ok, key} <- Registry.id_to_key(id) do
+      {id, key}
+    else
+      _invalid -> {Catalog.default_id(), Catalog.default_key()}
+    end
+  end
 
-    assigns = %{theme_css_path: theme_css_path}
+  @spec render_theme_css(String.t() | nil) :: Phoenix.LiveView.Rendered.t()
+  defp render_theme_css(theme_id) do
+    {_id, key} = resolve_theme(theme_id)
+
+    assigns = %{
+      theme_css_path:
+        VerifiedRoutes.static_path(
+          Endpoint,
+          "/assets/scheduling-theme-#{key}.css"
+        )
+    }
 
     ~H"""
     <link phx-track-static rel="stylesheet" href={@theme_css_path} />
@@ -254,13 +272,10 @@ defmodule TymeslotWeb.Layouts do
   defp context_to_string(:application), do: dgettext("common", "application")
   defp context_to_string(:scheduling_page), do: dgettext("common", "scheduling page")
 
-  @spec theme_class(String.t()) :: String.t()
+  @spec theme_class(String.t() | nil) :: String.t()
   defp theme_class(theme_id) do
-    case theme_id do
-      "1" -> "quill-theme"
-      "2" -> "rhythm-theme"
-      _other -> "quill-theme"
-    end
+    {id, key} = resolve_theme(theme_id)
+    "theme-#{id} #{key}-theme"
   end
 
   @doc """

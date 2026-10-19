@@ -204,6 +204,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.DeleteAccountComponent do
             phx-trigger-action={@submit_to_server}
             phx-target={@myself}
             class="space-y-4"
+            novalidate
           >
             <CoreForms.input
               :if={@with_password}

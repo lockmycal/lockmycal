@@ -41,11 +41,6 @@ msgstr "Уже в списку дозволених: %{domains}"
 msgid "Book a Meeting →"
 msgstr "Запланувати зустріч →"
 
-#: lib/tymeslot_web/live/dashboard/embed_settings/security_section.ex
-#, elixir-autogen, elixir-format
-msgid "By default, embedding is disabled to prevent unauthorized use of your booking page. To enable embedding, you must specify the domains you trust."
-msgstr "За замовчуванням вбудовування вимкнено, щоб запобігти несанкціонованому використанню вашої сторінки бронювання. Щоб увімкнути його, необхідно вказати домени, яким ви довіряєте."
-
 #: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
 #, elixir-autogen, elixir-format
 msgid "Code copied to clipboard!"
@@ -338,11 +333,6 @@ msgstr "Введіть домен і натисніть Enter, щоб додат
 
 #: lib/tymeslot_web/live/dashboard/embed_settings/security_section.ex
 #, elixir-autogen, elixir-format
-msgid "For security, %{emphasis} to only specific domains you trust. This prevents your booking page from appearing on unauthorized websites."
-msgstr "З міркувань безпеки %{emphasis} лише для конкретних доменів, яким ви довіряєте. Це не дозволить відображати вашу сторінку бронювання на сторонніх сайтах."
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/security_section.ex
-#, elixir-autogen, elixir-format
 msgid "Use %{wildcard} to allow all subdomains"
 msgstr "Використовуйте %{wildcard}, щоб дозволити всі піддомени"
 
@@ -376,11 +366,6 @@ msgstr "Стандартний - по центру з обмеженням ~640p
 msgid "Updates every snippet below. Defaults work for most embeds - adjust when your site needs them."
 msgstr "Оновлює всі фрагменти коду нижче. Стандартні налаштування підходять для більшості сайтів - змінюйте їх лише за потреби."
 
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Style Selection"
-msgstr "Вибір стилю"
-
 #: lib/tymeslot_web/live/dashboard/embed_settings/live_preview.ex
 #, elixir-autogen, elixir-format
 msgid "Booking Preview"
@@ -408,11 +393,6 @@ msgstr "Попередній перегляд вимкнено, оскільки
 
 #: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
 #, elixir-autogen, elixir-format
-msgid "Embed & Share"
-msgstr "Вбудовування та поширення"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
-#, elixir-autogen, elixir-format
 msgid "Embed settings"
 msgstr "Налаштування вбудовування"
 
@@ -421,6 +401,16 @@ msgstr "Налаштування вбудовування"
 msgid "Remove %{domain}"
 msgstr "Видалити %{domain}"
 
+#: lib/tymeslot_web/live/dashboard/embed_settings/security_section.ex
+#, elixir-autogen, elixir-format
+msgid "By default, embedding is disabled to prevent unauthorised use of your booking page. To enable embedding, you must specify the domains you trust."
+msgstr "За замовчуванням вбудовування вимкнено, щоб запобігти несанкціонованому використанню вашої сторінки бронювання. Щоб увімкнути його, необхідно вказати домени, яким ви довіряєте."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/security_section.ex
+#, elixir-autogen, elixir-format
+msgid "For security, %{emphasis} to only specific domains you trust. This prevents your booking page from appearing on unauthorised websites."
+msgstr "З міркувань безпеки %{emphasis} лише для конкретних доменів, яким ви довіряєте. Це не дозволить відображати вашу сторінку бронювання на сторонніх сайтах."
+
 #: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
 #, elixir-autogen, elixir-format
 msgid "All - the list of your meeting types"
@@ -428,18 +418,38 @@ msgstr "Усі - список ваших типів зустрічей"
 
 #: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
 #, elixir-autogen, elixir-format
-msgid "Meeting type"
-msgstr "Тип зустрічі"
+msgid "Background"
+msgstr "Фон"
 
 #: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
 #, elixir-autogen, elixir-format
-msgid "Pick one to open its booking page directly. Without a choice, visitors see the meeting types marked \"Show in embedded widget\"."
-msgstr "Виберіть один, щоб одразу відкрити його сторінку бронювання. Без вибору відвідувачі бачать типи зустрічей з позначкою \"Показувати у вбудованому віджеті\"."
+msgid "Background colour"
+msgstr "Колір фону"
 
 #: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
 #, elixir-autogen, elixir-format
 msgid "Create a hidden address"
 msgstr "Створити приховану адресу"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Custom colour"
+msgstr "Власний колір"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Embed & Share"
+msgstr "Вбудовування та поширення"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Expert"
+msgstr "Експерт"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to save the embed settings"
+msgstr "Не вдалося зберегти налаштування вбудовування"
 
 #: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
 #, elixir-autogen, elixir-format
@@ -461,6 +471,21 @@ msgstr "Створити нову адресу?"
 msgid "Hidden widget address"
 msgstr "Прихована адреса віджета"
 
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting type"
+msgstr "Тип зустрічі"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Pick one to open its booking page directly. Without a choice, visitors see the meeting types marked \"Show in embedded widget\"."
+msgstr "Виберіть один, щоб одразу відкрити його сторінку бронювання. Без вибору відвідувачі бачать типи зустрічей з позначкою \"Показувати у вбудованому віджеті\"."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Pick the style to try in the Live Preview. Each style has its own code below, so you can copy any of them."
+msgstr "Виберіть стиль, щоб спробувати його в Перегляді наживо. Кожен стиль має власний код нижче, тож ви можете скопіювати будь-який із них."
+
 #: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
 #, elixir-autogen, elixir-format
 msgid "Remove"
@@ -470,6 +495,16 @@ msgstr "Видалити"
 #, elixir-autogen, elixir-format
 msgid "Remove the hidden address?"
 msgstr "Видалити приховану адресу?"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Replaces the booking page's background inside the widget only. Your public booking page keeps its own."
+msgstr "Замінює фон сторінки бронювання лише у віджеті. Ваша публічна сторінка бронювання зберігає власний."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Style Selection"
+msgstr "Вибір стилю"
 
 #: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
 #, elixir-autogen, elixir-format
@@ -487,36 +522,6 @@ msgstr "Код вбудовування на вкладці «Параметри
 msgid "The hidden widget address is only available on the Pro plan and above."
 msgstr "Прихована адреса віджета доступна лише в тарифі Pro і вище."
 
-#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
-#, elixir-autogen, elixir-format
-msgid "Use a random address in the widget instead of your username, so the code on your website does not reveal your public booking page. Through it, visitors see only the meeting types shown in the widget and the ones hidden from your public page."
-msgstr "Використовуйте у віджеті випадкову адресу замість імені користувача, щоб код на вашому сайті не розкривав вашу публічну сторінку бронювання. Через неї відвідувачі бачать лише типи зустрічей, показані у віджеті, і приховані з публічної сторінки."
-
-#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
-#, elixir-autogen, elixir-format
-msgid "Widget address updated"
-msgstr "Адресу віджета оновлено"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Background"
-msgstr "Фон"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Background colour"
-msgstr "Колір фону"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Custom colour"
-msgstr "Власний колір"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Replaces the booking page's background inside the widget only. Your public booking page keeps its own."
-msgstr "Замінює фон сторінки бронювання лише у віджеті. Ваша публічна сторінка бронювання зберігає власний."
-
 #: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
 #, elixir-autogen, elixir-format
 msgid "Theme default"
@@ -527,17 +532,12 @@ msgstr "Як у темі"
 msgid "Transparent - your page shows through"
 msgstr "Прозорий - видно вашу сторінку"
 
+#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
+#, elixir-autogen, elixir-format
+msgid "Use a random address in the widget instead of your username, so the code on your website does not reveal your public booking page. Through it, visitors see only the meeting types shown in the widget and the ones hidden from your public page."
+msgstr "Використовуйте у віджеті випадкову адресу замість імені користувача, щоб код на вашому сайті не розкривав вашу публічну сторінку бронювання. Через неї відвідувачі бачать лише типи зустрічей, показані у віджеті, і приховані з публічної сторінки."
+
 #: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
 #, elixir-autogen, elixir-format
-msgid "Failed to save the embed settings"
-msgstr "Не вдалося зберегти налаштування вбудовування"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Pick the style to try in the Live Preview. Each style has its own code below, so you can copy any of them."
-msgstr "Виберіть стиль, щоб спробувати його в Перегляді наживо. Кожен стиль має власний код нижче, тож ви можете скопіювати будь-який із них."
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Expert"
-msgstr "Експерт"
+msgid "Widget address updated"
+msgstr "Адресу віджета оновлено"

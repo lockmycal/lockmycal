@@ -77,6 +77,9 @@ defmodule CredoChecks.RequireDashboardSectionHeader do
     "calendar_grid_component",
     "calendar_settings_component",
     "dashboard_overview_component",
+    # Continues the Appearance page's "Your Logo" section, whose header
+    # BrandLogoComponent renders just above it.
+    "ics_branding_component",
     "service_settings_component",
     "video_settings_component",
     "theme_customization_component"

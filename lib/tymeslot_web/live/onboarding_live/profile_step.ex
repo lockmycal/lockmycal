@@ -96,6 +96,7 @@ defmodule TymeslotWeb.OnboardingLive.ProfileStep do
         phx-submit="update_basic_settings"
         class="onboarding-form onboarding-profile-grid"
         id="profile-form"
+        novalidate
       >
         <%!-- Full name --%>
         <div class="onboarding-form-group">

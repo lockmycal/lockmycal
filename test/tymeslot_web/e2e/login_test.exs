@@ -28,6 +28,21 @@ defmodule TymeslotWeb.E2E.LoginTest do
     |> assert_has(css("[role='alert']", text: "Invalid email or password"))
   end
 
+  # The login form leaves validation to the app (`novalidate`): an empty
+  # submit reaches the server and comes back with the app's own message,
+  # not the browser's bubble.
+  feature "an empty login is answered by the app's own message", %{session: session} do
+    session
+    |> visit("/auth/login")
+    |> wait_for_live()
+    |> refute_has(css("body", text: "Please enter your email and password."))
+    |> click(css("button[type='submit']"))
+    # LockMyCal shows the message in its own error flash.
+    |> assert_has(css("#app-flash-group-error", text: "Please enter your email and password."))
+
+    assert current_path(session) == "/auth/login"
+  end
+
   feature "login page fits the narrowest supported viewport", %{session: session} do
     session
     |> resize_to_mobile()

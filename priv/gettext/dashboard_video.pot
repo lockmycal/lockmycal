@@ -237,11 +237,6 @@ msgstr ""
 msgid "Domain not found - Please check the URL"
 msgstr ""
 
-#: lib/tymeslot_web/components/dashboard/integrations/video/nextcloud_talk_config.ex
-#, elixir-autogen, elixir-format
-msgid "Each booking gets its own public Talk conversation, and guests join from its link without a Nextcloud account. To skip the lobby and moderate, sign in to Nextcloud in your browser as this login name first, with your usual password and any second factor; the app password works only for %{app_name}. Anyone else, other Nextcloud users included, waits in the lobby until the meeting starts. A conversation is deleted when its booking is cancelled, and about a week after the meeting ends."
-msgstr ""
-
 #: lib/tymeslot_web/components/dashboard/integrations/video/edit_video_integration_modal.ex
 #, elixir-autogen, elixir-format
 msgid "Edit Integration"
@@ -292,11 +287,6 @@ msgstr ""
 #: lib/tymeslot_web/components/dashboard/integrations/video/edit_video_integration_modal.ex
 #, elixir-autogen, elixir-format
 msgid "Enter your video meeting URL. Use {{meeting_id}} for unique rooms per meeting"
-msgstr ""
-
-#: lib/tymeslot/integrations/video/provider_config.ex
-#, elixir-autogen, elixir-format
-msgid "Enterprise OAuth integration with organizational accounts"
 msgstr ""
 
 #: lib/tymeslot_web/components/dashboard/integrations/video/kmeet_config.ex
@@ -1125,9 +1115,34 @@ msgstr ""
 msgid "✓ Valid Template"
 msgstr ""
 
+#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
+#, elixir-autogen, elixir-format
+msgid "Delete"
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
+#, elixir-autogen, elixir-format
+msgid "Delete %{name}"
+msgstr ""
+
+#: lib/tymeslot/integrations/video/provider_config.ex
+#, elixir-autogen, elixir-format
+msgid "Enterprise OAuth integration with organisational accounts"
+msgstr ""
+
 #: lib/tymeslot/integrations/video/providers/nextcloud_talk/booking_conversation.ex
 #, elixir-autogen, elixir-format
 msgid "Booked through %{app_name}."
+msgstr ""
+
+#: lib/tymeslot_web/components/dashboard/integrations/video/nextcloud_talk_config.ex
+#, elixir-autogen, elixir-format
+msgid "Each booking gets its own public Talk conversation, and guests join from its link without a Nextcloud account. To skip the lobby and moderate, sign in to Nextcloud in your browser as this login name first, with your usual password and any second factor; the app password works only for %{app_name}. Anyone else, other Nextcloud users included, waits in the lobby until the meeting starts. A conversation is deleted when its booking is cancelled, and about a week after the meeting ends."
+msgstr ""
+
+#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
+#, elixir-autogen, elixir-format
+msgid "Edit"
 msgstr ""
 
 #: lib/tymeslot/integrations/video/providers/nextcloud_talk_provider.ex
@@ -1143,19 +1158,4 @@ msgstr ""
 #: lib/tymeslot_web/live/dashboard/video_settings/component_view.ex
 #, elixir-autogen, elixir-format
 msgid "Video"
-msgstr ""
-
-#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
-#, elixir-autogen, elixir-format
-msgid "Delete"
-msgstr ""
-
-#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
-#, elixir-autogen, elixir-format
-msgid "Delete %{name}"
-msgstr ""
-
-#: lib/tymeslot_web/live/dashboard/video_settings/components.ex
-#, elixir-autogen, elixir-format
-msgid "Edit"
 msgstr ""

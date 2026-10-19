@@ -21,11 +21,6 @@ msgstr ""
 msgid "Yes"
 msgstr ""
 
-#: lib/tymeslot/custom_fields/answer_renderer.ex
-#, elixir-autogen, elixir-format
-msgid "✓ Acknowledged (%{at})"
-msgstr ""
-
 #: lib/tymeslot_web/components/core_components/flash.ex
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
@@ -363,6 +358,11 @@ msgstr[1] ""
 msgid "Loading"
 msgstr ""
 
+#: lib/tymeslot/custom_fields/answer_renderer.ex
+#, elixir-autogen, elixir-format
+msgid "✓ Acknowledged"
+msgstr ""
+
 #: lib/tymeslot_web/components/core_components/brand.ex
 #, elixir-autogen, elixir-format
 msgid "%{app_name} logo"
@@ -388,6 +388,11 @@ msgstr ""
 msgid "Documentation"
 msgstr ""
 
+#: lib/tymeslot_web/components/public_top_bar.ex
+#, elixir-autogen, elixir-format
+msgid "Organizer logo"
+msgstr ""
+
 #: lib/tymeslot_web/components/public_footer.ex
 #, elixir-autogen, elixir-format
 msgid "Powered by %{app_name}"
@@ -411,9 +416,4 @@ msgstr ""
 #: lib/tymeslot_web/components/site_components.ex
 #, elixir-autogen, elixir-format
 msgid "© %{year} %{app_name}. All rights reserved."
-msgstr ""
-
-#: lib/tymeslot_web/components/public_top_bar.ex
-#, elixir-autogen, elixir-format
-msgid "Organizer logo"
 msgstr ""

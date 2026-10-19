@@ -411,7 +411,11 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.FormView do
 
           <.attachments_section allow_attachments={@allow_attachments} myself={@myself} />
 
-          <.limits_section booking_limits={@booking_limits} myself={@myself} />
+          <.limits_section
+            booking_limits={@booking_limits}
+            week_start={@week_start}
+            myself={@myself}
+          />
 
           <.visibility_section :if={@type} type={@type} parent={@parent_myself} />
 
