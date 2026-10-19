@@ -9,11 +9,6 @@ msgstr ""
 msgid "We can't show this scheduling page yet"
 msgstr "Ця сторінка бронювання поки що недоступна"
 
-#: lib/tymeslot_web/themes/shared/components/error_component.ex
-#, elixir-autogen
-msgid "If you are the organizer, please connect a calendar in your dashboard."
-msgstr "Якщо ви організатор, підключіть календар на панелі керування."
-
 #: lib/tymeslot_web/gettext/ecto_error_msgids.ex
 #, elixir-autogen, elixir-format
 msgid "are still associated with this entry"
@@ -376,15 +371,60 @@ msgstr[0] "%{count} хвилину"
 msgstr[1] "%{count} хвилини"
 msgstr[2] "%{count} хвилин"
 
-#: lib/tymeslot_web/controllers/error_html/404.html.heex
+#: lib/tymeslot_web/helpers/image_upload_errors.ex
 #, elixir-autogen, elixir-format
-msgid "Go to %{app_name}"
-msgstr "Перейти до %{app_name}"
+msgid "This image is too large (%{size} megapixels). Please upload an image of at most %{limit} megapixels."
+msgstr "Це зображення завелике (%{size} мегапікселів). Завантажте зображення розміром не більше %{limit} мегапікселів."
 
-#: lib/tymeslot/security/field_validators/full_name_validator.ex
+#: lib/tymeslot_web/helpers/image_upload_errors.ex
 #, elixir-autogen, elixir-format
-msgid "Full name is required"
-msgstr "Повне ім’я обов’язкове"
+msgid "We are busy processing other uploads. Please try again in a moment."
+msgstr "Зараз обробляються інші завантаження. Спробуйте ще раз за мить."
+
+#: lib/tymeslot/meeting_types/meeting_type_schema.ex
+#, elixir-autogen, elixir-format
+msgid "a group meeting type cannot ask each booker for their phone number"
+msgstr "груповий тип зустрічі не може просити кожного, хто бронює, вказати свій номер телефону"
+
+#: lib/tymeslot/meeting_types/meeting_type_schema.ex
+#, elixir-autogen, elixir-format
+msgid "a group meeting type must offer exactly one location"
+msgstr "груповий тип зустрічі має пропонувати рівно одне місце"
+
+#: lib/tymeslot/meeting_types/meeting_type_schema.ex
+#, elixir-autogen, elixir-format
+msgid "a group meeting type's in-person location must name a venue"
+msgstr "особисте місце групового типу зустрічі має вказувати місце проведення"
+
+#: lib/tymeslot/meeting_types/meeting_type_schema.ex
+#, elixir-autogen, elixir-format
+msgid "a group meeting type's in-person location must name exactly one venue"
+msgstr "особисте місце групового типу зустрічі має вказувати рівно одне місце проведення"
+
+#: lib/tymeslot/meeting_types/meeting_type_schema.ex
+#, elixir-autogen, elixir-format
+msgid "a group meeting type's video call must use exactly one provider"
+msgstr "відеодзвінок групового типу зустрічі має використовувати рівно один сервіс"
+
+#: lib/tymeslot/meeting_types/meeting_type_schema.ex
+#, elixir-autogen, elixir-format
+msgid "group bookings cannot require approval"
+msgstr "групові бронювання не можуть вимагати підтвердження"
+
+#: lib/tymeslot/meeting_types/meeting_type_schema.ex
+#, elixir-autogen, elixir-format
+msgid "group bookings cannot require payment"
+msgstr "групові бронювання не можуть вимагати оплати"
+
+#: lib/tymeslot/meeting_types/meeting_type_schema.ex
+#, elixir-autogen, elixir-format
+msgid "You already have a meeting type with this name"
+msgstr "У вас уже є тип зустрічі з такою назвою"
+
+#: lib/tymeslot_web/themes/shared/components/error_component.ex
+#, elixir-autogen, elixir-format
+msgid "If you are the organiser, please connect a calendar in your dashboard."
+msgstr "Якщо ви організатор, підключіть календар на панелі керування."
 
 #: lib/tymeslot/security/field_validators/yes_no_validator.ex
 #, elixir-autogen, elixir-format
@@ -440,6 +480,16 @@ msgstr "Дата повинна бути текстом"
 #, elixir-autogen, elixir-format
 msgid "Date range configuration is invalid"
 msgstr "Налаштування діапазону дат недійсне"
+
+#: lib/tymeslot/security/field_validators/full_name_validator.ex
+#, elixir-autogen, elixir-format
+msgid "Full name is required"
+msgstr "Повне ім’я обов’язкове"
+
+#: lib/tymeslot_web/controllers/error_html/404.html.heex
+#, elixir-autogen, elixir-format
+msgid "Go to %{app_name}"
+msgstr "Перейти до %{app_name}"
 
 #: lib/tymeslot/security/field_validators/number_validator.ex
 #, elixir-autogen, elixir-format
@@ -610,56 +660,6 @@ msgstr "URL обов'язковий"
 #, elixir-autogen, elixir-format
 msgid "URL must be text"
 msgstr "URL повинен бути текстом"
-
-#: lib/tymeslot_web/helpers/image_upload_errors.ex
-#, elixir-autogen, elixir-format
-msgid "This image is too large (%{size} megapixels). Please upload an image of at most %{limit} megapixels."
-msgstr "Це зображення завелике (%{size} мегапікселів). Завантажте зображення розміром не більше %{limit} мегапікселів."
-
-#: lib/tymeslot_web/helpers/image_upload_errors.ex
-#, elixir-autogen, elixir-format
-msgid "We are busy processing other uploads. Please try again in a moment."
-msgstr "Зараз обробляються інші завантаження. Спробуйте ще раз за мить."
-
-#: lib/tymeslot/meeting_types/meeting_type_schema.ex
-#, elixir-autogen, elixir-format
-msgid "a group meeting type cannot ask each booker for their phone number"
-msgstr "груповий тип зустрічі не може просити кожного, хто бронює, вказати свій номер телефону"
-
-#: lib/tymeslot/meeting_types/meeting_type_schema.ex
-#, elixir-autogen, elixir-format
-msgid "a group meeting type must offer exactly one location"
-msgstr "груповий тип зустрічі має пропонувати рівно одне місце"
-
-#: lib/tymeslot/meeting_types/meeting_type_schema.ex
-#, elixir-autogen, elixir-format
-msgid "a group meeting type's in-person location must name a venue"
-msgstr "особисте місце групового типу зустрічі має вказувати місце проведення"
-
-#: lib/tymeslot/meeting_types/meeting_type_schema.ex
-#, elixir-autogen, elixir-format
-msgid "a group meeting type's in-person location must name exactly one venue"
-msgstr "особисте місце групового типу зустрічі має вказувати рівно одне місце проведення"
-
-#: lib/tymeslot/meeting_types/meeting_type_schema.ex
-#, elixir-autogen, elixir-format
-msgid "a group meeting type's video call must use exactly one provider"
-msgstr "відеодзвінок групового типу зустрічі має використовувати рівно один сервіс"
-
-#: lib/tymeslot/meeting_types/meeting_type_schema.ex
-#, elixir-autogen, elixir-format
-msgid "group bookings cannot require approval"
-msgstr "групові бронювання не можуть вимагати підтвердження"
-
-#: lib/tymeslot/meeting_types/meeting_type_schema.ex
-#, elixir-autogen, elixir-format
-msgid "group bookings cannot require payment"
-msgstr "групові бронювання не можуть вимагати оплати"
-
-#: lib/tymeslot/meeting_types/meeting_type_schema.ex
-#, elixir-autogen, elixir-format
-msgid "You already have a meeting type with this name"
-msgstr "У вас уже є тип зустрічі з такою назвою"
 
 #: lib/tymeslot/meeting_types/group_registration.ex
 #, elixir-autogen, elixir-format

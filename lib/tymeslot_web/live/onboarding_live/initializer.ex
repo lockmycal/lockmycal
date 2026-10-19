@@ -46,7 +46,7 @@ defmodule TymeslotWeb.OnboardingLive.Initializer do
     # customization below so the assigned state reflects it.
     ThemeHandlers.seed_video_backgrounds(profile, connected_calendars)
 
-    {customization, color_scheme} = ThemeHandlers.initial_theme_state(profile)
+    {customization, onboarding_choices} = ThemeHandlers.initial_theme_state(profile)
 
     socket
     |> Component.assign(
@@ -63,7 +63,7 @@ defmodule TymeslotWeb.OnboardingLive.Initializer do
       booking_url: build_booking_url(profile),
       custom_username_allowed: custom_username_allowed,
       theme_customization: customization,
-      color_scheme: color_scheme
+      onboarding_choices: onboarding_choices
     )
     |> configure_avatar_upload()
   end
@@ -90,7 +90,8 @@ defmodule TymeslotWeb.OnboardingLive.Initializer do
       caldav_form_data: %{},
       caldav_form_errors: %{},
       caldav_discovering: false,
-      theme_options: ThemeInfo.theme_options()
+      theme_options: ThemeInfo.theme_options(),
+      theme_picker: :stories
     ]
   end
 

@@ -33,7 +33,7 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.OverviewComponentTest d
       html = render_overview(meeting_types: [])
 
       assert html =~ "No meeting types available"
-      assert html =~ "Please contact the organizer"
+      assert html =~ "Please contact the organiser"
       assert duration_option_count(html) == 0
     end
 
@@ -215,6 +215,15 @@ defmodule TymeslotWeb.Themes.Quill.Scheduling.Components.OverviewComponentTest d
 
       refute html =~ "<script>alert(1)</script>"
       assert html =~ "&lt;script&gt;"
+    end
+  end
+
+  describe "avatar badge" do
+    # LockMyCal shows the organiser's avatar without upstream's check badge.
+    test "is not drawn" do
+      html = render_overview([])
+
+      assert html |> Floki.parse_document!() |> Floki.find(".overview-success-badge") == []
     end
   end
 

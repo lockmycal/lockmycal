@@ -12,10 +12,11 @@ defmodule TymeslotWeb.Themes.Shared.AttendeeAttachmentUpload do
 
   On submit the component consumes the entries into a fresh batch
   (`Tymeslot.Bookings.AttendeeAttachments`) and hands the stored files to the
-  LiveView with a `{:step_event, :booking, :attachments, list}` message sent
-  just before the `:submit` one, so the booking params stay plain form
-  fields; `TymeslotWeb.Themes.Shared.BookingFlow` then owns the batch and
-  deletes it if the booking does not go through.
+  LiveView with a `{:step_event, moment, :attachments, list}` message sent
+  just before the `:submit` one (`moment` as `StepEvents.moment/1` names
+  it), so the booking params stay plain form fields;
+  `TymeslotWeb.Themes.Shared.BookingFlow` then owns the batch and deletes it
+  if the booking does not go through.
   """
 
   use Gettext, backend: TymeslotWeb.Gettext
@@ -27,9 +28,10 @@ defmodule TymeslotWeb.Themes.Shared.AttendeeAttachmentUpload do
 
   alias Tymeslot.Bookings.AttendeeAttachments
   alias Tymeslot.Infrastructure.Logging.LogFormat
-  alias TymeslotWeb.Helpers.UploadConstraints
+  alias Tymeslot.Media.AttachmentConstraints
   alias TymeslotWeb.Helpers.UploadHandler
   alias TymeslotWeb.Themes.Shared.BookingLocation
+  alias TymeslotWeb.Themes.Shared.StepEvents
 
   @upload :attachments
 
@@ -56,9 +58,9 @@ defmodule TymeslotWeb.Themes.Shared.AttendeeAttachmentUpload do
   def maybe_allow(socket) do
     if enabled?(socket.assigns) and not registered?(socket) do
       allow_upload(socket, @upload,
-        accept: UploadConstraints.allowed_extensions(:booking_attachment),
-        max_entries: UploadConstraints.max_entries(:booking_attachment),
-        max_file_size: UploadConstraints.max_file_size(:booking_attachment)
+        accept: AttachmentConstraints.allowed_extensions(),
+        max_entries: AttachmentConstraints.max_entries(),
+        max_file_size: AttachmentConstraints.max_file_size()
       )
     else
       socket
@@ -82,14 +84,14 @@ defmodule TymeslotWeb.Themes.Shared.AttendeeAttachmentUpload do
     if BookingLocation.complete?(socket.assigns) do
       case consume(socket) do
         {:ok, socket} ->
-          send(self(), {:step_event, :booking, :submit, booking_params})
+          send(self(), {:step_event, StepEvents.moment(socket.assigns), :submit, booking_params})
           {:noreply, socket |> assign(:submitting, true) |> assign(:attachment_error, nil)}
 
         {:error, socket, message} ->
           {:noreply, assign(socket, :attachment_error, message)}
       end
     else
-      send(self(), {:step_event, :booking, :submit, booking_params})
+      send(self(), {:step_event, StepEvents.moment(socket.assigns), :submit, booking_params})
       {:noreply, assign(socket, :submitting, false)}
     end
   end
@@ -134,7 +136,7 @@ defmodule TymeslotWeb.Themes.Shared.AttendeeAttachmentUpload do
 
     case Enum.find(results, &match?({:error, _reason}, &1)) do
       nil ->
-        send(self(), {:step_event, :booking, :attachments, stored})
+        send(self(), {:step_event, StepEvents.moment(socket.assigns), :attachments, stored})
         {:ok, socket}
 
       {:error, reason} ->
@@ -165,7 +167,7 @@ defmodule TymeslotWeb.Themes.Shared.AttendeeAttachmentUpload do
   @doc "The note shown under the field: accepted types, per-file size and file count."
   @spec limits_note() :: String.t()
   def limits_note do
-    max_files = UploadConstraints.max_entries(:booking_attachment)
+    max_files = AttachmentConstraints.max_entries()
 
     dngettext(
       "booking_attachments",
@@ -173,7 +175,7 @@ defmodule TymeslotWeb.Themes.Shared.AttendeeAttachmentUpload do
       "Allowed file types: %{types}, up to %{max_mb} MB each, maximum %{count} files.",
       max_files,
       types: Enum.map_join(AttendeeAttachments.allowed_types(), ", ", &String.upcase/1),
-      max_mb: div(UploadConstraints.max_file_size(:booking_attachment), 1_000_000)
+      max_mb: div(AttachmentConstraints.max_file_size(), 1_000_000)
     )
   end
 

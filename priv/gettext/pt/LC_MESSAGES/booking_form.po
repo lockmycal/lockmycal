@@ -1,0 +1,75 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: pt\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/tymeslot_web/themes/shared/components/booking_form.ex
+#, elixir-autogen, elixir-format
+msgid "+420 123 456 789"
+msgstr "+55 11 91234-5678"
+
+#: lib/tymeslot_web/themes/shared/components/booking_form.ex
+#, elixir-autogen, elixir-format
+msgid "Acme Inc."
+msgstr "Empresa Ltda."
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#: lib/tymeslot_web/themes/shared/components/booking_form.ex
+#, elixir-autogen, elixir-format
+msgid "Company Name"
+msgstr "Nome da empresa"
+
+#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#, elixir-autogen, elixir-format
+msgid "Create an account"
+msgstr "Criar conta"
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Enter your company name"
+msgstr "Digite o nome da sua empresa"
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#, elixir-autogen, elixir-format
+msgid "Enter your phone number"
+msgstr "Digite seu número de telefone"
+
+#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#, elixir-autogen, elixir-format
+msgid "Have an account? Sign in before booking and the meeting is saved straight to your calendar too."
+msgstr "Já tem uma conta? Entre antes de agendar e a reunião também é salva direto no seu calendário."
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#: lib/tymeslot_web/themes/shared/components/booking_form.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting Information"
+msgstr "Informações da reunião"
+
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/booking_component.ex
+#: lib/tymeslot_web/themes/shared/components/booking_form.ex
+#, elixir-autogen, elixir-format
+msgid "Phone Number"
+msgstr "Número de telefone"
+
+#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#, elixir-autogen, elixir-format
+msgid "Remember for next time"
+msgstr "Lembrar para a próxima vez"
+
+#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#, elixir-autogen, elixir-format
+msgid "Save to my default calendar (%{calendar})"
+msgstr "Salvar no meu calendário padrão (%{calendar})"
+
+#: lib/tymeslot_web/themes/shared/components/own_calendar.ex
+#, elixir-autogen, elixir-format
+msgid "Sign in"
+msgstr "Entrar"

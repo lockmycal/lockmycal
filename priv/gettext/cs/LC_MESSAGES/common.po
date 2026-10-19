@@ -21,11 +21,6 @@ msgstr "Ne"
 msgid "Yes"
 msgstr "Ano"
 
-#: lib/tymeslot/custom_fields/answer_renderer.ex
-#, elixir-autogen, elixir-format
-msgid "✓ Acknowledged (%{at})"
-msgstr "✓ Potvrzeno (%{at})"
-
 #: lib/tymeslot_web/components/core_components/flash.ex
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
@@ -368,6 +363,11 @@ msgstr[2] "Můžete nastavit až %{count} připomínek"
 msgid "Loading"
 msgstr "Načítání"
 
+#: lib/tymeslot/custom_fields/answer_renderer.ex
+#, elixir-autogen, elixir-format
+msgid "✓ Acknowledged"
+msgstr "✓ Potvrzeno"
+
 #: lib/tymeslot_web/components/core_components/brand.ex
 #, elixir-autogen, elixir-format
 msgid "%{app_name} logo"
@@ -392,6 +392,11 @@ msgstr "Skrýt oznámení"
 #, elixir-autogen, elixir-format
 msgid "Documentation"
 msgstr "Dokumentace"
+
+#: lib/tymeslot_web/components/public_top_bar.ex
+#, elixir-autogen, elixir-format
+msgid "Organizer logo"
+msgstr "Logo organizátora"
 
 #: lib/tymeslot_web/components/public_footer.ex
 #, elixir-autogen, elixir-format
@@ -418,8 +423,3 @@ msgstr "Web"
 #, elixir-autogen, elixir-format
 msgid "© %{year} %{app_name}. All rights reserved."
 msgstr "© %{year} %{app_name}. Všechna práva vyhrazena."
-
-#: lib/tymeslot_web/components/public_top_bar.ex
-#, elixir-autogen, elixir-format
-msgid "Organizer logo"
-msgstr "Logo organizátora"

@@ -21,14 +21,14 @@
   align-items: center;
   gap: var(--space-md);
   padding: var(--space-sm) var(--space-lg);
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--public-bar-surface);
   border-top: var(--border-width-thin) solid var(--theme-primary);
   box-shadow: var(--shadow-sm);
 }
 
 .public-footer-powered {
   grid-column: 2;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--public-bar-ink);
   font-size: 0.8125rem;
   white-space: nowrap;
 }
@@ -39,14 +39,14 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--public-bar-ink);
   font-size: 0.8125rem;
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
 .public-footer-link:hover {
-  color: #fff;
+  color: var(--public-bar-ink-strong);
   text-decoration: underline;
 }
 
@@ -68,7 +68,9 @@
 /* Short windows (landscape phones): the booking content needs the height more
    than the footer does, so the footer steps aside. */
 @media (max-height: 480px) {
-  .public-footer {
-    display: none;
+  :where(html:not([data-embedded])) {
+    .public-footer {
+      display: none;
+    }
   }
 }

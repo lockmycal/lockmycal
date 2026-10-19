@@ -15,9 +15,9 @@ defmodule Tymeslot.AppSettingsTest do
   alias Tymeslot.Infrastructure.Security.RecaptchaHelpers
   alias Tymeslot.Infrastructure.Security.TurnstileHelpers
   alias Tymeslot.Locales
+  alias Tymeslot.Media.UploadConstraints
   alias Tymeslot.Test.LogCapture
   alias TymeslotWeb.Helpers.ClientIP
-  alias TymeslotWeb.Helpers.UploadConstraints
 
   setup :restore_app_settings_env
 

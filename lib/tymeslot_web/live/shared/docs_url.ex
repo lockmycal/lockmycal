@@ -29,7 +29,7 @@ defmodule TymeslotWeb.Live.Shared.DocsUrl do
   """
   @spec article_link(String.t(), String.t()) :: String.t()
   def article_link(slug, label) do
-    ~s(<a href="#{article_url(slug)}" target="_blank" rel="noopener noreferrer" class="font-black text-turquoise-700 hover:text-turquoise-900 underline">#{label}</a>)
+    ~s(<a href="#{article_url(slug)}" target="_blank" rel="noopener noreferrer" class="font-black text-primary-700 hover:text-primary-900 underline dark:text-primary-300 dark:hover:text-primary-200">#{label}</a>)
   end
 
   # Read at runtime, not through `compile_env/3`: Core ships as a prebuilt

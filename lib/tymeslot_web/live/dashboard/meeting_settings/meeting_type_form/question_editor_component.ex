@@ -225,11 +225,11 @@ defmodule TymeslotWeb.Dashboard.MeetingSettings.MeetingTypeForm.QuestionEditorCo
           for={@changeset}
           as={:definition}
           id="custom-question-editor-form"
+          novalidate
           phx-change="validate"
           phx-submit="save"
           phx-target={@myself}
           class="space-y-4"
-          novalidate
         >
           <LocaleTabSwitcher.locale_tab_switcher
             active_value={@active_translation_locale}

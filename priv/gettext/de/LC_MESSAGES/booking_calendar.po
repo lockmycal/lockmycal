@@ -85,3 +85,14 @@ msgstr "Dieser Kalender ist nicht öffentlich."
 #, elixir-autogen, elixir-format
 msgid "Today"
 msgstr "Heute"
+
+#: lib/tymeslot_web/live/public/calendar_live.ex
+#, elixir-autogen, elixir-format
+msgid "Click a day to see available times and book."
+msgstr "Klicken Sie auf einen Tag, um verfügbare Zeiten zu sehen und zu buchen."
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/overview_component.ex
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/overview_component.ex
+#, elixir-autogen, elixir-format
+msgid "View full calendar"
+msgstr "Vollständigen Kalender anzeigen"

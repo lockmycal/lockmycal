@@ -11,6 +11,10 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
   two. Score, email, text, colour, and locale settings use a small inline
   form so admins save one value at a time.
 
+  A setting fixed by an environment variable (`effective.env_var` set) keeps
+  its current value on screen but its control is disabled, and its header
+  names the variable.
+
   Email branding is rendered by its own `email_branding_section/1` rather than
   through the generic loop. Its logo row takes an upload instead of a form
   field, and its accent row needs derived preview data, so routing it through
@@ -30,6 +34,7 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
   use Gettext, backend: TymeslotWeb.Gettext
 
   alias Tymeslot.AppSettings
+  alias Tymeslot.Infrastructure.Config
   alias TymeslotWeb.AdminLive.Components.LocaleSetting
   alias TymeslotWeb.AdminLive.Tabs
   alias TymeslotWeb.Dashboard.Admin.AuditEventRows
@@ -82,7 +87,8 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
       <.info_box :if={!@extension} variant={:info}>
         {dgettext(
           "dashboard_admin",
-          "Changes here take effect immediately and override the matching environment variables and application configuration (e.g. REGISTRATION_ENABLED, PASSWORD_AUTH_ENABLED) for this install."
+          "Changes here take effect immediately. A setting fixed by an environment variable, such as REGISTRATION_ENABLED, is greyed out and changes only when you edit that variable and restart %{app_name}.",
+          app_name: Config.app_name()
         )}
       </.info_box>
 
@@ -219,13 +225,15 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
     # boolean render its own toggle at 60% opacity - reading as "you cannot
     # click this" on the one control that is the only way back on.
     #
-    # `disabled` is genuine inertness: a dependent setting whose parent is off
-    # has a control that really is unusable until the parent is switched on.
-    # `muted` is merely "this setting is not doing anything at the moment",
-    # which is worth saying in the description but must never be said about a
-    # live control.
-    disabled = parent_disabled?(assigns.key, assigns.effective_values)
-    muted = disabled or own_value_off?(kind, effective)
+    # `disabled` is genuine inertness: a dependent setting whose parent is
+    # off, or a setting an environment variable fixes, has a control that
+    # really is unusable. `muted` is merely "this setting is not doing
+    # anything at the moment", which is worth saying in the description but
+    # must never be said about a live control. A pinned setting is live, so
+    # pinning alone does not mute it.
+    parent_off = parent_disabled?(assigns.key, assigns.effective_values)
+    disabled = parent_off or effective.env_var != nil
+    muted = parent_off or own_value_off?(kind, effective)
 
     assigns =
       assigns
@@ -239,7 +247,7 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
       id={"admin-setting-row-#{@key}"}
       class="px-8 py-6 flex items-start justify-between gap-6 flex-wrap sm:flex-nowrap"
     >
-      <.row_header key={@key} muted={@muted} />
+      <.row_header key={@key} muted={@muted} pinned_by={@effective.env_var} />
 
       <.setting_control
         kind={@kind}
@@ -259,21 +267,34 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
   # module line-count budget).
   attr :key, :atom, required: true
   attr :muted, :boolean, default: false
+  attr :pinned_by, :string, default: nil
 
+  # The pinned note sits outside the muted wrapper so it stays legible on a
+  # pinned setting whose value is off.
   @spec row_header(map()) :: Phoenix.LiveView.Rendered.t()
   def row_header(assigns) do
     ~H"""
-    <div class={["flex-1 min-w-0 transition-opacity", @muted && "opacity-60"]}>
-      <h4 class="text-token-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight">
-        {Formatters.humanise(@key)}
-      </h4>
-      <p class="mt-1 text-token-sm text-neutral-600 dark:text-neutral-300 font-medium leading-relaxed">
-        {Formatters.describe(@key)}
+    <div class="flex-1 min-w-0">
+      <div class={["transition-opacity", @muted && "opacity-60"]}>
+        <h4 class="text-token-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight">
+          {Formatters.humanise(@key)}
+        </h4>
+        <p class="mt-1 text-token-sm text-neutral-600 dark:text-neutral-300 font-medium leading-relaxed">
+          {Formatters.describe(@key)}
+        </p>
+        <.recommended_chip
+          :if={Formatters.recommended(@key) != nil}
+          value={Formatters.recommended(@key)}
+        />
+      </div>
+      <p
+        :if={@pinned_by}
+        id={"setting-pinned-#{@key}"}
+        class="mt-3 flex items-start gap-1.5 text-token-xs font-bold text-neutral-700 dark:text-neutral-200"
+      >
+        <.icon name="hero-lock-closed-mini" class="w-4 h-4 mt-px shrink-0 text-neutral-500" />
+        <span>{Formatters.pinned_reason(@pinned_by)}</span>
       </p>
-      <.recommended_chip
-        :if={Formatters.recommended(@key) != nil}
-        value={Formatters.recommended(@key)}
-      />
     </div>
     """
   end
@@ -347,8 +368,8 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
         state="true"
         label={dgettext("dashboard_admin", "Enabled")}
         active={@effective.value == true}
-        locked={true in @effective.locked_states}
-        lock_reason={Formatters.lock_reason(@key, true)}
+        locked={@effective.env_var != nil or true in @effective.locked_states}
+        lock_reason={Formatters.tag_lock_reason(@key, true, @effective)}
         target={@target}
       />
       <.setting_tag
@@ -356,8 +377,8 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
         state="false"
         label={dgettext("dashboard_admin", "Disabled")}
         active={@effective.value == false}
-        locked={false in @effective.locked_states}
-        lock_reason={Formatters.lock_reason(@key, false)}
+        locked={@effective.env_var != nil or false in @effective.locked_states}
+        lock_reason={Formatters.tag_lock_reason(@key, false, @effective)}
         target={@target}
       />
     </div>
@@ -386,8 +407,10 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsView do
         state={state}
         label={label}
         active={@effective.value == String.to_existing_atom(state)}
-        locked={String.to_existing_atom(state) in @effective.locked_states}
-        lock_reason={Formatters.lock_reason(@key, String.to_existing_atom(state))}
+        locked={
+          @effective.env_var != nil or String.to_existing_atom(state) in @effective.locked_states
+        }
+        lock_reason={Formatters.tag_lock_reason(@key, String.to_existing_atom(state), @effective)}
         target={@target}
       />
     </div>

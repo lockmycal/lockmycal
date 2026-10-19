@@ -39,7 +39,7 @@ defmodule TymeslotWeb.Themes.Shared.Components.OwnCalendar do
           class="own-calendar-field__checkbox"
         />
         <span class="own-calendar-field__text">
-          {dgettext("booking", "Save to my default calendar (%{calendar})",
+          {dgettext("booking_form", "Save to my default calendar (%{calendar})",
             calendar: @offer.calendar_name
           )}
         </span>
@@ -51,7 +51,7 @@ defmodule TymeslotWeb.Themes.Shared.Components.OwnCalendar do
           class="own-calendar-field__checkbox"
         />
         <span class="own-calendar-field__text">
-          {dgettext("booking", "Remember for next time")}
+          {dgettext("booking_form", "Remember for next time")}
         </span>
       </label>
     </div>
@@ -82,11 +82,11 @@ defmodule TymeslotWeb.Themes.Shared.Components.OwnCalendar do
       <.icon name="hero-calendar-days" class="own-calendar-hint__icon" />
       <p class="own-calendar-hint__text">
         {dgettext(
-          "booking",
+          "booking_form",
           "Have an account? Sign in before booking and the meeting is saved straight to your calendar too."
         )}
         <.link href={@login_path} class="own-calendar-hint__link" data-testid="own-calendar-sign-in">
-          {dgettext("booking", "Sign in")}
+          {dgettext("booking_form", "Sign in")}
         </.link>
         <.link
           :if={@registration_enabled}
@@ -95,7 +95,7 @@ defmodule TymeslotWeb.Themes.Shared.Components.OwnCalendar do
           rel="noopener"
           class="own-calendar-hint__link"
         >
-          {dgettext("booking", "Create an account")}
+          {dgettext("booking_form", "Create an account")}
         </.link>
       </p>
     </div>

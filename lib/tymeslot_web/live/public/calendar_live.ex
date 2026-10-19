@@ -51,10 +51,12 @@ defmodule TymeslotWeb.Public.CalendarLive do
   alias Tymeslot.Locales
   alias Tymeslot.Meetings
   alias Tymeslot.Profiles
+  alias Tymeslot.ThemeCustomizations.Tokens
   alias Tymeslot.Utils.DateTimeUtils.TimeFormat
   alias TymeslotWeb.Dashboard.CalendarGrid.Helpers.PreferenceHelpers
   alias TymeslotWeb.Helpers.LocaleFormat
   alias TymeslotWeb.Themes.Shared.Customization.Helpers, as: CustomizationHelpers
+  alias TymeslotWeb.Themes.Shared.ThemeStyle
 
   @max_chips 4
 
@@ -168,11 +170,8 @@ defmodule TymeslotWeb.Public.CalendarLive do
   def render(assigns) do
     ~H"""
     <div class="quill-theme-wrapper theme-1" data-locale={@locale}>
-      <CustomizationHelpers.render_custom_theme_styles custom_css={@custom_css} />
-      <div
-        class="main-gradient theme-grid"
-        style={CustomizationHelpers.get_background_style(@theme_customization)}
-      >
+      <ThemeStyle.theme_style tokens={@theme_tokens} />
+      <div class="main-gradient theme-grid" style={page_background(@theme_tokens)}>
         <div class="content-area">
           <.public_top_bar
             locale={@locale}
@@ -344,7 +343,7 @@ defmodule TymeslotWeb.Public.CalendarLive do
                     {dgettext("booking_calendar", "Not blocking bookings")}
                   </span>
                   <span class="public-calendar-legend-hint">{dgettext(
-                    "booking",
+                    "booking_calendar",
                     "Click a day to see available times and book."
                   )}</span>
                 </p>
@@ -634,4 +633,11 @@ defmodule TymeslotWeb.Public.CalendarLive do
 
   defp month_label(date, locale),
     do: "#{LocaleFormat.format_month_name(date.month, locale)} #{date.year}"
+
+  # The Quill page background the organiser chose (a gradient, colour or
+  # image; a video background falls back to the theme's own gradient here).
+  defp page_background(%Tokens{media: media}),
+    do: ThemeStyle.inline_background(media[:background])
+
+  defp page_background(_no_tokens), do: nil
 end

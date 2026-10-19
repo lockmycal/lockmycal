@@ -41,11 +41,6 @@ msgstr "Já liberados: %{domains}"
 msgid "Book a Meeting →"
 msgstr "Agendar uma reunião →"
 
-#: lib/tymeslot_web/live/dashboard/embed_settings/security_section.ex
-#, elixir-autogen, elixir-format
-msgid "By default, embedding is disabled to prevent unauthorized use of your booking page. To enable embedding, you must specify the domains you trust."
-msgstr "Por padrão, a incorporação fica desativada para impedir o uso não autorizado da sua página de agendamento. Para ativá-la, você precisa indicar os domínios em que confia."
-
 #: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
 #, elixir-autogen, elixir-format
 msgid "Code copied to clipboard!"
@@ -338,11 +333,6 @@ msgstr "Digite um domínio e aperte Enter para adicionar. Não inclua %{scheme} 
 
 #: lib/tymeslot_web/live/dashboard/embed_settings/security_section.ex
 #, elixir-autogen, elixir-format
-msgid "For security, %{emphasis} to only specific domains you trust. This prevents your booking page from appearing on unauthorized websites."
-msgstr "Por segurança, %{emphasis} só a domínios específicos em que você confia. Isso impede que sua página de agendamento apareça em sites não autorizados."
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/security_section.ex
-#, elixir-autogen, elixir-format
 msgid "Use %{wildcard} to allow all subdomains"
 msgstr "Use %{wildcard} para liberar todos os subdomínios"
 
@@ -376,11 +366,6 @@ msgstr "Padrão: centralizado com limite de ~640px (estilo independente)"
 msgid "Updates every snippet below. Defaults work for most embeds - adjust when your site needs them."
 msgstr "Atualiza todos os trechos abaixo. Os padrões servem para a maioria das incorporações; ajuste quando seu site precisar."
 
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Style Selection"
-msgstr "Seleção de estilo"
-
 #: lib/tymeslot_web/live/dashboard/embed_settings/live_preview.ex
 #, elixir-autogen, elixir-format
 msgid "Booking Preview"
@@ -408,11 +393,6 @@ msgstr "A prévia está desativada porque seu link de agendamento está desativa
 
 #: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
 #, elixir-autogen, elixir-format
-msgid "Embed & Share"
-msgstr "Incorporar e compartilhar"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
-#, elixir-autogen, elixir-format
 msgid "Embed settings"
 msgstr "Configurações de incorporação"
 
@@ -421,6 +401,16 @@ msgstr "Configurações de incorporação"
 msgid "Remove %{domain}"
 msgstr "Remover %{domain}"
 
+#: lib/tymeslot_web/live/dashboard/embed_settings/security_section.ex
+#, elixir-autogen, elixir-format
+msgid "By default, embedding is disabled to prevent unauthorised use of your booking page. To enable embedding, you must specify the domains you trust."
+msgstr "Por padrão, a incorporação fica desativada para impedir o uso não autorizado da sua página de agendamento. Para ativá-la, você precisa indicar os domínios em que confia."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/security_section.ex
+#, elixir-autogen, elixir-format
+msgid "For security, %{emphasis} to only specific domains you trust. This prevents your booking page from appearing on unauthorised websites."
+msgstr "Por segurança, %{emphasis} só a domínios específicos em que você confia. Isso impede que sua página de agendamento apareça em sites não autorizados."
+
 #: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
 #, elixir-autogen, elixir-format
 msgid "All - the list of your meeting types"
@@ -428,18 +418,38 @@ msgstr "Todos - a lista dos seus tipos de reunião"
 
 #: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
 #, elixir-autogen, elixir-format
-msgid "Meeting type"
-msgstr "Tipo de reunião"
+msgid "Background"
+msgstr "Fundo"
 
 #: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
 #, elixir-autogen, elixir-format
-msgid "Pick one to open its booking page directly. Without a choice, visitors see the meeting types marked \"Show in embedded widget\"."
-msgstr "Escolha um para abrir diretamente a página de agendamento dele. Sem escolha, os visitantes veem os tipos de reunião marcados com \"Mostrar no widget incorporado\"."
+msgid "Background colour"
+msgstr "Cor de fundo"
 
 #: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
 #, elixir-autogen, elixir-format
 msgid "Create a hidden address"
 msgstr "Criar um endereço oculto"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Custom colour"
+msgstr "Cor personalizada"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Embed & Share"
+msgstr "Incorporar e compartilhar"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Expert"
+msgstr "Especialista"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to save the embed settings"
+msgstr "Não foi possível salvar as configurações de incorporação"
 
 #: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
 #, elixir-autogen, elixir-format
@@ -461,6 +471,21 @@ msgstr "Gerar um novo endereço?"
 msgid "Hidden widget address"
 msgstr "Endereço oculto do widget"
 
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Meeting type"
+msgstr "Tipo de reunião"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Pick one to open its booking page directly. Without a choice, visitors see the meeting types marked \"Show in embedded widget\"."
+msgstr "Escolha um para abrir diretamente a página de agendamento dele. Sem escolha, os visitantes veem os tipos de reunião marcados com \"Mostrar no widget incorporado\"."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Pick the style to try in the Live Preview. Each style has its own code below, so you can copy any of them."
+msgstr "Escolha o estilo para testar na Prévia ao vivo. Cada estilo tem o próprio código abaixo, então você pode copiar qualquer um deles."
+
 #: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
 #, elixir-autogen, elixir-format
 msgid "Remove"
@@ -470,6 +495,16 @@ msgstr "Remover"
 #, elixir-autogen, elixir-format
 msgid "Remove the hidden address?"
 msgstr "Remover o endereço oculto?"
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Replaces the booking page's background inside the widget only. Your public booking page keeps its own."
+msgstr "Substitui o fundo da página de agendamento apenas dentro do widget. Sua página pública de agendamento mantém o próprio."
+
+#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
+#, elixir-autogen, elixir-format
+msgid "Style Selection"
+msgstr "Seleção de estilo"
 
 #: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
 #, elixir-autogen, elixir-format
@@ -487,36 +522,6 @@ msgstr "O código de incorporação na aba Opções de incorporação já usa es
 msgid "The hidden widget address is only available on the Pro plan and above."
 msgstr "O endereço oculto do widget está disponível apenas no Plano Pro e superiores."
 
-#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
-#, elixir-autogen, elixir-format
-msgid "Use a random address in the widget instead of your username, so the code on your website does not reveal your public booking page. Through it, visitors see only the meeting types shown in the widget and the ones hidden from your public page."
-msgstr "Use no widget um endereço aleatório em vez do seu nome de usuário, para que o código no seu site não revele sua página pública de agendamento. Por ele, os visitantes veem apenas os tipos de reunião exibidos no widget e os ocultos da sua página pública."
-
-#: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
-#, elixir-autogen, elixir-format
-msgid "Widget address updated"
-msgstr "Endereço do widget atualizado"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Background"
-msgstr "Fundo"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Background colour"
-msgstr "Cor de fundo"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Custom colour"
-msgstr "Cor personalizada"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Replaces the booking page's background inside the widget only. Your public booking page keeps its own."
-msgstr "Substitui o fundo da página de agendamento apenas dentro do widget. Sua página pública de agendamento mantém o próprio."
-
 #: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
 #, elixir-autogen, elixir-format
 msgid "Theme default"
@@ -527,17 +532,12 @@ msgstr "Padrão do tema"
 msgid "Transparent - your page shows through"
 msgstr "Transparente - sua página aparece por trás"
 
+#: lib/tymeslot_web/live/dashboard/embed_settings/alias_section.ex
+#, elixir-autogen, elixir-format
+msgid "Use a random address in the widget instead of your username, so the code on your website does not reveal your public booking page. Through it, visitors see only the meeting types shown in the widget and the ones hidden from your public page."
+msgstr "Use no widget um endereço aleatório em vez do seu nome de usuário, para que o código no seu site não revele sua página pública de agendamento. Por ele, os visitantes veem apenas os tipos de reunião exibidos no widget e os ocultos da sua página pública."
+
 #: lib/tymeslot_web/live/dashboard/embed_settings_component.ex
 #, elixir-autogen, elixir-format
-msgid "Failed to save the embed settings"
-msgstr "Não foi possível salvar as configurações de incorporação"
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Pick the style to try in the Live Preview. Each style has its own code below, so you can copy any of them."
-msgstr "Escolha o estilo para testar na Prévia ao vivo. Cada estilo tem o próprio código abaixo, então você pode copiar qualquer um deles."
-
-#: lib/tymeslot_web/live/dashboard/embed_settings/options_grid.ex
-#, elixir-autogen, elixir-format
-msgid "Expert"
-msgstr "Especialista"
+msgid "Widget address updated"
+msgstr "Endereço do widget atualizado"

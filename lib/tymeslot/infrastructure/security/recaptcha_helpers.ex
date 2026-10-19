@@ -33,10 +33,10 @@ defmodule Tymeslot.Infrastructure.Security.RecaptchaHelpers do
   @doc """
   Whether Google reCAPTCHA is the configured provider for signup.
 
-  Seeded from `RECAPTCHA_SIGNUP_PROVIDER` (or the legacy `RECAPTCHA_SIGNUP_ENABLED`
-  boolean) at boot and overridable at runtime via the admin settings UI
-  (`Tymeslot.AppSettings`). Useful for emergency disables during outages
-  without a redeploy.
+  Fixed by `RECAPTCHA_SIGNUP_PROVIDER` (or the legacy `RECAPTCHA_SIGNUP_ENABLED`
+  boolean) when that variable is set; otherwise changeable at runtime from the
+  admin settings UI (`Tymeslot.AppSettings`), which is useful for emergency
+  disables during outages without a redeploy.
 
   This is a *feature flag*; if selected but keys are missing, signup verification is
   automatically disabled (and logged) so legitimate signups aren't blocked by misconfiguration.
@@ -70,10 +70,10 @@ defmodule Tymeslot.Infrastructure.Security.RecaptchaHelpers do
   @doc """
   Whether Google reCAPTCHA is the configured provider for booking.
 
-  Seeded from `RECAPTCHA_BOOKING_PROVIDER` (or the legacy `RECAPTCHA_BOOKING_ENABLED`
-  boolean) at boot and overridable at runtime via the admin settings UI
-  (`Tymeslot.AppSettings`). Useful for emergency disables during outages
-  without a redeploy.
+  Fixed by `RECAPTCHA_BOOKING_PROVIDER` (or the legacy `RECAPTCHA_BOOKING_ENABLED`
+  boolean) when that variable is set; otherwise changeable at runtime from the
+  admin settings UI (`Tymeslot.AppSettings`), which is useful for emergency
+  disables during outages without a redeploy.
 
   This is a *feature flag*; if selected but keys are missing, booking verification is
   automatically disabled (and logged) so legitimate bookings aren't blocked by misconfiguration.

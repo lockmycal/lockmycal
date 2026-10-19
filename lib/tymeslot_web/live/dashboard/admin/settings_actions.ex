@@ -51,6 +51,9 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsActions do
       {:error, :would_lock_out} ->
         {:noreply, Flash.put_flash(socket, :error, lock_out_message(atom_key, parsed))}
 
+      {:error, {:pinned, _key, env_var}} ->
+        {:noreply, Flash.put_flash(socket, :error, Formatters.pinned_reason(env_var))}
+
       {:error, _changeset} ->
         {:noreply,
          Flash.put_flash(socket, :error, dgettext("dashboard_admin", "Could not update setting."))}
@@ -79,6 +82,9 @@ defmodule TymeslotWeb.Dashboard.Admin.SettingsActions do
          )
          |> push_event("ts:setting-saved", %{key: Atom.to_string(key)})
          |> HubComponent.load_settings_data()}
+
+      {:error, {:pinned, _key, env_var}} ->
+        {:noreply, Flash.put_flash(socket, :error, Formatters.pinned_reason(env_var))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, Flash.put_flash(socket, :error, changeset_message(changeset, key))}

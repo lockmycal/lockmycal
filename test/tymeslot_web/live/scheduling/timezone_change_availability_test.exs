@@ -24,6 +24,7 @@ defmodule TymeslotWeb.Live.Scheduling.TimezoneChangeAvailabilityTest do
   alias Tymeslot.Infrastructure.AvailabilityCache
   alias Tymeslot.Security.RateLimiter
   alias Tymeslot.TestMocks
+  alias TymeslotWeb.BookingDriver.Page
 
   @host_zone "Europe/London"
   @booker_zone "Europe/Kyiv"
@@ -71,11 +72,15 @@ defmodule TymeslotWeb.Live.Scheduling.TimezoneChangeAvailabilityTest do
       wait_until(fn -> bookable?(view, monday) end)
       assert bookable?(view, tuesday)
 
-      # The selected day stays selected and its times are re-read in London.
-      wait_until(fn -> slot_times(view) == ["12:00 AM", "1:00 AM"] end)
-
-      view |> element(day(monday)) |> render_click()
+      # Tuesday was the first free day, which the page had already landed on,
+      # so clicking it left the calendar where the page put it
+      # (`CalendarHelpers.untouched?/1`): the landing follows the zone and
+      # moves to London's first free day, Monday, with its times read in London.
+      wait_until(fn -> selected_date(view) == Date.to_string(monday) end)
       wait_until(fn -> slot_times(view) == ["10:00 PM", "11:00 PM"] end)
+
+      view |> element(day(tuesday)) |> render_click()
+      wait_until(fn -> slot_times(view) == ["12:00 AM", "1:00 AM"] end)
     end
   end
 
@@ -116,9 +121,17 @@ defmodule TymeslotWeb.Live.Scheduling.TimezoneChangeAvailabilityTest do
 
   # A Monday at least two days out in both zones, so neither today's cut-off
   # nor the zones disagreeing about today can touch it.
+  # The first Monday whose window (22:00 in London) has not started yet: the
+  # page lands on the first free day, so an earlier window still open would
+  # be the one it lands on (a run on a Sunday or a Monday).
   defp next_monday do
-    from = @booker_zone |> DateTime.now!() |> DateTime.to_date() |> Date.add(2)
-    Date.add(from, rem(8 - Date.day_of_week(from), 7))
+    now = DateTime.now!(@host_zone)
+    today = DateTime.to_date(now)
+    monday = Date.add(today, rem(8 - Date.day_of_week(today), 7))
+
+    if DateTime.compare(DateTime.new!(monday, ~T[22:00:00], @host_zone), now) == :gt,
+      do: monday,
+      else: Date.add(monday, 7)
   end
 
   defp day(date), do: "#{@calendar_day}[phx-value-date='#{Date.to_string(date)}']"
@@ -128,12 +141,15 @@ defmodule TymeslotWeb.Live.Scheduling.TimezoneChangeAvailabilityTest do
   # Through the picker the booker uses: open it, search for the city, pick it.
   defp change_timezone(view, zone) do
     view |> element("[phx-click='toggle_timezone_dropdown']") |> render_click()
-    view |> element("input.timezone-search") |> render_keyup(%{"search" => "London"})
+    view |> element("input.tz-picker__search") |> render_keyup(%{"search" => "London"})
 
     view
-    |> element("button.timezone-option[phx-value-timezone='#{zone}']")
+    |> element("button.tz-picker__option[phx-value-timezone='#{zone}']")
     |> render_click()
   end
+
+  # The themes mark the chosen day differently, so read the booking's own.
+  defp selected_date(view), do: Page.assigns(view)[:selected_date]
 
   defp slot_times(view) do
     view

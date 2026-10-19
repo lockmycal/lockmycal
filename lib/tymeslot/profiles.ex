@@ -211,6 +211,16 @@ defmodule Tymeslot.Profiles do
     do: ProfileQueries.update_field(profile, field, value)
 
   @doc """
+  Updates the organiser's headline and bio, the introduction a theme may show
+  on the booking page. Callers sanitise the params first
+  (`Tymeslot.Profiles.InputValidation.validate_intro/2`); the changeset owns
+  the caps and the clean-up.
+  """
+  @spec update_intro(profile, map()) :: result(profile)
+  def update_intro(%ProfileSchema{} = profile, attrs),
+    do: ProfileQueries.update_intro(profile, attrs)
+
+  @doc """
   Updates the full name for a profile.
   """
   @spec update_full_name(profile, String.t()) :: result(profile)
@@ -367,7 +377,7 @@ defmodule Tymeslot.Profiles do
   end
 
   defp username_reserved_status(username) do
-    if username in ReservedPaths.list(), do: :reserved, else: :ok
+    if ReservedPaths.reserved?(username), do: :reserved, else: :ok
   end
 
   @doc """

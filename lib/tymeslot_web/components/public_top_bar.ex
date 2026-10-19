@@ -96,7 +96,6 @@ defmodule TymeslotWeb.Components.PublicTopBar do
             locale={@locale}
             locales={@locales}
             dropdown_open={@dropdown_open}
-            theme={@theme}
           />
         </div>
       </nav>

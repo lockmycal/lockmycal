@@ -200,7 +200,7 @@ defmodule TymeslotWeb.Components.Dashboard.Integrations.Calendar.SharedFormCompo
   @spec nextcloud_app_password_hint(map()) :: Phoenix.LiveView.Rendered.t()
   def nextcloud_app_password_hint(assigns) do
     ~H"""
-    <p class="text-sm text-tymeslot-600 leading-relaxed">
+    <p class="text-sm text-neutral-600 leading-relaxed dark:text-neutral-300">
       {raw(
         dgettext(
           "dashboard_calendar_providers",

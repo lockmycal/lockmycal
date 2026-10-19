@@ -122,10 +122,10 @@
   width: var(--dropdown-width-sm);
   max-height: var(--dropdown-max-height);
   overflow-y: auto;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--public-calendar-picker-surface);
   -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
-  border: var(--border-width-thin) solid rgba(0, 0, 0, 0.1);
+  border: var(--border-width-thin) solid var(--public-calendar-picker-line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   padding: var(--space-2xs) 0;
@@ -135,12 +135,12 @@
   display: block;
   padding: var(--space-2xs) var(--space-sm);
   font-size: var(--theme-font-size-xs);
-  color: #1e293b;
+  color: var(--public-calendar-picker-ink);
   text-decoration: none;
 }
 
 .public-calendar-month-picker-item:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--public-calendar-picker-hover);
 }
 
 .public-calendar-month-picker-item.active {
@@ -268,7 +268,7 @@
    chip, so a pending meeting reads as a distinct, urgent state here too. */
 .public-calendar-chip--pending {
   background: var(--color-red-50);
-  border: 1px solid var(--color-red-300);
+  border: var(--border-width-thin) solid var(--color-red-300);
   color: var(--color-red-800);
   font-weight: var(--font-weight-bold);
 }
@@ -277,7 +277,7 @@
    but outlined instead of filled so it reads as "not blocking". */
 .public-calendar-chip--non-blocking {
   background: transparent;
-  border: 1px dashed var(--text-opacity-subtle);
+  border: var(--border-width-thin) dashed var(--text-opacity-subtle);
   color: var(--text-opacity-subtle);
 }
 
@@ -339,7 +339,7 @@
 
 .public-calendar-legend-dot--non-blocking {
   background: transparent;
-  border: 1px dashed var(--text-opacity-subtle);
+  border: var(--border-width-thin) dashed var(--text-opacity-subtle);
 }
 
 .public-calendar-legend-hint {

@@ -85,3 +85,14 @@ msgstr "Tento kalendář není veřejný."
 #, elixir-autogen, elixir-format
 msgid "Today"
 msgstr "Dnes"
+
+#: lib/tymeslot_web/live/public/calendar_live.ex
+#, elixir-autogen, elixir-format
+msgid "Click a day to see available times and book."
+msgstr "Klikněte na den a zobrazte dostupné časy pro rezervaci."
+
+#: lib/tymeslot_web/themes/quill/scheduling/components/overview_component.ex
+#: lib/tymeslot_web/themes/rhythm/scheduling/components/overview_component.ex
+#, elixir-autogen, elixir-format
+msgid "View full calendar"
+msgstr "Zobrazit celý kalendář"

@@ -13,7 +13,7 @@ defmodule TymeslotWeb.Live.Scheduling.OwnCalendarBookingTest do
   import Mox
   import Phoenix.LiveViewTest
   import Tymeslot.Factory
-  import Tymeslot.ThemeBookingFlowHelpers
+  import Tymeslot.BookingTestHelpers, only: [seed_booking_account: 3]
   import Tymeslot.AuthTestHelpers, only: [log_in_user: 2]
 
   alias Phoenix.ConnTest
@@ -21,6 +21,7 @@ defmodule TymeslotWeb.Live.Scheduling.OwnCalendarBookingTest do
   alias Tymeslot.Meetings.MeetingSchema
   alias Tymeslot.Repo
   alias Tymeslot.TestMocks
+  alias TymeslotWeb.BookingDriver
 
   setup :verify_on_exit!
 
@@ -90,7 +91,7 @@ defmodule TymeslotWeb.Live.Scheduling.OwnCalendarBookingTest do
 
         visitor = visitor()
         view = open_as(conn, visitor, profile)
-        advance_to_booking_form(view, unquote(theme))
+        BookingDriver.book(view, until: :attendee)
 
         assert render(view) =~ "Booker calendar"
 
@@ -113,7 +114,7 @@ defmodule TymeslotWeb.Live.Scheduling.OwnCalendarBookingTest do
 
         visitor = visitor()
         view = open_as(conn, visitor, profile)
-        advance_to_booking_form(view, unquote(theme))
+        BookingDriver.book(view, until: :attendee)
 
         submit(view, %{"save_to_own_calendar" => "false"})
 
@@ -129,7 +130,7 @@ defmodule TymeslotWeb.Live.Scheduling.OwnCalendarBookingTest do
 
         visitor = visitor(:always)
         view = open_as(conn, visitor, profile)
-        advance_to_booking_form(view, unquote(theme))
+        BookingDriver.book(view, until: :attendee)
 
         refute has_element?(view, "[data-testid='own-calendar-field']")
 
@@ -146,7 +147,7 @@ defmodule TymeslotWeb.Live.Scheduling.OwnCalendarBookingTest do
           seed_booking_account(unquote(theme_id), "own-cal-anon-#{unquote(theme)}", @timezone)
 
         {:ok, view, _html} = live(conn, ~p"/#{profile.username}?timezone=#{@timezone}")
-        advance_to_booking_form(view, unquote(theme))
+        BookingDriver.book(view, until: :attendee)
 
         refute has_element?(view, "[data-testid='own-calendar-field']")
 
@@ -178,7 +179,7 @@ defmodule TymeslotWeb.Live.Scheduling.OwnCalendarBookingTest do
           seed_booking_account(unquote(theme_id), "own-cal-in-#{unquote(theme)}", @timezone)
 
         view = open_as(conn, visitor(), profile)
-        advance_to_booking_form(view, unquote(theme))
+        BookingDriver.book(view, until: :attendee)
 
         refute has_element?(view, "[data-testid='own-calendar-hint']")
       end

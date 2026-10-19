@@ -114,7 +114,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.EmailSettingsFormComponent do
 
       <p class="mt-4 text-token-sm font-medium text-neutral-600 dark:text-neutral-300">
         {dgettext("dashboard_profile", "Current email:")}
-        <span class="font-bold text-neutral-800 dark:text-neutral-100">{@current_user.email}</span>
+        <span class="font-bold text-neutral-800 dark:text-neutral-100 break-all">{@current_user.email}</span>
       </p>
 
       <.pending_email_notice
@@ -140,7 +140,7 @@ defmodule TymeslotWeb.Dashboard.ProfileSettings.EmailSettingsFormComponent do
       <div class="mt-2 text-token-sm text-amber-700">
         <p>
           {dgettext("dashboard_profile", "A verification email has been sent to")}
-          <strong>{@pending_email}</strong>
+          <strong class="break-all">{@pending_email}</strong>
         </p>
         <p :if={@email_change_sent_at} class="mt-1 text-token-xs text-amber-600">
           {dgettext("dashboard_profile", "Sent %{time}",

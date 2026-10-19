@@ -8,7 +8,7 @@ defmodule Tymeslot.AppSettings.BookingAttachmentSettingsTest do
   alias Tymeslot.AppSettings
   alias Tymeslot.AppSettings.AppSettingsSchema
   alias Tymeslot.Bookings.AttendeeAttachments
-  alias TymeslotWeb.Helpers.UploadConstraints
+  alias Tymeslot.Media.AttachmentConstraints
 
   setup do
     original = Application.get_env(:tymeslot, :uploads)
@@ -48,9 +48,9 @@ defmodule Tymeslot.AppSettings.BookingAttachmentSettingsTest do
                  max_booking_attachments: 2
                })
 
-      assert UploadConstraints.allowed_extensions(:booking_attachment) == [".pdf", ".docx"]
-      assert UploadConstraints.max_file_size(:booking_attachment) == 5_000_000
-      assert UploadConstraints.max_entries(:booking_attachment) == 2
+      assert AttachmentConstraints.allowed_extensions() == [".pdf", ".docx"]
+      assert AttachmentConstraints.max_file_size() == 5_000_000
+      assert AttachmentConstraints.max_entries() == 2
     end
 
     test "rejects a type outside the supported set" do

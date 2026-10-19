@@ -75,7 +75,7 @@
 /* Links and the language switcher trigger share one height so the row
    lines up; the switcher is a touch taller than its standalone default. */
 .public-top-bar-link,
-.public-top-bar [class*="language-switcher-button-"] {
+.public-top-bar .lang-switcher__button {
   min-height: 2.75rem;
   box-sizing: border-box;
 }
@@ -95,7 +95,7 @@
 }
 
 .public-top-bar-link:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--public-top-bar-link-hover);
 }
 
 /* Reverse (outlined) style: transparent fill, visible border. */
@@ -130,20 +130,22 @@
 /* Short windows (landscape phones): a slimmer bar leaves the booking content
    its height. */
 @media (max-height: 480px) {
-  .public-top-bar {
-    padding-block: var(--space-xs);
-  }
+  :where(html:not([data-embedded])) {
+    .public-top-bar {
+      padding-block: var(--space-xs);
+    }
 
-  .public-top-bar-brand img {
-    height: 1.75rem;
-  }
+    .public-top-bar-brand img {
+      height: 1.75rem;
+    }
 
-  .public-top-bar-link,
-  .public-top-bar [class*="language-switcher-button-"] {
-    min-height: 2rem;
-  }
+    .public-top-bar-link,
+    .public-top-bar .lang-switcher__button {
+      min-height: 2rem;
+    }
 
-  .public-top-bar-link.public-top-bar-icon-link {
-    width: 2rem;
+    .public-top-bar-link.public-top-bar-icon-link {
+      width: 2rem;
+    }
   }
 }
